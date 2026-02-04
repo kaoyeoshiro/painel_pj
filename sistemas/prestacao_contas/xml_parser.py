@@ -54,9 +54,11 @@ CODIGOS_DOCUMENTOS_ANEXOS = [
 ]
 
 # Códigos específicos de notas fiscais (para verificar se foi encontrada)
+# Inclui também Documento de Comprovação (9882) que frequentemente contém notas fiscais escaneadas
 CODIGOS_NOTA_FISCAL = [
     "9870",  # Nota Fiscal
     "386",   # Nota Fiscal
+    "9882",  # Documento de Comprovação (frequentemente notas fiscais escaneadas)
 ]
 
 

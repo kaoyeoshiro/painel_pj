@@ -29,6 +29,7 @@ from sistemas.prestacao_contas.xml_parser import (
     parse_xml_processo,
     DocumentoProcesso,
     CODIGOS_NOTA_FISCAL,
+    CODIGOS_DOCUMENTOS_ANEXOS,
 )
 from sistemas.prestacao_contas.extrato_paralelo import (
     ExtratorParalelo,
@@ -741,17 +742,17 @@ class OrquestradorPrestacaoContas:
                     mensagem="Petição de prestação não encontrada. Buscando notas fiscais..."
                 )
 
-                # FALLBACK: Buscar notas fiscais (código 9870) nos ÚLTIMOS 30 documentos do processo
-                CODIGO_NOTA_FISCAL = "9870"
-                MAX_DOCS_FALLBACK = 30
+                # FALLBACK: Buscar notas fiscais (códigos 9870 e 386) nos ÚLTIMOS 50 documentos do processo
+                # NOTA: Usa CODIGOS_NOTA_FISCAL importado de xml_parser.py para consistência
+                MAX_DOCS_FALLBACK = 50  # Aumentado de 30 para 50 para melhor cobertura
 
-                # Pega os últimos 30 documentos (mais recentes)
+                # Pega os últimos 50 documentos (mais recentes)
                 todos_documentos = resultado_xml.documentos
-                ultimos_30_docs = todos_documentos[-MAX_DOCS_FALLBACK:] if len(todos_documentos) > MAX_DOCS_FALLBACK else todos_documentos
+                ultimos_docs = todos_documentos[-MAX_DOCS_FALLBACK:] if len(todos_documentos) > MAX_DOCS_FALLBACK else todos_documentos
 
-                # Busca notas fiscais apenas nos últimos 30
-                notas_fiscais = [p for p in ultimos_30_docs if str(p.tipo_codigo) == CODIGO_NOTA_FISCAL]
-                log_info(f"Busca nos últimos {len(ultimos_30_docs)} documentos - encontradas {len(notas_fiscais)} notas fiscais")
+                # Busca notas fiscais usando TODOS os códigos de nota fiscal (9870, 386)
+                notas_fiscais = [p for p in ultimos_docs if str(p.tipo_codigo) in CODIGOS_NOTA_FISCAL]
+                log_info(f"Busca nos últimos {len(ultimos_docs)} documentos - encontradas {len(notas_fiscais)} notas fiscais (códigos: {CODIGOS_NOTA_FISCAL})")
 
                 # Limpa listas para usar APENAS as notas fiscais (evita pegar docs não relacionados)
                 docs_para_baixar_anexos.clear()
@@ -761,8 +762,9 @@ class OrquestradorPrestacaoContas:
                 if notas_fiscais:
                     log_info(f"Encontradas {len(notas_fiscais)} notas fiscais para análise")
 
-                    # Baixar e concatenar texto das notas fiscais
+                    # Baixar notas fiscais - extrai texto quando possível, senão serão convertidas para imagem depois
                     textos_notas = []
+                    pdfs_escaneados = 0  # Contador de PDFs de imagem (serão convertidos em ETAPA 4)
                     async with aiohttp.ClientSession() as session:
                         for i, nf in enumerate(notas_fiscais):
                             try:
@@ -784,10 +786,17 @@ class OrquestradorPrestacaoContas:
 
                                 if conteudo_bytes:
                                     texto_nf = extrair_texto_pdf(conteudo_bytes)
-                                    textos_notas.append(f"### Nota Fiscal {i+1} (ID: {nf.id})\n{texto_nf}")
-                                    log_info(f"Nota fiscal {nf.id} baixada ({len(texto_nf)} caracteres)")
+
+                                    # Se texto muito curto (< 100 chars), provavelmente é PDF de imagem escaneada
+                                    if len(texto_nf) < 100:
+                                        log_info(f"Nota fiscal {nf.id}: PDF escaneado ({len(texto_nf)} chars) - sera convertido para imagem")
+                                        pdfs_escaneados += 1
+                                    else:
+                                        textos_notas.append(f"### Nota Fiscal {i+1} (ID: {nf.id})\n{texto_nf}")
+                                        log_info(f"Nota fiscal {nf.id} baixada ({len(texto_nf)} caracteres)")
 
                                     # Adiciona aos documentos classificados para contexto
+                                    # A conversao para imagem acontece na ETAPA 4 (linhas 1113-1126)
                                     documentos_classificados.append({
                                         "doc": nf,
                                         "texto": texto_nf,
@@ -805,10 +814,12 @@ class OrquestradorPrestacaoContas:
                                 log_erro(f"Erro ao baixar nota fiscal {nf.id}: {e}")
                                 continue
 
-                    if textos_notas:
+                    # Considera sucesso se baixou pelo menos uma NF (texto ou escaneada)
+                    total_nfs_baixadas = len(textos_notas) + pdfs_escaneados
+                    if total_nfs_baixadas > 0:
                         peticao_prestacao = "## NOTAS FISCAIS ENCONTRADAS (FALLBACK)\n\n" + "\n\n---\n\n".join(textos_notas)
                         peticao_prestacao_doc = notas_fiscais[0]  # Usa a primeira NF como referência
-                        log_sucesso(f"Fallback: {len(textos_notas)} notas fiscais serão usadas para análise")
+                        log_sucesso(f"Fallback: {len(textos_notas)} NFs com texto + {pdfs_escaneados} PDFs escaneados (serao convertidos para imagem)")
                     else:
                         # SOLICITA UPLOAD: Notas fiscais não puderam ser processadas
                         log_aviso("Solicitando upload manual de documentos ao usuário")
@@ -993,15 +1004,36 @@ class OrquestradorPrestacaoContas:
             logger.warning(f"{'='*60}")
 
             # Baixa documentos anexos das petições que mencionam anexos
-            # Usa intervalo de 2 minutos para encontrar anexos juntados junto com a petição
+            # Usa intervalo de 15 minutos (aumentado de 2) para encontrar anexos juntados junto com a petição
+            # NOTA: Muitos anexos são juntados com diferença maior que 2 minutos da petição principal
             for peticao_com_anexos in docs_para_baixar_anexos:
                 if peticao_com_anexos.data_juntada:
-                    # Busca documentos juntados no mesmo horário (intervalo de 2 minutos)
+                    # Primeiro tenta intervalo curto (5 min)
                     docs_proximos = parser.get_documentos_proximos(
                         peticao_com_anexos.data_juntada,
                         excluir_id=peticao_com_anexos.id,
-                        intervalo_minutos=2
+                        intervalo_minutos=5
                     )
+
+                    # Se não encontrou anexos, tenta intervalo maior (15 min)
+                    if not docs_proximos:
+                        docs_proximos = parser.get_documentos_proximos(
+                            peticao_com_anexos.data_juntada,
+                            excluir_id=peticao_com_anexos.id,
+                            intervalo_minutos=15
+                        )
+
+                    # Se ainda não encontrou, busca no mesmo dia (último recurso)
+                    if not docs_proximos:
+                        docs_proximos = parser.get_documentos_mesmo_dia(
+                            peticao_com_anexos.data_juntada,
+                            excluir_id=peticao_com_anexos.id
+                        )
+                        # Filtra apenas tipos de anexo relevantes (notas fiscais, comprovantes, etc)
+                        docs_proximos = [
+                            d for d in docs_proximos
+                            if str(d.tipo_codigo) in CODIGOS_DOCUMENTOS_ANEXOS
+                        ]
 
                     # DEBUG: Log dos documentos encontrados próximos
                     logger.warning(f"DEBUG: Petição {peticao_com_anexos.id} @ {peticao_com_anexos.data_juntada}")

@@ -508,7 +508,8 @@ async def _tentar_endpoint_proxy(numero_processo: str) -> Optional[ResultadoExtr
 
     try:
         logger.info(f"Tentando endpoint do proxy local: {endpoint}")
-        async with httpx.AsyncClient(timeout=httpx.Timeout(180.0, connect=10.0)) as client:
+        # Timeout reduzido de 180s para 60s para melhor experiência do usuário
+        async with httpx.AsyncClient(timeout=httpx.Timeout(60.0, connect=10.0)) as client:
             response = await client.post(
                 endpoint,
                 json={"numero_processo": numero_processo},

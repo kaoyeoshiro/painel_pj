@@ -85,7 +85,7 @@ class ConfigExtratoParalelo:
                 return config.valor if config else default
 
             return cls(
-                scrapper_timeout=float(get_config("scrapper_timeout", "120.0")),
+                scrapper_timeout=float(get_config("scrapper_timeout", "60.0")),  # Reduzido de 120s para 60s
                 fallback_timeout=float(get_config("fallback_timeout", "60.0")),
                 min_caracteres_extrato=int(get_config("min_caracteres_extrato", "200")),
                 min_caracteres_util=int(get_config("min_caracteres_util", "500")),
