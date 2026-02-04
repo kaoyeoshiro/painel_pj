@@ -103,6 +103,30 @@ DEFAULT_PRESETS: Dict[str, Preset] = {
         estimated_time_minutes_max=240,
         is_recommended=False,
         sort_order=3
+    ),
+    "maximo": Preset(
+        name="maximo",
+        display_name="Máximo (95%+)",
+        description="Configuracao agressiva para atingir 95%+ de precisao. Treinamento longo com fine-tuning otimizado.",
+        icon="trophy",
+        config={
+            "learning_rate": 2e-5,
+            "batch_size": 8,
+            "epochs": 50,
+            "max_length": 512,
+            "train_split": 0.9,
+            "warmup_steps": 500,
+            "weight_decay": 0.01,
+            "gradient_accumulation_steps": 4,
+            "early_stopping_patience": 10,
+            "use_class_weights": True,
+            "seed": 42,
+            "truncation_side": "right"
+        },
+        estimated_time_minutes_min=240,
+        estimated_time_minutes_max=480,
+        is_recommended=False,
+        sort_order=4
     )
 }
 

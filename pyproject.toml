@@ -34,3 +34,11 @@ filterwarnings = [
     "ignore::DeprecationWarning",
     "ignore::PendingDeprecationWarning"
 ]
+
+# Markers customizados
+markers = [
+    "integration: Testes de integracao CI-friendly com dados sinteticos",
+    "local_integration: Testes de integracao local com dados reais (requer Excel)",
+    "gpu_required: Testes que requerem GPU CUDA real",
+    "slow: Testes lentos (mais de 1 minuto)"
+]

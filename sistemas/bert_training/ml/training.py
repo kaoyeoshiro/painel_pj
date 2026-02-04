@@ -41,7 +41,9 @@ class Trainer:
         use_class_weights: bool = True,
         gradient_accumulation_steps: int = 1,
         early_stopping_patience: int = 3,
-        progress_callback: Optional[Callable] = None
+        progress_callback: Optional[Callable] = None,
+        should_stop_callback: Optional[Callable[[], bool]] = None,
+        log_callback: Optional[Callable[[str, str], None]] = None
     ):
         """
         Inicializa o trainer.
@@ -60,8 +62,12 @@ class Trainer:
             gradient_accumulation_steps: Steps para acumular gradientes
             early_stopping_patience: Épocas sem melhoria para parar
             progress_callback: Callback para reportar progresso
+            should_stop_callback: Callback que retorna True se deve parar (early stop manual)
+            log_callback: Callback para enviar logs (level, message) para a API
         """
         self.model = model.to(device)
+        self.should_stop_callback = should_stop_callback
+        self.log_callback = log_callback
         self.device = device
         self.epochs = epochs
         self.batch_size = batch_size
@@ -190,7 +196,14 @@ class Trainer:
 
             # Log a cada 10% do epoch
             if (batch_idx + 1) % max(1, num_batches // 10) == 0:
-                logger.info(f"Epoch {epoch+1} - Batch {batch_idx+1}/{num_batches} - Loss: {loss.item():.4f}")
+                log_msg = f"Epoch {epoch+1} - Batch {batch_idx+1}/{num_batches} - Loss: {loss.item():.4f}"
+                logger.info(log_msg)
+                # Envia log para API se callback disponível
+                if self.log_callback:
+                    try:
+                        self.log_callback('INFO', log_msg)
+                    except Exception:
+                        pass  # Não falha treinamento por erro de log
 
         avg_loss = total_loss / num_batches
         return avg_loss
@@ -290,6 +303,11 @@ class Trainer:
                 if epochs_without_improvement >= self.early_stopping_patience:
                     logger.info(f"Early stopping após {epoch + 1} épocas")
                     break
+
+            # Verifica se deve parar (early stop manual via API)
+            if self.should_stop_callback and self.should_stop_callback():
+                logger.info(f"Parada manual solicitada após epoch {epoch + 1}")
+                break
 
         # Restaura o melhor modelo
         if self.best_model_state:

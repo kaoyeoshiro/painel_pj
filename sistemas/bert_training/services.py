@@ -29,6 +29,7 @@ from sistemas.bert_training.presets import (
 from sistemas.bert_training.error_translator import (
     translate_error, get_friendly_error_message, get_quality_alert
 )
+from utils.json_sanitizer import sanitize_for_json, sanitize_dataframe_dict
 
 logger = logging.getLogger(__name__)
 
@@ -148,9 +149,9 @@ def validate_excel_file(
         elif total_rows < 100:
             warnings.append(f"Dataset pequeno ({total_rows} linhas). Recomendado: pelo menos 100 amostras")
 
-        # Amostra dos dados
+        # Amostra dos dados (sanitizada para JSON)
         sample_df = df.head(5)[[text_column, label_column]]
-        sample_data = sample_df.to_dict(orient="records")
+        sample_data = sanitize_dataframe_dict(sample_df.to_dict(orient="records"))
 
         return ExcelValidationResult(
             is_valid=len(errors) == 0,
@@ -188,11 +189,11 @@ def extract_dataset_metadata(
     # Remove linhas com valores nulos nas colunas principais
     df_clean = df.dropna(subset=[text_column, label_column])
 
-    # Distribuição de labels
+    # Distribuição de labels (sanitizada para JSON - evita NaN como chave)
     if task_type == TaskTypeEnum.TEXT_CLASSIFICATION:
         label_counts = df_clean[label_column].value_counts().to_dict()
-        # Converte keys para string para JSON
-        label_distribution = {str(k): int(v) for k, v in label_counts.items()}
+        # Converte keys para string e sanitiza para JSON
+        label_distribution = sanitize_for_json({str(k): int(v) for k, v in label_counts.items()})
         total_labels = len(label_distribution)
     else:
         # Para token classification, extrai labels únicas das tags
@@ -206,11 +207,11 @@ def extract_dataset_metadata(
             except Exception:
                 pass
         total_labels = len(all_labels)
-        label_distribution = {label: 1 for label in list(all_labels)[:50]}  # Limita preview
+        label_distribution = sanitize_for_json({label: 1 for label in list(all_labels)[:50]})  # Limita preview
 
-    # Sample preview (primeiras 10 linhas)
+    # Sample preview (primeiras 10 linhas, sanitizado para JSON)
     sample_df = df_clean.head(10)[[text_column, label_column]]
-    sample_preview = sample_df.to_dict(orient="records")
+    sample_preview = sanitize_dataframe_dict(sample_df.to_dict(orient="records"))
 
     return {
         "total_rows": len(df_clean),
@@ -385,12 +386,19 @@ def claim_job(
     if job.status != JobStatus.PENDING:
         return False
 
-    job.status = JobStatus.CLAIMED
+    job.status = JobStatus.TRAINING
     job.worker_id = worker.id
     job.claimed_at = datetime.utcnow()
+    job.started_at = datetime.utcnow()
 
     worker.current_job_id = job.id
     worker.last_heartbeat = datetime.utcnow()
+
+    # Atualiza status do run para training
+    run = db.query(BertRun).filter(BertRun.id == job.run_id).first()
+    if run:
+        run.status = "training"
+        run.started_at = datetime.utcnow()
 
     db.commit()
 
@@ -871,23 +879,24 @@ def analyze_dataset_quality(
     if num_classes >= 2:
         max_count = label_counts.max()
         min_count = label_counts.min()
-        imbalance_ratio = max_count / min_count if min_count > 0 else float('inf')
+        # Usa None se min_count == 0 para evitar Infinity no JSON
+        imbalance_ratio = max_count / min_count if min_count > 0 else None
 
-        if imbalance_ratio > 10:
+        if imbalance_ratio is not None and imbalance_ratio > 10:
             minority_classes = label_counts[label_counts < max_count / 10].index.tolist()
             warnings.append({
                 "type": "severe_imbalance",
                 "message": f"Algumas categorias tem muito menos exemplos ({', '.join(str(c) for c in minority_classes[:3])}). O modelo pode ignorar essas categorias.",
-                "ratio": round(imbalance_ratio, 1),
-                "minority_classes": minority_classes[:5]
+                "ratio": round(imbalance_ratio, 1) if imbalance_ratio is not None else None,
+                "minority_classes": [str(c) for c in minority_classes[:5]]  # Sanitiza para JSON
             })
             quality_score -= 15
             suggestions.append("Adicione mais exemplos das categorias menores ou considere remover categorias com poucos exemplos.")
-        elif imbalance_ratio > 5:
+        elif imbalance_ratio is not None and imbalance_ratio > 5:
             warnings.append({
                 "type": "moderate_imbalance",
                 "message": f"O dataset esta um pouco desbalanceado (proporcao {imbalance_ratio:.1f}:1).",
-                "ratio": round(imbalance_ratio, 1)
+                "ratio": round(imbalance_ratio, 1) if imbalance_ratio is not None else None
             })
             quality_score -= 5
 
@@ -952,8 +961,8 @@ def analyze_dataset_quality(
         "total_rows": total_rows,
         "valid_rows": valid_rows,
         "num_classes": num_classes,
-        "label_distribution": label_counts.to_dict(),
-        "warnings": warnings,
+        "label_distribution": sanitize_for_json(label_counts.to_dict()),
+        "warnings": sanitize_for_json(warnings),  # Sanitiza warnings para evitar NaN em minority_classes
         "errors": errors,
         "suggestions": suggestions
     }

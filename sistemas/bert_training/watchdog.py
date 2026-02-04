@@ -26,13 +26,15 @@ class WatchdogConfig:
     """Configuracao do watchdog."""
 
     # Tempo sem progresso antes de considerar travado
-    NO_PROGRESS_TIMEOUT_MINUTES = 15
+    # Ajustado para 480min (8h) pois treinamento pode demorar muitas horas
+    NO_PROGRESS_TIMEOUT_MINUTES = 480
 
     # Tempo sem heartbeat antes de considerar worker morto
-    WORKER_HEARTBEAT_TIMEOUT_MINUTES = 5
+    # Ajustado para 480min (8h) para tolerar treinamentos longos sem updates
+    WORKER_HEARTBEAT_TIMEOUT_MINUTES = 480
 
     # Tempo de epoch travada
-    STUCK_EPOCH_TIMEOUT_MINUTES = 30
+    STUCK_EPOCH_TIMEOUT_MINUTES = 480
 
     # Maximo de retries automaticos
     MAX_AUTO_RETRIES = 3

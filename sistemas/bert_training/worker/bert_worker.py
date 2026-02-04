@@ -134,6 +134,24 @@ class BertWorker:
             logger.warning(f"Falha ao enviar heartbeat: {e}")
             return False
 
+    def check_should_stop(self, job_id: int) -> bool:
+        """
+        Verifica se o job deve parar (status STOPPING).
+        Usado para early stop manual via frontend.
+        """
+        try:
+            response = self._api_request(
+                'GET',
+                f'/api/jobs/{job_id}/status',
+                data={'worker_token': self.token}
+            )
+            if response.status_code == 200:
+                data = response.json()
+                return data.get('status') == 'stopping'
+        except Exception as e:
+            logger.debug(f"Erro ao verificar status do job: {e}")
+        return False
+
     def claim_job(self) -> Optional[Dict]:
         """Tenta pegar um job da fila."""
         gpu_info = self.check_gpu()
@@ -410,6 +428,14 @@ class BertWorker:
                     epoch=epoch
                 )
 
+            # Callback para verificar parada manual
+            def should_stop():
+                return self.check_should_stop(job_id)
+
+            # Callback para enviar logs de batch para API
+            def log_callback(level: str, message: str):
+                self.send_log(run_id, level, message)
+
             # Treina
             trainer = Trainer(
                 model=model,
@@ -424,7 +450,9 @@ class BertWorker:
                 use_class_weights=config.get('use_class_weights', True),
                 gradient_accumulation_steps=config.get('gradient_accumulation_steps', 1),
                 early_stopping_patience=config.get('early_stopping_patience', 3),
-                progress_callback=progress_callback
+                progress_callback=progress_callback,
+                should_stop_callback=should_stop,
+                log_callback=log_callback
             )
 
             history = trainer.train()

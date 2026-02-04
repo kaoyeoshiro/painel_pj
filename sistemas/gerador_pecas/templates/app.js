@@ -1,6 +1,6 @@
 // Generated from TypeScript - DO NOT EDIT DIRECTLY
 // Source: src\sistemas\gerador_pecas\app.ts
-// Built at: 2026-01-30T21:41:45.439Z
+// Built at: 2026-02-04T15:53:48.402Z
 
 "use strict";
 (() => {

@@ -314,13 +314,8 @@ class ExtratorSubconta:
             # Preenche campo processo
             self._preencher_campo_processo(numero_formatado)
 
-            # Submete formulário
-            self._page.evaluate("""
-                () => {
-                    const form = document.querySelector('form');
-                    if (form) form.submit();
-                }
-            """)
+            # Clica no botão de pesquisa (input type="image")
+            self._page.locator('input[type="image"]').first.click()
 
             self._page.wait_for_load_state("load", timeout=self.config.timeout_navegacao)
             self._page.wait_for_timeout(2000)  # Aguarda processamento
@@ -429,8 +424,27 @@ class ExtratorSubconta:
 
             with sync_playwright() as p:
                 self._playwright = p
-                self._browser = p.chromium.launch(headless=self.config.headless)
-                self._page = self._browser.new_page()
+                # Configurações anti-detecção (site TJ-MS bloqueia sem estas flags)
+                self._browser = p.chromium.launch(
+                    headless=self.config.headless,
+                    args=[
+                        '--disable-blink-features=AutomationControlled',
+                        '--disable-features=IsolateOrigins,site-per-process',
+                        '--no-sandbox',
+                    ]
+                )
+
+                # Context com user-agent real e viewport padrão
+                context = self._browser.new_context(
+                    user_agent='Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+                    viewport={'width': 1920, 'height': 1080},
+                    locale='pt-BR'
+                )
+
+                self._page = context.new_page()
+
+                # Remove flag de webdriver
+                self._page.add_init_script('Object.defineProperty(navigator, "webdriver", {get: () => undefined});')
 
                 try:
                     # Faz login inicial (usa 'load' para maior tolerância em ambientes cloud)

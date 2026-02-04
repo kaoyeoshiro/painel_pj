@@ -61,14 +61,16 @@ def load_model(model_path: Path) -> Optional[Dict[str, Any]]:
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
         checkpoint = torch.load(checkpoint_path, map_location=device)
 
-        # Carrega tokenizer
-        base_model = checkpoint.get("base_model", "neuralmind/bert-base-portuguese-cased")
+        # Carrega tokenizer - suporta ambos os formatos de checkpoint
+        base_model = checkpoint.get("model_name") or checkpoint.get("base_model", "neuralmind/bert-base-portuguese-cased")
         tokenizer = AutoTokenizer.from_pretrained(base_model)
 
-        # Recria o modelo
+        # Recria o modelo - suporta ambos os formatos de checkpoint
         from sistemas.bert_training.ml.classifier import BertClassifier
 
-        id_to_label = checkpoint["id_to_label"]
+        id_to_label = checkpoint.get("label_map") or checkpoint.get("id_to_label")
+        if not id_to_label:
+            raise ValueError("Checkpoint não contém label_map nem id_to_label")
         num_labels = len(id_to_label)
 
         model = BertClassifier(base_model, num_labels)
@@ -165,11 +167,11 @@ def create_app(models_dir: Path) -> Flask:
                     except ValueError:
                         pass
 
-                # Carrega info basica do modelo
+                # Carrega info basica do modelo - suporta ambos os formatos de checkpoint
                 try:
                     checkpoint = torch.load(model_path / "model.pt", map_location="cpu")
-                    id_to_label = checkpoint.get("id_to_label", {})
-                    base_model = checkpoint.get("base_model", "unknown")
+                    id_to_label = checkpoint.get("label_map") or checkpoint.get("id_to_label", {})
+                    base_model = checkpoint.get("model_name") or checkpoint.get("base_model", "unknown")
 
                     models.append({
                         "name": model_path.name,

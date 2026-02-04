@@ -38,7 +38,8 @@ from sistemas.bert_training.schemas import (
     MetricCreate, MetricResponse, MetricDetailResponse,
     LogCreate, LogResponse, LogBatchCreate,
     WorkerRegister, WorkerRegisterResponse, WorkerResponse, WorkerHeartbeat,
-    ReproduceRequest, HyperparametersConfig
+    ReproduceRequest, HyperparametersConfig,
+    CompareCNJRequest, CompareCNJResponse, DocumentComparisonItem
 )
 from sistemas.bert_training import services
 from sistemas.bert_training.presets import (
@@ -47,6 +48,12 @@ from sistemas.bert_training.presets import (
 from sistemas.bert_training.error_translator import (
     get_friendly_error_message, translate_error, get_quality_alert
 )
+from utils.json_sanitizer import sanitize_dataframe_dict
+import math
+import re
+import asyncio
+import aiohttp
+import httpx
 
 logger = logging.getLogger(__name__)
 
@@ -129,8 +136,8 @@ async def preview_dataset(
                 elif unique_ratio < 0.3:  # Poucas categorias únicas = label
                     label_candidates.append(col_str)
 
-        # Preview dos dados (primeiras 5 linhas)
-        preview_rows = df.head(5).to_dict(orient='records')
+        # Preview dos dados (primeiras 5 linhas, sanitizado para JSON)
+        preview_rows = sanitize_dataframe_dict(df.head(5).to_dict(orient='records'))
 
         # Estatísticas por coluna
         column_stats = []
@@ -491,6 +498,38 @@ async def download_dataset(
     )
 
 
+@router.get("/api/datasets/{dataset_id}/download-worker")
+async def download_dataset_for_worker(
+    dataset_id: int,
+    worker_token: str,
+    db: Session = Depends(get_db)
+):
+    """
+    Download do dataset para workers.
+
+    Autenticação via token de worker (query param).
+    """
+    # Valida token do worker
+    worker = services.get_worker_by_token(db, worker_token)
+    if not worker:
+        raise HTTPException(status_code=401, detail="Token de worker inválido")
+
+    dataset = db.query(BertDataset).filter(BertDataset.id == dataset_id).first()
+
+    if not dataset:
+        raise HTTPException(status_code=404, detail="Dataset não encontrado")
+
+    file_path = Path(dataset.file_path)
+    if not file_path.exists():
+        raise HTTPException(status_code=404, detail="Arquivo não encontrado")
+
+    return FileResponse(
+        path=file_path,
+        filename=dataset.filename,
+        media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+
+
 # ==================== Run Endpoints ====================
 
 @router.post("/api/runs", response_model=RunResponse, status_code=status.HTTP_201_CREATED)
@@ -812,6 +851,134 @@ async def get_run_progress(
         result.update(progress)
 
         result["job_status"] = job.status.value
+        result["job_status_label"] = _translate_status(job.status.value)
+
+        # Informações do worker/GPU
+        if job.worker_id:
+            worker = db.query(BertWorker).filter(BertWorker.id == job.worker_id).first()
+            if worker:
+                result["worker_info"] = {
+                    "name": worker.name,
+                    "gpu_name": worker.gpu_name,
+                    "gpu_vram_gb": worker.gpu_vram_gb,
+                    "cuda_version": worker.cuda_version,
+                    "is_active": worker.is_active
+                }
+
+        # Últimas métricas (mais recente)
+        latest_metric = db.query(BertMetric).filter(
+            BertMetric.run_id == run_id
+        ).order_by(desc(BertMetric.epoch)).first()
+
+        # Melhor métrica (maior val_accuracy)
+        best_metric = db.query(BertMetric).filter(
+            BertMetric.run_id == run_id,
+            BertMetric.val_accuracy.isnot(None)
+        ).order_by(desc(BertMetric.val_accuracy)).first()
+
+        if latest_metric:
+            result["latest_metrics"] = {
+                "epoch": latest_metric.epoch,
+                "train_loss": round(latest_metric.train_loss, 4) if latest_metric.train_loss else None,
+                "val_loss": round(latest_metric.val_loss, 4) if latest_metric.val_loss else None,
+                "val_accuracy": round(latest_metric.val_accuracy, 4) if latest_metric.val_accuracy else None,
+                "val_macro_f1": round(latest_metric.val_macro_f1, 4) if latest_metric.val_macro_f1 else None
+            }
+
+        if best_metric:
+            result["best_metrics"] = {
+                "epoch": best_metric.epoch,
+                "val_accuracy": round(best_metric.val_accuracy, 4) if best_metric.val_accuracy else None,
+                "val_loss": round(best_metric.val_loss, 4) if best_metric.val_loss else None
+            }
+
+        # Histórico completo de métricas (para o gráfico)
+        all_metrics = db.query(BertMetric).filter(
+            BertMetric.run_id == run_id,
+            BertMetric.val_accuracy.isnot(None)
+        ).order_by(BertMetric.epoch).all()
+
+        if all_metrics:
+            result["metrics_history"] = [
+                {
+                    "epoch": m.epoch,
+                    "train_loss": round(m.train_loss, 4) if m.train_loss else None,
+                    "val_loss": round(m.val_loss, 4) if m.val_loss else None,
+                    "val_accuracy": round(m.val_accuracy, 4) if m.val_accuracy else None
+                }
+                for m in all_metrics
+            ]
+
+        # Extrai progresso intra-epoch dos logs (Batch X/Y)
+        batch_log = db.query(BertLog).filter(
+            BertLog.run_id == run_id,
+            BertLog.message.like('%Batch %/%')
+        ).order_by(desc(BertLog.timestamp)).first()
+
+        if batch_log:
+            import re
+            # Parse "Epoch X - Batch 565/1135 - Loss: 0.1234"
+            match = re.search(r'Epoch (\d+) - Batch (\d+)/(\d+)', batch_log.message)
+            if match:
+                log_epoch = int(match.group(1))
+                batch_current = int(match.group(2))
+                batch_total = int(match.group(3))
+
+                # Calcula progresso intra-epoch
+                epoch_progress_percent = (batch_current / batch_total) * 100
+
+                result["batch_progress"] = {
+                    "current": batch_current,
+                    "total": batch_total,
+                    "percent": round(epoch_progress_percent, 1),
+                    "epoch": log_epoch
+                }
+
+                # Estima tempo restante para o epoch atual
+                if job.started_at and batch_current > 0:
+                    # Usa o timestamp do log para calcular velocidade
+                    if batch_log.timestamp:
+                        # Calcula batches restantes neste epoch
+                        batches_remaining = batch_total - batch_current
+
+                        # Estima tempo por batch baseado nos logs recentes
+                        # Busca log de batch anterior para calcular velocidade
+                        prev_batch_log = db.query(BertLog).filter(
+                            BertLog.run_id == run_id,
+                            BertLog.message.like(f'%Epoch {log_epoch} - Batch%'),
+                            BertLog.timestamp < batch_log.timestamp
+                        ).order_by(desc(BertLog.timestamp)).first()
+
+                        if prev_batch_log:
+                            prev_match = re.search(r'Batch (\d+)/(\d+)', prev_batch_log.message)
+                            if prev_match:
+                                prev_batch = int(prev_match.group(1))
+                                batch_diff = batch_current - prev_batch
+                                if batch_diff > 0:
+                                    time_diff = (batch_log.timestamp - prev_batch_log.timestamp).total_seconds()
+                                    seconds_per_batch = time_diff / batch_diff
+                                    epoch_remaining_seconds = batches_remaining * seconds_per_batch
+
+                                    result["batch_progress"]["epoch_remaining_seconds"] = int(epoch_remaining_seconds)
+                                    if epoch_remaining_seconds < 60:
+                                        result["batch_progress"]["epoch_remaining_label"] = f"~{int(epoch_remaining_seconds)}s restantes"
+                                    else:
+                                        result["batch_progress"]["epoch_remaining_label"] = f"~{int(epoch_remaining_seconds/60)}min restantes"
+
+        # Últimos logs (últimos 5)
+        recent_logs = db.query(BertLog).filter(
+            BertLog.run_id == run_id
+        ).order_by(desc(BertLog.timestamp)).limit(5).all()
+
+        if recent_logs:
+            result["recent_logs"] = [
+                {
+                    "level": log.level,
+                    "message": log.message[:200],  # Trunca mensagens longas
+                    "timestamp": log.timestamp.isoformat() if log.timestamp else None
+                }
+                for log in reversed(recent_logs)  # Ordem cronológica
+            ]
 
     # Se completado, adiciona metricas finais
     if run.status == "completed":
@@ -837,6 +1004,294 @@ async def get_run_progress(
         }
 
     return result
+
+
+@router.get("/api/runs/{run_id}/evaluation")
+async def get_run_evaluation(
+    run_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """
+    Retorna resultados detalhados da avaliação final do modelo.
+
+    Inclui:
+    - Métricas gerais (accuracy, precision, recall, f1)
+    - Classification report por classe
+    - Confusion matrix
+    - Lista de classificações incorretas (erros)
+    """
+    run = db.query(BertRun).filter(BertRun.id == run_id).first()
+    if not run:
+        raise HTTPException(status_code=404, detail="Run não encontrado")
+
+    # Verifica permissão (dono ou admin)
+    if current_user.role != "admin" and run.created_by != current_user.id:
+        raise HTTPException(status_code=403, detail="Acesso negado")
+
+    if run.status != "completed":
+        raise HTTPException(
+            status_code=400,
+            detail=f"Avaliação disponível apenas para runs concluídos. Status atual: {run.status}"
+        )
+
+    # Busca a última métrica com classification_report (normalmente a avaliação final)
+    final_metric = db.query(BertMetric).filter(
+        BertMetric.run_id == run_id,
+        BertMetric.classification_report.isnot(None)
+    ).order_by(desc(BertMetric.epoch)).first()
+
+    if not final_metric:
+        raise HTTPException(
+            status_code=404,
+            detail="Métricas de avaliação não encontradas para este run"
+        )
+
+    # Monta resposta
+    result = {
+        "run_id": run_id,
+        "run_name": run.name,
+        "epoch": final_metric.epoch,
+        "metrics": {
+            "accuracy": round(final_metric.val_accuracy, 4) if final_metric.val_accuracy else None,
+            "macro_f1": round(final_metric.val_macro_f1, 4) if final_metric.val_macro_f1 else None,
+            "weighted_f1": round(final_metric.val_weighted_f1, 4) if final_metric.val_weighted_f1 else None,
+            "train_loss": round(final_metric.train_loss, 4) if final_metric.train_loss else None,
+            "val_loss": round(final_metric.val_loss, 4) if final_metric.val_loss else None,
+        },
+        "classification_report": final_metric.classification_report,
+        "confusion_matrix": final_metric.confusion_matrix,
+    }
+
+    # Calcula estatísticas resumidas da confusion matrix
+    if final_metric.confusion_matrix and final_metric.classification_report:
+        cm = final_metric.confusion_matrix
+        report = final_metric.classification_report
+
+        # Total de amostras
+        total_samples = sum(sum(row) for row in cm)
+        total_correct = sum(cm[i][i] for i in range(len(cm)))
+        total_errors = total_samples - total_correct
+
+        # Lista de classes com seus erros
+        labels = list(report.keys())
+        # Remove métricas agregadas
+        labels = [l for l in labels if l not in ['accuracy', 'macro avg', 'weighted avg']]
+
+        class_stats = []
+        for i, label in enumerate(labels):
+            if i < len(cm):
+                correct = cm[i][i]
+                total = sum(cm[i])
+                errors = total - correct
+                class_stats.append({
+                    "label": label,
+                    "total": total,
+                    "correct": correct,
+                    "errors": errors,
+                    "precision": round(report.get(label, {}).get('precision', 0), 4),
+                    "recall": round(report.get(label, {}).get('recall', 0), 4),
+                    "f1": round(report.get(label, {}).get('f1-score', 0), 4),
+                    "support": report.get(label, {}).get('support', 0)
+                })
+
+        result["summary"] = {
+            "total_samples": total_samples,
+            "total_correct": total_correct,
+            "total_errors": total_errors,
+            "classes": class_stats,
+            "labels": labels
+        }
+
+    return result
+
+
+@router.post("/api/runs/{run_id}/cancel")
+async def cancel_run(
+    run_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """
+    Cancela um treinamento em andamento ou na fila.
+
+    - Se o run estiver pendente: remove da fila
+    - Se estiver treinando: marca como cancelado (worker deve parar)
+
+    Retorna erro se o run já estiver concluído ou cancelado.
+    """
+    run = db.query(BertRun).filter(BertRun.id == run_id).first()
+    if not run:
+        raise HTTPException(status_code=404, detail="Run nao encontrado")
+
+    # Verifica permissão
+    if current_user.role != "admin" and run.created_by != current_user.id:
+        raise HTTPException(status_code=403, detail="Acesso negado")
+
+    # Verifica se pode cancelar
+    if run.status in ["completed", "failed", "cancelled"]:
+        raise HTTPException(
+            status_code=400,
+            detail=f"Nao e possivel cancelar um run com status '{run.status}'"
+        )
+
+    # Atualiza status do run
+    old_status = run.status
+    run.status = "cancelled"
+    run.error_message = f"Cancelado pelo usuario (status anterior: {old_status})"
+
+    # Cancela job associado (se houver)
+    job = db.query(BertJob).filter(
+        BertJob.run_id == run_id,
+        BertJob.status.notin_([JobStatus.COMPLETED, JobStatus.FAILED, JobStatus.CANCELLED])
+    ).first()
+
+    if job:
+        job.status = JobStatus.CANCELLED
+        job.error_message = "Cancelado pelo usuario"
+
+    db.commit()
+
+    logger.info(f"Run {run_id} cancelado por usuario {current_user.id} (status anterior: {old_status})")
+
+    return {
+        "success": True,
+        "message": "Treinamento cancelado com sucesso",
+        "run_id": run_id,
+        "old_status": old_status,
+        "new_status": "cancelled"
+    }
+
+
+@router.post("/api/runs/{run_id}/stop-early")
+async def stop_run_early(
+    run_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """
+    Solicita parada antecipada do treinamento com salvamento do melhor modelo.
+
+    Diferente de cancelar:
+    - O worker finaliza a epoch atual
+    - Salva o modelo com melhor accuracy
+    - Marca como COMPLETED (nao CANCELLED)
+
+    Ideal para quando o modelo ja atingiu uma boa accuracy e nao esta melhorando.
+    """
+    run = db.query(BertRun).filter(BertRun.id == run_id).first()
+    if not run:
+        raise HTTPException(status_code=404, detail="Run nao encontrado")
+
+    # Verifica permissão
+    if current_user.role != "admin" and run.created_by != current_user.id:
+        raise HTTPException(status_code=403, detail="Acesso negado")
+
+    # Só pode parar se estiver treinando
+    if run.status != "training":
+        raise HTTPException(
+            status_code=400,
+            detail=f"Parada antecipada so e possivel durante treinamento. Status atual: '{run.status}'"
+        )
+
+    # Busca job ativo
+    job = db.query(BertJob).filter(
+        BertJob.run_id == run_id,
+        BertJob.status == JobStatus.TRAINING
+    ).first()
+
+    if not job:
+        raise HTTPException(
+            status_code=400,
+            detail="Nenhum job de treinamento ativo encontrado"
+        )
+
+    # Marca job como STOPPING (worker deve verificar e parar graciosamente)
+    job.status = JobStatus.STOPPING
+
+    # Busca melhor accuracy ate agora
+    best_metric = db.query(BertMetric).filter(
+        BertMetric.run_id == run_id,
+        BertMetric.val_accuracy.isnot(None)
+    ).order_by(desc(BertMetric.val_accuracy)).first()
+
+    best_accuracy = best_metric.val_accuracy if best_metric else None
+    best_epoch = best_metric.epoch if best_metric else None
+
+    db.commit()
+
+    logger.info(
+        f"Run {run_id} marcado para parada antecipada por usuario {current_user.id}. "
+        f"Melhor accuracy: {f'{best_accuracy:.4f}' if best_accuracy else 'N/A'} (epoch {best_epoch})"
+    )
+
+    return {
+        "success": True,
+        "message": "Parada antecipada solicitada. O modelo com melhor accuracy sera salvo.",
+        "run_id": run_id,
+        "job_id": job.id,
+        "current_epoch": job.current_epoch,
+        "best_accuracy": round(best_accuracy * 100, 2) if best_accuracy else None,
+        "best_epoch": best_epoch
+    }
+
+
+@router.delete("/api/runs/{run_id}")
+async def delete_run(
+    run_id: int,
+    force: bool = False,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """
+    Exclui um run e todos os dados associados (metricas, logs, jobs).
+
+    - Por padrao, nao permite excluir runs em andamento
+    - Use force=true para cancelar e excluir simultaneamente
+
+    CUIDADO: Esta acao e irreversivel!
+    """
+    run = db.query(BertRun).filter(BertRun.id == run_id).first()
+    if not run:
+        raise HTTPException(status_code=404, detail="Run nao encontrado")
+
+    # Verifica permissão (apenas admin ou dono)
+    if current_user.role != "admin" and run.created_by != current_user.id:
+        raise HTTPException(status_code=403, detail="Acesso negado")
+
+    # Verifica se está em andamento
+    if run.status in ["pending", "claimed", "downloading", "training", "evaluating"]:
+        if not force:
+            raise HTTPException(
+                status_code=400,
+                detail=f"Nao e possivel excluir um run em andamento (status: {run.status}). Use force=true para cancelar e excluir."
+            )
+        # Se force, primeiro cancela
+        run.status = "cancelled"
+        job = db.query(BertJob).filter(
+            BertJob.run_id == run_id,
+            BertJob.status.notin_([JobStatus.COMPLETED, JobStatus.FAILED, JobStatus.CANCELLED])
+        ).first()
+        if job:
+            job.status = JobStatus.CANCELLED
+
+    # Exclui dados associados (cascade deveria cuidar, mas vamos garantir)
+    db.query(BertMetric).filter(BertMetric.run_id == run_id).delete()
+    db.query(BertLog).filter(BertLog.run_id == run_id).delete()
+    db.query(BertJob).filter(BertJob.run_id == run_id).delete()
+
+    # Exclui o run
+    run_name = run.name
+    db.delete(run)
+    db.commit()
+
+    logger.info(f"Run {run_id} ({run_name}) excluido por usuario {current_user.id}")
+
+    return {
+        "success": True,
+        "message": f"Run '{run_name}' excluido com sucesso",
+        "run_id": run_id
+    }
 
 
 def _translate_status(status: str) -> str:
@@ -1041,8 +1496,8 @@ async def claim_job(
     run = db.query(BertRun).filter(BertRun.id == job.run_id).first()
     dataset = db.query(BertDataset).filter(BertDataset.id == run.dataset_id).first()
 
-    # Gera URL de download (relativa)
-    download_url = f"/bert-training/api/datasets/{dataset.id}/download"
+    # Gera URL de download para worker (com token)
+    download_url = f"/bert-training/api/datasets/{dataset.id}/download-worker?worker_token={request.worker_token}"
 
     return JobClaimResponse(
         job_id=job.id,
@@ -1142,6 +1597,30 @@ async def complete_job(
     return {"status": "ok"}
 
 
+@router.get("/api/jobs/{job_id}/status")
+async def get_job_status(
+    job_id: int,
+    worker_token: str,
+    db: Session = Depends(get_db)
+):
+    """
+    Worker verifica status do job (para detectar STOPPING).
+    """
+    worker = services.get_worker_by_token(db, worker_token)
+    if not worker:
+        raise HTTPException(status_code=401, detail="Token inválido")
+
+    job = db.query(BertJob).filter(BertJob.id == job_id).first()
+    if not job:
+        raise HTTPException(status_code=404, detail="Job não encontrado")
+
+    return {
+        "job_id": job.id,
+        "status": job.status.value if hasattr(job.status, 'value') else str(job.status),
+        "should_stop": job.status == JobStatus.STOPPING
+    }
+
+
 # ==================== Metric Endpoints (Worker API) ====================
 
 @router.post("/api/metrics")
@@ -1233,6 +1712,128 @@ async def record_logs_batch(
 
 
 # ==================== Worker Management ====================
+
+@router.post("/api/workers/start-local")
+async def start_local_worker(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """
+    Inicia o worker local em background.
+    Útil para iniciar treinamentos sem precisar de terminal separado.
+    """
+    import subprocess
+    import sys
+    from pathlib import Path
+
+    # Verifica se há token de worker
+    token_file = Path('.bert_worker_token')
+    if not token_file.exists():
+        raise HTTPException(
+            status_code=400,
+            detail="Worker local não configurado. Registre um worker primeiro."
+        )
+
+    # Verifica se já há worker ativo
+    active_worker = db.query(BertWorker).filter(
+        BertWorker.is_active == True,
+        BertWorker.name == 'worker-local'
+    ).first()
+
+    if active_worker and active_worker.last_heartbeat:
+        from datetime import datetime, timedelta
+        # Usa utcnow() para comparar com datetime naive do banco
+        if active_worker.last_heartbeat > datetime.utcnow() - timedelta(minutes=2):
+            return {
+                "status": "already_running",
+                "message": "Worker local já está em execução",
+                "worker_id": active_worker.id
+            }
+
+    # Inicia worker como subprocess
+    try:
+        cmd = [
+            sys.executable,
+            '-c',
+            '''
+import sys
+sys.path.insert(0, '.')
+from sistemas.bert_training.worker.bert_worker import BertWorker
+import json
+
+token_data = json.loads(open('.bert_worker_token').read())
+token = token_data['token']
+
+worker = BertWorker(
+    api_url='http://localhost:8000',
+    token=token,
+    models_dir='./bert_models',
+    poll_interval=10
+)
+
+worker.run()
+'''
+        ]
+
+        process = subprocess.Popen(
+            cmd,
+            cwd='.',
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            creationflags=subprocess.CREATE_NEW_CONSOLE if sys.platform == 'win32' else 0
+        )
+
+        logger.info(f"Worker local iniciado por {current_user.email} (PID: {process.pid})")
+
+        return {
+            "status": "started",
+            "message": "Worker local iniciado com sucesso",
+            "pid": process.pid
+        }
+    except Exception as e:
+        logger.error(f"Erro ao iniciar worker: {e}")
+        raise HTTPException(status_code=500, detail=f"Erro ao iniciar worker: {str(e)}")
+
+
+@router.post("/api/workers/start-inference")
+async def start_inference_server(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """
+    Inicia o servidor de inferência local em background.
+    Este servidor é usado para testar modelos treinados.
+    """
+    import subprocess
+    import sys
+
+    try:
+        cmd = [
+            sys.executable,
+            '-m', 'sistemas.bert_training.worker.inference_server',
+            '--models-dir', './bert_models',
+            '--port', '8765'
+        ]
+
+        process = subprocess.Popen(
+            cmd,
+            cwd='.',
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+            creationflags=subprocess.CREATE_NEW_CONSOLE if sys.platform == 'win32' else 0
+        )
+
+        logger.info(f"Servidor de inferência iniciado por {current_user.email} (PID: {process.pid})")
+
+        return {
+            "status": "started",
+            "message": "Servidor de inferência iniciado na porta 8765",
+            "pid": process.pid
+        }
+    except Exception as e:
+        logger.error(f"Erro ao iniciar servidor de inferência: {e}")
+        raise HTTPException(status_code=500, detail=f"Erro ao iniciar servidor: {str(e)}")
+
 
 @router.post("/api/workers/register", response_model=WorkerRegisterResponse)
 async def register_worker(
@@ -1424,7 +2025,7 @@ async def get_completed_models(
             "name": run.name,
             "description": run.description,
             "base_model": run.base_model,
-            "accuracy": run.final_accuracy,
+            "final_accuracy": run.final_accuracy,
             "f1_score": run.final_macro_f1,
             "completed_at": run.completed_at.isoformat() if run.completed_at else None,
             "dataset_name": run.dataset.filename if run.dataset else None,
@@ -1535,3 +2136,423 @@ async def clear_test_history(
     db.commit()
 
     return {"message": f"{deleted} teste(s) deletado(s)"}
+
+
+# ==================== Compare CNJ Endpoints ====================
+
+def _limpar_cnj(numero_cnj: str) -> str:
+    """
+    Limpa numero CNJ removendo formatacao e sufixos.
+
+    Exemplos:
+        - 0804330-09.2024.8.12.0017 -> 08043300920248120017
+        - 0804330-09.2024.8.12.0017/50003 -> 08043300920248120017
+    """
+    if '/' in numero_cnj:
+        numero_cnj = numero_cnj.split('/')[0]
+    return re.sub(r'\D', '', numero_cnj)
+
+
+def _sanitize_float(value: float) -> Optional[float]:
+    """Sanitiza float para evitar NaN/Infinity em JSON."""
+    if value is None:
+        return None
+    if math.isnan(value) or math.isinf(value):
+        return None
+    return value
+
+
+PROMPT_CLASSIFICACAO_LLM = """Classifique o documento juridico abaixo em UMA das categorias listadas.
+
+CATEGORIAS VALIDAS:
+{labels}
+
+DOCUMENTO:
+{texto}
+
+Responda APENAS com o nome exato da categoria, sem explicacoes ou texto adicional."""
+
+
+async def _classificar_bert(
+    texto: str,
+    model_path: str,
+    client: httpx.AsyncClient
+) -> tuple:
+    """Classifica texto via BERT worker local."""
+    try:
+        response = await client.post(
+            "http://127.0.0.1:8765/predict",
+            json={"model": model_path, "text": texto},
+            timeout=60.0
+        )
+        if response.status_code == 200:
+            data = response.json()
+            label = data.get("predicted_label", "ERRO")
+            conf = _sanitize_float(data.get("confidence", 0.0)) or 0.0
+            return label, conf, None
+        else:
+            return "ERRO", 0.0, f"HTTP {response.status_code}"
+    except Exception as e:
+        return "ERRO", 0.0, str(e)
+
+
+async def _classificar_llm(
+    texto: str,
+    labels: List[str],
+    temperature: float
+) -> tuple:
+    """Classifica texto via Gemini LLM."""
+    try:
+        from services.gemini_service import gemini_service
+
+        prompt = PROMPT_CLASSIFICACAO_LLM.format(
+            labels="\n".join(f"- {l}" for l in labels),
+            texto=texto
+        )
+
+        response = await gemini_service.generate(
+            prompt=prompt,
+            model="gemini-3-flash-preview",
+            temperature=temperature,
+            thinking_level="minimal",
+            max_tokens=100,
+            use_cache=False,
+            context={"sistema": "bert_training", "modulo": "compare_cnj"}
+        )
+
+        if not response.success:
+            return None, True, response.error
+
+        # Normaliza resposta
+        label = response.content.strip()
+        # Remove possivel pontuacao no final
+        label = label.rstrip('.,;:')
+
+        # Valida se esta na lista de labels (case-insensitive)
+        label_lower = label.lower()
+        for valid_label in labels:
+            if valid_label.lower() == label_lower:
+                return valid_label, False, None
+
+        # Aceita mesmo se nao exato (para analise)
+        return label, False, None
+
+    except Exception as e:
+        return None, True, str(e)
+
+
+async def _baixar_documentos_tjms(
+    session: aiohttp.ClientSession,
+    cnj_limpo: str,
+    codigos_permitidos: set
+) -> List[dict]:
+    """Consulta processo e baixa documentos filtrados por categoria."""
+    from sistemas.gerador_pecas.agente_tjms import (
+        consultar_processo_async,
+        extrair_documentos_xml,
+        baixar_documentos_paralelo,
+        documento_permitido
+    )
+
+    # 1. Consulta processo para obter lista de documentos
+    xml_consulta = await consultar_processo_async(session, cnj_limpo, timeout=60)
+    documentos_meta = extrair_documentos_xml(xml_consulta)
+
+    # 2. Filtra por categoria
+    docs_filtrados = []
+    for doc in documentos_meta:
+        tipo = int(doc.tipo_documento) if doc.tipo_documento else 0
+        if documento_permitido(tipo, codigos_permitidos):
+            docs_filtrados.append(doc)
+
+    if not docs_filtrados:
+        return []
+
+    # 3. Baixa conteudo dos documentos
+    ids_para_baixar = [doc.id for doc in docs_filtrados]
+    conteudo_map = await baixar_documentos_paralelo(
+        session, cnj_limpo, ids_para_baixar, batch_size=5, max_paralelo=4, timeout=180
+    )
+
+    # 4. Monta lista final com conteudo
+    resultado = []
+    for doc in docs_filtrados:
+        conteudo_b64 = conteudo_map.get(doc.id)
+        if conteudo_b64:
+            resultado.append({
+                "id": doc.id,
+                "tipo_codigo": int(doc.tipo_documento) if doc.tipo_documento else 0,
+                "descricao": doc.descricao,
+                "data_juntada": doc.data_juntada,
+                "conteudo_base64": conteudo_b64
+            })
+
+    return resultado
+
+
+def _extrair_texto_documento(conteudo_base64: str) -> str:
+    """Extrai texto de documento PDF em base64."""
+    import base64
+    from sistemas.classificador_documentos.services_extraction import get_text_extractor
+
+    try:
+        pdf_bytes = base64.b64decode(conteudo_base64)
+        extractor = get_text_extractor()
+        result = extractor.extrair_texto(pdf_bytes)
+        return result.texto
+    except Exception as e:
+        logger.warning(f"Erro ao extrair texto: {e}")
+        return ""
+
+
+@router.post("/api/comparar-cnj", response_model=CompareCNJResponse)
+async def comparar_cnj(
+    request: CompareCNJRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """
+    Compara classificacoes BERT vs LLM (Gemini) para documentos de um CNJ.
+
+    O LLM atua como "ground truth" para calcular accuracy do modelo BERT.
+
+    Fluxo:
+    1. Busca documentos do processo no TJ-MS
+    2. Filtra pela categoria selecionada
+    3. Para cada documento: executa BERT e LLM em paralelo
+    4. Calcula accuracy (LLM como ground truth)
+    """
+    from sistemas.gerador_pecas.models_config_pecas import CategoriaDocumento
+    from sistemas.classificador_documentos.services_extraction import get_text_extractor
+
+    # 1. Validar e buscar categoria
+    categoria = db.query(CategoriaDocumento).filter(
+        CategoriaDocumento.id == request.categoria_id,
+        CategoriaDocumento.ativo == True
+    ).first()
+
+    if not categoria:
+        raise HTTPException(status_code=404, detail="Categoria nao encontrada")
+
+    codigos_permitidos = set(categoria.codigos_documento or [])
+    if not codigos_permitidos:
+        raise HTTPException(status_code=400, detail="Categoria sem codigos de documento configurados")
+
+    # 2. Validar e buscar modelo BERT
+    bert_run = db.query(BertRun).filter(
+        BertRun.id == request.bert_model_id,
+        BertRun.status == "completed"
+    ).first()
+
+    if not bert_run:
+        raise HTTPException(status_code=404, detail="Modelo BERT nao encontrado ou nao esta completado")
+
+    # 3. Obter labels do modelo BERT (do ultimo metric com classification_report)
+    # Ordena por epoch desc E id desc para pegar o registro mais recente em caso de empate
+    last_metric = db.query(BertMetric).filter(
+        BertMetric.run_id == bert_run.id,
+        BertMetric.classification_report.isnot(None)
+    ).order_by(desc(BertMetric.epoch), desc(BertMetric.id)).first()
+
+    labels = []
+    if last_metric and last_metric.classification_report:
+        # Labels estao nas chaves do classification_report (exceto accuracy, macro avg, weighted avg)
+        excluded_keys = {"accuracy", "macro avg", "weighted avg"}
+        labels = [k for k in last_metric.classification_report.keys() if k not in excluded_keys]
+
+    if not labels:
+        raise HTTPException(status_code=400, detail="Nao foi possivel obter labels do modelo BERT")
+
+    # 4. Obter caminho local do modelo BERT
+    # O servidor de inferencia espera o nome do diretorio do modelo (ex: "model_run_4")
+    model_path = bert_run.config_json.get("local_path") if bert_run.config_json else None
+    if not model_path:
+        # Usa padrao do servidor de inferencia: bert_models/model_run_{id}
+        model_path = f"model_run_{bert_run.id}"
+
+    # 5. Limpar CNJ
+    cnj_limpo = _limpar_cnj(request.cnj)
+    if len(cnj_limpo) != 20:
+        raise HTTPException(status_code=400, detail="CNJ invalido - deve ter 20 digitos apos limpeza")
+
+    # 6. Buscar documentos do TJ-MS
+    connector = aiohttp.TCPConnector(limit=10, force_close=True)
+    async with aiohttp.ClientSession(connector=connector) as session:
+        try:
+            documentos = await _baixar_documentos_tjms(session, cnj_limpo, codigos_permitidos)
+        except Exception as e:
+            logger.error(f"Erro ao buscar documentos TJ-MS: {e}")
+            raise HTTPException(status_code=502, detail=f"Erro ao consultar TJ-MS: {str(e)}")
+
+    if not documentos:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Nenhum documento encontrado para a categoria '{categoria.titulo}'"
+        )
+
+    # 7. Processar documentos em paralelo
+    extractor = get_text_extractor()
+    semaphore = asyncio.Semaphore(3)  # Limite de concorrencia
+    comparisons = []
+
+    # Criar diretorio temporario para PDFs
+    import tempfile
+    import uuid
+    import base64
+    temp_dir = Path(tempfile.gettempdir()) / "bert_compare_pdfs"
+    temp_dir.mkdir(exist_ok=True)
+    session_id = str(uuid.uuid4())[:8]
+
+    async def processar_documento(doc: dict, idx: int) -> DocumentComparisonItem:
+        async with semaphore:
+            # Salvar PDF temporariamente
+            pdf_filename = f"{session_id}_{idx}_{doc['id']}.pdf"
+            pdf_path = temp_dir / pdf_filename
+            try:
+                pdf_bytes = base64.b64decode(doc["conteudo_base64"])
+                pdf_path.write_bytes(pdf_bytes)
+                pdf_url = f"/bert-training/api/compare-pdf/{pdf_filename}"
+            except Exception as e:
+                logger.warning(f"Erro ao salvar PDF temporario: {e}")
+                pdf_url = None
+
+            # Extrair texto
+            texto = _extrair_texto_documento(doc["conteudo_base64"])
+
+            if not texto or len(texto.strip()) < 50:
+                return DocumentComparisonItem(
+                    doc_id=str(doc["id"]),
+                    doc_title=doc["descricao"] or f"Documento {doc['tipo_codigo']}",
+                    doc_tipo_codigo=doc["tipo_codigo"],
+                    texto_preview="[Documento sem texto extraivel]",
+                    bert_label="N/A",
+                    bert_confidence=0.0,
+                    llm_label=None,
+                    llm_failed=True,
+                    llm_error="Documento sem texto extraivel",
+                    match=False,
+                    pdf_url=pdf_url
+                )
+
+            # Calcular tokens do texto original
+            texto_tokens = int(extractor.contar_tokens(texto))
+
+            # Recortar texto para LLM
+            texto_chunk = extractor.extrair_chunk(
+                texto,
+                request.llm_token_limit,
+                request.llm_token_window
+            )
+
+            # Calcular tokens do chunk
+            chunk_tokens = int(extractor.contar_tokens(texto_chunk))
+
+            # Executar BERT e LLM em paralelo
+            async with httpx.AsyncClient() as http_client:
+                bert_task = asyncio.create_task(
+                    _classificar_bert(texto_chunk, model_path, http_client)
+                )
+                llm_task = asyncio.create_task(
+                    _classificar_llm(texto_chunk, labels, request.llm_temperature)
+                )
+
+                bert_result, llm_result = await asyncio.gather(bert_task, llm_task)
+
+            bert_label, bert_conf, bert_error = bert_result
+            llm_label, llm_failed, llm_error = llm_result
+
+            # Comparar (case-insensitive)
+            match = False
+            if not llm_failed and llm_label and bert_label != "ERRO":
+                match = bert_label.lower() == llm_label.lower()
+
+            texto_preview = texto[:200] + "..." if len(texto) > 200 else texto
+            chunk_preview = texto_chunk[:500] + "..." if len(texto_chunk) > 500 else texto_chunk
+
+            return DocumentComparisonItem(
+                doc_id=str(doc["id"]),
+                doc_title=doc["descricao"] or f"Documento {doc['tipo_codigo']}",
+                doc_tipo_codigo=doc["tipo_codigo"],
+                texto_preview=texto_preview,
+                bert_label=bert_label,
+                bert_confidence=_sanitize_float(bert_conf) or 0.0,
+                llm_label=llm_label,
+                llm_failed=llm_failed,
+                llm_error=llm_error if llm_failed else (bert_error if bert_label == "ERRO" else None),
+                match=match,
+                pdf_url=pdf_url,
+                texto_tokens=texto_tokens,
+                chunk_tokens=chunk_tokens,
+                chunk_preview=chunk_preview
+            )
+
+    # Processar todos os documentos
+    tasks = [processar_documento(doc, idx) for idx, doc in enumerate(documentos)]
+    comparisons = await asyncio.gather(*tasks)
+
+    # 8. Calcular metricas
+    total = len(comparisons)
+    llm_failed_count = sum(1 for c in comparisons if c.llm_failed)
+    valid_comparisons = [c for c in comparisons if not c.llm_failed and c.bert_label != "ERRO"]
+    matches = sum(1 for c in valid_comparisons if c.match)
+    accuracy = matches / len(valid_comparisons) if valid_comparisons else 0.0
+
+    # 9. Montar resposta
+    return CompareCNJResponse(
+        cnj=request.cnj,
+        categoria={
+            "id": categoria.id,
+            "nome": categoria.nome,
+            "titulo": categoria.titulo
+        },
+        bert_model={
+            "id": bert_run.id,
+            "name": bert_run.name
+        },
+        llm={
+            "model": "gemini-3-flash-preview",
+            "thinking": "minimal",
+            "temperature": request.llm_temperature,
+            "token_limit": request.llm_token_limit,
+            "token_window": request.llm_token_window
+        },
+        summary={
+            "total": total,
+            "matches": matches,
+            "accuracy": _sanitize_float(accuracy) or 0.0,
+            "llm_failed": llm_failed_count
+        },
+        items=comparisons
+    )
+
+
+# ==================== Endpoint para servir PDFs temporarios ====================
+
+@router.get("/api/compare-pdf/{filename}")
+async def get_compare_pdf(
+    filename: str,
+    current_user: User = Depends(get_current_active_user)
+):
+    """
+    Serve um PDF temporario salvo durante a comparacao BERT vs LLM.
+    Os PDFs sao salvos no diretorio temporario do sistema.
+    """
+    import tempfile
+    from fastapi.responses import FileResponse
+
+    # Validar nome do arquivo (previne path traversal)
+    if "/" in filename or "\\" in filename or ".." in filename:
+        raise HTTPException(status_code=400, detail="Nome de arquivo invalido")
+
+    temp_dir = Path(tempfile.gettempdir()) / "bert_compare_pdfs"
+    pdf_path = temp_dir / filename
+
+    if not pdf_path.exists():
+        raise HTTPException(status_code=404, detail="PDF nao encontrado ou expirado")
+
+    return FileResponse(
+        path=pdf_path,
+        media_type="application/pdf",
+        filename=filename,
+        headers={"Content-Disposition": f"inline; filename={filename}"}
+    )

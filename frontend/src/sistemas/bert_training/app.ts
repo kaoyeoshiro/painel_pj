@@ -77,6 +77,42 @@ interface Metric {
   val_macro_f1?: number;
 }
 
+interface WorkerInfo {
+  name: string;
+  gpu_name: string;
+  gpu_vram_gb: number;
+  cuda_version: string;
+  is_active: boolean;
+}
+
+interface LogEntry {
+  level: string;
+  message: string;
+  timestamp: string;
+}
+
+interface BestMetric {
+  epoch: number;
+  val_accuracy: number;
+  val_loss?: number;
+}
+
+interface MetricHistory {
+  epoch: number;
+  train_loss: number | null;
+  val_loss: number | null;
+  val_accuracy: number | null;
+}
+
+interface BatchProgress {
+  current: number;
+  total: number;
+  percent: number;
+  epoch: number;
+  epoch_remaining_seconds?: number;
+  epoch_remaining_label?: string;
+}
+
 interface TrainingProgress {
   run_name: string;
   current_epoch: number;
@@ -84,6 +120,12 @@ interface TrainingProgress {
   progress_percent: number;
   estimated_remaining_label?: string;
   latest_metrics?: Metric;
+  best_metrics?: BestMetric;
+  worker_info?: WorkerInfo;
+  recent_logs?: LogEntry[];
+  status?: string;
+  metrics_history?: MetricHistory[];
+  batch_progress?: BatchProgress;
 }
 
 interface Preset {
@@ -98,7 +140,7 @@ interface Preset {
 interface CompletedModel {
   id: number;
   name: string;
-  accuracy?: number;
+  final_accuracy?: number;
   available_locally?: boolean;
   local_path?: string;
 }
@@ -120,6 +162,41 @@ interface TestHistoryItem {
   input_filename?: string;
   predicted_label: string;
   confidence: number;
+}
+
+interface ClassStat {
+  label: string;
+  total: number;
+  correct: number;
+  errors: number;
+  precision: number;
+  recall: number;
+  f1: number;
+  support: number;
+}
+
+interface EvaluationSummary {
+  total_samples: number;
+  total_correct: number;
+  total_errors: number;
+  classes: ClassStat[];
+  labels: string[];
+}
+
+interface EvaluationResult {
+  run_id: number;
+  run_name: string;
+  epoch: number;
+  metrics: {
+    accuracy: number | null;
+    macro_f1: number | null;
+    weighted_f1: number | null;
+    train_loss: number | null;
+    val_loss: number | null;
+  };
+  classification_report: Record<string, Record<string, number>>;
+  confusion_matrix: number[][];
+  summary?: EvaluationSummary;
 }
 
 // Extensão do Chart.js
@@ -176,6 +253,11 @@ let activeTrainingRunId: number | null = null;
 let presetsCache: Preset[] | null = null;
 let workerConnected = false;
 let completedModels: CompletedModel[] = [];
+let trainingChart: any = null;
+let trainingChartData: { epoch: number; trainLoss: number; valLoss: number; accuracy: number }[] = [];
+
+// Declare Chart.js global
+declare const Chart: any;
 
 // ============================================
 // Tabs
@@ -665,7 +747,12 @@ async function viewRun(id: number): Promise<void> {
         run.final_accuracy
           ? `
         <div class="bg-green-50 border border-green-200 rounded p-4">
-          <h4 class="font-medium text-green-800 mb-2">Metricas Finais</h4>
+          <div class="flex items-center justify-between mb-2">
+            <h4 class="font-medium text-green-800">Metricas Finais</h4>
+            <button onclick="viewEvaluation(${run.id})" class="px-3 py-1 bg-green-600 hover:bg-green-700 text-white text-sm rounded-lg transition-colors">
+              <i class="fas fa-chart-bar mr-1"></i> Ver Resultados Detalhados
+            </button>
+          </div>
           <div class="grid grid-cols-3 gap-4 text-center">
             <div>
               <div class="text-2xl font-bold text-green-600">${(run.final_accuracy * 100).toFixed(1)}%</div>
@@ -761,21 +848,408 @@ function closeRunDetail(): void {
   document.getElementById('run-detail-modal')?.classList.add('hidden');
 }
 
+async function viewEvaluation(runId: number): Promise<void> {
+  const response = await apiCall(`/api/runs/${runId}/evaluation`);
+  if (!response || !response.ok) {
+    const error = await response?.json();
+    showToast(error?.detail || 'Erro ao carregar avaliação', 'error');
+    return;
+  }
+
+  const evaluation: EvaluationResult = await response.json();
+
+  // Fecha modal anterior
+  closeRunDetail();
+
+  // Monta conteúdo da avaliação
+  const summary = evaluation.summary;
+  const metrics = evaluation.metrics;
+
+  let content = `
+    <div class="space-y-6 max-h-[70vh] overflow-y-auto pr-2">
+      <!-- Métricas Gerais -->
+      <div class="bg-gradient-to-r from-green-50 to-emerald-50 border border-green-200 rounded-lg p-4">
+        <h4 class="font-medium text-green-800 mb-3">Métricas Gerais</h4>
+        <div class="grid grid-cols-4 gap-4 text-center">
+          <div>
+            <div class="text-2xl font-bold text-green-600">${metrics.accuracy ? (metrics.accuracy * 100).toFixed(1) : '-'}%</div>
+            <div class="text-xs text-gray-500">Accuracy</div>
+          </div>
+          <div>
+            <div class="text-2xl font-bold text-blue-600">${metrics.macro_f1 ? (metrics.macro_f1 * 100).toFixed(1) : '-'}%</div>
+            <div class="text-xs text-gray-500">F1 Macro</div>
+          </div>
+          <div>
+            <div class="text-2xl font-bold text-purple-600">${metrics.weighted_f1 ? (metrics.weighted_f1 * 100).toFixed(1) : '-'}%</div>
+            <div class="text-xs text-gray-500">F1 Weighted</div>
+          </div>
+          <div>
+            <div class="text-2xl font-bold text-orange-600">${metrics.val_loss?.toFixed(4) || '-'}</div>
+            <div class="text-xs text-gray-500">Val Loss</div>
+          </div>
+        </div>
+      </div>
+  `;
+
+  // Resumo de acertos/erros
+  if (summary) {
+    content += `
+      <div class="grid grid-cols-3 gap-4">
+        <div class="bg-blue-50 border border-blue-200 rounded-lg p-3 text-center">
+          <div class="text-xl font-bold text-blue-600">${summary.total_samples}</div>
+          <div class="text-xs text-gray-500">Total de Amostras</div>
+        </div>
+        <div class="bg-green-50 border border-green-200 rounded-lg p-3 text-center">
+          <div class="text-xl font-bold text-green-600">${summary.total_correct}</div>
+          <div class="text-xs text-gray-500">Classificações Corretas</div>
+        </div>
+        <div class="bg-red-50 border border-red-200 rounded-lg p-3 text-center">
+          <div class="text-xl font-bold text-red-600">${summary.total_errors}</div>
+          <div class="text-xs text-gray-500">Erros</div>
+        </div>
+      </div>
+    `;
+
+    // Tabela de métricas por classe
+    content += `
+      <div>
+        <h4 class="font-medium text-gray-800 mb-2">Métricas por Classe</h4>
+        <div class="overflow-x-auto">
+          <table class="min-w-full text-sm border rounded-lg overflow-hidden">
+            <thead class="bg-gray-100">
+              <tr>
+                <th class="px-3 py-2 text-left font-medium">Classe</th>
+                <th class="px-3 py-2 text-center font-medium">Amostras</th>
+                <th class="px-3 py-2 text-center font-medium">Corretas</th>
+                <th class="px-3 py-2 text-center font-medium">Erros</th>
+                <th class="px-3 py-2 text-center font-medium">Precision</th>
+                <th class="px-3 py-2 text-center font-medium">Recall</th>
+                <th class="px-3 py-2 text-center font-medium">F1</th>
+              </tr>
+            </thead>
+            <tbody>
+    `;
+
+    // Ordena classes por número de erros (decrescente) para destacar as problemáticas
+    const sortedClasses = [...summary.classes].sort((a, b) => b.errors - a.errors);
+
+    for (const cls of sortedClasses) {
+      const errorRate = cls.total > 0 ? (cls.errors / cls.total) * 100 : 0;
+      const rowClass = errorRate > 30 ? 'bg-red-50' : errorRate > 15 ? 'bg-yellow-50' : '';
+
+      content += `
+        <tr class="border-b ${rowClass}">
+          <td class="px-3 py-2 font-medium">${escapeHtml(cls.label)}</td>
+          <td class="px-3 py-2 text-center">${cls.total}</td>
+          <td class="px-3 py-2 text-center text-green-600">${cls.correct}</td>
+          <td class="px-3 py-2 text-center ${cls.errors > 0 ? 'text-red-600 font-medium' : 'text-gray-400'}">${cls.errors}</td>
+          <td class="px-3 py-2 text-center">${(cls.precision * 100).toFixed(1)}%</td>
+          <td class="px-3 py-2 text-center">${(cls.recall * 100).toFixed(1)}%</td>
+          <td class="px-3 py-2 text-center">${(cls.f1 * 100).toFixed(1)}%</td>
+        </tr>
+      `;
+    }
+
+    content += `
+            </tbody>
+          </table>
+        </div>
+        <p class="text-xs text-gray-500 mt-2">
+          <span class="inline-block w-3 h-3 bg-red-50 border rounded mr-1"></span> Taxa de erro > 30%
+          <span class="inline-block w-3 h-3 bg-yellow-50 border rounded ml-3 mr-1"></span> Taxa de erro > 15%
+        </p>
+      </div>
+    `;
+  }
+
+  // Matriz de Confusão (versão simplificada/visual)
+  if (evaluation.confusion_matrix && evaluation.summary) {
+    const labels = evaluation.summary.labels;
+    const cm = evaluation.confusion_matrix;
+
+    content += `
+      <details class="border rounded-lg p-3">
+        <summary class="cursor-pointer font-medium text-sm">
+          <i class="fas fa-th mr-2"></i>Matriz de Confusão
+        </summary>
+        <div class="mt-3 overflow-x-auto">
+          <table class="text-xs border">
+            <thead>
+              <tr>
+                <th class="p-1 bg-gray-100 text-left">Real \\ Pred</th>
+                ${labels.map((l) => `<th class="p-1 bg-gray-100 text-center" title="${escapeHtml(l)}">${escapeHtml(l.substring(0, 10))}</th>`).join('')}
+              </tr>
+            </thead>
+            <tbody>
+    `;
+
+    for (let i = 0; i < labels.length; i++) {
+      content += `<tr><th class="p-1 bg-gray-50 text-left" title="${escapeHtml(labels[i])}">${escapeHtml(labels[i].substring(0, 10))}</th>`;
+      for (let j = 0; j < labels.length; j++) {
+        const value = cm[i]?.[j] || 0;
+        const isCorrect = i === j;
+        const cellClass = isCorrect
+          ? value > 0 ? 'bg-green-100 text-green-800' : 'bg-gray-50'
+          : value > 0 ? 'bg-red-100 text-red-800' : 'bg-gray-50 text-gray-300';
+        content += `<td class="p-1 text-center ${cellClass}">${value}</td>`;
+      }
+      content += '</tr>';
+    }
+
+    content += `
+            </tbody>
+          </table>
+        </div>
+        <p class="text-xs text-gray-500 mt-2">
+          <span class="inline-block w-3 h-3 bg-green-100 border rounded mr-1"></span> Diagonal = correto
+          <span class="inline-block w-3 h-3 bg-red-100 border rounded ml-3 mr-1"></span> Fora da diagonal = erro
+        </p>
+      </details>
+    `;
+  }
+
+  content += '</div>';
+
+  // Exibe modal
+  const titleEl = document.getElementById('run-detail-title');
+  const contentEl = document.getElementById('run-detail-content');
+  const modalEl = document.getElementById('run-detail-modal');
+
+  if (titleEl) titleEl.textContent = `Avaliação: ${evaluation.run_name}`;
+  if (contentEl) contentEl.innerHTML = content;
+  modalEl?.classList.remove('hidden');
+}
+
+// ============================================
+// Training Progress Chart (Real-time)
+// ============================================
+
+function initTrainingChart(): void {
+  const canvas = document.getElementById('training-progress-chart') as HTMLCanvasElement | null;
+  const ctx = canvas?.getContext('2d');
+  if (!ctx) return;
+
+  // Destroi chart anterior se existir
+  if (trainingChart) {
+    trainingChart.destroy();
+  }
+
+  trainingChartData = [];
+
+  trainingChart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels: [],
+      datasets: [
+        {
+          label: 'Train Loss',
+          data: [],
+          borderColor: 'rgb(239, 68, 68)',
+          backgroundColor: 'rgba(239, 68, 68, 0.1)',
+          tension: 0.3,
+          yAxisID: 'y',
+          pointRadius: 4,
+          pointHoverRadius: 6,
+        },
+        {
+          label: 'Val Loss',
+          data: [],
+          borderColor: 'rgb(249, 115, 22)',
+          backgroundColor: 'rgba(249, 115, 22, 0.1)',
+          tension: 0.3,
+          yAxisID: 'y',
+          pointRadius: 4,
+          pointHoverRadius: 6,
+        },
+        {
+          label: 'Accuracy',
+          data: [],
+          borderColor: 'rgb(34, 197, 94)',
+          backgroundColor: 'rgba(34, 197, 94, 0.1)',
+          tension: 0.3,
+          yAxisID: 'y1',
+          pointRadius: 4,
+          pointHoverRadius: 6,
+        },
+      ],
+    },
+    options: {
+      responsive: true,
+      maintainAspectRatio: false,
+      interaction: {
+        mode: 'index',
+        intersect: false,
+      },
+      plugins: {
+        legend: {
+          display: false, // Legenda já está no HTML
+        },
+        tooltip: {
+          callbacks: {
+            label: function (context: any) {
+              const label = context.dataset.label || '';
+              const value = context.parsed.y;
+              if (label === 'Accuracy') {
+                return `${label}: ${(value * 100).toFixed(2)}%`;
+              }
+              return `${label}: ${value.toFixed(4)}`;
+            },
+          },
+        },
+      },
+      scales: {
+        x: {
+          title: {
+            display: true,
+            text: 'Epoch',
+            font: { size: 11 },
+          },
+          ticks: { font: { size: 10 } },
+        },
+        y: {
+          type: 'linear',
+          display: true,
+          position: 'left',
+          title: {
+            display: true,
+            text: 'Loss',
+            font: { size: 11 },
+          },
+          ticks: { font: { size: 10 } },
+          min: 0,
+        },
+        y1: {
+          type: 'linear',
+          display: true,
+          position: 'right',
+          title: {
+            display: true,
+            text: 'Accuracy',
+            font: { size: 11 },
+          },
+          ticks: {
+            font: { size: 10 },
+            callback: function (value: number) {
+              return (value * 100).toFixed(0) + '%';
+            },
+          },
+          min: 0,
+          max: 1,
+          grid: {
+            drawOnChartArea: false,
+          },
+        },
+      },
+    },
+  });
+}
+
+function updateTrainingChart(metricsHistory: MetricHistory[]): void {
+  if (!metricsHistory || metricsHistory.length === 0) return;
+
+  // Inicializa chart se não existir
+  if (!trainingChart) {
+    initTrainingChart();
+  }
+
+  if (!trainingChart) return;
+
+  // Atualiza dados do gráfico
+  const labels = metricsHistory.map((m) => `${m.epoch}`);
+  const trainLoss = metricsHistory.map((m) => m.train_loss);
+  const valLoss = metricsHistory.map((m) => m.val_loss);
+  const accuracy = metricsHistory.map((m) => m.val_accuracy);
+
+  trainingChart.data.labels = labels;
+  trainingChart.data.datasets[0].data = trainLoss;
+  trainingChart.data.datasets[1].data = valLoss;
+  trainingChart.data.datasets[2].data = accuracy;
+
+  trainingChart.update('none'); // 'none' para atualização sem animação (mais rápido)
+}
+
+function destroyTrainingChart(): void {
+  if (trainingChart) {
+    trainingChart.destroy();
+    trainingChart = null;
+    trainingChartData = [];
+  }
+}
+
 // ============================================
 // Active Training
 // ============================================
 
+async function startLocalWorker(): Promise<void> {
+  try {
+    const response = await apiCall('/api/workers/start-local', { method: 'POST' });
+    if (response && response.ok) {
+      const data = await response.json();
+      if (data.status === 'already_running') {
+        showToast('Worker já está em execução', 'info');
+      } else {
+        showToast('Worker local iniciado! O treinamento começará em breve.', 'success');
+      }
+      // Atualiza após alguns segundos
+      setTimeout(() => loadRuns(), 3000);
+    }
+  } catch (e) {
+    console.error('Erro ao iniciar worker:', e);
+    showToast('Erro ao iniciar worker', 'error');
+  }
+}
+
 function checkActiveTraining(): void {
   const trainingRuns = allRuns.filter((r) => r.status === 'training');
+  const pendingRuns = allRuns.filter((r) => r.status === 'pending');
 
   if (trainingRuns.length > 0) {
     activeTrainingRunId = trainingRuns[0].id;
     document.getElementById('active-training-card')?.classList.remove('hidden');
+    document.getElementById('pending-runs-alert')?.classList.add('hidden');
     updateActiveTrainingStatus();
-  } else {
+  } else if (pendingRuns.length > 0) {
+    // Há runs na fila mas nenhum treinando - worker pode não estar rodando
     document.getElementById('active-training-card')?.classList.add('hidden');
     activeTrainingRunId = null;
+    showPendingRunsAlert(pendingRuns.length);
+  } else {
+    document.getElementById('active-training-card')?.classList.add('hidden');
+    document.getElementById('pending-runs-alert')?.classList.add('hidden');
+    activeTrainingRunId = null;
   }
+}
+
+function showPendingRunsAlert(count: number): void {
+  let alertEl = document.getElementById('pending-runs-alert');
+  if (!alertEl) {
+    // Cria o alerta se não existir
+    const container = document.getElementById('active-training-card')?.parentElement;
+    if (!container) return;
+
+    alertEl = document.createElement('div');
+    alertEl.id = 'pending-runs-alert';
+    alertEl.className = 'section-card p-4 bg-yellow-50 border-yellow-200';
+    container.insertBefore(alertEl, document.getElementById('active-training-card'));
+  }
+
+  alertEl.innerHTML = `
+    <div class="flex items-center justify-between">
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 bg-yellow-100 rounded-xl flex items-center justify-center">
+          <i class="fas fa-hourglass-half text-yellow-600"></i>
+        </div>
+        <div>
+          <h3 class="font-semibold text-yellow-800">${count} treinamento(s) na fila</h3>
+          <p class="text-sm text-yellow-600">Worker não detectado. Clique para iniciar.</p>
+        </div>
+      </div>
+      <button onclick="startLocalWorker()" class="px-4 py-2 bg-yellow-500 hover:bg-yellow-600 text-white rounded-lg font-medium transition-colors">
+        <i class="fas fa-play mr-2"></i>Iniciar Worker
+      </button>
+    </div>
+  `;
+  alertEl.classList.remove('hidden');
 }
 
 async function updateActiveTrainingStatus(): Promise<void> {
@@ -787,16 +1261,44 @@ async function updateActiveTrainingStatus(): Promise<void> {
 
     const progress: TrainingProgress = await response.json();
 
+    // Detecta mudança de status (completed, failed, cancelled, stopping)
+    if (progress.status !== 'training') {
+      handleTrainingEnded(progress);
+      return;
+    }
+
     const nameEl = document.getElementById('active-training-name');
     const statusEl = document.getElementById('active-training-status');
     const progressLabelEl = document.getElementById('active-training-progress-label');
-    const progressBarEl = document.getElementById('active-training-progress-bar');
+    const progressBarEl = document.getElementById('active-training-progress-bar') as HTMLElement | null;
     const timeEl = document.getElementById('active-training-time-remaining');
 
     if (nameEl) nameEl.textContent = progress.run_name || 'Treinamento';
-    if (statusEl) statusEl.textContent = `Rodada ${progress.current_epoch || 0} de ${progress.total_epochs || '?'}`;
-    if (progressLabelEl) progressLabelEl.textContent = `${(progress.progress_percent || 0).toFixed(0)}%`;
-    if (progressBarEl) progressBarEl.style.width = `${progress.progress_percent || 0}%`;
+
+    // Atualiza status com progresso intra-epoch se disponível
+    if (progress.batch_progress) {
+      const bp = progress.batch_progress;
+      if (statusEl) {
+        statusEl.innerHTML = `
+          <span>Epoch ${bp.epoch} de ${progress.total_epochs || '?'}</span>
+          <span class="text-gray-400 mx-1">|</span>
+          <span class="text-blue-600">Batch ${bp.current}/${bp.total}</span>
+          <span class="text-gray-400 mx-1">(${bp.percent.toFixed(0)}%)</span>
+          ${bp.epoch_remaining_label ? `<span class="text-xs text-gray-500 ml-1">${bp.epoch_remaining_label}</span>` : ''}
+        `;
+      }
+      // Progresso visual combina epoch + batch
+      const epochProgress = ((progress.current_epoch || 0) / (progress.total_epochs || 10)) * 100;
+      const batchContribution = (bp.percent / 100) * (100 / (progress.total_epochs || 10));
+      const combinedProgress = Math.min(100, epochProgress + batchContribution);
+      if (progressLabelEl) progressLabelEl.textContent = `${combinedProgress.toFixed(0)}%`;
+      if (progressBarEl) progressBarEl.style.width = `${combinedProgress}%`;
+    } else {
+      if (statusEl) statusEl.textContent = `Rodada ${progress.current_epoch || 0} de ${progress.total_epochs || '?'}`;
+      if (progressLabelEl) progressLabelEl.textContent = `${(progress.progress_percent || 0).toFixed(0)}%`;
+      if (progressBarEl) progressBarEl.style.width = `${progress.progress_percent || 0}%`;
+    }
+
     if (progress.estimated_remaining_label && timeEl) {
       timeEl.textContent = progress.estimated_remaining_label;
     }
@@ -809,19 +1311,184 @@ async function updateActiveTrainingStatus(): Promise<void> {
       const epochEl = document.getElementById('metric-epoch');
 
       if (lossEl) lossEl.textContent = m.val_loss?.toFixed(4) || '-';
-      if (accEl) accEl.textContent = m.val_accuracy ? `${(m.val_accuracy * 100).toFixed(1)}%` : '-';
+      // Usa best_metrics para precisão (melhor alcançada), com fallback para latest
+      const bestAcc = progress.best_metrics?.val_accuracy || m.val_accuracy;
+      if (accEl) accEl.textContent = bestAcc ? `${(bestAcc * 100).toFixed(1)}%` : '-';
       if (f1El) f1El.textContent = m.val_macro_f1 ? `${(m.val_macro_f1 * 100).toFixed(1)}%` : '-';
       if (epochEl) epochEl.textContent = `${progress.current_epoch || 0}/${progress.total_epochs || '?'}`;
+    }
+
+    // Atualiza info do Worker/GPU
+    const workerSection = document.getElementById('worker-info-section');
+    if (progress.worker_info && workerSection) {
+      workerSection.classList.remove('hidden');
+      const gpuName = document.getElementById('worker-gpu-name');
+      const gpuVram = document.getElementById('worker-gpu-vram');
+      const cudaVer = document.getElementById('worker-cuda-version');
+      if (gpuName) gpuName.textContent = progress.worker_info.gpu_name || 'GPU Desconhecida';
+      if (gpuVram) gpuVram.textContent = progress.worker_info.gpu_vram_gb?.toFixed(1) || '?';
+      if (cudaVer) cudaVer.textContent = progress.worker_info.cuda_version || '?';
+    } else if (workerSection) {
+      workerSection.classList.add('hidden');
+    }
+
+    // Atualiza gráfico de progresso em tempo real
+    if (progress.metrics_history && progress.metrics_history.length > 0) {
+      updateTrainingChart(progress.metrics_history);
+    }
+
+    // Atualiza logs recentes
+    const logsContainer = document.getElementById('recent-logs-container');
+    const logsTimeEl = document.getElementById('logs-update-time');
+    if (progress.recent_logs && progress.recent_logs.length > 0 && logsContainer) {
+      logsContainer.innerHTML = progress.recent_logs.map((log: LogEntry) => {
+        const levelColor = log.level === 'ERROR' ? 'text-red-400' :
+                          log.level === 'WARNING' ? 'text-yellow-400' :
+                          log.level === 'INFO' ? 'text-green-400' : 'text-gray-400';
+        const time = log.timestamp ? new Date(log.timestamp).toLocaleTimeString('pt-BR') : '';
+        return `<div class="py-0.5"><span class="${levelColor}">[${log.level}]</span> <span class="text-gray-500">${time}</span> <span class="text-gray-300">${escapeHtml(log.message)}</span></div>`;
+      }).join('');
+      if (logsTimeEl) logsTimeEl.textContent = `Atualizado ${new Date().toLocaleTimeString('pt-BR')}`;
+    } else if (logsContainer && progress.status === 'training') {
+      logsContainer.innerHTML = '<p class="text-gray-500">Aguardando logs do worker...</p>';
     }
   } catch (e) {
     console.error('Erro ao atualizar progresso:', e);
   }
 }
 
-function cancelTraining(): void {
+function handleTrainingEnded(progress: TrainingProgress): void {
+  const card = document.getElementById('active-training-card');
+  const nameEl = document.getElementById('active-training-name');
+  const statusEl = document.getElementById('active-training-status');
+  const progressBarEl = document.getElementById('active-training-progress-bar') as HTMLElement | null;
+  const progressLabelEl = document.getElementById('active-training-progress-label');
+  const timeEl = document.getElementById('active-training-time-remaining');
+  const logsContainer = document.getElementById('recent-logs-container');
+
+  const bestAcc = progress.best_metrics?.val_accuracy;
+  const bestEpoch = progress.best_metrics?.epoch;
+
+  // Atualiza UI baseado no status
+  if (progress.status === 'completed') {
+    if (nameEl) nameEl.textContent = '✓ Treinamento Concluído!';
+    if (statusEl) {
+      statusEl.innerHTML = bestAcc
+        ? `<span class="text-green-600 font-semibold">Melhor precisão: ${(bestAcc * 100).toFixed(1)}% (epoch ${bestEpoch})</span>`
+        : 'Concluído';
+    }
+    if (progressBarEl) {
+      progressBarEl.style.width = '100%';
+      progressBarEl.classList.remove('bg-blue-600');
+      progressBarEl.classList.add('bg-green-500');
+    }
+    if (progressLabelEl) progressLabelEl.textContent = '100%';
+    if (timeEl) timeEl.textContent = 'Finalizado';
+    showToast(`Treinamento concluído! Precisão: ${bestAcc ? (bestAcc * 100).toFixed(1) + '%' : 'N/A'}`, 'success');
+  } else if (progress.status === 'stopping') {
+    if (nameEl) nameEl.textContent = 'Finalizando...';
+    if (statusEl) statusEl.textContent = 'Salvando melhor modelo...';
+    if (progressBarEl) {
+      progressBarEl.classList.remove('bg-blue-600');
+      progressBarEl.classList.add('bg-yellow-500');
+    }
+    if (timeEl) timeEl.textContent = 'Finalizando...';
+  } else if (progress.status === 'failed') {
+    if (nameEl) nameEl.textContent = '✗ Treinamento Falhou';
+    if (statusEl) statusEl.innerHTML = '<span class="text-red-600">Erro durante o treinamento</span>';
+    if (progressBarEl) {
+      progressBarEl.classList.remove('bg-blue-600');
+      progressBarEl.classList.add('bg-red-500');
+    }
+    if (timeEl) timeEl.textContent = '';
+    showToast('Treinamento falhou', 'error');
+  } else if (progress.status === 'cancelled') {
+    if (nameEl) nameEl.textContent = 'Treinamento Cancelado';
+    if (statusEl) statusEl.innerHTML = '<span class="text-gray-600">Cancelado pelo usuário</span>';
+    if (progressBarEl) {
+      progressBarEl.classList.remove('bg-blue-600');
+      progressBarEl.classList.add('bg-gray-400');
+    }
+    if (timeEl) timeEl.textContent = '';
+  }
+
+  // Esconde botões de ação
+  const buttonsContainer = card?.querySelector('.flex.gap-2');
+  if (buttonsContainer && progress.status !== 'stopping') {
+    buttonsContainer.innerHTML = `
+      <button onclick="loadRuns()" class="text-blue-600 hover:text-blue-800 text-sm">
+        <i class="fas fa-sync-alt mr-1"></i> Atualizar Lista
+      </button>
+    `;
+  }
+
+  // Mostra resumo final nos logs
+  if (logsContainer && progress.status === 'completed') {
+    const summaryHtml = `
+      <div class="bg-green-900/30 border border-green-700 rounded p-3 my-2">
+        <div class="text-green-400 font-semibold mb-2">✓ Treinamento Concluído</div>
+        <div class="text-sm text-gray-300">
+          <div>Epochs: ${progress.current_epoch}/${progress.total_epochs}</div>
+          ${bestAcc ? `<div>Melhor Precisão: <span class="text-green-400 font-bold">${(bestAcc * 100).toFixed(2)}%</span> (epoch ${bestEpoch})</div>` : ''}
+        </div>
+      </div>
+    `;
+    logsContainer.innerHTML = summaryHtml + logsContainer.innerHTML;
+  }
+
+  // Recarrega lista após 2 segundos (para status não-stopping)
+  if (progress.status !== 'stopping') {
+    setTimeout(() => {
+      loadRuns();
+      activeTrainingRunId = null;
+      destroyTrainingChart();
+    }, 2000);
+  }
+}
+
+async function cancelTraining(): Promise<void> {
   if (!activeTrainingRunId) return;
-  if (!confirm('Tem certeza que deseja cancelar o treinamento?')) return;
-  alert('Funcionalidade de cancelamento sera implementada em breve.');
+  if (!confirm('Tem certeza que deseja CANCELAR o treinamento? O modelo NÃO será salvo.')) return;
+
+  try {
+    const response = await apiCall(`/api/runs/${activeTrainingRunId}/cancel`, { method: 'POST' });
+    if (response && response.ok) {
+      showToast('Treinamento cancelado', 'warning');
+      await loadRuns();
+    }
+  } catch (e) {
+    console.error('Erro ao cancelar:', e);
+    showToast('Erro ao cancelar treinamento', 'error');
+  }
+}
+
+async function stopEarly(): Promise<void> {
+  if (!activeTrainingRunId) return;
+
+  const msg =
+    'Deseja FINALIZAR o treinamento agora?\n\n' +
+    '✓ O modelo com MELHOR precisão será salvo\n' +
+    '✓ O treinamento será marcado como concluído\n\n' +
+    'Isso é útil quando a precisão já estabilizou.';
+
+  if (!confirm(msg)) return;
+
+  try {
+    const response = await apiCall(`/api/runs/${activeTrainingRunId}/stop-early`, { method: 'POST' });
+    if (response && response.ok) {
+      const data = await response.json();
+      showToast(
+        `Finalizando... Melhor precisão: ${data.best_accuracy}% (epoch ${data.best_epoch})`,
+        'success'
+      );
+      // Atualiza status imediatamente
+      const statusEl = document.getElementById('training-status-text');
+      if (statusEl) statusEl.textContent = 'Finalizando...';
+    }
+  } catch (e) {
+    console.error('Erro ao finalizar:', e);
+    showToast('Erro ao solicitar finalização', 'error');
+  }
 }
 
 // ============================================
@@ -1039,8 +1706,27 @@ async function checkWorkerConnection(): Promise<void> {
     statusIcon?.classList.remove('bg-gray-300', 'bg-green-500');
     statusIcon?.classList.add('bg-red-500');
     if (statusText) {
-      statusText.textContent = 'Worker local nao conectado. Inicie o servidor de inferencia.';
+      statusText.innerHTML = `
+        <span>Servidor de inferência não conectado.</span>
+        <button onclick="startInferenceServer()" class="ml-2 px-2 py-1 bg-blue-500 hover:bg-blue-600 text-white text-xs rounded">
+          Iniciar Servidor
+        </button>
+      `;
     }
+  }
+}
+
+async function startInferenceServer(): Promise<void> {
+  try {
+    const response = await apiCall('/api/workers/start-inference', { method: 'POST' });
+    if (response && response.ok) {
+      showToast('Servidor de inferência iniciando...', 'success');
+      // Aguarda um pouco e tenta conectar novamente
+      setTimeout(() => checkWorkerConnection(), 3000);
+    }
+  } catch (e) {
+    console.error('Erro ao iniciar servidor de inferência:', e);
+    showToast('Erro ao iniciar servidor', 'error');
   }
 }
 
@@ -1084,7 +1770,7 @@ function updateModelSelect(): void {
     '<option value="">Selecione um modelo...</option>' +
     completedModels
       .map((m) => {
-        const accuracy = m.accuracy ? ` | ${(m.accuracy * 100).toFixed(1)}%` : '';
+        const accuracy = m.final_accuracy ? ` | ${(m.final_accuracy * 100).toFixed(1)}%` : '';
         const local = m.available_locally ? ' [LOCAL]' : ' [nao disponivel localmente]';
         return `<option value="${m.id}" data-local="${m.local_path || ''}" ${!m.available_locally ? 'disabled' : ''}>
           ${escapeHtml(m.name)}${accuracy}${local}
@@ -1340,6 +2026,44 @@ function escapeHtml(str: unknown): string {
     .replace(/'/g, '&#x27;');
 }
 
+function showToast(message: string, type: 'success' | 'error' | 'warning' | 'info' = 'info'): void {
+  // Remove toast anterior se existir
+  const existingToast = document.getElementById('toast-notification');
+  if (existingToast) {
+    existingToast.remove();
+  }
+
+  const colors: Record<string, string> = {
+    success: 'bg-green-500',
+    error: 'bg-red-500',
+    warning: 'bg-yellow-500',
+    info: 'bg-blue-500',
+  };
+
+  const icons: Record<string, string> = {
+    success: 'fa-check-circle',
+    error: 'fa-times-circle',
+    warning: 'fa-exclamation-triangle',
+    info: 'fa-info-circle',
+  };
+
+  const toast = document.createElement('div');
+  toast.id = 'toast-notification';
+  toast.className = `fixed bottom-4 right-4 ${colors[type]} text-white px-4 py-3 rounded-lg shadow-lg flex items-center gap-2 z-50 animate-fade-in`;
+  toast.innerHTML = `
+    <i class="fas ${icons[type]}"></i>
+    <span>${escapeHtml(message)}</span>
+  `;
+
+  document.body.appendChild(toast);
+
+  // Remove após 4 segundos
+  setTimeout(() => {
+    toast.classList.add('opacity-0', 'transition-opacity', 'duration-300');
+    setTimeout(() => toast.remove(), 300);
+  }, 4000);
+}
+
 // ============================================
 // Init
 // ============================================
@@ -1363,6 +2087,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   document.getElementById('new-run-form')?.addEventListener('submit', handleNewRunSubmit);
   document.getElementById('test-pdf-input')?.addEventListener('change', handlePdfInputChange);
 
+  // Polling mais frequente (5s) para melhor feedback durante treinamento
   setInterval(() => {
     if (currentTab === 'acompanhar') {
       loadRuns();
@@ -1370,7 +2095,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         updateActiveTrainingStatus();
       }
     }
-  }, 15000);
+  }, 5000);
 });
 
 // ============================================
@@ -1386,8 +2111,12 @@ declare global {
     validateDataset: typeof validateDataset;
     filterRuns: typeof filterRuns;
     viewRun: typeof viewRun;
+    viewEvaluation: typeof viewEvaluation;
     closeRunDetail: typeof closeRunDetail;
     cancelTraining: typeof cancelTraining;
+    stopEarly: typeof stopEarly;
+    startLocalWorker: typeof startLocalWorker;
+    startInferenceServer: typeof startInferenceServer;
     selectPreset: typeof selectPreset;
     setTestMode: typeof setTestMode;
     classifyText: typeof classifyText;
@@ -1406,8 +2135,12 @@ window.closeUploadModal = closeUploadModal;
 window.validateDataset = validateDataset;
 window.filterRuns = filterRuns;
 window.viewRun = viewRun;
+window.viewEvaluation = viewEvaluation;
 window.closeRunDetail = closeRunDetail;
 window.cancelTraining = cancelTraining;
+window.stopEarly = stopEarly;
+window.startLocalWorker = startLocalWorker;
+window.startInferenceServer = startInferenceServer;
 window.selectPreset = selectPreset;
 window.setTestMode = setTestMode;
 window.classifyText = classifyText;

@@ -422,5 +422,53 @@ class ReproduceRequest(BaseModel):
     new_name: Optional[str] = None
 
 
+# ==================== Compare CNJ Schemas ====================
+
+class CompareCNJRequest(BaseModel):
+    """Request para comparacao BERT vs LLM por CNJ."""
+    cnj: str = Field(..., min_length=15, description="Numero CNJ do processo")
+    categoria_id: int = Field(..., gt=0, description="ID da categoria de documento")
+    bert_model_id: int = Field(..., gt=0, description="ID do run BERT completado")
+
+    # Parametros LLM
+    llm_temperature: float = Field(0.1, ge=0.0, le=1.0, description="Temperatura do LLM")
+    llm_token_limit: int = Field(8000, ge=500, le=32000, description="Limite de tokens para LLM")
+    llm_token_window: str = Field("fim", pattern="^(inicio|fim)$", description="Posicao do chunk")
+
+
+class DocumentComparisonItem(BaseModel):
+    """Resultado de comparacao por documento."""
+    doc_id: str
+    doc_title: str
+    doc_tipo_codigo: int
+    texto_preview: str  # Primeiros 200 chars
+
+    bert_label: str
+    bert_confidence: float
+
+    llm_label: Optional[str] = None
+    llm_failed: bool = False
+    llm_error: Optional[str] = None
+
+    match: bool
+
+    # Campos adicionais para auditoria
+    pdf_url: Optional[str] = None  # URL para visualizar o PDF
+    texto_tokens: Optional[int] = None  # Total de tokens do texto original
+    chunk_tokens: Optional[int] = None  # Tokens do chunk enviado à IA
+    chunk_preview: Optional[str] = None  # Preview do chunk usado (primeiros 500 chars)
+
+
+class CompareCNJResponse(BaseModel):
+    """Response da comparacao BERT vs LLM."""
+    cnj: str
+    categoria: Dict[str, Any]  # {id, nome, titulo}
+    bert_model: Dict[str, Any]  # {id, name}
+    llm: Dict[str, Any]  # {model, thinking, temperature, token_limit, token_window}
+
+    summary: Dict[str, Any]  # {total, matches, accuracy, llm_failed}
+    items: List[DocumentComparisonItem]
+
+
 # Forward references para evitar circular imports
 RunDetailResponse.model_rebuild()

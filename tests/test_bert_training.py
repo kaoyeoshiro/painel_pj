@@ -197,17 +197,19 @@ class TestSchemas:
 
     def test_run_create_schema(self):
         """Testa schema de criação de run."""
-        from sistemas.bert_training.schemas import RunCreate
+        from sistemas.bert_training.schemas import RunCreate, HyperparametersConfig
 
+        # Teste com hyperparameters explícitos
         run = RunCreate(
             name="Test Run",
             dataset_id=1,
-            base_model="neuralmind/bert-base-portuguese-cased"
+            base_model="neuralmind/bert-base-portuguese-cased",
+            hyperparameters=HyperparametersConfig()
         )
 
         assert run.name == "Test Run"
         assert run.dataset_id == 1
-        assert run.hyperparameters.epochs == 10  # Valor padrão
+        assert run.hyperparameters.epochs == 10  # Valor padrão do HyperparametersConfig
 
     def test_metric_create_schema(self):
         """Testa schema de criação de métrica."""

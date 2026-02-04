@@ -33,6 +33,7 @@ class JobStatus(str, enum.Enum):
     CLAIMED = "claimed"  # Worker pegou o job
     DOWNLOADING = "downloading"  # Baixando dataset
     TRAINING = "training"
+    STOPPING = "stopping"  # Parada antecipada solicitada - salvar melhor modelo
     EVALUATING = "evaluating"
     COMPLETED = "completed"
     FAILED = "failed"

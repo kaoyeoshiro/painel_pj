@@ -1,6 +1,6 @@
 // Generated from TypeScript - DO NOT EDIT DIRECTLY
 // Source: src\sistemas\assistencia_judiciaria\app.ts
-// Built at: 2026-01-30T21:41:45.038Z
+// Built at: 2026-02-04T15:53:48.313Z
 
 "use strict";
 (() => {
