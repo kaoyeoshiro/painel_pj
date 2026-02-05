@@ -616,8 +616,19 @@ async def processar_processo_stream(
                     yield f"data: {json.dumps({'tipo': 'erro', 'mensagem': resultado_agente3.erro})}\n\n"
                     return
 
+                # BUGFIX: Verifica se conteúdo foi gerado (pode estar vazio se streaming falhou silenciosamente)
+                if not resultado_agente3 or not resultado_agente3.conteudo_markdown or not resultado_agente3.conteudo_markdown.strip():
+                    erro_msg = "A geração não retornou conteúdo. Possível timeout ou erro na API de IA. Tente novamente."
+                    print(f"[AGENTE3] ERRO: Conteúdo vazio após streaming!")
+                    print(f"[AGENTE3]    - resultado_agente3 exists: {resultado_agente3 is not None}")
+                    if resultado_agente3:
+                        print(f"[AGENTE3]    - conteudo_markdown length: {len(resultado_agente3.conteudo_markdown) if resultado_agente3.conteudo_markdown else 'None'}")
+                    yield f"data: {json.dumps({'tipo': 'agente', 'agente': 3, 'status': 'erro', 'mensagem': erro_msg})}\n\n"
+                    yield f"data: {json.dumps({'tipo': 'erro', 'mensagem': erro_msg})}\n\n"
+                    return
+
                 yield f"data: {json.dumps({'tipo': 'agente', 'agente': 3, 'status': 'concluido', 'mensagem': 'Peça gerada com sucesso!'})}\n\n"
-                
+
                 # Prepara lista de documentos processados para salvar
                 tracker.mark("postprocess_start")
                 documentos_processados = None
@@ -1265,6 +1276,14 @@ async def processar_pdfs_stream(
                 if resultado_agente3 and resultado_agente3.erro:
                     yield f"data: {json.dumps({'tipo': 'agente', 'agente': 3, 'status': 'erro', 'mensagem': resultado_agente3.erro})}\n\n"
                     yield f"data: {json.dumps({'tipo': 'erro', 'mensagem': resultado_agente3.erro})}\n\n"
+                    return
+
+                # BUGFIX: Verifica se conteúdo foi gerado (pode estar vazio se streaming falhou silenciosamente)
+                if not resultado_agente3 or not resultado_agente3.conteudo_markdown or not resultado_agente3.conteudo_markdown.strip():
+                    erro_msg = "A geração não retornou conteúdo. Possível timeout ou erro na API de IA. Tente novamente."
+                    print(f"[AGENTE3] ERRO: Conteúdo vazio após streaming (curadoria)!")
+                    yield f"data: {json.dumps({'tipo': 'agente', 'agente': 3, 'status': 'erro', 'mensagem': erro_msg})}\n\n"
+                    yield f"data: {json.dumps({'tipo': 'erro', 'mensagem': erro_msg})}\n\n"
                     return
 
                 yield f"data: {json.dumps({'tipo': 'agente', 'agente': 3, 'status': 'concluido', 'mensagem': 'Peça gerada com sucesso!'})}\n\n"
@@ -2772,6 +2791,17 @@ async def curation_generate_stream(
 
             if resultado_agente3 and resultado_agente3.erro:
                 yield f"data: {json.dumps({'tipo': 'erro', 'mensagem': resultado_agente3.erro})}\n\n"
+                return
+
+            # BUGFIX: Verifica se conteúdo foi gerado (pode estar vazio se streaming falhou silenciosamente)
+            if not resultado_agente3 or not resultado_agente3.conteudo_markdown or not resultado_agente3.conteudo_markdown.strip():
+                erro_msg = "A geração não retornou conteúdo. Possível timeout ou erro na API de IA. Tente novamente."
+                print(f"[AGENTE3-CURADO] ERRO: Conteúdo vazio após streaming!")
+                print(f"[AGENTE3-CURADO]    - resultado_agente3 exists: {resultado_agente3 is not None}")
+                if resultado_agente3:
+                    print(f"[AGENTE3-CURADO]    - conteudo_markdown length: {len(resultado_agente3.conteudo_markdown) if resultado_agente3.conteudo_markdown else 'None'}")
+                yield f"data: {json.dumps({'tipo': 'agente', 'agente': 3, 'status': 'erro', 'mensagem': erro_msg})}\n\n"
+                yield f"data: {json.dumps({'tipo': 'erro', 'mensagem': erro_msg})}\n\n"
                 return
 
             yield f"data: {json.dumps({'tipo': 'agente', 'agente': 3, 'status': 'concluido', 'mensagem': 'Peca gerada!'})}\n\n"
