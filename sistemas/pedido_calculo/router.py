@@ -29,6 +29,7 @@ from auth.dependencies import get_current_active_user, get_current_user_from_tok
 from auth.models import User
 from database.connection import get_db
 from utils.timezone import to_iso_utc
+from utils.security_sanitizer import sanitize_html
 from admin.models import ConfiguracaoIA, PromptConfig
 
 from .services import PedidoCalculoService
@@ -1250,7 +1251,9 @@ async def download_documento(
     current_user: User = Depends(get_current_user_from_token_or_query)
 ):
     """Download do documento gerado"""
-    filepath = os.path.join(TEMP_DIR, filename)
+    # Prevenção de Path Traversal
+    safe_filename = os.path.basename(filename)
+    filepath = os.path.join(TEMP_DIR, safe_filename)
     
     if not os.path.exists(filepath):
         raise HTTPException(status_code=404, detail="Documento não encontrado")
@@ -1448,6 +1451,12 @@ async def editar_pedido(
     Edita pedido de cálculo via chat com IA.
     """
     try:
+        # SECURITY: Sanitização de entradas do usuário para prevenir XSS
+        if req.pedido_markdown:
+            req.pedido_markdown = sanitize_html(req.pedido_markdown)
+        if req.mensagem_usuario:
+            req.mensagem_usuario = sanitize_html(req.mensagem_usuario)
+            
         # Busca prompt do banco de dados
         prompt_db = db.query(PromptConfig).filter(
             PromptConfig.sistema == SISTEMA,
@@ -1728,12 +1737,14 @@ async def enviar_feedback(
                 detail="Feedback já foi enviado para esta geração"
             )
 
+        from utils.security_sanitizer import sanitize_html
+        
         feedback = FeedbackPedidoCalculo(
             geracao_id=req.geracao_id,
             usuario_id=current_user.id,
             avaliacao=req.avaliacao,
             nota=req.nota,
-            comentario=req.comentario,
+            comentario=sanitize_html(req.comentario), # SECURITY: Sanitização de XSS
             campos_incorretos=req.campos_incorretos
         )
         db.add(feedback)
