@@ -195,11 +195,23 @@ class RelatorioCumprimentoApp {
     });
 
     // Chat de edicao
-    document.getElementById('btn-enviar-chat')?.addEventListener('click', () => {
+    const btnEnviarChat = document.getElementById('btn-enviar-chat');
+    const chatInput = document.getElementById('chat-input') as HTMLInputElement | null;
+
+    // Debug: Log estado inicial do chat
+    console.log('[RelatorioCumprimento] Chat init:', {
+      chatInputFound: !!chatInput,
+      btnEnviarFound: !!btnEnviarChat,
+      escapeHtmlAvailable: typeof escapeHtml !== 'undefined',
+      inputDisabled: chatInput?.disabled,
+      inputReadOnly: chatInput?.readOnly
+    });
+
+    btnEnviarChat?.addEventListener('click', () => {
       this.enviarMensagemChat();
     });
 
-    document.getElementById('chat-input')?.addEventListener('keypress', (e) => {
+    chatInput?.addEventListener('keypress', (e) => {
       if (e.key === 'Enter' && !e.shiftKey) {
         e.preventDefault();
         this.enviarMensagemChat();
@@ -663,12 +675,28 @@ class RelatorioCumprimentoApp {
   }
 
   async enviarMensagemChat(): Promise<void> {
-    const input = document.getElementById('chat-input') as HTMLTextAreaElement | null;
-    if (!input) return;
+    const input = document.getElementById('chat-input') as HTMLInputElement | null;
+
+    // Debug: Log estado do chat no momento do envio
+    console.log('[RelatorioCumprimento] enviarMensagemChat:', {
+      inputFound: !!input,
+      inputDisabled: input?.disabled,
+      inputValue: input?.value?.substring(0, 50),
+      isProcessingEdit: this.isProcessingEdit,
+      geracaoId: this.geracaoId
+    });
+
+    if (!input) {
+      console.error('[RelatorioCumprimento] Chat input nao encontrado!');
+      return;
+    }
 
     const mensagem = input.value.trim();
 
-    if (!mensagem || this.isProcessingEdit) return;
+    if (!mensagem || this.isProcessingEdit) {
+      console.log('[RelatorioCumprimento] Envio bloqueado:', { mensagemVazia: !mensagem, isProcessingEdit: this.isProcessingEdit });
+      return;
+    }
 
     this.isProcessingEdit = true;
     input.value = '';

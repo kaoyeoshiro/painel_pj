@@ -926,11 +926,17 @@ class RelatorioCumprimentoService:
                 temperature=0.3
             )
 
-            if not resposta:
-                return "", "IA não retornou resposta"
+            if not resposta or not resposta.success:
+                erro_msg = resposta.error if resposta else "IA não retornou resposta"
+                return "", f"IA não retornou resposta: {erro_msg}"
+
+            # Extrai conteúdo da resposta (GeminiResponse -> str)
+            novo_conteudo = resposta.content
+            if not novo_conteudo or not novo_conteudo.strip():
+                return "", "IA retornou conteúdo vazio"
 
             # Atualiza geração
-            geracao.conteudo_gerado = resposta
+            geracao.conteudo_gerado = novo_conteudo
 
             # Atualiza histórico de chat
             historico = geracao.historico_chat or []
@@ -947,7 +953,7 @@ class RelatorioCumprimentoService:
             geracao.historico_chat = historico
             self.db.commit()
 
-            return resposta, None
+            return novo_conteudo, None
 
         except Exception as e:
             return "", f"Erro ao editar: {str(e)}"
