@@ -84,7 +84,7 @@ def get_codigos_por_categoria(db: Session) -> Dict[str, Set[int]]:
 
     Returns:
         Dict mapeando nome da categoria para conjunto de códigos.
-        Exemplo: {"parecer": {8451, 9636}, "peticao": {500, 510, 9500}, ...}
+        Exemplo: {"parecer": {<codigo_configurado_1>, <codigo_configurado_2>}, "peticao": {500, 510, 9500}, ...}
     """
     categorias = db.query(CategoriaDocumento).filter(
         CategoriaDocumento.ativo == True

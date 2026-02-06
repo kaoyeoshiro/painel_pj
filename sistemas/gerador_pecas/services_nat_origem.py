@@ -4,20 +4,19 @@ Serviço para buscar Parecer NAT no processo de origem.
 
 Quando um processo é um agravo (peticao_inicial_agravo=true) e não possui
 Parecer NAT nos seus documentos, o sistema deve buscar o NAT no processo de origem.
-
-Códigos NAT reconhecidos:
-- 207: Parecer do CATES (Câmara Técnica em Saúde)
-- 8451: Parecer NAT (principal)
-- 9636: Parecer NAT (alternativo)
-- 59: Nota Técnica NATJus
-- 8490: Nota Técnica NATJus (alternativo)
 """
 
 import asyncio
+import json
 import logging
+import os
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import List, Optional, Set, Dict, Any, TYPE_CHECKING
+
+from sistemas.gerador_pecas.services_parecer_natjus import (
+    load_parecer_natjus_config,
+)
 
 if TYPE_CHECKING:
     from sistemas.gerador_pecas.agente_tjms import DocumentoTJMS, ResultadoAnalise
@@ -26,16 +25,67 @@ if TYPE_CHECKING:
 logger = logging.getLogger("nat_origem_resolver")
 
 
-# =========================
-# Códigos de documentos NAT
-# =========================
-CODIGOS_NAT: Set[int] = {
-    207,   # Parecer do CATES - Câmara Técnica em Saúde
-    8451,  # Parecer NAT (principal)
-    9636,  # Parecer NAT (alternativo)
-    59,    # Nota Técnica NATJus
-    8490,  # Nota Técnica NATJus (alternativo)
-}
+NAT_CODES_ENV_KEY = "GERADOR_PARECER_NATJUS_DOCUMENT_CODES"
+
+
+def _parse_nat_codes(raw_value: Any) -> Set[int]:
+    if raw_value is None:
+        return set()
+
+    if isinstance(raw_value, str):
+        value = raw_value.strip()
+        if not value:
+            return set()
+        try:
+            parsed_json = json.loads(value)
+        except json.JSONDecodeError:
+            parsed_json = [item.strip() for item in value.split(",") if item.strip()]
+        raw_items = parsed_json if isinstance(parsed_json, list) else [parsed_json]
+    elif isinstance(raw_value, (list, tuple, set)):
+        raw_items = list(raw_value)
+    else:
+        raw_items = [raw_value]
+
+    parsed_codes: Set[int] = set()
+    for item in raw_items:
+        try:
+            parsed_codes.add(int(str(item).strip()))
+        except (TypeError, ValueError):
+            continue
+    return parsed_codes
+
+
+def obter_codigos_nat_configurados(db_session: Any = None) -> Set[int]:
+    """
+    Carrega códigos NATJus dinamicamente.
+
+    Fonte preferencial: configuração admin (`parecer_document_codes`).
+    Fallback opcional: variável de ambiente `GERADOR_PARECER_NATJUS_DOCUMENT_CODES`.
+    """
+    if db_session is not None:
+        try:
+            config = load_parecer_natjus_config(db_session, use_cache=False)
+            if config.document_codes:
+                return set(config.document_codes)
+        except Exception as exc:
+            logger.warning(
+                "[NAT-ORIGEM] Falha ao carregar codigos NATJus da configuracao admin: %s",
+                exc,
+            )
+
+    env_codes = _parse_nat_codes(os.getenv(NAT_CODES_ENV_KEY))
+    if env_codes:
+        return env_codes
+
+    logger.warning(
+        "[NAT-ORIGEM] Nenhum codigo NATJus configurado para busca no processo de origem."
+    )
+    return set()
+
+
+# Compatibilidade retroativa com código legado que importa CODIGOS_NAT.
+# Mantido sem hardcode, carregado dinamicamente da variável de ambiente.
+CODIGOS_NAT: Set[int] = obter_codigos_nat_configurados(db_session=None)
 
 # Códigos que indicam processo de agravo (fallback quando IA não extrai corretamente)
 CODIGOS_INDICADORES_AGRAVO: Set[int] = {
@@ -116,7 +166,10 @@ def verificar_agravo_por_documentos(documentos: List["DocumentoTJMS"]) -> bool:
     return False
 
 
-def verificar_nat_em_documentos(documentos: List["DocumentoTJMS"]) -> List["DocumentoTJMS"]:
+def verificar_nat_em_documentos(
+    documentos: List["DocumentoTJMS"],
+    codigos_nat: Optional[Set[int]] = None
+) -> List["DocumentoTJMS"]:
     """
     Verifica se há documentos NAT em uma lista de documentos.
 
@@ -127,6 +180,13 @@ def verificar_nat_em_documentos(documentos: List["DocumentoTJMS"]) -> List["Docu
         Lista de documentos NAT encontrados (pode ser vazia)
     """
     docs_nat = []
+    codigos_utilizados = codigos_nat if codigos_nat is not None else CODIGOS_NAT
+
+    if not codigos_utilizados:
+        logger.warning(
+            "[NAT-ORIGEM] Lista de codigos NATJus vazia durante verificacao de documentos."
+        )
+        return docs_nat
 
     for doc in documentos:
         if not doc.tipo_documento:
@@ -134,7 +194,7 @@ def verificar_nat_em_documentos(documentos: List["DocumentoTJMS"]) -> List["Docu
 
         try:
             codigo = int(doc.tipo_documento)
-            if codigo in CODIGOS_NAT:
+            if codigo in codigos_utilizados:
                 docs_nat.append(doc)
         except (ValueError, TypeError):
             continue
@@ -243,6 +303,7 @@ class NATOrigemResolver:
         """
         self.agente = agente_tjms
         self.db_session = db_session
+        self.codigos_nat = obter_codigos_nat_configurados(db_session)
 
     async def resolver(
         self,
@@ -303,7 +364,10 @@ class NATOrigemResolver:
             return result
 
         # 2. Verifica se NAT existe no agravo
-        docs_nat_agravo = verificar_nat_em_documentos(resultado_agravo.documentos)
+        docs_nat_agravo = verificar_nat_em_documentos(
+            resultado_agravo.documentos,
+            self.codigos_nat
+        )
 
         if docs_nat_agravo:
             result.nat_encontrado_agravo = True
@@ -380,7 +444,10 @@ class NATOrigemResolver:
                 return result
 
             # Filtra documentos NAT
-            docs_nat_origem = verificar_nat_em_documentos(docs_origem)
+            docs_nat_origem = verificar_nat_em_documentos(
+                docs_origem,
+                self.codigos_nat
+            )
 
             if not docs_nat_origem:
                 result.motivo = f"agravo=true, NAT não encontrado no agravo, NAT não encontrado no origem ({numero_origem})"
@@ -854,7 +921,10 @@ async def buscar_nat_para_pdfs_anexados(
             logger.info(f"[NAT-PDFS] Processo de origem: {len(documentos)} documentos encontrados")
 
             # Filtra documentos NAT
-            docs_nat = verificar_nat_em_documentos(documentos)
+            docs_nat = verificar_nat_em_documentos(
+                documentos,
+                obter_codigos_nat_configurados(db_session)
+            )
 
             if not docs_nat:
                 result.motivo = f"agravo=true, NAT não encontrado nos PDFs anexados, NAT não encontrado no processo de origem ({numero_origem})"
@@ -972,7 +1042,7 @@ async def _processar_nat_para_markdown(
                     )
                     from sistemas.gerador_pecas.gemini_client import chamar_gemini_async
 
-                    # Busca categoria NAT (código 8451 ou nome similar)
+                    # Busca categoria NATJus por nome/correspondencia sem depender de codigo fixo
                     categoria = db_session.query(CategoriaResumoJSON).filter(
                         CategoriaResumoJSON.ativo == True
                     ).filter(

@@ -51,6 +51,8 @@ interface ChatMessage {
 interface StreamEvent {
   tipo: string;
   mensagem?: string;
+  titulo?: string;
+  instrucao?: string;
   agente?: number;
   status?: string;
   pergunta?: string;
@@ -59,6 +61,29 @@ interface StreamEvent {
   tipo_peca?: string;
   minuta_markdown?: string;
   content?: string;
+  modo_atual?: 'automatico' | 'semi_automatico';
+  parecer_required?: boolean;
+  parecer_found?: boolean;
+  parecer_document_codes?: number[];
+}
+
+interface ParecerNatjusDecisionContext {
+  numero_cnj: string;
+  tipo_peca_solicitado: string | null;
+  tipo_peca_detectado: string | null;
+  group_id: number | null;
+  subcategoria_ids: number[];
+  observacao_usuario: string | null;
+  resposta_usuario: string | null;
+  modo: 'automatico' | 'semi_automatico';
+}
+
+interface ParecerUploadResponse {
+  upload_id: string;
+  filename: string;
+  size_bytes: number;
+  numero_cnj: string;
+  tipo_peca?: string | null;
 }
 
 interface VersaoItem {
@@ -168,6 +193,11 @@ class GeradorPecasApp {
 
   // Timeout para erro
   private _erroTimeout: ReturnType<typeof setTimeout> | null = null;
+
+  // Fluxo de parecer NATJus
+  parecerNatjusContext: ParecerNatjusDecisionContext | null = null;
+  parecerNatjusEvent: StreamEvent | null = null;
+  parecerNatjusUploadEmAndamento: boolean = false;
 
   constructor() {
     this.initEventListeners();
@@ -851,6 +881,89 @@ class GeradorPecasApp {
     }
   }
 
+  private montarContextoParecer(
+    modo: 'automatico' | 'semi_automatico',
+    overrides: Partial<ParecerNatjusDecisionContext> = {}
+  ): ParecerNatjusDecisionContext {
+    const subcategorias = Array.isArray(overrides.subcategoria_ids)
+      ? overrides.subcategoria_ids
+      : [...this.subcategoriaIds];
+
+    return {
+      numero_cnj: overrides.numero_cnj || this.numeroCNJ || '',
+      tipo_peca_solicitado:
+        overrides.tipo_peca_solicitado !== undefined
+          ? overrides.tipo_peca_solicitado
+          : this.tipoPeca,
+      tipo_peca_detectado: overrides.tipo_peca_detectado || null,
+      group_id: overrides.group_id !== undefined ? overrides.group_id : this.groupId,
+      subcategoria_ids: subcategorias,
+      observacao_usuario:
+        overrides.observacao_usuario !== undefined
+          ? overrides.observacao_usuario
+          : this.observacaoUsuario,
+      resposta_usuario:
+        overrides.resposta_usuario !== undefined ? overrides.resposta_usuario : null,
+      modo,
+    };
+  }
+
+  private async consumirRespostaSSE(
+    response: Response,
+    parecerContexto: ParecerNatjusDecisionContext | null
+  ): Promise<void> {
+    const reader = response.body?.getReader();
+    if (!reader) throw new Error('Stream nao disponivel');
+
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split('\n\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        try {
+          const data: StreamEvent = JSON.parse(line.slice(6));
+          this.processarEventoStream(data, parecerContexto);
+        } catch (e) {
+          console.warn('Erro ao parsear evento SSE:', e);
+        }
+      }
+    }
+  }
+
+  private async enviarProcessamentoStreamCNJ(
+    payload: Record<string, unknown>,
+    parecerContexto: ParecerNatjusDecisionContext
+  ): Promise<void> {
+    const response = await fetch(`${API_URL}/processar-stream`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${this.getToken()}`,
+      },
+      body: JSON.stringify(payload),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      const detail = errorData?.detail;
+      const detailMsg =
+        typeof detail === 'string'
+          ? detail
+          : detail?.message || detail?.title || 'Erro ao processar';
+      throw new Error(detailMsg);
+    }
+
+    await this.consumirRespostaSSE(response, parecerContexto);
+  }
+
   async iniciarProcessamento(): Promise<void> {
     const tipoPecaSelect = document.getElementById('tipo-peca') as HTMLSelectElement | null;
     const observacaoInput = document.getElementById(
@@ -878,14 +991,14 @@ class GeradorPecasApp {
 
     this.streamingContent = '';
     this.isStreaming = false;
+    this.parecerNatjusContext = null;
+    this.parecerNatjusEvent = null;
 
     this.esconderErro();
     this.resetarStatusAgentes();
     this.mostrarLoading('Conectando ao servidor...', null);
 
     try {
-      let response: Response;
-
       if (this.modoEntrada === 'pdf') {
         if (this.arquivosPdf.length === 0) {
           throw new Error('Selecione pelo menos um arquivo PDF');
@@ -906,66 +1019,48 @@ class GeradorPecasApp {
         if (this.groupId) {
           formData.append('group_id', String(this.groupId));
         }
-        response = await fetch(`${API_URL}/processar-pdfs-stream`, {
+        const response = await fetch(`${API_URL}/processar-pdfs-stream`, {
           method: 'POST',
           headers: {
             Authorization: `Bearer ${this.getToken()}`,
           },
           body: formData,
         });
-      } else {
-        const numeroCnjInput = document.getElementById('numero-cnj') as HTMLInputElement | null;
-        this.numeroCNJ = numeroCnjInput?.value || null;
 
-        if (!this.numeroCNJ) {
-          throw new Error('Informe o numero do processo');
+        if (!response.ok) {
+          const errorData = await response.json().catch(() => ({}));
+          const detail = errorData?.detail;
+          const detailMsg =
+            typeof detail === 'string' ? detail : detail?.message || detail?.title || '';
+          throw new Error(detailMsg || 'Erro ao processar');
         }
 
-        response = await fetch(`${API_URL}/processar-stream`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            Authorization: `Bearer ${this.getToken()}`,
-          },
-          body: JSON.stringify({
-            numero_cnj: this.numeroCNJ,
-            tipo_peca: this.tipoPeca,
-            observacao_usuario: this.observacaoUsuario,
-            group_id: this.groupId,
-          }),
-        });
+        await this.consumirRespostaSSE(response, null);
+        return;
       }
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Erro ao processar');
+      const numeroCnjInput = document.getElementById('numero-cnj') as HTMLInputElement | null;
+      this.numeroCNJ = numeroCnjInput?.value || null;
+
+      if (!this.numeroCNJ) {
+        throw new Error('Informe o numero do processo');
       }
 
-      const reader = response.body?.getReader();
-      if (!reader) throw new Error('Stream nao disponivel');
+      const contextoParecer = this.montarContextoParecer('automatico', {
+        numero_cnj: this.numeroCNJ,
+        tipo_peca_solicitado: this.tipoPeca,
+      });
 
-      const decoder = new TextDecoder();
-      let buffer = '';
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n\n');
-        buffer = lines.pop() || '';
-
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            try {
-              const data: StreamEvent = JSON.parse(line.slice(6));
-              this.processarEventoStream(data);
-            } catch (e) {
-              console.warn('Erro ao parsear evento SSE:', e);
-            }
-          }
-        }
-      }
+      await this.enviarProcessamentoStreamCNJ(
+        {
+          numero_cnj: this.numeroCNJ,
+          tipo_peca: this.tipoPeca,
+          observacao_usuario: this.observacaoUsuario,
+          group_id: this.groupId,
+          subcategoria_ids: this.subcategoriaIds,
+        },
+        contextoParecer
+      );
     } catch (error) {
       console.error('Erro na requisicao:', error);
       let mensagemErro = (error as Error).message;
@@ -1000,7 +1095,10 @@ class GeradorPecasApp {
     }
   }
 
-  processarEventoStream(data: StreamEvent): void {
+  processarEventoStream(
+    data: StreamEvent,
+    parecerContexto: ParecerNatjusDecisionContext | null = null
+  ): void {
     console.log('Evento SSE:', data);
 
     switch (data.tipo) {
@@ -1095,6 +1193,12 @@ class GeradorPecasApp {
         }
         break;
 
+      case 'parecer_natjus_ausente':
+        this.finalizarStreaming();
+        this.esconderLoading();
+        this.abrirModalParecerNatjus(data, parecerContexto);
+        break;
+
       default:
         if (data.status === 'pergunta') {
           this.esconderLoading();
@@ -1164,52 +1268,397 @@ class GeradorPecasApp {
     this.mostrarLoading('Continuando processamento...', 2);
 
     try {
-      const response = await fetch(`${API_URL}/processar-stream`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${this.getToken()}`,
-        },
-        body: JSON.stringify({
+      const contextoParecer = this.montarContextoParecer('automatico', {
+        numero_cnj: this.numeroCNJ || '',
+        tipo_peca_solicitado: this.tipoPeca,
+        resposta_usuario: resposta || null,
+      });
+
+      await this.enviarProcessamentoStreamCNJ(
+        {
           numero_cnj: this.numeroCNJ,
           tipo_peca: this.tipoPeca,
           resposta_usuario: resposta,
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.detail || 'Erro ao processar');
-      }
-
-      const reader = response.body?.getReader();
-      if (!reader) throw new Error('Stream nao disponivel');
-
-      const decoder = new TextDecoder();
-      let buffer = '';
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n\n');
-        buffer = lines.pop() || '';
-
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            try {
-              const data: StreamEvent = JSON.parse(line.slice(6));
-              this.processarEventoStream(data);
-            } catch (e) {
-              console.warn('Erro ao parsear evento SSE:', e);
-            }
-          }
-        }
-      }
+          observacao_usuario: this.observacaoUsuario,
+          group_id: this.groupId,
+          subcategoria_ids: this.subcategoriaIds,
+        },
+        contextoParecer
+      );
     } catch (error) {
       this.mostrarErro((error as Error).message);
       this.esconderLoading();
+    }
+  }
+
+  private garantirModalParecerNatjus(): HTMLDivElement {
+    let modal = document.getElementById('modal-parecer-natjus') as HTMLDivElement | null;
+    if (modal) return modal;
+
+    modal = document.createElement('div');
+    modal.id = 'modal-parecer-natjus';
+    modal.className = 'hidden fixed inset-0 z-[80]';
+    modal.innerHTML = `
+      <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" aria-hidden="true"></div>
+      <div class="relative z-10 flex min-h-full items-center justify-center px-4 py-6">
+        <div class="w-full max-w-2xl rounded-2xl bg-white shadow-2xl border border-slate-200">
+          <div class="px-6 py-5 border-b border-slate-100 flex items-center justify-between">
+            <div>
+              <h2 id="parecer-natjus-title" class="text-xl font-bold text-slate-900">Parecer NATJus não encontrado</h2>
+              <p class="text-xs text-slate-500 mt-1">Ação obrigatória antes da geração</p>
+            </div>
+            <button id="btn-parecer-natjus-fechar" type="button" class="p-2 rounded-lg text-slate-500 hover:bg-slate-100 hover:text-slate-700">
+              <i class="fas fa-times"></i>
+            </button>
+          </div>
+          <div class="px-6 py-5 space-y-4">
+            <p id="parecer-natjus-message" class="text-sm text-slate-700 leading-relaxed">
+              Não foi encontrado parecer NATJus no processo. Ele é essencial para a geração adequada desta peça.
+            </p>
+            <p id="parecer-natjus-instruction" class="text-sm text-slate-700">
+              Anexe o parecer em PDF para prosseguir.
+            </p>
+            <div id="parecer-natjus-warning" class="rounded-xl border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900 font-medium">
+              Ao continuar sem parecer, esta geração será feita obrigatoriamente no modo semi-automático.
+            </div>
+            <div id="parecer-natjus-codes" class="text-xs text-slate-500"></div>
+            <div class="rounded-xl border border-slate-200 p-4 bg-slate-50">
+              <label for="parecer-natjus-upload-input" class="block text-sm font-medium text-slate-700 mb-2">
+                Anexar PDF do parecer
+              </label>
+              <input
+                id="parecer-natjus-upload-input"
+                type="file"
+                accept=".pdf,application/pdf"
+                class="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 file:mr-3 file:rounded-md file:border-0 file:bg-primary-600 file:px-3 file:py-2 file:text-xs file:font-semibold file:text-white hover:file:bg-primary-700"
+              />
+              <p id="parecer-natjus-upload-status" class="text-xs text-slate-500 mt-2"></p>
+            </div>
+          </div>
+          <div class="px-6 py-5 border-t border-slate-100 flex items-center justify-end gap-2">
+            <button id="btn-parecer-natjus-cancelar" type="button" class="px-4 py-2 rounded-lg border border-slate-300 text-slate-700 hover:bg-slate-100">
+              Cancelar
+            </button>
+            <button id="btn-parecer-natjus-continuar" type="button" class="px-4 py-2 rounded-lg border border-amber-300 bg-amber-100 text-amber-900 hover:bg-amber-200 font-medium">
+              Continuar sem parecer
+            </button>
+            <button id="btn-parecer-natjus-upload" type="button" class="px-4 py-2 rounded-lg bg-primary-600 text-white hover:bg-primary-700 font-semibold">
+              Anexar PDF do parecer
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    document.body.appendChild(modal);
+
+    const fechar = () => this.fecharModalParecerNatjus();
+    modal.querySelector('#btn-parecer-natjus-fechar')?.addEventListener('click', fechar);
+    modal.querySelector('#btn-parecer-natjus-cancelar')?.addEventListener('click', fechar);
+    modal.querySelector('#btn-parecer-natjus-upload')?.addEventListener('click', () => {
+      this.acaoAnexarParecerNatjus();
+    });
+    modal.querySelector('#btn-parecer-natjus-continuar')?.addEventListener('click', () => {
+      this.acaoContinuarSemParecerNatjus();
+    });
+    modal
+      .querySelector('#parecer-natjus-upload-input')
+      ?.addEventListener('change', () =>
+        this.atualizarStatusModalParecerNatjus(
+          'Anexe um arquivo PDF válido para continuar.',
+          'info'
+        )
+      );
+
+    return modal;
+  }
+
+  private atualizarStatusModalParecerNatjus(
+    mensagem: string,
+    tipo: 'info' | 'success' | 'error' = 'info'
+  ): void {
+    const el = document.getElementById('parecer-natjus-upload-status');
+    if (!el) return;
+    const classes = {
+      info: 'text-slate-500',
+      success: 'text-green-700',
+      error: 'text-red-700',
+    };
+    el.className = `text-xs mt-2 ${classes[tipo]}`;
+    el.textContent = mensagem;
+  }
+
+  private habilitarAcoesModalParecerNatjus(habilitado: boolean): void {
+    const ids = [
+      'btn-parecer-natjus-upload',
+      'btn-parecer-natjus-continuar',
+      'btn-parecer-natjus-cancelar',
+      'btn-parecer-natjus-fechar',
+    ];
+    ids.forEach((id) => {
+      const btn = document.getElementById(id) as HTMLButtonElement | null;
+      if (btn) btn.disabled = !habilitado;
+    });
+  }
+
+  abrirModalParecerNatjus(
+    data: StreamEvent,
+    contextoRaw: Partial<ParecerNatjusDecisionContext> | Record<string, unknown> | null = null
+  ): void {
+    const modal = this.garantirModalParecerNatjus();
+    const contexto = (contextoRaw || {}) as Record<string, unknown>;
+
+    const modo =
+      (contexto.modo as 'automatico' | 'semi_automatico') ||
+      data.modo_atual ||
+      'automatico';
+    const tipoSolicitado =
+      (contexto.tipo_peca_solicitado as string | null | undefined) ??
+      (contexto.tipo_peca as string | null | undefined) ??
+      this.tipoPeca;
+
+    this.parecerNatjusContext = this.montarContextoParecer(modo, {
+      numero_cnj: (contexto.numero_cnj as string) || this.numeroCNJ || '',
+      tipo_peca_solicitado: tipoSolicitado ?? null,
+      tipo_peca_detectado:
+        data.tipo_peca ||
+        (contexto.tipo_peca_detectado as string | null | undefined) ||
+        null,
+      group_id:
+        (contexto.group_id as number | null | undefined) !== undefined
+          ? (contexto.group_id as number | null)
+          : this.groupId,
+      subcategoria_ids: Array.isArray(contexto.subcategoria_ids)
+        ? (contexto.subcategoria_ids as number[])
+        : [...this.subcategoriaIds],
+      observacao_usuario:
+        (contexto.observacao_usuario as string | null | undefined) ?? this.observacaoUsuario,
+      resposta_usuario:
+        (contexto.resposta_usuario as string | null | undefined) ?? null,
+    });
+    this.parecerNatjusEvent = data;
+
+    const titleEl = document.getElementById('parecer-natjus-title');
+    const messageEl = document.getElementById('parecer-natjus-message');
+    const instructionEl = document.getElementById('parecer-natjus-instruction');
+    const warningEl = document.getElementById('parecer-natjus-warning');
+    const codesEl = document.getElementById('parecer-natjus-codes');
+    const inputEl = document.getElementById('parecer-natjus-upload-input') as HTMLInputElement | null;
+
+    if (titleEl) titleEl.textContent = data.titulo || 'Parecer NATJus não encontrado';
+    if (messageEl) {
+      messageEl.textContent =
+        data.mensagem ||
+        'Não foi encontrado parecer NATJus no processo. Ele é essencial para a geração adequada desta peça.';
+    }
+    if (instructionEl) {
+      instructionEl.textContent = data.instrucao || 'Anexe o parecer em PDF para prosseguir.';
+    }
+
+    if (warningEl) {
+      warningEl.textContent =
+        modo === 'automatico'
+          ? 'Ao continuar sem parecer, esta geração será feita obrigatoriamente no modo semi-automático.'
+          : 'Ao continuar sem parecer, a geração seguirá no modo semi-automático e a ausência será registrada em auditoria.';
+    }
+
+    if (codesEl) {
+      const codigos = Array.isArray(data.parecer_document_codes)
+        ? data.parecer_document_codes
+        : [];
+      codesEl.textContent =
+        codigos.length > 0
+          ? `Códigos configurados do parecer NATJus: ${codigos.join(', ')}`
+          : 'Nenhum código de parecer NATJus foi recebido da configuração.';
+    }
+
+    if (inputEl) inputEl.value = '';
+    this.atualizarStatusModalParecerNatjus('Anexe um arquivo PDF válido para continuar.', 'info');
+    this.habilitarAcoesModalParecerNatjus(true);
+
+    modal.classList.remove('hidden');
+  }
+
+  private fecharModalParecerNatjus(): void {
+    const modal = document.getElementById('modal-parecer-natjus');
+    if (modal) modal.classList.add('hidden');
+    this.parecerNatjusUploadEmAndamento = false;
+    this.habilitarAcoesModalParecerNatjus(true);
+  }
+
+  private validarArquivoParecerNatjus(file: File | null): string | null {
+    if (!file) return 'Selecione um arquivo PDF.';
+    const nome = file.name.toLowerCase();
+    if (!nome.endsWith('.pdf')) return 'Arquivo inválido. Apenas PDF (.pdf) é permitido.';
+    if (file.type && file.type !== 'application/pdf') {
+      return 'Arquivo inválido. O arquivo selecionado não é PDF.';
+    }
+    return null;
+  }
+
+  private async uploadParecerNatjusArquivo(): Promise<ParecerUploadResponse> {
+    const input = document.getElementById('parecer-natjus-upload-input') as HTMLInputElement | null;
+    const arquivo = input?.files?.[0] || null;
+    const erroValidacao = this.validarArquivoParecerNatjus(arquivo);
+    if (erroValidacao) throw new Error(erroValidacao);
+
+    const contexto = this.parecerNatjusContext;
+    if (!contexto?.numero_cnj) {
+      throw new Error('Não foi possível identificar o processo para anexar o parecer.');
+    }
+
+    const formData = new FormData();
+    formData.append('arquivo', arquivo as File);
+    formData.append('numero_cnj', contexto.numero_cnj);
+    if (contexto.tipo_peca_detectado || contexto.tipo_peca_solicitado) {
+      formData.append('tipo_peca', contexto.tipo_peca_detectado || contexto.tipo_peca_solicitado || '');
+    }
+
+    const response = await fetch(`${API_URL}/parecer/upload`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${this.getToken()}`,
+      },
+      body: formData,
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      const detail = errorData?.detail;
+      const detailMsg =
+        typeof detail === 'string'
+          ? detail
+          : detail?.message || detail?.title || 'Falha no upload do parecer NATJus.';
+      throw new Error(detailMsg);
+    }
+
+    return (await response.json()) as ParecerUploadResponse;
+  }
+
+  private async acaoAnexarParecerNatjus(): Promise<void> {
+    if (this.parecerNatjusUploadEmAndamento) return;
+    this.parecerNatjusUploadEmAndamento = true;
+    this.habilitarAcoesModalParecerNatjus(false);
+    this.atualizarStatusModalParecerNatjus('Enviando parecer NATJus em PDF...', 'info');
+
+    try {
+      const upload = await this.uploadParecerNatjusArquivo();
+      this.atualizarStatusModalParecerNatjus('Upload concluído. Retomando geração...', 'success');
+      this.fecharModalParecerNatjus();
+      await this.retomarFluxoComParecerUpload(upload.upload_id);
+    } catch (error) {
+      const mensagem = (error as Error).message || 'Falha no upload do parecer NATJus.';
+      this.atualizarStatusModalParecerNatjus(mensagem, 'error');
+      this.habilitarAcoesModalParecerNatjus(true);
+    } finally {
+      this.parecerNatjusUploadEmAndamento = false;
+    }
+  }
+
+  private obterTipoPecaParaSemi(contexto: ParecerNatjusDecisionContext): string | null {
+    return (
+      contexto.tipo_peca_detectado ||
+      this.parecerNatjusEvent?.tipo_peca ||
+      contexto.tipo_peca_solicitado ||
+      null
+    );
+  }
+
+  private async iniciarSemiAutomaticoComContexto(
+    contexto: ParecerNatjusDecisionContext,
+    options: {
+      parecer_upload_id?: string | null;
+      parecer_user_choice_when_missing?: 'uploaded' | 'continue_without' | null;
+      parecer_forced_to_semi_auto?: boolean;
+    }
+  ): Promise<void> {
+    const tipoPeca = this.obterTipoPecaParaSemi(contexto);
+    if (!tipoPeca) {
+      throw new Error('Não foi possível determinar o tipo de peça para o modo semi-automático.');
+    }
+
+    const selectTipo = document.getElementById('tipo-peca') as HTMLSelectElement | null;
+    if (selectTipo) selectTipo.value = tipoPeca;
+    this.tipoPeca = tipoPeca;
+
+    await this.iniciarModoSemiAutomatico({
+      numeroCnj: contexto.numero_cnj,
+      tipoPeca,
+      groupId: contexto.group_id,
+      subcategoriaIds: contexto.subcategoria_ids,
+      options,
+    });
+  }
+
+  private async retomarFluxoComParecerUpload(uploadId: string): Promise<void> {
+    const contexto = this.parecerNatjusContext;
+    if (!contexto) throw new Error('Contexto do parecer NATJus não encontrado.');
+
+    if (contexto.modo === 'semi_automatico') {
+      this.mostrarLoading('Reiniciando modo semi-automático com parecer anexado...', null);
+      await this.iniciarSemiAutomaticoComContexto(contexto, {
+        parecer_upload_id: uploadId,
+        parecer_user_choice_when_missing: 'uploaded',
+        parecer_forced_to_semi_auto: false,
+      });
+      return;
+    }
+
+    this.resetarStatusAgentes();
+    this.mostrarLoading('Retomando geração automática com parecer NATJus anexado...', 2);
+    await this.enviarProcessamentoStreamCNJ(
+      {
+        numero_cnj: contexto.numero_cnj,
+        tipo_peca: contexto.tipo_peca_solicitado,
+        resposta_usuario: contexto.resposta_usuario,
+        observacao_usuario: contexto.observacao_usuario,
+        group_id: contexto.group_id,
+        subcategoria_ids: contexto.subcategoria_ids,
+        parecer_upload_id: uploadId,
+        parecer_user_choice_when_missing: 'uploaded',
+        parecer_forced_to_semi_auto: false,
+      },
+      contexto
+    );
+  }
+
+  private async acaoContinuarSemParecerNatjus(): Promise<void> {
+    if (this.parecerNatjusUploadEmAndamento) return;
+    const contexto = this.parecerNatjusContext;
+    if (!contexto) {
+      this.mostrarErro('Contexto do parecer NATJus não encontrado.');
+      return;
+    }
+
+    const confirmou = window.confirm(
+      'Confirmar continuidade sem parecer NATJus? A ausência será registrada em auditoria.'
+    );
+    if (!confirmou) return;
+
+    this.fecharModalParecerNatjus();
+
+    try {
+      if (contexto.modo === 'automatico') {
+        this.showToast(
+          'Modo semi-automático ativado porque o parecer NATJus não foi anexado.',
+          'warning'
+        );
+        this.mostrarLoading('Redirecionando para o modo semi-automático...', null);
+        await this.iniciarSemiAutomaticoComContexto(contexto, {
+          parecer_user_choice_when_missing: 'continue_without',
+          parecer_forced_to_semi_auto: true,
+        });
+        return;
+      }
+
+      this.mostrarLoading('Prosseguindo no modo semi-automático sem parecer...', null);
+      await this.iniciarSemiAutomaticoComContexto(contexto, {
+        parecer_user_choice_when_missing: 'continue_without',
+        parecer_forced_to_semi_auto: false,
+      });
+    } catch (error) {
+      this.esconderLoading();
+      this.mostrarErro((error as Error).message);
     }
   }
 
@@ -2250,10 +2699,22 @@ class GeradorPecasApp {
   // Modo Semi-Automatico (Curadoria)
   // ============================================
 
-  async iniciarModoSemiAutomatico(): Promise<void> {
+  async iniciarModoSemiAutomatico(
+    overrides: {
+      numeroCnj?: string;
+      tipoPeca?: string;
+      groupId?: number | null;
+      subcategoriaIds?: number[];
+      options?: {
+        parecer_upload_id?: string | null;
+        parecer_user_choice_when_missing?: 'uploaded' | 'continue_without' | null;
+        parecer_forced_to_semi_auto?: boolean;
+      };
+    } = {}
+  ): Promise<void> {
     // Validacoes iniciais
     const tipoPecaSelect = document.getElementById('tipo-peca') as HTMLSelectElement | null;
-    const tipoPeca = tipoPecaSelect?.value;
+    const tipoPeca = overrides.tipoPeca ?? tipoPecaSelect?.value ?? '';
 
     if (!tipoPeca) {
       this.mostrarErro('Selecione o tipo de peca antes de usar o modo semi-automatico.');
@@ -2267,7 +2728,7 @@ class GeradorPecasApp {
     }
 
     const numeroCnjInput = document.getElementById('numero-cnj') as HTMLInputElement | null;
-    const numeroCnj = numeroCnjInput?.value;
+    const numeroCnj = overrides.numeroCnj ?? numeroCnjInput?.value ?? '';
 
     if (!numeroCnj) {
       this.mostrarErro('Informe o numero do processo.');
@@ -2275,23 +2736,32 @@ class GeradorPecasApp {
       return;
     }
 
-    if (this.requiresGroupSelection && !this.groupId) {
+    const groupId = overrides.groupId !== undefined ? overrides.groupId : this.groupId;
+    const subcategoriaIds = overrides.subcategoriaIds || this.subcategoriaIds;
+
+    if (this.requiresGroupSelection && !groupId) {
       this.mostrarErro('Selecione o grupo de conteudo antes de usar o modo semi-automatico.');
       return;
     }
 
-    if (!this.groupId) {
+    if (!groupId) {
       this.mostrarErro('Nenhum grupo de conteudo disponivel.');
       return;
     }
+
+    this.numeroCNJ = numeroCnj;
+    this.tipoPeca = tipoPeca;
+    this.groupId = groupId;
+    this.subcategoriaIds = [...subcategoriaIds];
 
     // Chama o modulo de curadoria (definido em curadoria.js)
     if (typeof (window as any).curadoria !== 'undefined') {
       await (window as any).curadoria.iniciarModoSemiAutomatico(
         numeroCnj,
         tipoPeca,
-        this.groupId,
-        this.subcategoriaIds
+        groupId,
+        subcategoriaIds,
+        overrides.options || {}
       );
     } else {
       this.mostrarErro('Modulo de curadoria nao carregado. Recarregue a pagina.');

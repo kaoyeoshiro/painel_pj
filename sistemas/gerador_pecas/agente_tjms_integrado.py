@@ -29,7 +29,6 @@ from sistemas.gerador_pecas.services_nat_origem import (
     extrair_dados_peticao_inicial,
     verificar_nat_em_documentos,
     integrar_nat_ao_resultado,
-    CODIGOS_NAT,
 )
 
 # Logger para rastreabilidade da feature de NAT
@@ -206,7 +205,7 @@ class AgenteTJMSIntegrado:
 
         A busca só é realizada quando:
         1. peticao_inicial_agravo = true no JSON da petição inicial
-        2. Não existe NAT nos documentos do agravo (códigos 207, 8451, 9636, 59, 8490)
+        2. Não existe NAT nos documentos do agravo (conforme códigos configurados no admin)
 
         Args:
             analise: Resultado da análise do processo de agravo

@@ -8,11 +8,12 @@ import re
 import json
 import uuid
 import asyncio
+import logging
 from datetime import datetime
 from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends, Query, UploadFile, File, Form, status
 from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
-from typing import Optional, List, Dict, AsyncGenerator
+from typing import Optional, List, Dict, Any, AsyncGenerator
 import fitz  # PyMuPDF para extração de texto de PDFs
 fitz.TOOLS.mupdf_warnings(False)  # Suprime warnings de imagens JPEG2000 corrompidas
 from sqlalchemy.orm import Session
@@ -40,12 +41,22 @@ from sistemas.gerador_pecas.versoes import (
 )
 from admin.models import ConfiguracaoIA, PromptConfig
 from admin.models_prompt_groups import PromptGroup, PromptSubgroup
+from sistemas.gerador_pecas.services_parecer_natjus import (
+    build_parecer_audit_payload,
+    evaluate_parecer_status,
+    load_parecer_natjus_config,
+)
 
 router = APIRouter(tags=["Gerador de Peças"])
+logger = logging.getLogger(__name__)
 
 # Diretório temporário para arquivos DOCX
 TEMP_DIR = os.path.join(os.path.dirname(__file__), 'temp_docs')
 os.makedirs(TEMP_DIR, exist_ok=True)
+
+# Diretório persistente para uploads manuais de parecer NATJus
+PARECER_UPLOAD_DIR = os.path.join(os.path.dirname(__file__), "uploads_parecer_natjus")
+os.makedirs(PARECER_UPLOAD_DIR, exist_ok=True)
 
 
 def _limpar_cnj(numero_cnj: str) -> str:
@@ -143,6 +154,363 @@ def _parse_subcategoria_ids_form(subcategoria_ids_raw: Optional[str]) -> Optiona
         return [int(value) for value in subcategoria_ids_raw.split(",") if value.strip()]
     except ValueError:
         raise HTTPException(status_code=400, detail="Subcategorias invalidas.")
+
+
+def _parecer_upload_file_path(upload_id: str) -> str:
+    return os.path.join(PARECER_UPLOAD_DIR, f"{upload_id}.pdf")
+
+
+def _parecer_upload_meta_path(upload_id: str) -> str:
+    return os.path.join(PARECER_UPLOAD_DIR, f"{upload_id}.json")
+
+
+async def _salvar_upload_parecer_natjus(
+    *,
+    arquivo: UploadFile,
+    numero_cnj: str,
+    user_id: int,
+    tipo_peca: Optional[str] = None,
+) -> Dict[str, Any]:
+    nome_arquivo = (arquivo.filename or "").strip()
+    if not nome_arquivo.lower().endswith(".pdf"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Arquivo invalido. Anexe apenas PDF (.pdf).",
+        )
+
+    conteudo = await arquivo.read()
+    if not conteudo:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Arquivo PDF vazio. Selecione um arquivo valido.",
+        )
+
+    upload_id = uuid.uuid4().hex
+    file_path = _parecer_upload_file_path(upload_id)
+    meta_path = _parecer_upload_meta_path(upload_id)
+    numero_cnj_limpo = _limpar_cnj(numero_cnj)
+
+    with open(file_path, "wb") as f:
+        f.write(conteudo)
+
+    metadata = {
+        "upload_id": upload_id,
+        "numero_cnj": numero_cnj_limpo,
+        "tipo_peca": tipo_peca,
+        "user_id": int(user_id),
+        "filename": nome_arquivo,
+        "size_bytes": len(conteudo),
+        "created_at": datetime.utcnow().isoformat(),
+    }
+
+    with open(meta_path, "w", encoding="utf-8") as f:
+        json.dump(metadata, f, ensure_ascii=False)
+
+    return metadata
+
+
+def _carregar_upload_parecer_natjus(
+    *,
+    upload_id: str,
+    numero_cnj: str,
+    user_id: int,
+) -> Dict[str, Any]:
+    if not upload_id:
+        raise HTTPException(status_code=400, detail="Upload de parecer invalido.")
+
+    file_path = _parecer_upload_file_path(upload_id)
+    meta_path = _parecer_upload_meta_path(upload_id)
+
+    if not os.path.exists(file_path) or not os.path.exists(meta_path):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Upload de parecer NATJus nao encontrado.",
+        )
+
+    with open(meta_path, "r", encoding="utf-8") as f:
+        metadata = json.load(f)
+
+    numero_cnj_limpo = _limpar_cnj(numero_cnj)
+    if metadata.get("numero_cnj") != numero_cnj_limpo:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Upload de parecer nao corresponde ao processo informado.",
+        )
+
+    if int(metadata.get("user_id") or 0) != int(user_id):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Upload de parecer pertence a outro usuario.",
+        )
+
+    with open(file_path, "rb") as f:
+        conteudo = f.read()
+
+    metadata["content_bytes"] = conteudo
+    return metadata
+
+
+def _coletar_codigos_documento(valor: Any) -> List[int]:
+    if valor is None:
+        return []
+
+    if isinstance(valor, str):
+        texto = valor.strip()
+        if not texto:
+            return []
+        try:
+            parsed = json.loads(texto)
+        except json.JSONDecodeError:
+            parsed = [item.strip() for item in texto.split(",") if item.strip()]
+        itens = parsed if isinstance(parsed, list) else [parsed]
+    elif isinstance(valor, (list, tuple, set)):
+        itens = list(valor)
+    else:
+        itens = [valor]
+
+    codigos: List[int] = []
+    for item in itens:
+        try:
+            codigo = int(str(item).strip())
+        except (TypeError, ValueError):
+            continue
+        if codigo not in codigos:
+            codigos.append(codigo)
+    return codigos
+
+
+def _selecionar_categoria_resumo_por_codigos(db: Session, codigos_documento: List[int]):
+    from sistemas.gerador_pecas.models_resumo_json import CategoriaResumoJSON
+
+    codigos_alvo = set(_coletar_codigos_documento(codigos_documento))
+    if not codigos_alvo:
+        return None
+
+    categorias = db.query(CategoriaResumoJSON).filter(
+        CategoriaResumoJSON.ativo == True
+    ).all()
+
+    melhor_categoria = None
+    melhor_score = (-1, -1, -1, -1, -1, -1000000)
+
+    for categoria in categorias:
+        codigos_categoria = set(_coletar_codigos_documento(categoria.codigos_documento))
+        if not codigos_categoria:
+            continue
+
+        overlap = len(codigos_alvo.intersection(codigos_categoria))
+        if overlap == 0:
+            continue
+
+        exact_match = 1 if codigos_categoria == codigos_alvo else 0
+        subset_match = 1 if codigos_categoria.issubset(codigos_alvo) else 0
+        non_residual = 1 if not getattr(categoria, "is_residual", False) else 0
+        has_formato = 1 if bool(categoria.formato_json) else 0
+        distance = -abs(len(codigos_categoria) - len(codigos_alvo))
+
+        score = (
+            overlap,
+            exact_match,
+            subset_match,
+            non_residual,
+            has_formato,
+            distance,
+        )
+        if score > melhor_score:
+            melhor_score = score
+            melhor_categoria = categoria
+
+    return melhor_categoria
+
+
+def _normalizar_json_com_namespace(categoria: Any, payload: Dict[str, Any]) -> Dict[str, Any]:
+    if not isinstance(payload, dict):
+        return {}
+
+    namespace = ""
+    try:
+        namespace = categoria.namespace or ""
+    except Exception:
+        namespace = ""
+
+    namespace_prefix = f"{namespace}_" if namespace else ""
+    normalizado: Dict[str, Any] = {}
+
+    for chave, valor in payload.items():
+        chave_str = str(chave)
+        if namespace_prefix and chave_str.startswith(namespace_prefix):
+            slug = chave_str
+        elif namespace:
+            slug = f"{namespace}_{chave_str}"
+        else:
+            slug = chave_str
+        normalizado[slug] = valor
+
+    return normalizado
+
+
+def _mesclar_dados_extracao(destino: Dict[str, Any], origem: Dict[str, Any]) -> None:
+    for chave, valor in (origem or {}).items():
+        if chave not in destino:
+            destino[chave] = valor
+            continue
+
+        existente = destino[chave]
+        if isinstance(existente, bool) and isinstance(valor, bool):
+            destino[chave] = existente or valor
+        elif isinstance(existente, list) and isinstance(valor, list):
+            merged = []
+            for item in existente + valor:
+                if item not in merged:
+                    merged.append(item)
+            destino[chave] = merged
+        elif existente in (None, "", []):
+            destino[chave] = valor
+
+
+async def _extrair_json_upload_parecer_natjus(
+    *,
+    db: Session,
+    texto_parecer: str,
+    parecer_document_codes: List[int],
+    upload_metadata: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    resultado: Dict[str, Any] = {
+        "success": False,
+        "markdown": None,
+        "dados_extracao": {},
+        "json_normalizado": None,
+        "categoria_id": None,
+        "categoria_nome": None,
+        "categoria_namespace": None,
+        "error": None,
+    }
+
+    texto_limpo = (texto_parecer or "").strip()
+    if not texto_limpo:
+        resultado["error"] = "texto_upload_vazio"
+        return resultado
+
+    codigos = _coletar_codigos_documento(parecer_document_codes)
+    if not codigos:
+        resultado["error"] = "parecer_document_codes_empty"
+        return resultado
+
+    categoria = _selecionar_categoria_resumo_por_codigos(db, codigos)
+    if not categoria:
+        resultado["error"] = "categoria_resumo_json_nao_encontrada"
+        logger.warning(
+            "[PARECER-NATJUS] Nao foi encontrada categoria de resumo JSON para codigos=%s",
+            codigos,
+        )
+        return resultado
+
+    if not categoria.formato_json:
+        resultado["error"] = "categoria_sem_formato_json"
+        logger.warning(
+            "[PARECER-NATJUS] Categoria de resumo JSON sem formato_json: categoria_id=%s nome=%s",
+            categoria.id,
+            categoria.nome,
+        )
+        return resultado
+
+    try:
+        from sistemas.gerador_pecas.extrator_resumo_json import (
+            FormatoResumo,
+            gerar_prompt_extracao_json,
+            parsear_resposta_json,
+            normalizar_json_com_schema,
+            json_para_markdown,
+        )
+        from sistemas.gerador_pecas.gemini_client import chamar_gemini_async
+
+        formato = FormatoResumo(
+            categoria_id=categoria.id,
+            categoria_nome=categoria.nome,
+            formato_json=categoria.formato_json,
+            instrucoes_extracao=categoria.instrucoes_extracao,
+            is_residual=bool(getattr(categoria, "is_residual", False)),
+        )
+
+        nome_arquivo = (upload_metadata or {}).get("filename") or "parecer_natjus_upload.pdf"
+        prompt = gerar_prompt_extracao_json(
+            formato,
+            f"Parecer NATJus anexado pelo usuario: {nome_arquivo}",
+            db,
+        )
+        prompt_final = prompt.replace("{texto_documento}", texto_limpo[:30000])
+
+        resposta = await chamar_gemini_async(
+            prompt=prompt_final,
+            modelo="gemini-2.5-flash-lite",
+            temperature=0.1,
+            max_tokens=8000,
+        )
+
+        json_extraido, erro_parse = parsear_resposta_json(resposta)
+        if erro_parse:
+            resultado["error"] = f"erro_parse_json:{erro_parse}"
+            logger.warning(
+                "[PARECER-NATJUS] Erro ao parsear JSON do upload: upload_id=%s detalhe=%s",
+                (upload_metadata or {}).get("upload_id"),
+                erro_parse,
+            )
+            return resultado
+
+        json_normalizado = normalizar_json_com_schema(json_extraido, categoria.formato_json)
+        markdown = json_para_markdown(json_normalizado)
+        dados_namespaced = _normalizar_json_com_namespace(categoria, json_normalizado)
+
+        resultado.update(
+            {
+                "success": True,
+                "markdown": markdown,
+                "dados_extracao": dados_namespaced,
+                "json_normalizado": json_normalizado,
+                "categoria_id": categoria.id,
+                "categoria_nome": categoria.nome,
+                "categoria_namespace": categoria.namespace,
+                "error": None,
+            }
+        )
+        return resultado
+
+    except Exception as exc:
+        resultado["error"] = f"erro_extracao_json:{exc}"
+        logger.exception(
+            "[PARECER-NATJUS] Falha ao extrair JSON do upload manual: upload_id=%s",
+            (upload_metadata or {}).get("upload_id"),
+        )
+        return resultado
+
+
+def _anexar_upload_parecer_ao_resumo(
+    resumo_consolidado: str,
+    upload_metadata: Dict[str, Any],
+    texto_parecer: str,
+    markdown_estruturado: Optional[str] = None,
+) -> str:
+    conteudo = (markdown_estruturado or "").strip()
+    origem_extracao = "json_modelo_categoria"
+
+    if not conteudo:
+        texto_limpo = (texto_parecer or "").strip()
+        if len(texto_limpo) > 30000:
+            texto_limpo = texto_limpo[:30000] + "\n\n[... texto do parecer NATJus truncado ...]"
+        if not texto_limpo:
+            texto_limpo = "[Nao foi possivel extrair texto do PDF anexado.]"
+        conteudo = texto_limpo
+        origem_extracao = "texto_bruto_pdf"
+
+    bloco_upload = (
+        "\n\n---\n"
+        "## PARECER NATJUS ANEXADO PELO USUARIO\n"
+        f"**Arquivo**: {upload_metadata.get('filename')}\n"
+        f"**Upload ID**: {upload_metadata.get('upload_id')}\n\n"
+        f"**Origem da extracao**: {origem_extracao}\n\n"
+        f"{conteudo}\n"
+    )
+    return f"{resumo_consolidado}{bloco_upload}"
 # Armazena estado de processamento em memória (para SSE)
 _processamento_status = {}
 
@@ -154,6 +522,9 @@ class ProcessarProcessoRequest(BaseModel):
     observacao_usuario: Optional[str] = None  # Observações do usuário para incluir no prompt
     group_id: Optional[int] = None
     subcategoria_ids: Optional[List[int]] = None
+    parecer_upload_id: Optional[str] = None
+    parecer_user_choice_when_missing: Optional[str] = None  # "uploaded" | "continue_without"
+    parecer_forced_to_semi_auto: Optional[bool] = False
 
 
 class ExportarDocxRequest(BaseModel):
@@ -320,6 +691,42 @@ async def listar_subgrupos_por_grupo(
     }
 
 
+@router.post("/parecer/upload")
+async def upload_parecer_natjus_pdf(
+    arquivo: UploadFile = File(..., description="Arquivo PDF do parecer NATJus"),
+    numero_cnj: str = Form(..., description="Numero CNJ associado ao parecer"),
+    tipo_peca: Optional[str] = Form(None, description="Tipo da peca (opcional)"),
+    current_user: User = Depends(get_current_active_user),
+):
+    """
+    Salva upload manual do parecer NATJus para uso na geração.
+    """
+    metadata = await _salvar_upload_parecer_natjus(
+        arquivo=arquivo,
+        numero_cnj=numero_cnj,
+        user_id=current_user.id,
+        tipo_peca=tipo_peca,
+    )
+
+    logger.info(
+        "[PARECER-NATJUS] Upload salvo: upload_id=%s user_id=%s cnj=%s filename=%s size=%s",
+        metadata.get("upload_id"),
+        current_user.id,
+        metadata.get("numero_cnj"),
+        metadata.get("filename"),
+        metadata.get("size_bytes"),
+    )
+
+    return {
+        "upload_id": metadata["upload_id"],
+        "filename": metadata["filename"],
+        "size_bytes": metadata["size_bytes"],
+        "numero_cnj": metadata["numero_cnj"],
+        "tipo_peca": metadata.get("tipo_peca"),
+        "message": "Parecer NATJus anexado com sucesso.",
+    }
+
+
 @router.post("/processar")
 async def processar_processo(
     req: ProcessarProcessoRequest,
@@ -432,9 +839,46 @@ async def processar_processo_stream(
         try:
             cnj_limpo = _limpar_cnj(req.numero_cnj)
             tracker.set_metadata("numero_cnj", cnj_limpo)
+            parecer_upload_metadata: Optional[Dict[str, Any]] = None
+            parecer_upload_texto: str = ""
+            parecer_upload_extracao: Dict[str, Any] = {
+                "success": False,
+                "dados_extracao": {},
+                "error": None,
+            }
+            parecer_status: Dict[str, Any] = {
+                "parecer_required": False,
+                "parecer_found": False,
+                "parecer_source": "none",
+            }
+            parecer_audit_payload: Dict[str, Any] = build_parecer_audit_payload(
+                parecer_status
+            )
 
             # Evento inicial
             yield f"data: {json.dumps({'tipo': 'inicio', 'mensagem': 'Iniciando processamento...', 'request_id': tracker.request_id})}\n\n"
+
+            if req.parecer_upload_id:
+                try:
+                    parecer_upload_metadata = _carregar_upload_parecer_natjus(
+                        upload_id=req.parecer_upload_id,
+                        numero_cnj=cnj_limpo,
+                        user_id=current_user.id,
+                    )
+                    parecer_upload_texto = _extrair_texto_pdf(
+                        parecer_upload_metadata.get("content_bytes", b"")
+                    )
+                    tracker.set_metadata("parecer_upload_id", req.parecer_upload_id)
+                    nome_upload = parecer_upload_metadata.get("filename")
+                    yield f"data: {json.dumps({'tipo': 'info', 'mensagem': f'Parecer NATJus carregado do upload: {nome_upload}'})}\n\n"
+                except HTTPException as upload_error:
+                    mensagem_upload = (
+                        upload_error.detail
+                        if isinstance(upload_error.detail, str)
+                        else "Erro ao carregar upload de parecer NATJus."
+                    )
+                    yield f"data: {json.dumps({'tipo': 'erro', 'mensagem': mensagem_upload})}\n\n"
+                    return
             
             # Busca configurações (com cache)
             tracker.mark("load_config_start")
@@ -458,6 +902,8 @@ async def processar_processo_stream(
             # Se tem orquestrador, processa com eventos
             if service.orquestrador:
                 orq = service.orquestrador
+                from sistemas.gerador_pecas.filtro_categorias import FiltroCategoriasDocumento
+                filtro = FiltroCategoriasDocumento(db)
                 
                 # Determina tipo de peça inicial (se fornecido manualmente)
                 tipo_peca_inicial = req.tipo_peca or req.resposta_usuario
@@ -467,8 +913,6 @@ async def processar_processo_stream(
                 # Se tipo de peça foi escolhido manualmente, configura filtro de categorias ANTES do Agente 1
                 if tipo_peca_inicial:
                     try:
-                        from sistemas.gerador_pecas.filtro_categorias import FiltroCategoriasDocumento
-                        filtro = FiltroCategoriasDocumento(db)
                         if filtro.tem_configuracao():
                             codigos = filtro.get_codigos_permitidos(tipo_peca_inicial)
                             codigos_primeiro = filtro.get_codigos_primeiro_documento(tipo_peca_inicial)
@@ -530,7 +974,7 @@ async def processar_processo_stream(
                 # No modo automático, após detectar o tipo, filtra os resumos
                 if modo_automatico and tipo_peca:
                     try:
-                        codigos_tipo = filtro.get_codigos_permitidos(tipo_peca)
+                        codigos_tipo = filtro.get_codigos_permitidos(tipo_peca) if filtro.tem_configuracao() else None
                         if codigos_tipo:
                             yield f"data: {json.dumps({'tipo': 'info', 'mensagem': f'Filtrando resumos para {tipo_peca}: {len(codigos_tipo)} categorias'})}\n\n"
                             
@@ -542,12 +986,98 @@ async def processar_processo_stream(
                     except Exception as e:
                         print(f"Aviso: Erro ao filtrar resumos no modo automático: {e}")
                         # Continua com o resumo completo
+
+                parecer_config = load_parecer_natjus_config(db, use_cache=False)
+                if parecer_upload_metadata:
+                    parecer_upload_extracao = await _extrair_json_upload_parecer_natjus(
+                        db=db,
+                        texto_parecer=parecer_upload_texto,
+                        parecer_document_codes=list(parecer_config.document_codes),
+                        upload_metadata=parecer_upload_metadata,
+                    )
+                    if parecer_upload_extracao.get("success"):
+                        yield f"data: {json.dumps({'tipo': 'info', 'mensagem': 'Parecer NATJus do upload processado em JSON tecnico (categorias-resumo-json).'})}\n\n"
+                    else:
+                        logger.warning(
+                            "[PARECER-NATJUS] Upload sem JSON estruturado; usando texto bruto. upload_id=%s erro=%s",
+                            parecer_upload_metadata.get("upload_id"),
+                            parecer_upload_extracao.get("error"),
+                        )
+                    resumo_para_geracao = _anexar_upload_parecer_ao_resumo(
+                        resumo_para_geracao,
+                        parecer_upload_metadata,
+                        parecer_upload_texto,
+                        markdown_estruturado=parecer_upload_extracao.get("markdown"),
+                    )
+
+                documentos_agente1 = []
+                if resultado_agente1.dados_brutos and resultado_agente1.dados_brutos.documentos:
+                    documentos_agente1 = resultado_agente1.dados_brutos.documentos
+
+                parecer_status = evaluate_parecer_status(
+                    tipo_peca=tipo_peca,
+                    documentos=documentos_agente1,
+                    config=parecer_config,
+                    has_user_upload=bool(parecer_upload_metadata),
+                )
+                parecer_audit_payload = build_parecer_audit_payload(
+                    parecer_status,
+                    user_choice_when_missing=req.parecer_user_choice_when_missing,
+                    mode_forced_to_semi_auto=bool(req.parecer_forced_to_semi_auto),
+                )
+
+                tracker.set_metadata("parecer_required", parecer_status.get("parecer_required"))
+                tracker.set_metadata("parecer_found", parecer_status.get("parecer_found"))
+                tracker.set_metadata("parecer_source", parecer_status.get("parecer_source"))
+
+                if parecer_status.get("config_error"):
+                    config_error_message = parecer_status.get("config_error_message")
+                    logger.error(
+                        "[PARECER-NATJUS] Erro de configuracao: cnj=%s tipo_peca=%s detail=%s",
+                        cnj_limpo,
+                        tipo_peca,
+                        config_error_message,
+                    )
+                    yield f"data: {json.dumps({'tipo': 'erro', 'mensagem': config_error_message})}\n\n"
+                    return
+
+                if parecer_status.get("parecer_required") and not parecer_status.get("parecer_found"):
+                    logger.warning(
+                        "[PARECER-NATJUS] Parecer ausente: cnj=%s tipo_peca=%s codes=%s",
+                        cnj_limpo,
+                        tipo_peca,
+                        parecer_status.get("parecer_document_codes"),
+                    )
+                    yield f"data: {json.dumps({'tipo': 'parecer_natjus_ausente', 'titulo': 'Parecer NATJus não encontrado', 'mensagem': 'Não foi encontrado parecer NATJus no processo. Ele é essencial para a geração adequada desta peça.', 'instrucao': 'Anexe o parecer em PDF para prosseguir.', 'tipo_peca': tipo_peca, 'modo_atual': 'automatico', 'parecer_required': True, 'parecer_found': False, 'parecer_document_codes': parecer_status.get('parecer_document_codes', [])})}\n\n"
+                    return
                 
                 tracker.mark("agente2_start")
                 yield f"data: {json.dumps({'tipo': 'agente', 'agente': 2, 'status': 'ativo', 'mensagem': 'Analisando e ativando prompts...'})}\n\n"
 
                 # Extrai dados das variáveis dos resumos JSON para avaliação determinística
                 dados_extracao = consolidar_dados_extracao(resultado_agente1)
+                dados_extracao["_parecer_natjus"] = parecer_audit_payload
+                if parecer_upload_extracao.get("dados_extracao"):
+                    _mesclar_dados_extracao(
+                        dados_extracao,
+                        parecer_upload_extracao.get("dados_extracao", {}),
+                    )
+                if parecer_upload_metadata:
+                    extraction_mode = (
+                        "json_modelo_categoria"
+                        if parecer_upload_extracao.get("success")
+                        else "texto_bruto_pdf"
+                    )
+                    dados_extracao["parecer_natjus_upload"] = {
+                        "upload_id": parecer_upload_metadata.get("upload_id"),
+                        "filename": parecer_upload_metadata.get("filename"),
+                        "source": "user_upload",
+                        "extraction_mode": extraction_mode,
+                        "categoria_resumo_json_id": parecer_upload_extracao.get("categoria_id"),
+                        "categoria_resumo_json_nome": parecer_upload_extracao.get("categoria_nome"),
+                        "categoria_resumo_json_namespace": parecer_upload_extracao.get("categoria_namespace"),
+                        "json_extraction_error": parecer_upload_extracao.get("error"),
+                    }
                 print(f"[ROUTER] dados_extracao consolidados: {len(dados_extracao)} variáveis")
 
                 # Passa dados de extração para permitir fast path determinístico
@@ -647,6 +1177,30 @@ async def processar_processo_stream(
                                 "data_formatada": doc.data_formatada,
                                 "processo_origem": doc.processo_origem
                             })
+                if parecer_upload_metadata:
+                    if documentos_processados is None:
+                        documentos_processados = []
+                    extraction_mode = (
+                        "json_modelo_categoria"
+                        if parecer_upload_extracao.get("success")
+                        else "texto_bruto_pdf"
+                    )
+                    documentos_processados.append({
+                        "id": f"upload_{parecer_upload_metadata.get('upload_id')}",
+                        "ids": [f"upload_{parecer_upload_metadata.get('upload_id')}"],
+                        "descricao": "Parecer NATJus anexado pelo usuario",
+                        "descricao_ia": "Parecer NATJus (upload manual)",
+                        "tipo_documento": "UPLOAD_PARECER_NATJUS",
+                        "data_juntada": to_iso_utc(datetime.utcnow()),
+                        "data_formatada": datetime.utcnow().strftime("%d/%m/%Y %H:%M"),
+                        "processo_origem": False,
+                        "source": "user_upload",
+                        "upload_id": parecer_upload_metadata.get("upload_id"),
+                        "filename": parecer_upload_metadata.get("filename"),
+                        "extraction_mode": extraction_mode,
+                        "categoria_resumo_json_id": parecer_upload_extracao.get("categoria_id"),
+                        "categoria_resumo_json_nome": parecer_upload_extracao.get("categoria_nome"),
+                    })
                 tracker.mark("postprocess_done")
 
                 # Salva no banco (usa resumo filtrado se disponível)
@@ -2330,6 +2884,9 @@ class CurationPreviewRequest(BaseModel):
     tipo_peca: str
     group_id: Optional[int] = None
     subcategoria_ids: Optional[List[int]] = None
+    parecer_upload_id: Optional[str] = None
+    parecer_user_choice_when_missing: Optional[str] = None  # "uploaded" | "continue_without"
+    parecer_forced_to_semi_auto: Optional[bool] = False
 
 
 class CurationSearchRequest(BaseModel):
@@ -2361,6 +2918,7 @@ class CurationGenerateRequest(BaseModel):
     # Decision traces do preview (para auditoria causal)
     decision_traces: Optional[Dict] = None
     variaveis_snapshot: Optional[Dict] = None
+    parecer_context: Optional[Dict[str, Any]] = None
 
 
 @router.post("/curadoria/preview")
@@ -2395,6 +2953,22 @@ async def curation_preview(
         )
 
         cnj_limpo = _limpar_cnj(req.numero_cnj)
+        parecer_upload_metadata: Optional[Dict[str, Any]] = None
+        parecer_upload_texto: str = ""
+        parecer_upload_extracao: Dict[str, Any] = {
+            "success": False,
+            "dados_extracao": {},
+            "error": None,
+        }
+        if req.parecer_upload_id:
+            parecer_upload_metadata = _carregar_upload_parecer_natjus(
+                upload_id=req.parecer_upload_id,
+                numero_cnj=cnj_limpo,
+                user_id=current_user.id,
+            )
+            parecer_upload_texto = _extrair_texto_pdf(
+                parecer_upload_metadata.get("content_bytes", b"")
+            )
 
         # Busca modelo configurado
         modelo = config_cache.get_config(
@@ -2436,8 +3010,100 @@ async def curation_preview(
 
         print(f"[CURADORIA] Agente 1 concluido: {resultado_agente1.documentos_analisados} docs")
 
+        parecer_config = load_parecer_natjus_config(db, use_cache=False)
+        if parecer_upload_metadata:
+            parecer_upload_extracao = await _extrair_json_upload_parecer_natjus(
+                db=db,
+                texto_parecer=parecer_upload_texto,
+                parecer_document_codes=list(parecer_config.document_codes),
+                upload_metadata=parecer_upload_metadata,
+            )
+            if parecer_upload_extracao.get("success"):
+                print("[CURADORIA] Parecer upload processado com JSON tecnico.")
+            else:
+                logger.warning(
+                    "[PARECER-NATJUS] Curadoria sem JSON estruturado no upload. upload_id=%s erro=%s",
+                    parecer_upload_metadata.get("upload_id"),
+                    parecer_upload_extracao.get("error"),
+                )
+            resultado_agente1.resumo_consolidado = _anexar_upload_parecer_ao_resumo(
+                resultado_agente1.resumo_consolidado,
+                parecer_upload_metadata,
+                parecer_upload_texto,
+                markdown_estruturado=parecer_upload_extracao.get("markdown"),
+            )
+
+        documentos_agente1 = []
+        if resultado_agente1.dados_brutos and resultado_agente1.dados_brutos.documentos:
+            documentos_agente1 = resultado_agente1.dados_brutos.documentos
+
+        parecer_status = evaluate_parecer_status(
+            tipo_peca=req.tipo_peca,
+            documentos=documentos_agente1,
+            config=parecer_config,
+            has_user_upload=bool(parecer_upload_metadata),
+        )
+
+        if parecer_status.get("config_error"):
+            logger.error(
+                "[PARECER-NATJUS] Erro de configuracao no preview de curadoria: cnj=%s tipo_peca=%s detail=%s",
+                cnj_limpo,
+                req.tipo_peca,
+                parecer_status.get("config_error_message"),
+            )
+            raise HTTPException(
+                status_code=400,
+                detail=parecer_status.get("config_error_message"),
+            )
+
+        if (
+            parecer_status.get("parecer_required")
+            and not parecer_status.get("parecer_found")
+            and req.parecer_user_choice_when_missing != "continue_without"
+        ):
+            raise HTTPException(
+                status_code=409,
+                detail={
+                    "error_code": "PARECER_NATJUS_MISSING",
+                    "title": "Parecer NATJus não encontrado",
+                    "message": "Não foi encontrado parecer NATJus no processo. Ele é essencial para a geração adequada desta peça.",
+                    "instruction": "Anexe o parecer em PDF para prosseguir.",
+                    "modo_atual": "semi_automatico",
+                    "tipo_peca": req.tipo_peca,
+                    "parecer_document_codes": parecer_status.get("parecer_document_codes", []),
+                },
+            )
+
+        parecer_context = build_parecer_audit_payload(
+            parecer_status,
+            user_choice_when_missing=req.parecer_user_choice_when_missing,
+            mode_forced_to_semi_auto=bool(req.parecer_forced_to_semi_auto),
+        )
+
         # Consolida dados extraidos
         dados_extracao = consolidar_dados_extracao(resultado_agente1)
+        dados_extracao["_parecer_natjus"] = parecer_context
+        if parecer_upload_extracao.get("dados_extracao"):
+            _mesclar_dados_extracao(
+                dados_extracao,
+                parecer_upload_extracao.get("dados_extracao", {}),
+            )
+        if parecer_upload_metadata:
+            extraction_mode = (
+                "json_modelo_categoria"
+                if parecer_upload_extracao.get("success")
+                else "texto_bruto_pdf"
+            )
+            dados_extracao["parecer_natjus_upload"] = {
+                "upload_id": parecer_upload_metadata.get("upload_id"),
+                "filename": parecer_upload_metadata.get("filename"),
+                "source": "user_upload",
+                "extraction_mode": extraction_mode,
+                "categoria_resumo_json_id": parecer_upload_extracao.get("categoria_id"),
+                "categoria_resumo_json_nome": parecer_upload_extracao.get("categoria_nome"),
+                "categoria_resumo_json_namespace": parecer_upload_extracao.get("categoria_namespace"),
+                "json_extraction_error": parecer_upload_extracao.get("error"),
+            }
 
         # VALIDADOR DESATIVADO - usar extração bruta da IA
         # Ref: investigação processo 08053502820258120008
@@ -2491,6 +3157,7 @@ async def curation_preview(
             "curadoria": resultado_curadoria.to_dict(),
             "decision_traces": traces_serialized,
             "variaveis_snapshot": resultado_agente2.variaveis_snapshot,
+            "parecer_context": parecer_context,
         }
 
     except HTTPException:
@@ -2596,6 +3263,15 @@ async def curation_generate_stream(
             # Se nao tem resumo_consolidado, precisa executar Agente 1
             resumo_consolidado = req.resumo_consolidado
             dados_extracao = req.dados_extracao or {}
+            parecer_context = req.parecer_context or dados_extracao.get("_parecer_natjus")
+            if not isinstance(parecer_context, dict):
+                parecer_context = build_parecer_audit_payload(
+                    {"parecer_required": False, "parecer_found": False, "parecer_source": "none"}
+                )
+            dados_extracao["_parecer_natjus"] = parecer_context
+            tracker.set_metadata("parecer_required", parecer_context.get("parecer_required"))
+            tracker.set_metadata("parecer_found", parecer_context.get("parecer_found"))
+            tracker.set_metadata("parecer_source", parecer_context.get("parecer_source"))
 
             if not resumo_consolidado:
                 yield f"data: {json.dumps({'tipo': 'agente', 'agente': 1, 'status': 'ativo', 'mensagem': 'Coletando documentos...'})}\n\n"
@@ -2633,6 +3309,8 @@ async def curation_generate_stream(
 
                 resumo_consolidado = resultado_agente1.resumo_consolidado
                 dados_extracao = consolidar_dados_extracao(resultado_agente1)
+                if "_parecer_natjus" not in dados_extracao:
+                    dados_extracao["_parecer_natjus"] = parecer_context
 
                 yield f"data: {json.dumps({'tipo': 'agente', 'agente': 1, 'status': 'concluido', 'mensagem': f'{resultado_agente1.documentos_analisados} docs'})}\n\n"
 
@@ -2870,6 +3548,7 @@ async def curation_generate_stream(
                     "total_excluidos": len(req.modulos_excluidos_ids or []),
                     "decision_traces": req.decision_traces or {},
                     "variaveis_snapshot": req.variaveis_snapshot or {},
+                    "parecer_context": parecer_context,
                 }
                 print(f"[CURADORIA] Metadados salvos: preview={len(req.modulos_preview_ids or [])}, curados={len(req.modulos_ids_curados)}, manuais={total_manuais}, excluidos={len(req.modulos_excluidos_ids or [])}")
             except AttributeError as e:

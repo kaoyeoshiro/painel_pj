@@ -8,7 +8,7 @@ Endpoints para:
 - Associação de categorias a tipos de peça
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import HTMLResponse
 from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
@@ -16,10 +16,13 @@ from sqlalchemy import func
 from typing import List, Optional
 from pydantic import BaseModel
 from datetime import datetime
+import json
 
 from database.connection import get_db
 from auth.dependencies import get_current_user
 from auth.models import User
+from admin.models import ConfiguracaoIA
+from services.config_cache import config_cache
 from sistemas.gerador_pecas.models_config_pecas import (
     CategoriaDocumento,
     TipoPeca,
@@ -28,6 +31,12 @@ from sistemas.gerador_pecas.models_config_pecas import (
     get_tipos_peca_seed,
     carregar_categorias_json,
     get_codigos_por_categoria_json
+)
+from sistemas.gerador_pecas.services_parecer_natjus import (
+    CONFIG_KEY_DOCUMENT_CODES,
+    CONFIG_KEY_REQUIRED_PIECE_TYPES,
+    load_parecer_natjus_config,
+    normalize_piece_type,
 )
 from sistemas.gerador_pecas.services_source_resolver import invalidar_cache_source_resolver
 
@@ -86,6 +95,11 @@ class TipoPecaResponse(TipoPecaBase):
 
 class AssociacaoCategoriasRequest(BaseModel):
     categorias_ids: List[int]
+
+
+class ParecerNatjusAdminConfigUpdateRequest(BaseModel):
+    parecer_required_for_piece_types: List[str] = []
+    parecer_document_codes: List[int] = []
 
 
 # ===========================================
@@ -515,11 +529,110 @@ async def seed_dados_iniciais(
 # Página Admin HTML
 # ===========================================
 
-@router.get("/admin", response_class=HTMLResponse)
-async def pagina_admin_config_pecas(request: Request):
+@router.get("/admin")
+async def pagina_admin_config_pecas(
+    request: Request,
+    format: Optional[str] = Query(default=None, description="Use 'json' para retornar configuracao"),
+    db: Session = Depends(get_db),
+):
     """Página de administração de tipos de peça e categorias.
     A autenticação é feita via JavaScript no cliente."""
+    wants_json = (
+        (format or "").lower() == "json"
+        or "application/json" in (request.headers.get("accept") or "").lower()
+    )
+
+    if wants_json:
+        config = load_parecer_natjus_config(db, use_cache=False)
+        return {
+            "parecer_required_for_piece_types": list(config.required_piece_types),
+            "parecer_document_codes": list(config.document_codes),
+        }
+
     return templates.TemplateResponse(
         "admin_config_pecas.html",
         {"request": request}
     )
+
+
+def _upsert_config_ia(
+    db: Session,
+    *,
+    key: str,
+    value: str,
+    tipo_valor: str,
+    descricao: str,
+):
+    config = db.query(ConfiguracaoIA).filter(
+        ConfiguracaoIA.sistema == "gerador_pecas",
+        ConfiguracaoIA.chave == key
+    ).first()
+
+    if config:
+        config.valor = value
+        config.tipo_valor = tipo_valor
+        config.descricao = descricao
+        return
+
+    db.add(
+        ConfiguracaoIA(
+            sistema="gerador_pecas",
+            chave=key,
+            valor=value,
+            tipo_valor=tipo_valor,
+            descricao=descricao
+        )
+    )
+
+
+@router.put("/admin")
+async def atualizar_config_parecer_natjus_admin(
+    dados: ParecerNatjusAdminConfigUpdateRequest,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user),
+):
+    """Atualiza as configurações de parecer NATJus usadas na geração."""
+    if current_user.role != "admin":
+        raise HTTPException(status_code=403, detail="Acesso negado")
+
+    piece_types: List[str] = []
+    for item in dados.parecer_required_for_piece_types:
+        normalized = normalize_piece_type(item)
+        if normalized and normalized not in piece_types:
+            piece_types.append(normalized)
+
+    document_codes: List[int] = []
+    for item in dados.parecer_document_codes:
+        try:
+            code = int(str(item).strip())
+        except (TypeError, ValueError):
+            continue
+        if code not in document_codes:
+            document_codes.append(code)
+
+    piece_types = sorted(piece_types)
+    document_codes = sorted(document_codes)
+
+    _upsert_config_ia(
+        db,
+        key=CONFIG_KEY_REQUIRED_PIECE_TYPES,
+        value=json.dumps(piece_types, ensure_ascii=False),
+        tipo_valor="json",
+        descricao="Tipos de peça que exigem parecer NATJus."
+    )
+    _upsert_config_ia(
+        db,
+        key=CONFIG_KEY_DOCUMENT_CODES,
+        value=json.dumps(document_codes, ensure_ascii=False),
+        tipo_valor="json",
+        descricao="Códigos de documentos válidos para identificar parecer NATJus."
+    )
+
+    db.commit()
+    config_cache.invalidate_all()
+
+    return {
+        "message": "Configuracao de parecer NATJus atualizada com sucesso.",
+        "parecer_required_for_piece_types": piece_types,
+        "parecer_document_codes": document_codes,
+    }

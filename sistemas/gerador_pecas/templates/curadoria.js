@@ -29,12 +29,13 @@ class CuradoriaModule {
         this.modulosDisponiveisAgrupados = {}; // {categoria: [modulos...]}
         this.currentGroupId = null;
         this.secoesColapsadas = {}; // Estado das seções colapsáveis
+        this.parecerContext = null; // Contexto de auditoria do parecer NATJus
     }
 
     /**
      * Inicializa o modo semi-automatico
      */
-    async iniciarModoSemiAutomatico(numeroCnj, tipoPeca, groupId, subcategoriaIds) {
+    async iniciarModoSemiAutomatico(numeroCnj, tipoPeca, groupId, subcategoriaIds, options = {}) {
         try {
             this.currentGroupId = groupId;
             this.mostrarModalCuradoria();
@@ -50,13 +51,46 @@ class CuradoriaModule {
                     numero_cnj: numeroCnj,
                     tipo_peca: tipoPeca,
                     group_id: groupId,
-                    subcategoria_ids: subcategoriaIds
+                    subcategoria_ids: subcategoriaIds,
+                    parecer_upload_id: options.parecer_upload_id || null,
+                    parecer_user_choice_when_missing: options.parecer_user_choice_when_missing || null,
+                    parecer_forced_to_semi_auto: options.parecer_forced_to_semi_auto === true
                 })
             });
 
             if (!response.ok) {
-                const error = await response.json();
-                throw new Error(error.detail || 'Erro ao carregar preview');
+                const error = await response.json().catch(() => ({}));
+                const detail = error?.detail || {};
+
+                if (response.status === 409 && detail?.error_code === 'PARECER_NATJUS_MISSING') {
+                    this.fecharModalCuradoria();
+                    if (typeof app?.abrirModalParecerNatjus === 'function') {
+                        app.abrirModalParecerNatjus(
+                            {
+                                tipo: 'parecer_natjus_ausente',
+                                titulo: detail.title || 'Parecer NATJus não encontrado',
+                                mensagem: detail.message,
+                                instrucao: detail.instruction,
+                                tipo_peca: detail.tipo_peca || tipoPeca,
+                                modo_atual: 'semi_automatico',
+                                parecer_required: true,
+                                parecer_found: false,
+                                parecer_document_codes: detail.parecer_document_codes || [],
+                            },
+                            {
+                                numero_cnj: numeroCnj,
+                                tipo_peca: tipoPeca,
+                                group_id: groupId,
+                                subcategoria_ids: subcategoriaIds,
+                                modo: 'semi_automatico',
+                            }
+                        );
+                        return;
+                    }
+                }
+
+                const detailMsg = typeof detail === 'string' ? detail : (detail?.message || detail?.title);
+                throw new Error(detailMsg || 'Erro ao carregar preview');
             }
 
             const resultado = await response.json();
@@ -66,6 +100,7 @@ class CuradoriaModule {
             }
 
             this.dadosCuradoria = resultado.curadoria;
+            this.parecerContext = resultado.parecer_context || null;
             // Armazena decision traces para enviar com gerar-stream
             this.decisionTraces = resultado.decision_traces || {};
             this.variaveisSnapshot = resultado.variaveis_snapshot || {};
@@ -1118,7 +1153,8 @@ class CuradoriaModule {
                     resumo_consolidado: this.dadosCuradoria.resumo_consolidado,
                     dados_extracao: this.dadosCuradoria.dados_extracao,
                     decision_traces: this.decisionTraces || {},
-                    variaveis_snapshot: this.variaveisSnapshot || {}
+                    variaveis_snapshot: this.variaveisSnapshot || {},
+                    parecer_context: this.parecerContext || null
                 })
             });
 

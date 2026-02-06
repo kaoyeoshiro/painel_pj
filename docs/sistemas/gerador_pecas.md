@@ -54,6 +54,22 @@ O Gerador de Pecas e o sistema principal do Portal PGE-MS. Ele automatiza a cria
 | Nenhum modulo ativado | Gera peca so com prompt base e tipo | `sistemas/gerador_pecas/orquestrador_agentes.py` |
 | Tipo de peca nao informado | Se permitido, Agente 2 detecta; senao, HTTP 400 | `sistemas/gerador_pecas/router.py:189-232` |
 
+### B.6) Parecer NATJus Obrigatorio (Config-Driven)
+
+| Regra | Descricao | Fonte no Codigo |
+|-------|-----------|-----------------|
+| Fonte unica de configuracao | Tipos de peca exigentes e codigos de documentos NATJus sao lidos dinamicamente de `/api/gerador-pecas/config/admin` (`parecer_required_for_piece_types` e `parecer_document_codes`) | `sistemas/gerador_pecas/services_parecer_natjus.py` |
+| Sem hardcode de codigos NATJus | Backend e frontend nao dependem de lista fixa de codigos para validar parecer | `sistemas/gerador_pecas/services_parecer_natjus.py`, `sistemas/gerador_pecas/services_nat_origem.py`, `frontend/src/sistemas/gerador_pecas/app.ts` |
+| Parecer ausente em modo automatico | Emite evento SSE `parecer_natjus_ausente` e bloqueia geracao ate decisao do usuario no modal | `sistemas/gerador_pecas/router.py` |
+| Continuar sem parecer | Em modo automatico, gera obrigatoriamente via semi-automatico; em semi-automatico, segue no mesmo modo com auditoria | `frontend/src/sistemas/gerador_pecas/app.ts`, `sistemas/gerador_pecas/templates/curadoria.js` |
+| Upload de parecer com JSON tecnico | PDF anexado no modal passa por extracao estruturada usando a categoria de `/admin/categorias-resumo-json` mapeada pelos `parecer_document_codes`; se falhar, usa fallback de texto bruto com log | `sistemas/gerador_pecas/router.py` |
+| Normalizacao de tipo de peca | Comparacao de `parecer_required_for_piece_types` remove acentos/separadores (ex.: `Contestação` == `contestacao`) para evitar mismatch de slug | `sistemas/gerador_pecas/services_parecer_natjus.py` |
+| Consumo sem cache na decisao | Fluxos de geracao e endpoint JSON do admin leem `parecer_*` direto do banco (`use_cache=false`) para refletir imediatamente a configuracao vigente | `sistemas/gerador_pecas/router.py`, `sistemas/gerador_pecas/router_config_pecas.py` |
+| Protecao contra cache stale | Mesmo quando `use_cache=true` em outros pontos, se leitura vier vazia para ambos os campos o backend refaz consulta direta e atualiza cache | `sistemas/gerador_pecas/services_parecer_natjus.py` |
+| Fallback de compatibilidade | Se `parecer_*` estiver ausente em `configuracoes_ia`, a regra e os codigos sao derivados dos vinculos `tipo_peca_categorias` com categoria `parecer/nat` para evitar geracao sem validacao | `sistemas/gerador_pecas/services_parecer_natjus.py` |
+| Erro de configuracao | Se peca exige parecer e `parecer_document_codes` vier vazio, retorna erro amigavel e registra log | `sistemas/gerador_pecas/services_parecer_natjus.py`, `sistemas/gerador_pecas/router.py` |
+| Auditoria obrigatoria | Persistencia dos campos `parecer_required`, `parecer_found`, `parecer_source`, `user_choice_when_missing`, `mode_forced_to_semi_auto` | `sistemas/gerador_pecas/router.py` |
+
 ## C) Fluxo Funcional
 
 ### Fluxo Principal (CNJ -> Peca)
@@ -126,10 +142,13 @@ O Gerador de Pecas e o sistema principal do Portal PGE-MS. Ele automatiza a cria
 | GET | `/gerador-pecas/api/grupos/{id}/subgrupos` | Listar subgrupos de um grupo |
 | POST | `/gerador-pecas/api/processar-stream` | Processar por CNJ (SSE) |
 | POST | `/gerador-pecas/api/processar-pdfs-stream` | Processar PDFs anexados (SSE) |
+| POST | `/gerador-pecas/api/parecer/upload` | Upload de parecer NATJus em PDF associado ao CNJ/usuario (consumido com extracao JSON no fluxo de geracao) |
 | POST | `/gerador-pecas/api/editar-minuta` | Editar via chat (chatbot) |
 | POST | `/gerador-pecas/api/exportar-docx` | Exportar Markdown para DOCX |
 | GET | `/gerador-pecas/api/historico` | Listar geracoes do usuario |
 | POST | `/gerador-pecas/api/feedback` | Enviar feedback |
+| GET | `/api/gerador-pecas/config/admin?format=json` | Retorna configuracao de parecer NATJus para admin/frontend |
+| PUT | `/api/gerador-pecas/config/admin` | Atualiza tipos exigentes e codigos NATJus (admin) |
 
 ### Payload de Processamento
 
@@ -139,7 +158,10 @@ O Gerador de Pecas e o sistema principal do Portal PGE-MS. Ele automatiza a cria
   "tipo_peca": "contestacao",
   "observacao_usuario": "Foco na tese de prescricao",
   "group_id": 1,
-  "subcategoria_ids": [3, 4]
+  "subcategoria_ids": [3, 4],
+  "parecer_upload_id": "opcional",
+  "parecer_user_choice_when_missing": "uploaded | continue_without",
+  "parecer_forced_to_semi_auto": false
 }
 ```
 
@@ -150,6 +172,7 @@ O Gerador de Pecas e o sistema principal do Portal PGE-MS. Ele automatiza a cria
 | `status` | Atualiza etapa (agente1, agente2, agente3) |
 | `chunk` | Fragmento da peca gerada |
 | `metadata` | Informacoes finais (geracao_id, tempos, etc) |
+| `parecer_natjus_ausente` | Dispara modal obrigatorio de decisao (upload/continuar sem parecer) |
 | `error` | Erro durante processamento |
 | `done` | Processamento concluido |
 
@@ -238,6 +261,16 @@ http://localhost:8000/gerador-pecas
 ### Como Testar
 
 ```bash
+# Build frontend (gera templates/app.js)
+cd frontend && npm run build
+
+# Testes backend da feature NATJus
+cd ..
+pytest -q tests/test_parecer_natjus_feature.py
+
+# Testes de integração frontend (modal NATJus)
+node --test frontend/tests/parecer_natjus_flow.test.mjs
+
 # Processar por CNJ
 curl -X POST http://localhost:8000/gerador-pecas/api/processar-stream \
   -H "Authorization: Bearer TOKEN" \
@@ -249,6 +282,16 @@ curl -X POST http://localhost:8000/gerador-pecas/api/buscar-argumentos \
   -H "Authorization: Bearer TOKEN" \
   -d '{"query": "medicamento alto custo", "limit": 5}'
 ```
+
+### Checklist Manual (Parecer NATJus)
+
+1. Configurar uma peca em `parecer_required_for_piece_types` e manter `parecer_document_codes` preenchido.
+2. Gerar em modo automatico com processo que possui parecer NATJus: fluxo segue sem modal.
+3. Gerar em modo automatico com processo sem parecer NATJus: modal abre antes da geracao.
+4. No modal, clicar "Continuar sem parecer" em modo automatico: deve exibir aviso e migrar para semi-automatico com toast.
+5. No modal, clicar "Anexar PDF do parecer": upload concluido, extracao JSON via categoria de parecer tecnico e geracao segue no modo original.
+6. Repetir no modo semi-automatico: "Continuar sem parecer" nao altera modo, apenas prossegue.
+7. Configurar `parecer_document_codes` vazio para uma peca exigente: fluxo deve bloquear com erro amigavel de configuracao.
 
 ### Logs e Telemetria
 

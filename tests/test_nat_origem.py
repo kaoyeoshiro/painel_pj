@@ -26,6 +26,12 @@ import os
 # Adiciona o diretório raiz ao path
 sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
+# Define códigos NATJus para os testes deste módulo (configuração dinâmica via env)
+os.environ.setdefault(
+    "GERADOR_PARECER_NATJUS_DOCUMENT_CODES",
+    "[207, 8451, 9636, 59, 8490]"
+)
+
 from sistemas.gerador_pecas.services_nat_origem import (
     CODIGOS_NAT,
     CODIGOS_INDICADORES_AGRAVO,

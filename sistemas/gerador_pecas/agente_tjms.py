@@ -44,6 +44,8 @@ from services.text_normalizer import text_normalizer
 # Cache de resumos JSON
 from utils.cache import get_cached_resumo, set_cached_resumo
 
+from sistemas.gerador_pecas.services_nat_origem import obter_codigos_nat_configurados
+
 
 def _normalizar_texto_pdf(texto: str) -> str:
     """
@@ -101,9 +103,7 @@ CATEGORIAS_EXCLUIDAS = [
 # Documentos que devem ir INTEGRAIS para a IA (sem resumo JSON)
 # =========================
 # Para desativar esta funcionalidade, basta comentar ou esvaziar esta lista
-# NOTA: Parecer NAT (8451, 9636) e Nota Técnica NATJus (59, 8490) removidos para usar extração JSON padrão
 CODIGOS_TEXTO_INTEGRAL = {
-    207,   # Parecer do CATES - Câmara Técnica em Saúde
     8369,  # Laudo Pericial (pode incluir pareceres técnicos)
 }
 
@@ -1116,6 +1116,8 @@ class AgenteTJMS:
         self.db_session = db_session
         self.codigos_permitidos = codigos_permitidos  # None = usa CATEGORIAS_EXCLUIDAS
         self.codigos_primeiro_doc = codigos_primeiro_doc or set()  # Códigos especiais (ex: Petição Inicial)
+        self.codigos_texto_integral = set(CODIGOS_TEXTO_INTEGRAL)
+        self.codigos_texto_integral.update(obter_codigos_nat_configurados(db_session))
         
         # Semáforo para controlar concorrência de chamadas à IA
         self._semaphore = None  # Criado sob demanda no contexto async
@@ -1908,17 +1910,15 @@ REGRAS IMPORTANTES:
         """
         Verifica se o documento deve ser enviado com texto INTEGRAL (sem resumo JSON).
         
-        Documentos como Parecer NAT/CATES devem ir completos para os agentes seguintes,
-        pois seu conteúdo técnico é essencial para a geração da peça.
-        
-        Para DESATIVAR esta funcionalidade, basta esvaziar CODIGOS_TEXTO_INTEGRAL no topo do arquivo.
+        Códigos NATJus são carregados dinamicamente da configuração admin.
+        Para desativar a funcionalidade em geral, esvazie `self.codigos_texto_integral`.
         """
-        if not CODIGOS_TEXTO_INTEGRAL:
+        if not self.codigos_texto_integral:
             return False
         
         try:
             codigo = int(doc.tipo_documento) if doc.tipo_documento else 0
-            return codigo in CODIGOS_TEXTO_INTEGRAL
+            return codigo in self.codigos_texto_integral
         except (ValueError, TypeError):
             return False
 
