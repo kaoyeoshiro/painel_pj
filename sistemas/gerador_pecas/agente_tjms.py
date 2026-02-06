@@ -17,6 +17,8 @@ import re
 import sys
 import base64
 import asyncio
+import hashlib
+import logging
 import aiohttp
 import xml.etree.ElementTree as ET
 from datetime import datetime
@@ -99,13 +101,22 @@ CATEGORIAS_EXCLUIDAS = [
     9558,  # Termos diversos
 ]
 
+logger = logging.getLogger("agente_tjms")
+
 # =========================
 # Documentos que devem ir INTEGRAIS para a IA (sem resumo JSON)
 # =========================
-# Para desativar esta funcionalidade, basta comentar ou esvaziar esta lista
+# ATENÇÃO: NÃO adicionar códigos NATJus aqui. NATJus deve passar pelo pipeline
+# de extração JSON estruturado. Enviar texto integral causa estouro de tokens
+# e degrada severamente a qualidade da geração.
+# Ref: incidente de produção 2026-02-06
 CODIGOS_TEXTO_INTEGRAL = {
     8369,  # Laudo Pericial (pode incluir pareceres técnicos)
 }
+
+# Limite máximo para documentos integrais (chars). Documentos que excedam este
+# limite serão rejeitados e processados via pipeline normal de resumo.
+MAX_TEXTO_INTEGRAL_CHARS = 50000
 
 
 def documento_permitido(
@@ -1117,7 +1128,10 @@ class AgenteTJMS:
         self.codigos_permitidos = codigos_permitidos  # None = usa CATEGORIAS_EXCLUIDAS
         self.codigos_primeiro_doc = codigos_primeiro_doc or set()  # Códigos especiais (ex: Petição Inicial)
         self.codigos_texto_integral = set(CODIGOS_TEXTO_INTEGRAL)
-        self.codigos_texto_integral.update(obter_codigos_nat_configurados(db_session))
+        # IMPORTANTE: NATJus NÃO deve ir como texto integral para o Agente 3.
+        # Documentos NATJus devem passar pelo pipeline normal de extração JSON/resumo.
+        # Enviar texto integral (até 150K chars) causa estouro de tokens e degrada qualidade.
+        # Ref: incidente de produção 2026-02-06 (processo 0828724-58.2025.8.12.0110)
         
         # Semáforo para controlar concorrência de chamadas à IA
         self._semaphore = None  # Criado sob demanda no contexto async
@@ -1857,6 +1871,12 @@ REGRAS IMPORTANTES:
 
             if erro:
                 # Log detalhado para diagnóstico
+                logger.warning(
+                    "[JSON_RETRY] Falha no parse JSON: doc_id=%s tipo=%s "
+                    "descricao='%s' erro=%s tamanho_resposta=%d",
+                    doc.id, doc.tipo_documento,
+                    (doc.descricao or "")[:80], erro, len(resposta),
+                )
                 print(f"[JSON_RETRY] ⚠️ Falha no parse JSON para doc '{doc.descricao or doc.id}' (tipo={doc.tipo_documento})")
                 print(f"[JSON_RETRY]    Erro: {erro}")
                 print(f"[JSON_RETRY]    Resposta (primeiros 500 chars): {resposta[:500]}...")
@@ -1967,11 +1987,23 @@ REGRAS IMPORTANTES:
 
                     # Se é documento que deve ir INTEGRAL, armazena texto completo como resumo
                     if enviar_integral:
-                        # Limita a 150000 chars para evitar problemas de contexto
-                        texto_integral = texto_completo[:150000]
-                        doc.resumo = f"**[DOCUMENTO INTEGRAL - {doc.categoria_nome}]**\n\n{texto_integral}"
-                        doc.descricao_ia = doc.descricao or doc.categoria_nome
-                        return
+                        if len(texto_completo) > MAX_TEXTO_INTEGRAL_CHARS:
+                            logger.warning(
+                                "[AGENTE1] Documento integral excede limite: doc_id=%s tipo=%s "
+                                "categoria=%s tamanho=%d limite=%d - encaminhando para pipeline de resumo",
+                                doc.id, doc.tipo_documento, doc.categoria_nome,
+                                len(texto_completo), MAX_TEXTO_INTEGRAL_CHARS,
+                            )
+                            # Não envia integral - deixa seguir para o pipeline normal de resumo
+                        else:
+                            texto_integral = texto_completo[:MAX_TEXTO_INTEGRAL_CHARS]
+                            doc.resumo = f"**[DOCUMENTO INTEGRAL - {doc.categoria_nome}]**\n\n{texto_integral}"
+                            doc.descricao_ia = doc.descricao or doc.categoria_nome
+                            logger.info(
+                                "[AGENTE1] Documento integral enviado: doc_id=%s tipo=%s tamanho=%d",
+                                doc.id, doc.tipo_documento, len(texto_integral),
+                            )
+                            return
 
                     # Truncar se muito grande
                     texto = texto_completo[:80000]  # Mais espaço para docs agrupados
@@ -2079,11 +2111,23 @@ REGRAS IMPORTANTES:
 
                     # Se é documento que deve ir INTEGRAL, armazena texto completo como resumo
                     if enviar_integral:
-                        # Limita a 150000 chars para evitar problemas de contexto
-                        texto_integral = doc.texto_extraido[:150000]
-                        doc.resumo = f"**[DOCUMENTO INTEGRAL - {doc.categoria_nome}]**\n\n{texto_integral}"
-                        doc.descricao_ia = doc.descricao or doc.categoria_nome
-                        return
+                        if len(doc.texto_extraido) > MAX_TEXTO_INTEGRAL_CHARS:
+                            logger.warning(
+                                "[AGENTE1] Documento integral excede limite: doc_id=%s tipo=%s "
+                                "categoria=%s tamanho=%d limite=%d - encaminhando para pipeline de resumo",
+                                doc.id, doc.tipo_documento, doc.categoria_nome,
+                                len(doc.texto_extraido), MAX_TEXTO_INTEGRAL_CHARS,
+                            )
+                            # Não envia integral - deixa seguir para o pipeline normal de resumo
+                        else:
+                            texto_integral = doc.texto_extraido[:MAX_TEXTO_INTEGRAL_CHARS]
+                            doc.resumo = f"**[DOCUMENTO INTEGRAL - {doc.categoria_nome}]**\n\n{texto_integral}"
+                            doc.descricao_ia = doc.descricao or doc.categoria_nome
+                            logger.info(
+                                "[AGENTE1] Documento integral enviado: doc_id=%s tipo=%s tamanho=%d",
+                                doc.id, doc.tipo_documento, len(texto_integral),
+                            )
+                            return
 
                     texto = doc.texto_extraido[:50000]
 

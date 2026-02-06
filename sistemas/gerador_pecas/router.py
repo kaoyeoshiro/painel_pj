@@ -484,6 +484,11 @@ async def _extrair_json_upload_parecer_natjus(
         return resultado
 
 
+# Limite máximo para texto bruto de parecer NATJus em fallback (chars).
+# Quando a extração JSON falha, NÃO enviar o documento inteiro como texto bruto.
+# Enviar apenas um snippet mínimo para que a IA saiba que o parecer existe.
+_MAX_PARECER_FALLBACK_CHARS = 3000
+
 def _anexar_upload_parecer_ao_resumo(
     resumo_consolidado: str,
     upload_metadata: Dict[str, Any],
@@ -494,9 +499,23 @@ def _anexar_upload_parecer_ao_resumo(
     origem_extracao = "json_modelo_categoria"
 
     if not conteudo:
+        # GUARDRAIL: Quando JSON estruturado não está disponível, NÃO enviar texto
+        # integral do NATJus. Limitar a snippet mínimo para referência.
         texto_limpo = (texto_parecer or "").strip()
-        if len(texto_limpo) > 30000:
-            texto_limpo = texto_limpo[:30000] + "\n\n[... texto do parecer NATJus truncado ...]"
+        if len(texto_limpo) > _MAX_PARECER_FALLBACK_CHARS:
+            logger.warning(
+                "[PARECER-NATJUS] Fallback texto bruto ativado: tamanho_original=%d "
+                "truncado_para=%d upload_id=%s. Extração JSON falhou.",
+                len(texto_limpo),
+                _MAX_PARECER_FALLBACK_CHARS,
+                upload_metadata.get("upload_id"),
+            )
+            texto_limpo = (
+                texto_limpo[:_MAX_PARECER_FALLBACK_CHARS]
+                + "\n\n[... TEXTO DO PARECER NATJUS TRUNCADO - extração JSON falhou. "
+                "Apenas snippet inicial incluído para referência. "
+                "Consultar documento original para análise completa. ...]"
+            )
         if not texto_limpo:
             texto_limpo = "[Nao foi possivel extrair texto do PDF anexado.]"
         conteudo = texto_limpo
@@ -997,11 +1016,23 @@ async def processar_processo_stream(
                     )
                     if parecer_upload_extracao.get("success"):
                         yield f"data: {json.dumps({'tipo': 'info', 'mensagem': 'Parecer NATJus do upload processado em JSON tecnico (categorias-resumo-json).'})}\n\n"
+                        tracker.set_metadata("natjus_extraction_success", True)
+                        logger.info(
+                            "[PARECER-NATJUS] Extração JSON bem-sucedida: upload_id=%s "
+                            "categoria=%s tamanho_texto=%d",
+                            parecer_upload_metadata.get("upload_id"),
+                            parecer_upload_extracao.get("categoria_nome"),
+                            len(parecer_upload_texto or ""),
+                        )
                     else:
+                        tracker.set_metadata("natjus_extraction_success", False)
+                        tracker.set_metadata("natjus_extraction_error", parecer_upload_extracao.get("error"))
                         logger.warning(
-                            "[PARECER-NATJUS] Upload sem JSON estruturado; usando texto bruto. upload_id=%s erro=%s",
+                            "[PARECER-NATJUS] Upload sem JSON estruturado; usando fallback limitado. "
+                            "upload_id=%s erro=%s tamanho_texto=%d",
                             parecer_upload_metadata.get("upload_id"),
                             parecer_upload_extracao.get("error"),
+                            len(parecer_upload_texto or ""),
                         )
                     resumo_para_geracao = _anexar_upload_parecer_ao_resumo(
                         resumo_para_geracao,
@@ -1100,6 +1131,15 @@ async def processar_processo_stream(
                 
                 # Agente 3: Gerador (COM STREAMING REAL)
                 tracker.mark("prompt_build_start")
+
+                # Telemetria: tamanho do payload do Agente 3
+                _resumo_size = len(resumo_para_geracao)
+                logger.info(
+                    "[PIPELINE] agent3_payload_size: cnj=%s tamanho=%d",
+                    cnj_limpo, _resumo_size,
+                )
+                tracker.set_metadata("agent3_resumo_size", _resumo_size)
+
                 yield f"data: {json.dumps({'tipo': 'agente', 'agente': 3, 'status': 'ativo', 'mensagem': 'Gerando peça jurídica com IA...'})}\n\n"
 
                 # Log se há observação do usuário

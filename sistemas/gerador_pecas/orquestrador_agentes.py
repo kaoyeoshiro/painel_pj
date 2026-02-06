@@ -8,6 +8,8 @@ Coordena os 3 agentes do fluxo:
 3. Agente 3 (Gerador): Gera a peça jurídica usando Gemini 3 Pro
 """
 
+import hashlib
+import logging
 import os
 import json
 import asyncio
@@ -27,12 +29,18 @@ from admin.models import ConfiguracaoIA
 from admin.models_prompts import PromptModulo
 from services.ia_params_resolver import get_ia_params, IAParams
 
+logger = logging.getLogger("orquestrador_agentes")
+
 # Constantes centralizadas
 from sistemas.gerador_pecas.constants import (
     MODELO_AGENTE1_PADRAO,
     TIMEOUT_AG2_DETECCAO,
     TIMEOUT_AG2_FAST_PATH,
 )
+
+# Limite de segurança para o resumo consolidado enviado ao Agente 3.
+# Resumos acima deste limite indicam vazamento de documento integral.
+MAX_RESUMO_CONSOLIDADO_CHARS = 200000
 
 
 def _extrair_json_de_resumo_consolidado(resumo_consolidado: str) -> Dict[str, Any]:
@@ -444,7 +452,46 @@ def _montar_prompt_agente3(
     Monta o prompt completo para o Agente 3.
 
     Combina todos os componentes em um único prompt formatado.
+    Inclui guardrails de segurança contra payloads excessivos.
     """
+    # Guardrail: detectar [DOCUMENTO INTEGRAL] de NATJus - nunca deveria chegar aqui
+    import re as _re
+    natjus_integral_match = _re.search(
+        r"\[DOCUMENTO INTEGRAL\s*-\s*[^\]]*(?:NATJus|NAT|CATES|Nota\s+T[eé]cnica)[^\]]*\]",
+        resumo_consolidado,
+        _re.IGNORECASE,
+    )
+    if natjus_integral_match:
+        logger.error(
+            "[AGENTE3-GUARDRAIL] Documento NATJus integral detectado no resumo! "
+            "Texto='%s' tamanho_resumo=%d hash=%s. "
+            "Isso indica falha no pipeline de extração.",
+            natjus_integral_match.group()[:100],
+            len(resumo_consolidado),
+            hashlib.sha256(resumo_consolidado[:1000].encode()).hexdigest()[:16],
+        )
+        # Remove o bloco integral do NATJus do resumo para proteger o Agente 3
+        pattern = r"\*\*\[DOCUMENTO INTEGRAL\s*-\s*[^\]]*(?:NATJus|NAT|CATES|Nota\s+T[eé]cnica)[^\]]*\]\*\*\n\n[\s\S]*?(?=\n---\n|\n## |\Z)"
+        resumo_consolidado = _re.sub(
+            pattern,
+            "**[DOCUMENTO NATJUS REMOVIDO - extração JSON falhou, consultar parecer manualmente]**\n",
+            resumo_consolidado,
+            flags=_re.IGNORECASE,
+        )
+
+    # Guardrail: tamanho total do resumo
+    tamanho_resumo = len(resumo_consolidado)
+    if tamanho_resumo > MAX_RESUMO_CONSOLIDADO_CHARS:
+        logger.warning(
+            "[AGENTE3-GUARDRAIL] Resumo consolidado excede limite: tamanho=%d limite=%d. Truncando.",
+            tamanho_resumo,
+            MAX_RESUMO_CONSOLIDADO_CHARS,
+        )
+        resumo_consolidado = (
+            resumo_consolidado[:MAX_RESUMO_CONSOLIDADO_CHARS]
+            + "\n\n[... resumo truncado por exceder limite de segurança ...]\n"
+        )
+
     return f"""{prompt_sistema}
 
 {prompt_peca}
