@@ -555,7 +555,8 @@ async def processar_processo_stream(
                     resumo_para_geracao,
                     tipo_peca,
                     dados_processo=resultado_agente1.dados_brutos,
-                    dados_extracao=dados_extracao
+                    dados_extracao=dados_extracao,
+                    numero_processo=cnj_limpo
                 )
 
                 tracker.mark("agente2_done", modulos=len(resultado_agente2.modulos_ids) if not resultado_agente2.erro else 0)
@@ -2357,6 +2358,9 @@ class CurationGenerateRequest(BaseModel):
     # Dados do Agente 1 (para evitar reprocessamento)
     resumo_consolidado: Optional[str] = None
     dados_extracao: Optional[Dict] = None
+    # Decision traces do preview (para auditoria causal)
+    decision_traces: Optional[Dict] = None
+    variaveis_snapshot: Optional[Dict] = None
 
 
 @router.post("/curadoria/preview")
@@ -2451,7 +2455,8 @@ async def curation_preview(
             resultado_agente1.resumo_consolidado,
             req.tipo_peca,
             dados_processo=resultado_agente1.dados_brutos,
-            dados_extracao=dados_extracao
+            dados_extracao=dados_extracao,
+            numero_processo=cnj_limpo
         )
 
         if resultado_agente2.erro:
@@ -2475,10 +2480,17 @@ async def curation_preview(
             group_id=grupo.id
         )
 
+        # Serializa decision_traces com chaves string (JSON não suporta int keys)
+        traces_serialized = {
+            str(k): v for k, v in resultado_agente2.decision_traces.items()
+        } if resultado_agente2.decision_traces else {}
+
         return {
             "success": True,
             "modo_ativacao": resultado_agente2.modo_ativacao,
-            "curadoria": resultado_curadoria.to_dict()
+            "curadoria": resultado_curadoria.to_dict(),
+            "decision_traces": traces_serialized,
+            "variaveis_snapshot": resultado_agente2.variaveis_snapshot,
         }
 
     except HTTPException:
@@ -2855,7 +2867,9 @@ async def curation_generate_stream(
                     "total_preview": len(req.modulos_preview_ids or []),
                     "total_curados": len(req.modulos_ids_curados),
                     "total_manuais": total_manuais,
-                    "total_excluidos": len(req.modulos_excluidos_ids or [])
+                    "total_excluidos": len(req.modulos_excluidos_ids or []),
+                    "decision_traces": req.decision_traces or {},
+                    "variaveis_snapshot": req.variaveis_snapshot or {},
                 }
                 print(f"[CURADORIA] Metadados salvos: preview={len(req.modulos_preview_ids or [])}, curados={len(req.modulos_ids_curados)}, manuais={total_manuais}, excluidos={len(req.modulos_excluidos_ids or [])}")
             except AttributeError as e:

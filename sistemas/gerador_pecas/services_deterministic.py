@@ -1297,6 +1297,269 @@ class DeterministicRuleEvaluator:
 
         return False
 
+    # ==================================================================
+    # TRACED EVALUATION - Métodos paralelos que produzem decision traces
+    # ==================================================================
+
+    def avaliar_com_trace(self, regra: Dict, dados: Dict[str, Any]) -> tuple:
+        """
+        Avalia uma regra determinística com trace granular de cada condição.
+
+        Args:
+            regra: AST JSON da regra
+            dados: Dicionário com valores das variáveis
+
+        Returns:
+            Tupla (bool, dict) onde dict contém:
+            - checks: lista de checks individuais avaliados
+            - evaluation_mode: ALL/ANY/SINGLE/NOT
+            - short_circuit: info de short-circuit se houve
+            - final_result: resultado final booleano
+        """
+        try:
+            resultado, trace = self._avaliar_no_trace(regra, dados)
+            trace["final_result"] = resultado
+            return resultado, trace
+        except Exception as e:
+            logger.error(f"Erro ao avaliar regra com trace: {e}")
+            return False, {
+                "checks": [],
+                "evaluation_mode": "ERROR",
+                "short_circuit": None,
+                "final_result": False,
+                "error": str(e),
+            }
+
+    def _avaliar_no_trace(self, no: Dict, dados: Dict[str, Any]) -> tuple:
+        """Avalia um nó da árvore com trace. Retorna (bool, trace_dict)."""
+        tipo = no.get("type")
+
+        if tipo == "condition":
+            resultado, check = self._avaliar_condicao_trace(no, dados)
+            return resultado, {
+                "checks": [check],
+                "evaluation_mode": "SINGLE",
+                "short_circuit": None,
+            }
+
+        elif tipo == "and":
+            conditions = no.get("conditions", [])
+            all_checks = []
+            short_circuit_info = None
+
+            for i, c in enumerate(conditions):
+                sub_resultado, sub_trace = self._avaliar_no_trace(c, dados)
+                all_checks.extend(sub_trace.get("checks", []))
+
+                if not sub_resultado:
+                    # AND short-circuit: parou na primeira condição falsa
+                    failed_check = sub_trace["checks"][-1] if sub_trace.get("checks") else None
+                    short_circuit_info = {
+                        "at_index": i,
+                        "at_check": failed_check["check_id"] if failed_check else f"node_{i}",
+                        "reason": f"AND short-circuit: condicao {i+1}/{len(conditions)} retornou False",
+                    }
+                    # Marca condições restantes como não avaliadas
+                    for j in range(i + 1, len(conditions)):
+                        remaining_checks = self._extrair_checks_nao_avaliados(conditions[j])
+                        all_checks.extend(remaining_checks)
+                    return False, {
+                        "checks": all_checks,
+                        "evaluation_mode": "ALL",
+                        "short_circuit": short_circuit_info,
+                    }
+
+            return True, {
+                "checks": all_checks,
+                "evaluation_mode": "ALL",
+                "short_circuit": None,
+            }
+
+        elif tipo == "or":
+            conditions = no.get("conditions", [])
+            all_checks = []
+            short_circuit_info = None
+
+            for i, c in enumerate(conditions):
+                sub_resultado, sub_trace = self._avaliar_no_trace(c, dados)
+                all_checks.extend(sub_trace.get("checks", []))
+
+                if sub_resultado:
+                    # OR short-circuit: parou na primeira condição verdadeira
+                    passed_check = sub_trace["checks"][-1] if sub_trace.get("checks") else None
+                    short_circuit_info = {
+                        "at_index": i,
+                        "at_check": passed_check["check_id"] if passed_check else f"node_{i}",
+                        "reason": f"OR short-circuit: condicao {i+1}/{len(conditions)} retornou True",
+                    }
+                    # Marca condições restantes como não avaliadas
+                    for j in range(i + 1, len(conditions)):
+                        remaining_checks = self._extrair_checks_nao_avaliados(conditions[j])
+                        all_checks.extend(remaining_checks)
+                    return True, {
+                        "checks": all_checks,
+                        "evaluation_mode": "ANY",
+                        "short_circuit": short_circuit_info,
+                    }
+
+            return False, {
+                "checks": all_checks,
+                "evaluation_mode": "ANY",
+                "short_circuit": None,
+            }
+
+        elif tipo == "not":
+            condition = no.get("condition")
+            if condition:
+                sub_resultado, sub_trace = self._avaliar_no_trace(condition, dados)
+                return not sub_resultado, {
+                    "checks": sub_trace.get("checks", []),
+                    "evaluation_mode": "NOT",
+                    "short_circuit": None,
+                }
+            conditions = no.get("conditions", [])
+            all_checks = []
+            any_true = False
+            for c in conditions:
+                sub_resultado, sub_trace = self._avaliar_no_trace(c, dados)
+                all_checks.extend(sub_trace.get("checks", []))
+                if sub_resultado:
+                    any_true = True
+            return not any_true, {
+                "checks": all_checks,
+                "evaluation_mode": "NOT",
+                "short_circuit": None,
+            }
+
+        else:
+            logger.warning(f"Tipo de nó desconhecido no trace: {tipo}")
+            return False, {
+                "checks": [],
+                "evaluation_mode": "UNKNOWN",
+                "short_circuit": None,
+            }
+
+    def _avaliar_condicao_trace(self, condicao: Dict, dados: Dict[str, Any]) -> tuple:
+        """
+        Avalia uma condição simples com trace detalhado.
+
+        Returns:
+            Tupla (bool, check_dict) com resultado e detalhes da avaliação.
+        """
+        variavel = condicao.get("variable")
+        operador = condicao.get("operator")
+        valor_esperado = condicao.get("value")
+
+        # Monta check_id estável
+        check_id = f"{variavel}__{operador}__{valor_esperado}"
+        valor_atual_original = dados.get(variavel)
+        valor_atual = valor_atual_original
+        notes = []
+
+        # --- Lógica idêntica a _avaliar_condicao, mas com captura de notas ---
+
+        # Tratamento de None
+        if valor_atual is None and operador not in ("exists", "not_exists", "is_empty", "is_not_empty"):
+            if variavel in dados and dados[variavel] == "__NOT_APPLICABLE__":
+                notes.append("Variavel condicional nao aplicavel (dependencia nao satisfeita)")
+                resultado = False
+                return resultado, self._build_check(
+                    check_id, variavel, operador, valor_esperado,
+                    valor_atual_original, resultado, notes
+                )
+
+            if valor_esperado in (True, False, "true", "false"):
+                valor_atual = False
+                notes.append("Variavel None/ausente, tratada como False para comparacao booleana")
+
+        # Tratamento de listas
+        if isinstance(valor_atual, list):
+            if valor_esperado in (True, False, "true", "false"):
+                consolidado = any(self._normalizar_booleano(v) for v in valor_atual)
+                notes.append(f"Lista consolidada via OR: {valor_atual} -> {consolidado}")
+                valor_atual = consolidado
+            else:
+                for v in valor_atual:
+                    if self._aplicar_operador(operador, v, valor_esperado):
+                        notes.append(f"Lista: item '{v}' satisfez a condicao")
+                        resultado = True
+                        return resultado, self._build_check(
+                            check_id, variavel, operador, valor_esperado,
+                            valor_atual_original, resultado, notes
+                        )
+                notes.append(f"Lista: nenhum item satisfez a condicao")
+                resultado = False
+                return resultado, self._build_check(
+                    check_id, variavel, operador, valor_esperado,
+                    valor_atual_original, resultado, notes
+                )
+
+        resultado = self._aplicar_operador(operador, valor_atual, valor_esperado)
+
+        return resultado, self._build_check(
+            check_id, variavel, operador, valor_esperado,
+            valor_atual_original, resultado, notes
+        )
+
+    def _build_check(
+        self,
+        check_id: str,
+        variavel: str,
+        operador: str,
+        valor_esperado: Any,
+        valor_atual: Any,
+        resultado: bool,
+        notes: list,
+    ) -> Dict:
+        """Constrói um check dict padronizado."""
+        # Label legível
+        if operador in ("is_empty", "is_not_empty", "exists", "not_exists"):
+            label = f"{variavel} {operador}"
+            expression = f"{variavel} {operador}"
+        else:
+            label = f"{variavel} {operador} {valor_esperado}"
+            expression = f"{variavel} {operador} {valor_esperado}"
+
+        return {
+            "check_id": check_id,
+            "label": label,
+            "expression": expression,
+            "input_keys": [variavel],
+            "input_values": {variavel: valor_atual},
+            "result": resultado,
+            "notes": "; ".join(notes) if notes else None,
+        }
+
+    def _extrair_checks_nao_avaliados(self, no: Dict) -> list:
+        """Extrai checks de um nó marcando-os como não avaliados (para short-circuit)."""
+        checks = []
+        tipo = no.get("type")
+
+        if tipo == "condition":
+            variavel = no.get("variable")
+            operador = no.get("operator")
+            valor_esperado = no.get("value")
+            checks.append({
+                "check_id": f"{variavel}__{operador}__{valor_esperado}",
+                "label": f"{variavel} {operador} {valor_esperado}" if operador not in ("is_empty", "is_not_empty", "exists", "not_exists") else f"{variavel} {operador}",
+                "expression": f"{variavel} {operador} {valor_esperado}" if operador not in ("is_empty", "is_not_empty", "exists", "not_exists") else f"{variavel} {operador}",
+                "input_keys": [variavel],
+                "input_values": {},
+                "result": None,
+                "notes": "Nao avaliado (short-circuit)",
+            })
+        elif tipo in ("and", "or"):
+            for c in no.get("conditions", []):
+                checks.extend(self._extrair_checks_nao_avaliados(c))
+        elif tipo == "not":
+            condition = no.get("condition")
+            if condition:
+                checks.extend(self._extrair_checks_nao_avaliados(condition))
+            for c in no.get("conditions", []):
+                checks.extend(self._extrair_checks_nao_avaliados(c))
+
+        return checks
+
 
 class PromptVariableUsageSync:
     """
@@ -1517,7 +1780,8 @@ def avaliar_ativacao_prompt(
     db: Session,
     regra_secundaria: Optional[Dict] = None,
     fallback_habilitado: bool = False,
-    tipo_peca: Optional[str] = None
+    tipo_peca: Optional[str] = None,
+    numero_processo: Optional[str] = None
 ) -> Dict[str, Any]:
     """
     Avalia se um prompt deve ser ativado com suporte a regras por tipo de peça.
@@ -1621,13 +1885,16 @@ def avaliar_ativacao_prompt(
             )
 
             if pode_avaliar:
-                resultado_tipo_peca = avaliador.avaliar(
+                resultado_tipo_peca, trace_especifica = avaliador.avaliar_com_trace(
                     regra_especifica.regra_deterministica, dados_extracao
                 )
                 regras_avaliadas.append({
                     "tipo": f"especifica_{tipo_peca}",
                     "resultado": resultado_tipo_peca,
-                    "variaveis": vars_especifica
+                    "variaveis": vars_especifica,
+                    "checks": trace_especifica.get("checks", []),
+                    "evaluation_mode": trace_especifica.get("evaluation_mode"),
+                    "short_circuit": trace_especifica.get("short_circuit"),
                 })
 
                 logger.info(
@@ -1641,7 +1908,8 @@ def avaliar_ativacao_prompt(
                         modo="deterministic_tipo_peca",
                         resultado=True,
                         variaveis_usadas=vars_especifica,
-                        detalhe=tipo_peca
+                        detalhe=tipo_peca,
+                        numero_processo=numero_processo
                     )
                     return {
                         "ativar": True,
@@ -1659,7 +1927,8 @@ def avaliar_ativacao_prompt(
                         modo="deterministic_tipo_peca",
                         resultado=False,
                         variaveis_usadas=vars_especifica,
-                        detalhe=f"{tipo_peca}_false"
+                        detalhe=f"{tipo_peca}_false",
+                        numero_processo=numero_processo
                     )
                     return {
                         "ativar": False,
@@ -1706,11 +1975,14 @@ def avaliar_ativacao_prompt(
         )
 
         if pode_avaliar_primaria:
-            resultado_global = avaliador.avaliar(regra_deterministica, dados_extracao)
+            resultado_global, trace_primaria = avaliador.avaliar_com_trace(regra_deterministica, dados_extracao)
             regras_avaliadas.append({
                 "tipo": "global_primaria",
                 "resultado": resultado_global,
-                "variaveis": vars_primaria
+                "variaveis": vars_primaria,
+                "checks": trace_primaria.get("checks", []),
+                "evaluation_mode": trace_primaria.get("evaluation_mode"),
+                "short_circuit": trace_primaria.get("short_circuit"),
             })
 
             logger.info(
@@ -1724,7 +1996,8 @@ def avaliar_ativacao_prompt(
                     modo="deterministic_global",
                     resultado=True,
                     variaveis_usadas=vars_primaria,
-                    detalhe="primary"
+                    detalhe="primary",
+                    numero_processo=numero_processo
                 )
                 return {
                     "ativar": True,
@@ -1741,7 +2014,8 @@ def avaliar_ativacao_prompt(
                     modo="deterministic_global",
                     resultado=False,
                     variaveis_usadas=vars_primaria,
-                    detalhe="primary_false"
+                    detalhe="primary_false",
+                    numero_processo=numero_processo
                 )
                 return {
                     "ativar": False,
@@ -1777,11 +2051,14 @@ def avaliar_ativacao_prompt(
                 )
 
                 if pode_avaliar_secundaria:
-                    resultado_global = avaliador.avaliar(regra_secundaria, dados_extracao)
+                    resultado_global, trace_secundaria = avaliador.avaliar_com_trace(regra_secundaria, dados_extracao)
                     regras_avaliadas.append({
                         "tipo": "global_secundaria",
                         "resultado": resultado_global,
-                        "variaveis": vars_secundaria
+                        "variaveis": vars_secundaria,
+                        "checks": trace_secundaria.get("checks", []),
+                        "evaluation_mode": trace_secundaria.get("evaluation_mode"),
+                        "short_circuit": trace_secundaria.get("short_circuit"),
                     })
 
                     if resultado_global is True:
@@ -1791,7 +2068,8 @@ def avaliar_ativacao_prompt(
                             modo="deterministic_global",
                             resultado=True,
                             variaveis_usadas=vars_secundaria,
-                            detalhe="secondary_fallback"
+                            detalhe="secondary_fallback",
+                            numero_processo=numero_processo
                         )
                         return {
                             "ativar": True,
@@ -1808,7 +2086,8 @@ def avaliar_ativacao_prompt(
                             modo="deterministic_global",
                             resultado=False,
                             variaveis_usadas=vars_secundaria,
-                            detalhe="secondary_fallback_false"
+                            detalhe="secondary_fallback_false",
+                            numero_processo=numero_processo
                         )
                         return {
                             "ativar": False,
@@ -1972,7 +2251,8 @@ def _registrar_log_ativacao(
     modo: str,
     resultado: bool,
     variaveis_usadas: List[str],
-    detalhe: Optional[str] = None
+    detalhe: Optional[str] = None,
+    numero_processo: Optional[str] = None
 ):
     """
     Registra log de ativação de prompt.
@@ -1986,6 +2266,7 @@ def _registrar_log_ativacao(
         resultado: True se ativado, False se não ativado
         variaveis_usadas: Lista de slugs das variáveis usadas na avaliação
         detalhe: Detalhe adicional (ex: tipo de peça, regra específica)
+        numero_processo: Número CNJ do processo (opcional)
     """
     try:
         from .models_extraction import PromptActivationLog
@@ -1995,7 +2276,8 @@ def _registrar_log_ativacao(
             modo_ativacao=modo,
             modo_ativacao_detalhe=detalhe,
             resultado=resultado,
-            variaveis_usadas=variaveis_usadas
+            variaveis_usadas=variaveis_usadas,
+            numero_processo=numero_processo
         )
         db.add(log)
         db.commit()

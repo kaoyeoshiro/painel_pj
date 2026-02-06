@@ -1,6 +1,6 @@
 // Generated from TypeScript - DO NOT EDIT DIRECTLY
 // Source: src\sistemas\pedido_calculo\app.ts
-// Built at: 2026-02-04T15:53:48.532Z
+// Built at: 2026-02-05T13:36:38.676Z
 
 "use strict";
 (() => {

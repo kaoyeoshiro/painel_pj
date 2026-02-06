@@ -66,6 +66,9 @@ class CuradoriaModule {
             }
 
             this.dadosCuradoria = resultado.curadoria;
+            // Armazena decision traces para enviar com gerar-stream
+            this.decisionTraces = resultado.decision_traces || {};
+            this.variaveisSnapshot = resultado.variaveis_snapshot || {};
             this.atualizarProgressoCuradoria('agente1', 'concluido', 'Documentos coletados');
             this.atualizarProgressoCuradoria('agente2', 'concluido', `${resultado.curadoria.estatisticas.total_modulos} argumentos detectados`);
 
@@ -1113,7 +1116,9 @@ class CuradoriaModule {
                     group_id: groupId ? parseInt(groupId) : null,
                     subcategoria_ids: subcategoriaIds,
                     resumo_consolidado: this.dadosCuradoria.resumo_consolidado,
-                    dados_extracao: this.dadosCuradoria.dados_extracao
+                    dados_extracao: this.dadosCuradoria.dados_extracao,
+                    decision_traces: this.decisionTraces || {},
+                    variaveis_snapshot: this.variaveisSnapshot || {}
                 })
             });
 

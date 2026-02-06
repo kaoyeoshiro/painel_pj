@@ -487,11 +487,11 @@ class DocxConverter:
         NOTA: Processo nº tem tratamento especial e não está incluído aqui."""
         # Remove marcação markdown (negrito, itálico) para detectar corretamente
         line_clean = self._strip_markdown(line).strip().lower()
-        
+
         # Se a linha estiver vazia, não é campo de cabeçalho
         if not line_clean:
             return False
-        
+
         # Padrões de campos de cabeçalho (SEM processo - tem tratamento separado)
         # Usa regex para capturar variações como "Requerido(s):", "Réu(s):", etc.
         header_patterns = [
@@ -512,6 +512,18 @@ class DocxConverter:
             r'^embargante',
             r'^embargado',
             r'^autos\s*n[º°]',
+            # Campos adicionais de cabeçalho
+            r'^recurso[\s:\(]',
+            r'^origem[\s:\(]',
+            r'^classe[\s:\(]',
+            r'^assunto[\s:\(]',
+            r'^comarca[\s:\(]',
+            r'^vara[\s:\(]',
+            r'^juízo[\s:\(]',
+            r'^juizo[\s:\(]',
+            r'^relator[\s:\(]',
+            r'^órgão[\s:\(]',
+            r'^orgao[\s:\(]',
         ]
         
         for pattern in header_patterns:
@@ -679,31 +691,36 @@ class DocxConverter:
     def _add_heading(self, doc: Document, text: str, level: int):
         """Adiciona título formatado - justificado, sem recuo, negrito, numerado."""
         p = doc.add_paragraph()
-        
+
         # Remove formatação markdown do texto
         clean_text = self._strip_markdown(text)
-        
+
         # Obtém numeração automática
         numero = self._get_heading_number(level)
-        
+
         # Monta texto do título (com número se habilitado)
         titulo_texto = f"{numero}{clean_text.upper() if level <= 2 else clean_text}"
-        
+
         # Configura formatação do título
         run = p.add_run(titulo_texto)
         run.font.name = self.font_name
         run.font.bold = True
         run.font.size = Pt(12)
-        
+
         # Justificado (não centralizado), sem recuo
         p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
-        p.paragraph_format.space_before = Pt(18)
-        p.paragraph_format.space_after = Pt(12)
+        # Espaçamento reduzido: se o anterior foi heading, usa espaço menor
+        # Isso evita espaçamento duplo entre títulos consecutivos (ex: 2. DO MÉRITO → 2.1. SUBTÍTULO)
+        if self._last_was_heading:
+            p.paragraph_format.space_before = Pt(6)  # Espaço reduzido entre headings
+        else:
+            p.paragraph_format.space_before = Pt(12)  # Espaço normal antes de heading
+        p.paragraph_format.space_after = Pt(6)  # Espaço padrão após heading
         p.paragraph_format.first_line_indent = Cm(0)  # SEM recuo
         p.paragraph_format.left_indent = Cm(0)  # SEM recuo esquerdo
         p.paragraph_format.line_spacing = self.line_spacing  # Espaçamento consistente
         p.paragraph_format.line_spacing_rule = WD_LINE_SPACING.MULTIPLE  # Tipo de espaçamento
-        
+
         # Marca que o próximo parágrafo virá após um heading (para garantir formatação)
         self._last_was_heading = True
     

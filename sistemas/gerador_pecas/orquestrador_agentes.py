@@ -510,6 +510,9 @@ class ResultadoAgente2:
     # IDs separados por método de ativação
     ids_det: List[int] = field(default_factory=list)  # IDs ativados deterministicamente
     ids_llm: List[int] = field(default_factory=list)  # IDs ativados por LLM
+    # Decision traces para auditoria causal
+    decision_traces: Dict[int, Dict] = field(default_factory=dict)
+    variaveis_snapshot: Dict[str, Any] = field(default_factory=dict)
 
 
 @dataclass
@@ -769,7 +772,8 @@ class OrquestradorAgentes:
                 resumo_consolidado,
                 tipo_peca,
                 dados_processo=dados_processo,
-                dados_extracao=dados_extracao
+                dados_extracao=dados_extracao,
+                numero_processo=numero_processo
             )
             resultado.tempo_agente2 = (datetime.now() - inicio).total_seconds()
             
@@ -1080,7 +1084,8 @@ class OrquestradorAgentes:
         resumo_consolidado: str,
         tipo_peca: Optional[str] = None,
         dados_processo: Optional[Any] = None,
-        dados_extracao: Optional[Dict[str, Any]] = None
+        dados_extracao: Optional[Dict[str, Any]] = None,
+        numero_processo: Optional[str] = None
     ) -> ResultadoAgente2:
         """
         Executa o Agente 2 - Detector de Módulos
@@ -1093,6 +1098,7 @@ class OrquestradorAgentes:
             tipo_peca: Tipo de peça para filtrar módulos
             dados_processo: DadosProcesso extraídos do XML (opcional)
             dados_extracao: Variáveis extraídas dos resumos JSON (opcional)
+            numero_processo: Número CNJ do processo para auditoria (opcional)
         """
         resultado = ResultadoAgente2()
         import time
@@ -1101,7 +1107,8 @@ class OrquestradorAgentes:
         try:
             # Detecta módulos com timeout
             modulos_ids = await self._detectar_modulos_com_timeout(
-                resumo_consolidado, tipo_peca, dados_processo, dados_extracao, resultado
+                resumo_consolidado, tipo_peca, dados_processo, dados_extracao, resultado,
+                numero_processo=numero_processo
             )
 
             ag2_tempo = time.perf_counter() - ag2_inicio
@@ -1116,6 +1123,8 @@ class OrquestradorAgentes:
             resultado.modulos_ativados_llm = self.agente2.ultimo_modulos_llm
             resultado.ids_det = self.agente2.ultimo_ids_det.copy()
             resultado.ids_llm = self.agente2.ultimo_ids_llm.copy()
+            resultado.decision_traces = self.agente2.ultimo_decision_traces.copy()
+            resultado.variaveis_snapshot = self.agente2.ultimo_variaveis_snapshot.copy()
 
             # Monta prompts usando helpers
             resultado.prompt_sistema = self._carregar_modulos_base()
@@ -1145,7 +1154,8 @@ class OrquestradorAgentes:
         tipo_peca: Optional[str],
         dados_processo: Optional[Any],
         dados_extracao: Optional[Dict[str, Any]],
-        resultado: ResultadoAgente2
+        resultado: ResultadoAgente2,
+        numero_processo: Optional[str] = None
     ) -> List[int]:
         """
         Detecta módulos relevantes com proteção de timeout.
@@ -1156,6 +1166,7 @@ class OrquestradorAgentes:
             dados_processo: Dados do processo
             dados_extracao: Variáveis extraídas
             resultado: Objeto resultado para registrar erro de timeout
+            numero_processo: Número CNJ do processo para auditoria (opcional)
 
         Returns:
             Lista de IDs dos módulos detectados
@@ -1171,7 +1182,8 @@ class OrquestradorAgentes:
                     group_id=self.group_id,
                     subcategoria_ids=self.subcategoria_ids,
                     dados_processo=dados_processo,
-                    dados_extracao=dados_extracao
+                    dados_extracao=dados_extracao,
+                    numero_processo=numero_processo
                 ),
                 timeout=TIMEOUT_AG2_DETECCAO
             )

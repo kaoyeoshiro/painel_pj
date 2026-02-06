@@ -17,6 +17,7 @@ from auth.models import User
 from database.connection import get_db
 from utils.timezone import to_iso_utc
 from sistemas.gerador_pecas.models import GeracaoPeca, VersaoPeca
+from sistemas.gerador_pecas.services_curadoria import gerar_explicacao_modulo
 
 logger = logging.getLogger(__name__)
 
@@ -253,15 +254,20 @@ async def obter_curadoria_geracao(
     manuais_set = set(modulos_manuais_ids)
     preview_set = set(modulos_preview_ids)
 
+    # Decision traces para explicações causais
+    decision_traces = metadata.get('decision_traces', {})
+    variaveis_snapshot = metadata.get('variaveis_snapshot', {})
+    tem_traces = bool(decision_traces)
+
     # Monta listas com informações completas de auditoria
     modulos_incluidos = []
     for i, mid in enumerate(modulos_curados_ids):
         base_info = modulos_db.get(mid, {
             "id": mid,
-            "titulo": f"Módulo {mid}",
+            "titulo": f"Modulo {mid}",
             "categoria": "Desconhecido",
             "subcategoria": None,
-            "conteudo": "(Conteúdo não disponível)",
+            "conteudo": "(Conteudo nao disponivel)",
             "modo_ativacao_modulo": "desconhecido"
         })
         info = base_info.copy()
@@ -277,13 +283,38 @@ async def obter_curadoria_geracao(
         if info["origem"] == "manual":
             info["tag"] = "[HUMAN_VALIDATED:MANUAL]"
             info["tipo_decisao"] = "manual"
-            info["decisao_explicacao"] = "Adicionado manualmente pelo usuário durante a curadoria"
-            info["motivo_inclusao"] = "O usuário escolheu incluir este argumento que não estava na sugestão automática"
+            # Usa explicação causal se traces disponíveis
+            if tem_traces:
+                explicacao = gerar_explicacao_modulo(
+                    module_id=mid,
+                    origem="manual",
+                    status_final="incluido",
+                    decision_traces=decision_traces,
+                    variaveis_snapshot=variaveis_snapshot,
+                )
+                info["decisao_explicacao"] = explicacao["reason_human"]
+                info["motivo_inclusao"] = explicacao["reason_human"]
+                info["decision_trace"] = explicacao
+            else:
+                info["decisao_explicacao"] = "Adicionado manualmente pelo usuario durante a curadoria"
+                info["motivo_inclusao"] = "O usuario escolheu incluir este argumento que nao estava na sugestao automatica"
         else:
             info["tag"] = "[HUMAN_VALIDATED]"
             info["tipo_decisao"] = "confirmado"
-            info["decisao_explicacao"] = "Sugerido automaticamente e confirmado pelo usuário"
-            info["motivo_inclusao"] = "O sistema sugeriu este argumento e o usuário confirmou sua inclusão"
+            if tem_traces:
+                explicacao = gerar_explicacao_modulo(
+                    module_id=mid,
+                    origem="preview",
+                    status_final="incluido",
+                    decision_traces=decision_traces,
+                    variaveis_snapshot=variaveis_snapshot,
+                )
+                info["decisao_explicacao"] = explicacao["reason_human"]
+                info["motivo_inclusao"] = explicacao["reason_human"]
+                info["decision_trace"] = explicacao
+            else:
+                info["decisao_explicacao"] = "Sugerido automaticamente e confirmado pelo usuario"
+                info["motivo_inclusao"] = "O sistema sugeriu este argumento e o usuario confirmou sua inclusao"
 
         info["ordem"] = i + 1  # Posição na ordem final
         info["status_final"] = "incluido"
@@ -294,18 +325,30 @@ async def obter_curadoria_geracao(
     for mid in modulos_excluidos_ids:
         base_info = modulos_db.get(mid, {
             "id": mid,
-            "titulo": f"Módulo {mid}",
+            "titulo": f"Modulo {mid}",
             "categoria": "Desconhecido",
             "subcategoria": None,
-            "conteudo": "(Conteúdo não disponível)",
+            "conteudo": "(Conteudo nao disponivel)",
             "modo_ativacao_modulo": "desconhecido"
         })
         info = base_info.copy()
         info["origem"] = "preview"  # Excluídos sempre vêm do preview
-        info["tag"] = "[EXCLUÍDO]"
+        info["tag"] = "[EXCLUIDO]"
         info["tipo_decisao"] = "removido"
-        info["decisao_explicacao"] = "Sugerido automaticamente mas removido pelo usuário"
-        info["motivo_exclusao"] = "O sistema sugeriu este argumento, mas o usuário decidiu não incluí-lo na peça final"
+        if tem_traces:
+            explicacao = gerar_explicacao_modulo(
+                module_id=mid,
+                origem="preview",
+                status_final="excluido",
+                decision_traces=decision_traces,
+                variaveis_snapshot=variaveis_snapshot,
+            )
+            info["decisao_explicacao"] = explicacao["reason_human"]
+            info["motivo_exclusao"] = explicacao["reason_human"]
+            info["decision_trace"] = explicacao
+        else:
+            info["decisao_explicacao"] = "Sugerido automaticamente mas removido pelo usuario"
+            info["motivo_exclusao"] = "O sistema sugeriu este argumento, mas o usuario decidiu nao inclui-lo na peca final"
         info["status_final"] = "excluido"
         modulos_excluidos.append(info)
 
@@ -357,5 +400,6 @@ async def obter_curadoria_geracao(
             "garantia": "Todos os argumentos marcados como HUMAN_VALIDATED são incluídos na peça final exatamente como validados pelo usuário."
         },
         "modulos_incluidos": modulos_incluidos,
-        "modulos_excluidos": modulos_excluidos
+        "modulos_excluidos": modulos_excluidos,
+        "variaveis_snapshot": variaveis_snapshot if tem_traces else None,
     }

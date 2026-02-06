@@ -503,3 +503,224 @@ class ServicoCuradoria:
         resultado.modulos_manual += 1
 
         return resultado
+
+
+# ========================================
+# AUDITORIA CAUSAL - Explicações de Decisão
+# ========================================
+
+REASON_CODES = {
+    # Para MANUAL_INCLUIDO (por que não ativou):
+    "CONDITION_FALSE": "Condicao deterministica nao atendida",
+    "MISSING_INPUT": "Variaveis necessarias nao disponiveis",
+    "NOT_EVALUATED": "Modulo nao avaliado pelo sistema (sem regra configurada)",
+    "LLM_NOT_SELECTED": "IA nao selecionou este modulo na analise automatica",
+    # Para MANUAL_EXCLUIDO (por que ativou):
+    "EXPECTED_MATCH": "Ativacao legitima - condicao atendida pelos dados",
+    "LLM_SELECTED": "IA selecionou com base na analise dos documentos",
+}
+
+
+def _extrair_vars_e_valores(trace: Dict, variaveis_snapshot: Dict) -> Dict:
+    """Extrai variáveis usadas na regra e seus valores do snapshot."""
+    inputs = {}
+    for regra_avaliada in trace.get("regras_avaliadas", []):
+        for var_name in regra_avaliada.get("variaveis", []):
+            inputs[var_name] = variaveis_snapshot.get(var_name, "<<AUSENTE>>")
+    return inputs
+
+
+def _extrair_checks_de_trace(trace: Dict) -> tuple:
+    """
+    Extrai checks granulares (satisfied/not_satisfied) das regras avaliadas.
+
+    Returns:
+        Tupla (checks_satisfied, checks_not_satisfied, evaluation_strategy)
+    """
+    checks_satisfied = []
+    checks_not_satisfied = []
+    eval_mode = None
+    short_circuit = None
+
+    for regra in trace.get("regras_avaliadas", []):
+        checks = regra.get("checks", [])
+        if not checks:
+            continue
+        # Pega evaluation_mode e short_circuit da primeira regra que tiver
+        if eval_mode is None:
+            eval_mode = regra.get("evaluation_mode")
+            short_circuit = regra.get("short_circuit")
+
+        for check in checks:
+            result = check.get("result")
+            if result is True:
+                checks_satisfied.append(check)
+            elif result is False:
+                checks_not_satisfied.append(check)
+            # result=None = não avaliado (short-circuit) -> vai para not_satisfied com nota
+            elif result is None:
+                checks_not_satisfied.append(check)
+
+    evaluation_strategy = {
+        "mode": eval_mode,
+        "short_circuit": short_circuit,
+    }
+
+    return checks_satisfied, checks_not_satisfied, evaluation_strategy
+
+
+def _resolve_final_decision(origem: str, status_final: str, trace: Dict) -> str:
+    """Determina o final_decision enum."""
+    ativar = trace.get("ativar") if trace else None
+    regra_usada = trace.get("regra_usada", "") if trace else ""
+
+    if origem == "manual" and status_final == "incluido":
+        return "MANUAL_OVERRIDE_INCLUDE"
+    if origem == "preview" and status_final == "excluido":
+        return "MANUAL_OVERRIDE_EXCLUDE"
+
+    if ativar is True:
+        if regra_usada and "secundaria" in regra_usada:
+            return "ACTIVE_FALLBACK"
+        return "ACTIVE"
+    if ativar is False:
+        return "INACTIVE"
+
+    return "ACTIVE"  # Fallback para confirmados
+
+
+def _enrich_result(result: Dict, trace: Dict, origem: str, status_final: str) -> Dict:
+    """Enriquece resultado com checks granulares e final_decision."""
+    if trace and trace.get("modo_avaliacao") != "llm":
+        satisfied, not_satisfied, strategy = _extrair_checks_de_trace(trace)
+        regra_usada = trace.get("regra_usada", "")
+        strategy["fallback_applied"] = bool(regra_usada and "secundaria" in regra_usada)
+        result["checks_satisfied"] = satisfied
+        result["checks_not_satisfied"] = not_satisfied
+        result["evaluation_strategy"] = strategy
+    else:
+        result["checks_satisfied"] = []
+        result["checks_not_satisfied"] = []
+        result["evaluation_strategy"] = {"mode": None, "short_circuit": None, "fallback_applied": False}
+
+    result["final_decision"] = _resolve_final_decision(origem, status_final, trace)
+    return result
+
+
+def gerar_explicacao_modulo(
+    module_id: int,
+    origem: str,
+    status_final: str,
+    decision_traces: Dict,
+    variaveis_snapshot: Dict,
+) -> Dict:
+    """
+    Gera explicação causal para um módulo com checks granulares.
+
+    Args:
+        module_id: ID do módulo
+        origem: "manual" | "preview"
+        status_final: "incluido" | "excluido"
+        decision_traces: Traces capturados durante o preview
+        variaveis_snapshot: Snapshot das variáveis no momento da avaliação
+
+    Returns:
+        Dict com reason_code, reason_human, inputs_used, evaluation_result,
+        checks_satisfied, checks_not_satisfied, evaluation_strategy, final_decision
+    """
+    trace = decision_traces.get(str(module_id)) or decision_traces.get(module_id)
+
+    if origem == "manual" and status_final == "incluido":
+        # MANUAL_INCLUIDO: por que o sistema não ativou
+        if not trace:
+            return _enrich_result({
+                "reason_code": "NOT_EVALUATED",
+                "reason_human": "Este modulo nao foi avaliado pelo sistema durante o preview",
+                "inputs_used": {},
+                "evaluation_result": None,
+            }, trace, origem, status_final)
+
+        if trace.get("modo_avaliacao") == "llm":
+            return _enrich_result({
+                "reason_code": "LLM_NOT_SELECTED",
+                "reason_human": f"A IA analisou os documentos mas nao selecionou este modulo. Condicao configurada: {trace.get('detalhes', 'N/A')}",
+                "inputs_used": {},
+                "evaluation_result": False,
+            }, trace, origem, status_final)
+
+        # Determinístico - analisar por que deu False/None
+        vars_da_regra = _extrair_vars_e_valores(trace, variaveis_snapshot)
+
+        if trace.get("variaveis_faltantes"):
+            return _enrich_result({
+                "reason_code": "MISSING_INPUT",
+                "reason_human": f"Variaveis ausentes: {', '.join(trace['variaveis_faltantes'])}",
+                "rule_name": trace.get("regra_usada"),
+                "evaluation_result": trace.get("ativar"),
+                "inputs_used": vars_da_regra,
+                "regras_avaliadas": trace.get("regras_avaliadas", []),
+            }, trace, origem, status_final)
+
+        return _enrich_result({
+            "reason_code": "CONDITION_FALSE",
+            "reason_human": f"Regra: {trace.get('regra_usada', 'N/A')}. {trace.get('detalhes', '')}",
+            "rule_name": trace.get("regra_usada"),
+            "evaluation_result": trace.get("ativar"),
+            "inputs_used": vars_da_regra,
+            "regras_avaliadas": trace.get("regras_avaliadas", []),
+        }, trace, origem, status_final)
+
+    elif origem == "preview" and status_final == "excluido":
+        # MANUAL_EXCLUIDO: por que o sistema sugeriu
+        if trace and trace.get("modo_avaliacao") == "llm":
+            return _enrich_result({
+                "reason_code": "LLM_SELECTED",
+                "reason_human": f"IA selecionou com base na analise. Condicao: {trace.get('detalhes', 'N/A')}",
+                "inputs_used": {},
+                "evaluation_result": True,
+            }, trace, origem, status_final)
+
+        if trace:
+            vars_da_regra = _extrair_vars_e_valores(trace, variaveis_snapshot)
+            return _enrich_result({
+                "reason_code": "EXPECTED_MATCH",
+                "reason_human": f"Regra '{trace.get('regra_usada')}' atendida. {trace.get('detalhes', '')}",
+                "rule_name": trace.get("regra_usada"),
+                "evaluation_result": True,
+                "inputs_used": vars_da_regra,
+                "regras_avaliadas": trace.get("regras_avaliadas", []),
+            }, trace, origem, status_final)
+
+        return _enrich_result({
+            "reason_code": "NOT_EVALUATED",
+            "reason_human": "Sem dados de avaliacao disponiveis",
+            "inputs_used": {},
+            "evaluation_result": None,
+        }, trace, origem, status_final)
+
+    # Fallback para módulos confirmados (preview + incluido)
+    if trace:
+        vars_da_regra = _extrair_vars_e_valores(trace, variaveis_snapshot)
+        modo = trace.get("modo_avaliacao", "desconhecido")
+        if modo == "llm":
+            return _enrich_result({
+                "reason_code": "LLM_SELECTED",
+                "reason_human": f"IA selecionou e usuario confirmou. Condicao: {trace.get('detalhes', 'N/A')}",
+                "inputs_used": {},
+                "evaluation_result": True,
+            }, trace, origem, status_final)
+        return _enrich_result({
+            "reason_code": "EXPECTED_MATCH",
+            "reason_human": f"Regra '{trace.get('regra_usada')}' atendida e confirmada pelo usuario. {trace.get('detalhes', '')}",
+            "rule_name": trace.get("regra_usada"),
+            "evaluation_result": True,
+            "inputs_used": vars_da_regra,
+            "regras_avaliadas": trace.get("regras_avaliadas", []),
+        }, trace, origem, status_final)
+
+    return _enrich_result({
+        "reason_code": "EXPECTED_MATCH",
+        "reason_human": "Sugerido pelo sistema e confirmado pelo usuario",
+        "inputs_used": {},
+        "evaluation_result": None,
+    }, trace, origem, status_final)

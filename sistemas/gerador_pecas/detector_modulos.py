@@ -78,6 +78,9 @@ class DetectorModulosIA:
         # IDs separados por método de ativação (para diferenciação no prompt)
         self.ultimo_ids_det: List[int] = []  # IDs ativados deterministicamente
         self.ultimo_ids_llm: List[int] = []  # IDs ativados por LLM
+        # Decision traces para auditoria causal
+        self.ultimo_decision_traces: Dict[int, Dict] = {}
+        self.ultimo_variaveis_snapshot: Dict[str, Any] = {}
 
     async def detectar_modulos_relevantes(
         self,
@@ -87,7 +90,8 @@ class DetectorModulosIA:
         group_id: Optional[int] = None,
         subcategoria_ids: Optional[List[int]] = None,
         dados_processo: Optional['DadosProcesso'] = None,
-        dados_extracao: Optional[Dict[str, Any]] = None
+        dados_extracao: Optional[Dict[str, Any]] = None,
+        numero_processo: Optional[str] = None
     ) -> List[int]:
         """
         Analisa os documentos e retorna IDs dos módulos de CONTEÚDO relevantes.
@@ -104,6 +108,7 @@ class DetectorModulosIA:
             subcategoria_ids: IDs das subcategorias selecionadas (opcional)
             dados_processo: DadosProcesso extraídos do XML (opcional)
             dados_extracao: Dados de extração de PDFs via IA (opcional)
+            numero_processo: Número CNJ do processo para auditoria (opcional)
 
         Returns:
             Lista de IDs dos módulos relevantes
@@ -168,7 +173,30 @@ class DetectorModulosIA:
             variaveis.update(variaveis_processo)
             print(f"[AGENTE2] Variáveis derivadas do processo: {variaveis_processo}")
 
+            # FALLBACK: Para variáveis de processo que são None (XML sem dados de partes),
+            # usa a variável de extração correspondente (peticao_inicial_*) como fallback
+            PROCESS_TO_EXTRACTION_FALLBACK = {
+                'municipio_polo_passivo': 'peticao_inicial_municipio_polo_passivo',
+                'uniao_polo_passivo': 'peticao_inicial_uniao_polo_passivo',
+            }
+            for proc_var, ext_var in PROCESS_TO_EXTRACTION_FALLBACK.items():
+                if variaveis.get(proc_var) is None and ext_var in variaveis:
+                    valor_fallback = variaveis[ext_var]
+                    variaveis[proc_var] = valor_fallback
+                    print(f"[AGENTE2] FALLBACK: {proc_var} = None -> usando {ext_var} = {valor_fallback}")
+
+            # Log variáveis de polo para auditoria
+            for var_polo in ['municipio_polo_passivo', 'uniao_polo_passivo', 'estado_polo_passivo']:
+                valor = variaveis.get(var_polo, '<<AUSENTE>>')
+                fonte = 'processo' if var_polo in variaveis_processo else 'extracao' if var_polo in (dados_extracao or {}) else 'ausente'
+                if variaveis.get(var_polo) is not None or var_polo in variaveis_processo:
+                    print(f"[AGENTE2] POLO: {var_polo} = {valor} (fonte: {fonte})")
+
         timings['variable_resolution'] = time.perf_counter() - t_vars_inicio
+
+        # Snapshot das variáveis para auditoria (decision traces)
+        self.ultimo_variaveis_snapshot = variaveis.copy()
+        self.ultimo_decision_traces = {}  # Reset para nova detecção
 
         print(f"[AGENTE2] Total de variáveis disponíveis: {len(variaveis)}")
         if variaveis:
@@ -241,7 +269,7 @@ class DetectorModulosIA:
         if modulos_det and not modulos_llm:
             print(f"[AGENTE2] ⚡ FAST PATH: 100% determinístico, pulando LLM")
             t_eval_inicio = time.perf_counter()
-            ids_ativados = self._avaliar_todos_deterministicos(modulos_det, variaveis, tipo_peca)
+            ids_ativados = self._avaliar_todos_deterministicos(modulos_det, variaveis, tipo_peca, numero_processo)
             timings['deterministic_evaluation'] = time.perf_counter() - t_eval_inicio
 
             # Salvar no cache
@@ -304,8 +332,22 @@ class DetectorModulosIA:
                 db=self.db,
                 regra_secundaria=getattr(modulo, 'regra_deterministica_secundaria', None),
                 fallback_habilitado=getattr(modulo, 'fallback_habilitado', False),
-                tipo_peca=tipo_peca  # Passa tipo_peca para avaliar regras específicas
+                tipo_peca=tipo_peca,  # Passa tipo_peca para avaliar regras específicas
+                numero_processo=numero_processo
             )
+
+            # Captura decision trace para auditoria
+            self.ultimo_decision_traces[modulo.id] = {
+                "module_id": modulo.id,
+                "module_nome": modulo.nome,
+                "module_titulo": modulo.titulo,
+                "modo_avaliacao": "deterministic",
+                "ativar": resultado["ativar"],
+                "regra_usada": resultado.get("regra_usada"),
+                "detalhes": resultado.get("detalhes"),
+                "regras_avaliadas": resultado.get("regras_avaliadas", []),
+                "variaveis_faltantes": resultado.get("variaveis_faltantes", []),
+            }
 
             if resultado["ativar"] is True:
                 ids_det.append(modulo.id)
@@ -337,6 +379,20 @@ class DetectorModulosIA:
             t_llm_inicio = time.perf_counter()
             ids_llm = await self._detectar_via_llm(documentos_resumo, documentos_completos, modulos_para_llm)
             timings['llm_detection'] = time.perf_counter() - t_llm_inicio
+
+            # Captura decision traces para módulos LLM
+            for modulo in modulos_para_llm:
+                self.ultimo_decision_traces[modulo.id] = {
+                    "module_id": modulo.id,
+                    "module_nome": modulo.nome,
+                    "module_titulo": modulo.titulo,
+                    "modo_avaliacao": "llm",
+                    "ativar": modulo.id in ids_llm,
+                    "regra_usada": None,
+                    "detalhes": f"Avaliado por LLM. Condicao: {modulo.condicao_ativacao or 'N/A'}",
+                    "regras_avaliadas": [],
+                    "variaveis_faltantes": [],
+                }
         else:
             print(f"[AGENTE2] Nenhum módulo precisa de LLM")
             timings['llm_detection'] = 0
@@ -393,7 +449,8 @@ class DetectorModulosIA:
         self,
         modulos: List[PromptModulo],
         variaveis: Dict[str, Any],
-        tipo_peca: Optional[str] = None
+        tipo_peca: Optional[str] = None,
+        numero_processo: Optional[str] = None
     ) -> List[int]:
         """
         Fast path: avalia todos os módulos determinísticos sem chamar LLM.
@@ -402,6 +459,7 @@ class DetectorModulosIA:
             modulos: Lista de módulos com regra determinística
             variaveis: Dicionário com variáveis disponíveis
             tipo_peca: Tipo de peça para avaliar regras específicas (opcional)
+            numero_processo: Número CNJ do processo para auditoria (opcional)
 
         Returns:
             Lista de IDs dos módulos ativados
@@ -425,8 +483,22 @@ class DetectorModulosIA:
                 db=self.db,
                 regra_secundaria=getattr(modulo, 'regra_deterministica_secundaria', None),
                 fallback_habilitado=getattr(modulo, 'fallback_habilitado', False),
-                tipo_peca=tipo_peca  # Passa tipo_peca para avaliar regras específicas
+                tipo_peca=tipo_peca,  # Passa tipo_peca para avaliar regras específicas
+                numero_processo=numero_processo
             )
+
+            # Captura decision trace para auditoria
+            self.ultimo_decision_traces[modulo.id] = {
+                "module_id": modulo.id,
+                "module_nome": modulo.nome,
+                "module_titulo": modulo.titulo,
+                "modo_avaliacao": "deterministic",
+                "ativar": resultado["ativar"],
+                "regra_usada": resultado.get("regra_usada"),
+                "detalhes": resultado.get("detalhes"),
+                "regras_avaliadas": resultado.get("regras_avaliadas", []),
+                "variaveis_faltantes": resultado.get("variaveis_faltantes", []),
+            }
 
             if resultado["ativar"] is True:
                 ids_ativados.append(modulo.id)

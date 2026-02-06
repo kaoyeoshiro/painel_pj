@@ -1656,7 +1656,42 @@
             const manuais = modulosIncluidos.filter(m => m.tipo_decisao === 'manual');
 
             // Função para gerar HTML de um módulo expandível
-            const renderModulo = (m, corBg, corText, corBadge) => `
+            const reasonBadgeColor = (code) => {
+                const map = {
+                    'CONDITION_FALSE': 'bg-red-100 text-red-700',
+                    'MISSING_INPUT': 'bg-yellow-100 text-yellow-700',
+                    'NOT_EVALUATED': 'bg-gray-100 text-gray-600',
+                    'LLM_NOT_SELECTED': 'bg-blue-100 text-blue-700',
+                    'EXPECTED_MATCH': 'bg-green-100 text-green-700',
+                    'LLM_SELECTED': 'bg-indigo-100 text-indigo-700',
+                };
+                return map[code] || 'bg-gray-100 text-gray-600';
+            };
+
+            const renderInputsUsed = (trace) => {
+                if (!trace || !trace.inputs_used || Object.keys(trace.inputs_used).length === 0) return '';
+                const rows = Object.entries(trace.inputs_used).map(([k, v]) =>
+                    `<tr><td class="pr-3 py-0.5 font-mono text-gray-600">${escapeHtml(k)}</td><td class="py-0.5 font-mono font-semibold">${escapeHtml(String(v))}</td></tr>`
+                ).join('');
+                return `
+                    <div class="mt-2">
+                        <button class="text-xs text-blue-600 hover:text-blue-800 font-medium" onclick="this.nextElementSibling.classList.toggle('hidden')">
+                            <i class="fas fa-database mr-1"></i>Dados usados na decisao
+                        </button>
+                        <div class="hidden mt-1 p-2 bg-blue-50 rounded border border-blue-100">
+                            <table class="text-xs w-full"><tbody>${rows}</tbody></table>
+                        </div>
+                    </div>
+                `;
+            };
+
+            const renderModulo = (m, corBg, corText, corBadge) => {
+                const trace = m.decision_trace || null;
+                const reasonCode = trace ? trace.reason_code : null;
+                const reasonBadge = reasonCode ? `<span class="${reasonBadgeColor(reasonCode)} px-2 py-0.5 rounded text-xs font-mono">${escapeHtml(reasonCode)}</span>` : '';
+                const ruleName = trace && trace.rule_name ? `<span class="bg-purple-50 text-purple-600 px-2 py-0.5 rounded text-xs font-mono ml-1">${escapeHtml(trace.rule_name)}</span>` : '';
+
+                return `
                 <div class="border ${corBg} rounded-lg mb-2 overflow-hidden">
                     <div class="p-3 cursor-pointer flex items-start justify-between gap-2 hover:bg-opacity-80"
                          onclick="this.nextElementSibling.classList.toggle('hidden'); this.querySelector('.expand-icon').classList.toggle('fa-chevron-down'); this.querySelector('.expand-icon').classList.toggle('fa-chevron-up');">
@@ -1664,6 +1699,8 @@
                             <div class="flex items-center gap-2 flex-wrap">
                                 <span class="font-medium ${corText}">${escapeHtml(m.titulo)}</span>
                                 <span class="${corBadge} px-2 py-0.5 rounded text-xs font-mono">${escapeHtml(m.tag || '')}</span>
+                                ${reasonBadge}
+                                ${ruleName}
                             </div>
                             <div class="flex items-center gap-2 mt-1 text-xs text-gray-500">
                                 <span class="bg-gray-200 px-2 py-0.5 rounded">${escapeHtml(m.categoria || 'Outros')}</span>
@@ -1676,16 +1713,18 @@
                     </div>
                     <div class="hidden border-t border-gray-200 p-3 bg-white">
                         <div class="mb-2">
-                            <span class="text-xs font-semibold text-gray-600">Por que ${m.status_final === 'incluido' ? 'incluído' : 'excluído'}:</span>
+                            <span class="text-xs font-semibold text-gray-600">Por que ${m.status_final === 'incluido' ? 'incluido' : 'excluido'}:</span>
                             <p class="text-xs text-gray-700 mt-1">${escapeHtml(m.motivo_inclusao || m.motivo_exclusao || '-')}</p>
                         </div>
-                        <div>
-                            <span class="text-xs font-semibold text-gray-600">Conteúdo do argumento:</span>
-                            <div class="mt-1 p-2 bg-gray-50 rounded text-xs text-gray-700 max-h-40 overflow-y-auto whitespace-pre-wrap font-mono">${escapeHtml(m.conteudo || '(Conteúdo não disponível)')}</div>
+                        ${renderInputsUsed(trace)}
+                        <div class="mt-2">
+                            <span class="text-xs font-semibold text-gray-600">Conteudo do argumento:</span>
+                            <div class="mt-1 p-2 bg-gray-50 rounded text-xs text-gray-700 max-h-40 overflow-y-auto whitespace-pre-wrap font-mono">${escapeHtml(m.conteudo || '(Conteudo nao disponivel)')}</div>
                         </div>
                     </div>
                 </div>
-            `;
+                `;
+            };
 
             modal.innerHTML = `
                 <div class="bg-white rounded-2xl w-full max-w-4xl max-h-[95vh] flex flex-col overflow-hidden" onclick="event.stopPropagation()">
@@ -1773,8 +1812,16 @@
                             </p>
                         ` : ''}
 
-                        <!-- Seção: INCLUÍDOS NA PEÇA FINAL -->
-                        <div class="mb-5">
+                        <!-- Filtros rapidos -->
+                        <div class="flex items-center gap-2 mb-4 flex-wrap">
+                            <span class="text-xs text-gray-500 mr-1">Filtrar:</span>
+                            <button onclick="document.querySelectorAll('[data-filter-section]').forEach(s=>s.classList.remove('hidden'))" class="px-3 py-1 text-xs rounded-full bg-gray-200 hover:bg-gray-300 text-gray-700 font-medium">Todos</button>
+                            <button onclick="document.querySelectorAll('[data-filter-section]').forEach(s=>s.classList.add('hidden')); document.querySelectorAll('[data-filter-section=manual]').forEach(s=>s.classList.remove('hidden'))" class="px-3 py-1 text-xs rounded-full bg-amber-100 hover:bg-amber-200 text-amber-700 font-medium">Manuais (${manuais.length})</button>
+                            <button onclick="document.querySelectorAll('[data-filter-section]').forEach(s=>s.classList.add('hidden')); document.querySelectorAll('[data-filter-section=excluido]').forEach(s=>s.classList.remove('hidden'))" class="px-3 py-1 text-xs rounded-full bg-red-100 hover:bg-red-200 text-red-700 font-medium">Excluidos (${modulosExcluidos.length})</button>
+                        </div>
+
+                        <!-- Seção: INCLUIDOS NA PECA FINAL -->
+                        <div class="mb-5" data-filter-section="confirmado">
                             <div class="flex items-center gap-2 mb-3 pb-2 border-b border-green-200">
                                 <div class="w-8 h-8 bg-green-500 rounded-lg flex items-center justify-center">
                                     <i class="fas fa-check text-white"></i>
@@ -1803,12 +1850,12 @@
 
                             ${manuais.length > 0 ? `
                                 <!-- Adicionados manualmente -->
-                                <div class="mb-4">
+                                <div class="mb-4" data-filter-section="manual">
                                     <div class="flex items-center gap-2 mb-2 cursor-pointer"
                                          onclick="document.getElementById('secao-manuais-fb').classList.toggle('hidden'); this.querySelector('.toggle-icon').classList.toggle('fa-chevron-down'); this.querySelector('.toggle-icon').classList.toggle('fa-chevron-up');">
                                         <i class="fas fa-plus-circle text-amber-500"></i>
                                         <span class="text-sm font-semibold text-gray-700">Adicionados Manualmente (${manuais.length})</span>
-                                        <span class="text-xs text-gray-400">— O usuário incluiu estes argumentos que não estavam na sugestão</span>
+                                        <span class="text-xs text-gray-400">-- O usuario incluiu estes argumentos que nao estavam na sugestao</span>
                                         <i class="fas fa-chevron-up toggle-icon text-gray-400 ml-auto"></i>
                                     </div>
                                     <div id="secao-manuais-fb" class="ml-6">
@@ -1824,13 +1871,13 @@
 
                         <!-- Seção: EXCLUÍDOS DA PEÇA FINAL -->
                         ${modulosExcluidos.length > 0 ? `
-                            <div class="mb-5">
+                            <div class="mb-5" data-filter-section="excluido">
                                 <div class="flex items-center gap-2 mb-3 pb-2 border-b border-red-200">
                                     <div class="w-8 h-8 bg-red-500 rounded-lg flex items-center justify-center">
                                         <i class="fas fa-times text-white"></i>
                                     </div>
                                     <div>
-                                        <h3 class="font-bold text-red-800">EXCLUÍDOS DA PEÇA FINAL</h3>
+                                        <h3 class="font-bold text-red-800">EXCLUIDOS DA PECA FINAL</h3>
                                         <p class="text-xs text-red-600">${modulosExcluidos.length} argumento(s) removido(s) pelo usuário</p>
                                     </div>
                                 </div>
