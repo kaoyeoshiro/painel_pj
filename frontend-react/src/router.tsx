@@ -17,6 +17,9 @@ import { AssistenciaPage } from '@/pages/assistencia/AssistenciaPage'
 import MatriculasPage from '@/pages/matriculas/MatriculasPage'
 import { CumprimentoBetaPage } from '@/pages/cumprimento-beta/CumprimentoBetaPage'
 import { PedidoCalculoPage } from '@/pages/pedido-calculo/PedidoCalculoPage'
+import { PrestacaoContasPage } from '@/pages/prestacao-contas/PrestacaoContasPage'
+import { RelatorioCumprimentoPage } from '@/pages/relatorio-cumprimento/RelatorioCumprimentoPage'
+import { BertTrainingPage } from '@/pages/bert-training/BertTrainingPage'
 
 // ---------------------------------------------------------------------------
 // Componente placeholder generico
@@ -106,13 +109,13 @@ const pedidoCalculoRoute = createRoute({
 const prestacaoContasRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: '/prestacao-contas',
-  component: () => <Placeholder titulo="Prestacao de Contas" />,
+  component: PrestacaoContasPage,
 })
 
 const relatorioCumprimentoRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: '/relatorio-cumprimento',
-  component: () => <Placeholder titulo="Relatorio de Cumprimento" />,
+  component: RelatorioCumprimentoPage,
 })
 
 const cumprimentoBetaRoute = createRoute({
@@ -136,7 +139,7 @@ const matriculasRoute = createRoute({
 const bertTrainingRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: '/bert-training',
-  component: () => <Placeholder titulo="BERT Training" />,
+  component: BertTrainingPage,
 })
 
 const changePasswordRoute = createRoute({
