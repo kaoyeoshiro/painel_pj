@@ -13,6 +13,10 @@ import { LoginPage } from '@/pages/login/LoginPage'
 import { DashboardPage } from '@/pages/dashboard/DashboardPage'
 import { ChangePasswordPage } from '@/pages/change-password/ChangePasswordPage'
 import { DesignSystemPage } from '@/pages/dev/DesignSystemPage'
+import { AssistenciaPage } from '@/pages/assistencia/AssistenciaPage'
+import MatriculasPage from '@/pages/matriculas/MatriculasPage'
+import { CumprimentoBetaPage } from '@/pages/cumprimento-beta/CumprimentoBetaPage'
+import { PedidoCalculoPage } from '@/pages/pedido-calculo/PedidoCalculoPage'
 
 // ---------------------------------------------------------------------------
 // Componente placeholder generico
@@ -96,7 +100,7 @@ const classificadorRoute = createRoute({
 const pedidoCalculoRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: '/pedido-calculo',
-  component: () => <Placeholder titulo="Pedido de Calculo" />,
+  component: PedidoCalculoPage,
 })
 
 const prestacaoContasRoute = createRoute({
@@ -114,19 +118,19 @@ const relatorioCumprimentoRoute = createRoute({
 const cumprimentoBetaRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: '/cumprimento-beta',
-  component: () => <Placeholder titulo="Cumprimento (Beta)" />,
+  component: CumprimentoBetaPage,
 })
 
 const assistenciaRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: '/assistencia',
-  component: () => <Placeholder titulo="Assistencia Judiciaria" />,
+  component: AssistenciaPage,
 })
 
 const matriculasRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: '/matriculas',
-  component: () => <Placeholder titulo="Matriculas Confrontantes" />,
+  component: MatriculasPage,
 })
 
 const bertTrainingRoute = createRoute({
