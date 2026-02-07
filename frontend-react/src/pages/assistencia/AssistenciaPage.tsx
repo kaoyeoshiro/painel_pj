@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from 'react'
-import { ArrowLeft, Search, Scale, Trash2, FileText, FilePdf, RotateCw, Database } from 'lucide-react'
+import { ArrowLeft, Search, Scale, Trash2, FileText, FileDown, RotateCw, Database } from 'lucide-react'
 import { marked } from 'marked'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -509,7 +509,7 @@ export function AssistenciaPage() {
                           onClick={() => downloadDocumento('pdf')}
                           className="gap-1 bg-red-600 hover:bg-red-700"
                         >
-                          <FilePdf className="h-4 w-4" />
+                          <FileDown className="h-4 w-4" />
                           PDF
                         </Button>
                       </div>

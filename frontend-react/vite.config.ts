@@ -6,6 +6,11 @@ import path from 'path'
 // Configuracao do Vite para o Portal PGE-MS
 export default defineConfig({
   plugins: [react(), tailwindcss()],
+  base: '/',
+  build: {
+    outDir: 'dist',
+    sourcemap: false,
+  },
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),

@@ -84,7 +84,7 @@ export async function apiRequest<T>(
 }
 
 /** Cria um cliente API com baseUrl pre-configurado */
-function createApiClient(baseUrl: string) {
+export function createApiClient(baseUrl: string) {
   return {
     get<T>(path: string, options?: RequestOptions) {
       return apiRequest<T>(`${baseUrl}${path}`, { ...options, method: 'GET' })

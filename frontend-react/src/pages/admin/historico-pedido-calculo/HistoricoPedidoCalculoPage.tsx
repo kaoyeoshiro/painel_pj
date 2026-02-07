@@ -5,7 +5,8 @@
  */
 
 import { useState } from 'react'
-import { DataTable, ColumnDef } from '@/components/shared/DataTable'
+import { DataTable } from '@/components/shared/DataTable'
+import type { ColumnDef } from '@/components/shared/DataTable'
 import {
   Dialog,
   DialogContent,

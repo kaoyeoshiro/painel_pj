@@ -24,8 +24,8 @@ import {
   FileEdit,
   BookOpen,
   Shield,
-  LucideIcon,
 } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 import { Sheet, SheetContent } from '@/components/ui/sheet'
 
 interface NavItem {

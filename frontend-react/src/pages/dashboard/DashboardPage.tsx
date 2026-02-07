@@ -21,8 +21,8 @@ import {
   History,
   FileEdit,
   BookOpen,
-  LucideIcon,
 } from 'lucide-react'
+import type { LucideIcon } from 'lucide-react'
 
 interface SystemCard {
   to: string

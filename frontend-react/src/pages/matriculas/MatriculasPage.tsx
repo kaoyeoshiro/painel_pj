@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useApiQuery } from '@/hooks/useApiQuery'
 import { matriculasApi } from '@/lib/api'
-import {
+import type {
   FileInfo,
   ResultadoAnalise,
   AnaliseStatusResponse,
