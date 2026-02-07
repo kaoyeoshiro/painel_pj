@@ -7,6 +7,12 @@
  */
 
 import { createRouter, createRootRoute, createRoute, redirect, Outlet } from '@tanstack/react-router'
+import { AppLayout } from '@/components/layout/AppLayout'
+import { AuthGuard } from '@/components/layout/AuthGuard'
+import { LoginPage } from '@/pages/login/LoginPage'
+import { DashboardPage } from '@/pages/dashboard/DashboardPage'
+import { ChangePasswordPage } from '@/pages/change-password/ChangePasswordPage'
+import { DesignSystemPage } from '@/pages/dev/DesignSystemPage'
 
 // ---------------------------------------------------------------------------
 // Componente placeholder generico
@@ -21,10 +27,23 @@ function Placeholder({ titulo }: { titulo: string }) {
 }
 
 // ---------------------------------------------------------------------------
-// Root route
+// Root route - renderiza apenas Outlet
 // ---------------------------------------------------------------------------
 const rootRoute = createRootRoute({
   component: () => <Outlet />,
+})
+
+// ---------------------------------------------------------------------------
+// Layout route - wraps authenticated routes com AppLayout + AuthGuard
+// ---------------------------------------------------------------------------
+const layoutRoute = createRoute({
+  getParentRoute: () => rootRoute,
+  id: '_layout',
+  component: () => (
+    <AuthGuard>
+      <AppLayout />
+    </AuthGuard>
+  ),
 })
 
 // ---------------------------------------------------------------------------
@@ -39,190 +58,190 @@ const indexRoute = createRoute({
 })
 
 // ---------------------------------------------------------------------------
-// Rotas publicas
+// Rotas publicas (sem layout)
 // ---------------------------------------------------------------------------
 const loginRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/login',
-  component: () => <Placeholder titulo="Login" />,
+  component: LoginPage,
 })
 
 // ---------------------------------------------------------------------------
-// Rotas autenticadas
+// Rotas autenticadas (com layout)
 // ---------------------------------------------------------------------------
 const dashboardRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => layoutRoute,
   path: '/dashboard',
-  component: () => <Placeholder titulo="Dashboard" />,
+  component: DashboardPage,
 })
 
 const geradorPecasRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => layoutRoute,
   path: '/gerador-pecas',
   component: () => <Placeholder titulo="Gerador de Pecas" />,
 })
 
 const extratorAutosRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => layoutRoute,
   path: '/extrator-autos',
   component: () => <Placeholder titulo="Extrator de Autos" />,
 })
 
 const classificadorRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => layoutRoute,
   path: '/classificador',
   component: () => <Placeholder titulo="Classificador de Documentos" />,
 })
 
 const pedidoCalculoRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => layoutRoute,
   path: '/pedido-calculo',
   component: () => <Placeholder titulo="Pedido de Calculo" />,
 })
 
 const prestacaoContasRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => layoutRoute,
   path: '/prestacao-contas',
   component: () => <Placeholder titulo="Prestacao de Contas" />,
 })
 
 const relatorioCumprimentoRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => layoutRoute,
   path: '/relatorio-cumprimento',
   component: () => <Placeholder titulo="Relatorio de Cumprimento" />,
 })
 
 const cumprimentoBetaRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => layoutRoute,
   path: '/cumprimento-beta',
   component: () => <Placeholder titulo="Cumprimento (Beta)" />,
 })
 
 const assistenciaRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => layoutRoute,
   path: '/assistencia',
   component: () => <Placeholder titulo="Assistencia Judiciaria" />,
 })
 
 const matriculasRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => layoutRoute,
   path: '/matriculas',
   component: () => <Placeholder titulo="Matriculas Confrontantes" />,
 })
 
 const bertTrainingRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => layoutRoute,
   path: '/bert-training',
   component: () => <Placeholder titulo="BERT Training" />,
 })
 
 const changePasswordRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => layoutRoute,
   path: '/change-password',
-  component: () => <Placeholder titulo="Alterar Senha" />,
+  component: ChangePasswordPage,
 })
 
 const devDesignSystemRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => layoutRoute,
   path: '/dev/design-system',
-  component: () => <Placeholder titulo="Design System" />,
+  component: DesignSystemPage,
 })
 
 // ---------------------------------------------------------------------------
-// Rotas administrativas (/admin/*)
+// Rotas administrativas (/admin/*) - com layout
 // ---------------------------------------------------------------------------
 const adminUsersRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => layoutRoute,
   path: '/admin/users',
   component: () => <Placeholder titulo="Gerenciar Usuarios" />,
 })
 
 const adminPromptsRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => layoutRoute,
   path: '/admin/prompts',
   component: () => <Placeholder titulo="Configuracao de Prompts" />,
 })
 
 const adminPromptsModulosRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => layoutRoute,
   path: '/admin/prompts-modulos',
   component: () => <Placeholder titulo="Modulos de Prompts" />,
 })
 
 const adminFeedbacksRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => layoutRoute,
   path: '/admin/feedbacks',
   component: () => <Placeholder titulo="Feedbacks" />,
 })
 
 const adminPerformanceRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => layoutRoute,
   path: '/admin/performance',
   component: () => <Placeholder titulo="Performance" />,
 })
 
 const adminVariaveisRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => layoutRoute,
   path: '/admin/variaveis',
   component: () => <Placeholder titulo="Variaveis" />,
 })
 
 const adminCategoriasJsonRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => layoutRoute,
   path: '/admin/categorias-json',
   component: () => <Placeholder titulo="Categorias JSON" />,
 })
 
 const adminHistoricoGeradorRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => layoutRoute,
   path: '/admin/historico-gerador',
   component: () => <Placeholder titulo="Historico - Gerador de Pecas" />,
 })
 
 const adminHistoricoPedidoCalculoRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => layoutRoute,
   path: '/admin/historico-pedido-calculo',
   component: () => <Placeholder titulo="Historico - Pedido de Calculo" />,
 })
 
 const adminHistoricoPrestacaoContasRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => layoutRoute,
   path: '/admin/historico-prestacao-contas',
   component: () => <Placeholder titulo="Historico - Prestacao de Contas" />,
 })
 
 const adminModulosTipoPecaRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => layoutRoute,
   path: '/admin/modulos-tipo-peca',
   component: () => <Placeholder titulo="Modulos por Tipo de Peca" />,
 })
 
 const adminConfigPecasRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => layoutRoute,
   path: '/admin/config-pecas',
   component: () => <Placeholder titulo="Configuracao de Pecas" />,
 })
 
 const adminTesteAtivacaoRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => layoutRoute,
   path: '/admin/teste-ativacao',
   component: () => <Placeholder titulo="Teste de Ativacao" />,
 })
 
 const adminTesteCategoriasRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => layoutRoute,
   path: '/admin/teste-categorias',
   component: () => <Placeholder titulo="Teste de Categorias" />,
 })
 
 const adminTjmsDocsRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => layoutRoute,
   path: '/admin/tjms-docs',
   component: () => <Placeholder titulo="Documentacao TJ-MS" />,
 })
 
 const adminRestaurarSlugsRoute = createRoute({
-  getParentRoute: () => rootRoute,
+  getParentRoute: () => layoutRoute,
   path: '/admin/restaurar-slugs',
   component: () => <Placeholder titulo="Restaurar Slugs" />,
 })
@@ -234,41 +253,44 @@ const routeTree = rootRoute.addChildren([
   // Index (redirect)
   indexRoute,
 
-  // Publica
+  // Publica (sem layout)
   loginRoute,
 
-  // Autenticadas
-  dashboardRoute,
-  geradorPecasRoute,
-  extratorAutosRoute,
-  classificadorRoute,
-  pedidoCalculoRoute,
-  prestacaoContasRoute,
-  relatorioCumprimentoRoute,
-  cumprimentoBetaRoute,
-  assistenciaRoute,
-  matriculasRoute,
-  bertTrainingRoute,
-  changePasswordRoute,
-  devDesignSystemRoute,
+  // Layout route com todas as rotas autenticadas aninhadas
+  layoutRoute.addChildren([
+    // Sistemas
+    dashboardRoute,
+    geradorPecasRoute,
+    extratorAutosRoute,
+    classificadorRoute,
+    pedidoCalculoRoute,
+    prestacaoContasRoute,
+    relatorioCumprimentoRoute,
+    cumprimentoBetaRoute,
+    assistenciaRoute,
+    matriculasRoute,
+    bertTrainingRoute,
+    changePasswordRoute,
+    devDesignSystemRoute,
 
-  // Admin
-  adminUsersRoute,
-  adminPromptsRoute,
-  adminPromptsModulosRoute,
-  adminFeedbacksRoute,
-  adminPerformanceRoute,
-  adminVariaveisRoute,
-  adminCategoriasJsonRoute,
-  adminHistoricoGeradorRoute,
-  adminHistoricoPedidoCalculoRoute,
-  adminHistoricoPrestacaoContasRoute,
-  adminModulosTipoPecaRoute,
-  adminConfigPecasRoute,
-  adminTesteAtivacaoRoute,
-  adminTesteCategoriasRoute,
-  adminTjmsDocsRoute,
-  adminRestaurarSlugsRoute,
+    // Admin
+    adminUsersRoute,
+    adminPromptsRoute,
+    adminPromptsModulosRoute,
+    adminFeedbacksRoute,
+    adminPerformanceRoute,
+    adminVariaveisRoute,
+    adminCategoriasJsonRoute,
+    adminHistoricoGeradorRoute,
+    adminHistoricoPedidoCalculoRoute,
+    adminHistoricoPrestacaoContasRoute,
+    adminModulosTipoPecaRoute,
+    adminConfigPecasRoute,
+    adminTesteAtivacaoRoute,
+    adminTesteCategoriasRoute,
+    adminTjmsDocsRoute,
+    adminRestaurarSlugsRoute,
+  ]),
 ])
 
 // ---------------------------------------------------------------------------
