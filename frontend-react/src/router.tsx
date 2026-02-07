@@ -1,9 +1,8 @@
 /**
  * Configuracao central do router (Tanstack Router).
  *
- * Todas as rotas sao definidas aqui com componentes placeholder.
- * Conforme os modulos forem migrados, os componentes serao substituidos
- * pelas paginas reais.
+ * Todas as rotas sao definidas aqui. Todos os sistemas e admins
+ * foram migrados para React.
  */
 
 import { createRouter, createRootRoute, createRoute, redirect, Outlet } from '@tanstack/react-router'
@@ -24,17 +23,23 @@ import { GeradorPecasPage } from '@/pages/gerador-pecas/GeradorPecasPage'
 import { ExtratorAutosPage } from '@/pages/extrator-autos/ExtratorAutosPage'
 import { ClassificadorPage } from '@/pages/classificador/ClassificadorPage'
 
-// ---------------------------------------------------------------------------
-// Componente placeholder generico
-// ---------------------------------------------------------------------------
-function Placeholder({ titulo }: { titulo: string }) {
-  return (
-    <div className="p-8">
-      <h1 className="text-2xl font-bold">{titulo}</h1>
-      <p className="mt-2 text-muted-foreground">Em construcao...</p>
-    </div>
-  )
-}
+// Admin pages
+import { UsersPage } from '@/pages/admin/users/UsersPage'
+import { PromptsPage } from '@/pages/admin/prompts/PromptsPage'
+import { PromptsModulosPage } from '@/pages/admin/prompts-modulos/PromptsModulosPage'
+import { FeedbacksPage } from '@/pages/admin/feedbacks/FeedbacksPage'
+import { PerformancePage } from '@/pages/admin/performance/PerformancePage'
+import { VariaveisPage } from '@/pages/admin/variaveis/VariaveisPage'
+import { CategoriasJsonPage } from '@/pages/admin/categorias-json/CategoriasJsonPage'
+import { HistoricoGeradorPage } from '@/pages/admin/historico-gerador/HistoricoGeradorPage'
+import { HistoricoPedidoCalculoPage } from '@/pages/admin/historico-pedido-calculo/HistoricoPedidoCalculoPage'
+import { HistoricoPrestacaoContasPage } from '@/pages/admin/historico-prestacao-contas/HistoricoPrestacaoContasPage'
+import { ModulosTipoPecaPage } from '@/pages/admin/modulos-tipo-peca/ModulosTipoPecaPage'
+import { ConfigPecasPage } from '@/pages/admin/config-pecas/ConfigPecasPage'
+import { TesteAtivacaoPage } from '@/pages/admin/teste-ativacao/TesteAtivacaoPage'
+import { TesteCategoriasPage } from '@/pages/admin/teste-categorias/TesteCategoriasPage'
+import { TjmsDocsPage } from '@/pages/admin/tjms-docs/TjmsDocsPage'
+import { RestaurarSlugsPage } from '@/pages/admin/restaurar-slugs/RestaurarSlugsPage'
 
 // ---------------------------------------------------------------------------
 // Root route - renderiza apenas Outlet
@@ -163,97 +168,97 @@ const devDesignSystemRoute = createRoute({
 const adminUsersRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: '/admin/users',
-  component: () => <Placeholder titulo="Gerenciar Usuarios" />,
+  component: UsersPage,
 })
 
 const adminPromptsRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: '/admin/prompts',
-  component: () => <Placeholder titulo="Configuracao de Prompts" />,
+  component: PromptsPage,
 })
 
 const adminPromptsModulosRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: '/admin/prompts-modulos',
-  component: () => <Placeholder titulo="Modulos de Prompts" />,
+  component: PromptsModulosPage,
 })
 
 const adminFeedbacksRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: '/admin/feedbacks',
-  component: () => <Placeholder titulo="Feedbacks" />,
+  component: FeedbacksPage,
 })
 
 const adminPerformanceRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: '/admin/performance',
-  component: () => <Placeholder titulo="Performance" />,
+  component: PerformancePage,
 })
 
 const adminVariaveisRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: '/admin/variaveis',
-  component: () => <Placeholder titulo="Variaveis" />,
+  component: VariaveisPage,
 })
 
 const adminCategoriasJsonRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: '/admin/categorias-json',
-  component: () => <Placeholder titulo="Categorias JSON" />,
+  component: CategoriasJsonPage,
 })
 
 const adminHistoricoGeradorRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: '/admin/historico-gerador',
-  component: () => <Placeholder titulo="Historico - Gerador de Pecas" />,
+  component: HistoricoGeradorPage,
 })
 
 const adminHistoricoPedidoCalculoRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: '/admin/historico-pedido-calculo',
-  component: () => <Placeholder titulo="Historico - Pedido de Calculo" />,
+  component: HistoricoPedidoCalculoPage,
 })
 
 const adminHistoricoPrestacaoContasRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: '/admin/historico-prestacao-contas',
-  component: () => <Placeholder titulo="Historico - Prestacao de Contas" />,
+  component: HistoricoPrestacaoContasPage,
 })
 
 const adminModulosTipoPecaRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: '/admin/modulos-tipo-peca',
-  component: () => <Placeholder titulo="Modulos por Tipo de Peca" />,
+  component: ModulosTipoPecaPage,
 })
 
 const adminConfigPecasRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: '/admin/config-pecas',
-  component: () => <Placeholder titulo="Configuracao de Pecas" />,
+  component: ConfigPecasPage,
 })
 
 const adminTesteAtivacaoRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: '/admin/teste-ativacao',
-  component: () => <Placeholder titulo="Teste de Ativacao" />,
+  component: TesteAtivacaoPage,
 })
 
 const adminTesteCategoriasRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: '/admin/teste-categorias',
-  component: () => <Placeholder titulo="Teste de Categorias" />,
+  component: TesteCategoriasPage,
 })
 
 const adminTjmsDocsRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: '/admin/tjms-docs',
-  component: () => <Placeholder titulo="Documentacao TJ-MS" />,
+  component: TjmsDocsPage,
 })
 
 const adminRestaurarSlugsRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: '/admin/restaurar-slugs',
-  component: () => <Placeholder titulo="Restaurar Slugs" />,
+  component: RestaurarSlugsPage,
 })
 
 // ---------------------------------------------------------------------------
