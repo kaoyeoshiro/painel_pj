@@ -20,6 +20,9 @@ import { PedidoCalculoPage } from '@/pages/pedido-calculo/PedidoCalculoPage'
 import { PrestacaoContasPage } from '@/pages/prestacao-contas/PrestacaoContasPage'
 import { RelatorioCumprimentoPage } from '@/pages/relatorio-cumprimento/RelatorioCumprimentoPage'
 import { BertTrainingPage } from '@/pages/bert-training/BertTrainingPage'
+import { GeradorPecasPage } from '@/pages/gerador-pecas/GeradorPecasPage'
+import { ExtratorAutosPage } from '@/pages/extrator-autos/ExtratorAutosPage'
+import { ClassificadorPage } from '@/pages/classificador/ClassificadorPage'
 
 // ---------------------------------------------------------------------------
 // Componente placeholder generico
@@ -85,19 +88,19 @@ const dashboardRoute = createRoute({
 const geradorPecasRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: '/gerador-pecas',
-  component: () => <Placeholder titulo="Gerador de Pecas" />,
+  component: GeradorPecasPage,
 })
 
 const extratorAutosRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: '/extrator-autos',
-  component: () => <Placeholder titulo="Extrator de Autos" />,
+  component: ExtratorAutosPage,
 })
 
 const classificadorRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: '/classificador',
-  component: () => <Placeholder titulo="Classificador de Documentos" />,
+  component: ClassificadorPage,
 })
 
 const pedidoCalculoRoute = createRoute({
