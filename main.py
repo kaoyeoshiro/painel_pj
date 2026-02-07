@@ -92,6 +92,7 @@ from sistemas.classificador_documentos.router import router as classificador_doc
 
 # Import do sistema BERT Training
 from sistemas.bert_training.router import router as bert_training_router
+from sistemas.extrator_autos.router import router as extrator_autos_router
 
 # Import do sistema de Performance Logs
 from admin.router_performance import router as performance_router
@@ -107,6 +108,13 @@ from services.text_normalizer import text_normalizer_router
 
 # Diretórios base
 BASE_DIR = Path(__file__).resolve().parent
+
+# Feature flag para alternar entre frontend React e Jinja2 legado
+# FRONTEND_MODE=react -> serve o build React SPA
+# FRONTEND_MODE=legacy (padrao) -> serve templates Jinja2 existentes
+FRONTEND_MODE = os.getenv("FRONTEND_MODE", "legacy").lower()
+REACT_DIST_DIR = BASE_DIR / "frontend-react" / "dist"
+
 MATRICULAS_TEMPLATES = BASE_DIR / "sistemas" / "matriculas_confrontantes" / "templates"
 ASSISTENCIA_TEMPLATES = BASE_DIR / "sistemas" / "assistencia_judiciaria" / "templates"
 GERADOR_PECAS_TEMPLATES = BASE_DIR / "sistemas" / "gerador_pecas" / "templates"
@@ -116,6 +124,7 @@ RELATORIO_CUMPRIMENTO_TEMPLATES = BASE_DIR / "sistemas" / "relatorio_cumprimento
 CUMPRIMENTO_BETA_TEMPLATES = BASE_DIR / "sistemas" / "cumprimento_beta" / "templates"
 CLASSIFICADOR_DOCUMENTOS_TEMPLATES = BASE_DIR / "sistemas" / "classificador_documentos" / "templates"
 BERT_TRAINING_TEMPLATES = BASE_DIR / "sistemas" / "bert_training" / "templates"
+EXTRATOR_AUTOS_TEMPLATES = BASE_DIR / "sistemas" / "extrator_autos" / "templates"
 
 # IMPORTANTE: Inicializa banco de dados ANTES de criar o app
 # Isso garante que migrações sejam executadas antes de qualquer query
@@ -306,6 +315,7 @@ else:
             "http://localhost:8000",
             "http://127.0.0.1:8000",
             "http://localhost:3000",
+            "http://localhost:5173",  # Vite dev server (React)
         ]
 
 # TRACING: Request ID para rastreamento de requisições
@@ -623,6 +633,7 @@ app.include_router(classificador_documentos_router, prefix="/classificador/api")
 
 # Router de BERT Training
 app.include_router(bert_training_router)  # prefixo /bert-training já está no router
+app.include_router(extrator_autos_router)  # prefixo /extrator-autos/api já está no router
 
 # Router de Normalização de Texto
 app.include_router(text_normalizer_router)
@@ -796,6 +807,15 @@ async def serve_classificador_static(filename: str = ""):
 async def serve_bert_training_static(filename: str = ""):
     """Serve arquivos do frontend BERT Training"""
     return safe_serve_static(BERT_TRAINING_TEMPLATES, filename, no_cache=True)
+
+
+# Extrator de Autos
+@app.get("/extrator-autos/templates/{filename:path}")
+@app.get("/extrator-autos/")
+@app.get("/extrator-autos")
+async def serve_extrator_autos_static(filename: str = ""):
+    """Serve arquivos do frontend Extrator de Autos"""
+    return safe_serve_static(EXTRATOR_AUTOS_TEMPLATES, filename, no_cache=True)
 
 
 # ==================================================
@@ -977,6 +997,49 @@ async def admin_tjms_plano_page():
         </html>
         """)
     return HTMLResponse(content="Arquivo não encontrado", status_code=404)
+
+
+# ==================================================
+# FRONTEND REACT SPA (quando FRONTEND_MODE=react)
+# ==================================================
+
+if FRONTEND_MODE == "react":
+    # Monta assets estaticos do React build (JS, CSS, imagens)
+    react_assets_dir = REACT_DIST_DIR / "assets"
+    if react_assets_dir.exists():
+        app.mount("/assets", StaticFiles(directory=str(react_assets_dir)), name="react-assets")
+
+    # Serve arquivos estaticos na raiz do build (vite.svg, etc)
+    if REACT_DIST_DIR.exists():
+        @app.get("/vite.svg")
+        async def serve_vite_svg():
+            svg_path = REACT_DIST_DIR / "vite.svg"
+            if svg_path.exists():
+                return FileResponse(str(svg_path), media_type="image/svg+xml")
+            return HTMLResponse("Not found", status_code=404)
+
+    # Catch-all: qualquer rota nao capturada por API/rotas anteriores
+    # serve o index.html do React para que o React Router resolva
+    react_index = REACT_DIST_DIR / "index.html"
+    if react_index.exists():
+        @app.get("/{full_path:path}")
+        async def serve_react_spa(full_path: str):
+            """Serve o React SPA para qualquer rota nao-API"""
+            return FileResponse(
+                str(react_index),
+                media_type="text/html",
+                headers={
+                    "Cache-Control": "no-cache, no-store, must-revalidate",
+                    "Pragma": "no-cache",
+                }
+            )
+    else:
+        print(f"[WARN] FRONTEND_MODE=react mas build nao encontrado em {REACT_DIST_DIR}")
+        print("[WARN] Execute 'cd frontend-react && npm run build' primeiro")
+
+    print(f"[+] Frontend React SPA ativado (build: {REACT_DIST_DIR})")
+else:
+    print(f"[+] Frontend Jinja2 legado ativado")
 
 
 # ==================================================
