@@ -13,8 +13,7 @@ import logging
 from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from fastapi.templating import Jinja2Templates
-from fastapi.responses import RedirectResponse, HTMLResponse, FileResponse
+from fastapi.responses import RedirectResponse, FileResponse
 from starlette.middleware.base import BaseHTTPMiddleware
 from contextlib import asynccontextmanager
 from pathlib import Path
@@ -108,23 +107,7 @@ from services.text_normalizer import text_normalizer_router
 
 # Diretórios base
 BASE_DIR = Path(__file__).resolve().parent
-
-# Feature flag para alternar entre frontend React e Jinja2 legado
-# FRONTEND_MODE=react -> serve o build React SPA
-# FRONTEND_MODE=legacy (padrao) -> serve templates Jinja2 existentes
-FRONTEND_MODE = os.getenv("FRONTEND_MODE", "legacy").lower()
 REACT_DIST_DIR = BASE_DIR / "frontend-react" / "dist"
-
-MATRICULAS_TEMPLATES = BASE_DIR / "sistemas" / "matriculas_confrontantes" / "templates"
-ASSISTENCIA_TEMPLATES = BASE_DIR / "sistemas" / "assistencia_judiciaria" / "templates"
-GERADOR_PECAS_TEMPLATES = BASE_DIR / "sistemas" / "gerador_pecas" / "templates"
-PEDIDO_CALCULO_TEMPLATES = BASE_DIR / "sistemas" / "pedido_calculo" / "templates"
-PRESTACAO_CONTAS_TEMPLATES = BASE_DIR / "sistemas" / "prestacao_contas" / "templates"
-RELATORIO_CUMPRIMENTO_TEMPLATES = BASE_DIR / "sistemas" / "relatorio_cumprimento" / "templates"
-CUMPRIMENTO_BETA_TEMPLATES = BASE_DIR / "sistemas" / "cumprimento_beta" / "templates"
-CLASSIFICADOR_DOCUMENTOS_TEMPLATES = BASE_DIR / "sistemas" / "classificador_documentos" / "templates"
-BERT_TRAINING_TEMPLATES = BASE_DIR / "sistemas" / "bert_training" / "templates"
-EXTRATOR_AUTOS_TEMPLATES = BASE_DIR / "sistemas" / "extrator_autos" / "templates"
 
 # IMPORTANTE: Inicializa banco de dados ANTES de criar o app
 # Isso garante que migrações sejam executadas antes de qualquer query
@@ -401,13 +384,6 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
             content={"detail": exc.errors(), "request_id": request_id}
         )
 
-# Templates Jinja2 para páginas do portal
-templates = Jinja2Templates(directory="frontend/templates")
-
-# Arquivos estáticos
-if os.path.exists("frontend/static"):
-    app.mount("/static", StaticFiles(directory="frontend/static"), name="static")
-
 # Arquivos de logo
 if os.path.exists("logo"):
     app.mount("/logo", StaticFiles(directory="logo"), name="logo")
@@ -640,406 +616,35 @@ app.include_router(text_normalizer_router)
 
 
 # ==================================================
-# FRONTENDS DOS SISTEMAS
+# FRONTEND REACT SPA
 # ==================================================
+# O frontend React SPA e o unico frontend do portal.
+# O build (dist/) e servido pelo FastAPI com catch-all para React Router.
 
-# SECURITY: Content-types permitidos para arquivos estáticos
-ALLOWED_CONTENT_TYPES = {
-    ".html": "text/html",
-    ".js": "application/javascript",
-    ".css": "text/css",
-    ".json": "application/json",
-    ".png": "image/png",
-    ".jpg": "image/jpeg",
-    ".jpeg": "image/jpeg",
-    ".svg": "image/svg+xml",
-    ".ico": "image/x-icon",
-    ".woff": "font/woff",
-    ".woff2": "font/woff2",
-    ".ttf": "font/ttf",
-}
+# Monta assets estaticos do React build (JS, CSS, imagens)
+react_assets_dir = REACT_DIST_DIR / "assets"
+if react_assets_dir.exists():
+    app.mount("/assets", StaticFiles(directory=str(react_assets_dir)), name="react-assets")
 
-def safe_serve_static(base_dir: Path, filename: str, no_cache: bool = False):
-    """
-    SECURITY: Serve arquivos estáticos de forma segura, prevenindo path traversal.
-
-    Args:
-        base_dir: Diretório base permitido
-        filename: Nome do arquivo requisitado
-        no_cache: Se True, adiciona headers anti-cache
-
-    Returns:
-        FileResponse ou HTMLResponse com erro
-    """
-    # Normaliza filename
-    if not filename or filename == "" or filename == "/":
-        filename = "index.html"
-
-    # SECURITY: Remove tentativas de path traversal
-    # Normaliza separadores e remove componentes perigosos
-    clean_filename = filename.replace("\\", "/")
-
-    # Resolve o caminho e verifica se está dentro do diretório base
-    try:
-        file_path = (base_dir / clean_filename).resolve()
-        base_resolved = base_dir.resolve()
-
-        # SECURITY: Verifica se o arquivo está dentro do diretório permitido
-        if not str(file_path).startswith(str(base_resolved)):
-            return HTMLResponse(
-                "<h1>Acesso negado</h1>",
-                status_code=403
-            )
-    except (ValueError, OSError):
-        return HTMLResponse("<h1>Caminho inválido</h1>", status_code=400)
-
-    # SECURITY: Verifica extensão permitida
-    suffix = file_path.suffix.lower()
-    if suffix not in ALLOWED_CONTENT_TYPES:
-        # Fallback para index.html (SPA)
-        index_path = base_dir / "index.html"
-        if index_path.exists():
-            return FileResponse(index_path, media_type="text/html")
-        return HTMLResponse("<h1>Tipo de arquivo não permitido</h1>", status_code=403)
-
-    if file_path.exists() and file_path.is_file():
-        media_type = ALLOWED_CONTENT_TYPES.get(suffix, "application/octet-stream")
-
-        headers = {}
-        if no_cache:
-            headers = {
+# Catch-all: qualquer rota nao capturada por API/rotas anteriores
+# serve o index.html do React para que o React Router resolva
+react_index = REACT_DIST_DIR / "index.html"
+if react_index.exists():
+    @app.get("/{full_path:path}")
+    async def serve_react_spa(full_path: str):
+        """Serve o React SPA para qualquer rota nao-API"""
+        return FileResponse(
+            str(react_index),
+            media_type="text/html",
+            headers={
                 "Cache-Control": "no-cache, no-store, must-revalidate",
                 "Pragma": "no-cache",
-                "Expires": "0"
             }
-
-        return FileResponse(file_path, media_type=media_type, headers=headers if headers else None)
-
-    # Se não encontrou, retorna index.html (SPA fallback)
-    index_path = base_dir / "index.html"
-    if index_path.exists():
-        headers = {}
-        if no_cache:
-            headers = {
-                "Cache-Control": "no-cache, no-store, must-revalidate",
-                "Pragma": "no-cache",
-                "Expires": "0"
-            }
-        return FileResponse(index_path, media_type="text/html", headers=headers if headers else None)
-
-    return HTMLResponse("<h1>Sistema não encontrado</h1>", status_code=404)
-
-
-# Assistência Judiciária - Servir arquivos estáticos
-@app.get("/assistencia/{filename:path}")
-@app.get("/assistencia/")
-@app.get("/assistencia")
-async def serve_assistencia_static(filename: str = ""):
-    """Serve arquivos do frontend Assistência Judiciária"""
-    return safe_serve_static(ASSISTENCIA_TEMPLATES, filename)
-
-
-# Matrículas Confrontantes - Servir arquivos estáticos (JS, CSS)
-@app.get("/matriculas/{filename:path}")
-async def serve_matriculas_static(filename: str = ""):
-    """Serve arquivos do frontend Matrículas Confrontantes"""
-    return safe_serve_static(MATRICULAS_TEMPLATES, filename)
-
-
-# Gerador de Peças Jurídicas
-@app.get("/gerador-pecas/{filename:path}")
-@app.get("/gerador-pecas/")
-@app.get("/gerador-pecas")
-async def serve_gerador_pecas_static(filename: str = ""):
-    """Serve arquivos do frontend Gerador de Peças Jurídicas"""
-    return safe_serve_static(GERADOR_PECAS_TEMPLATES, filename, no_cache=True)
-
-
-# Pedido de Cálculo
-@app.get("/pedido-calculo/{filename:path}")
-@app.get("/pedido-calculo/")
-@app.get("/pedido-calculo")
-async def serve_pedido_calculo_static(filename: str = ""):
-    """Serve arquivos do frontend Pedido de Cálculo"""
-    return safe_serve_static(PEDIDO_CALCULO_TEMPLATES, filename, no_cache=True)
-
-
-# Prestação de Contas
-@app.get("/prestacao-contas/{filename:path}")
-@app.get("/prestacao-contas/")
-@app.get("/prestacao-contas")
-async def serve_prestacao_contas_static(filename: str = ""):
-    """Serve arquivos do frontend Prestação de Contas"""
-    return safe_serve_static(PRESTACAO_CONTAS_TEMPLATES, filename, no_cache=True)
-
-
-# Relatório de Cumprimento
-@app.get("/relatorio-cumprimento/{filename:path}")
-@app.get("/relatorio-cumprimento/")
-@app.get("/relatorio-cumprimento")
-async def serve_relatorio_cumprimento_static(filename: str = ""):
-    """Serve arquivos do frontend Relatório de Cumprimento"""
-    return safe_serve_static(RELATORIO_CUMPRIMENTO_TEMPLATES, filename, no_cache=True)
-
-
-# Cumprimento de Sentença Beta
-@app.get("/cumprimento-beta/{filename:path}")
-@app.get("/cumprimento-beta/")
-@app.get("/cumprimento-beta")
-async def serve_cumprimento_beta_static(filename: str = ""):
-    """Serve arquivos do frontend Cumprimento de Sentença Beta"""
-    return safe_serve_static(CUMPRIMENTO_BETA_TEMPLATES, filename, no_cache=True)
-
-
-# Classificador de Documentos
-@app.get("/classificador/{filename:path}")
-@app.get("/classificador/")
-@app.get("/classificador")
-async def serve_classificador_static(filename: str = ""):
-    """Serve arquivos do frontend Classificador de Documentos"""
-    return safe_serve_static(CLASSIFICADOR_DOCUMENTOS_TEMPLATES, filename, no_cache=True)
-
-
-# BERT Training
-@app.get("/bert-training/templates/{filename:path}")
-@app.get("/bert-training/")
-@app.get("/bert-training")
-async def serve_bert_training_static(filename: str = ""):
-    """Serve arquivos do frontend BERT Training"""
-    return safe_serve_static(BERT_TRAINING_TEMPLATES, filename, no_cache=True)
-
-
-# Extrator de Autos
-@app.get("/extrator-autos/templates/{filename:path}")
-@app.get("/extrator-autos/")
-@app.get("/extrator-autos")
-async def serve_extrator_autos_static(filename: str = ""):
-    """Serve arquivos do frontend Extrator de Autos"""
-    return safe_serve_static(EXTRATOR_AUTOS_TEMPLATES, filename, no_cache=True)
-
-
-# ==================================================
-# PÁGINAS DO PORTAL (Jinja2)
-# ==================================================
-
-@app.get("/login")
-async def login_page(request: Request):
-    """Página de login"""
-    return templates.TemplateResponse("login.html", {"request": request})
-
-
-@app.get("/dashboard")
-async def dashboard_page(request: Request):
-    """Página do dashboard - seleção de sistemas"""
-    return templates.TemplateResponse("dashboard.html", {"request": request})
-
-
-@app.get("/change-password")
-async def change_password_page(request: Request):
-    """Página de troca de senha"""
-    return templates.TemplateResponse("change_password.html", {"request": request})
-
-
-# ==================================================
-# PÁGINAS ADMIN (Protegidas)
-# ==================================================
-# SECURITY: Páginas admin requerem autenticação.
-# A verificação completa é feita via JS no frontend,
-# mas adicionamos verificação básica de token no backend
-# para evitar acesso direto por crawlers/bots.
-
-from auth.dependencies import get_current_active_user, require_admin
-from auth.models import User
-from fastapi import Depends
-from sqlalchemy.orm import Session
-from database.connection import get_db
-
-
-async def verify_admin_token_optional(request: Request) -> bool:
-    """
-    SECURITY: Verifica se há um token válido de admin.
-    Retorna True se válido, False caso contrário.
-    Não bloqueia - permite que JS faça redirect adequado.
-    """
-    # Tenta extrair token do header Authorization
-    auth_header = request.headers.get("Authorization", "")
-    if auth_header.startswith("Bearer "):
-        try:
-            from auth.security import decode_token
-            token = auth_header.replace("Bearer ", "")
-            payload = decode_token(token)
-            if payload and payload.get("role") == "admin":
-                return True
-        except Exception:
-            pass
-    return False
-
-
-@app.get("/admin/prompts-config")
-async def admin_prompts_page(request: Request):
-    """Página de administração de prompts"""
-    return templates.TemplateResponse("admin_prompts.html", {"request": request})
-
-
-@app.get("/admin/prompts-modulos")
-async def admin_prompts_modulos_page(request: Request):
-    """Página de gerenciamento de prompts modulares"""
-    return templates.TemplateResponse("admin_prompts_modulos.html", {"request": request})
-
-
-@app.get("/admin/modulos-tipo-peca")
-async def admin_modulos_tipo_peca_page(request: Request):
-    """Página de configuração de módulos por tipo de peça"""
-    return templates.TemplateResponse("admin_modulos_tipo_peca.html", {"request": request})
-
-
-@app.get("/admin/gerador-pecas/historico")
-async def admin_gerador_historico_page(request: Request):
-    """Página de histórico de gerações com prompts"""
-    return templates.TemplateResponse("admin_gerador_historico.html", {"request": request})
-
-
-@app.get("/admin/pedido-calculo/debug")
-async def admin_pedido_calculo_debug_page(request: Request):
-    """Página de debug do Pedido de Cálculo - visualiza chamadas de IA"""
-    return templates.TemplateResponse("admin_pedido_calculo_historico.html", {"request": request})
-
-
-@app.get("/admin/prestacao-contas/debug")
-async def admin_prestacao_contas_debug_page(request: Request):
-    """Página de debug da Prestação de Contas - visualiza chamadas de IA"""
-    return templates.TemplateResponse("admin_prestacao_contas_historico.html", {"request": request})
-
-
-@app.get("/admin/users")
-async def admin_users_page(request: Request):
-    """Página de administração de usuários"""
-    return templates.TemplateResponse("admin_users.html", {"request": request})
-
-
-@app.get("/admin/feedbacks")
-async def admin_feedbacks_page(request: Request):
-    """Página de dashboard de feedbacks"""
-    return templates.TemplateResponse("admin_feedbacks.html", {"request": request})
-
-
-@app.get("/admin/categorias-resumo-json")
-async def admin_categorias_json_page(request: Request):
-    """Página de gerenciamento de categorias de formato de resumo JSON"""
-    return templates.TemplateResponse("admin_categorias_json.html", {"request": request})
-
-
-@app.get("/admin/categorias-resumo-json/teste")
-async def admin_teste_categorias_json_page(request: Request):
-    """Página de teste/validação de categorias de resumo JSON"""
-    return templates.TemplateResponse("admin_teste_categorias_json.html", {"request": request})
-
-
-@app.get("/admin/prompts-modulos/teste")
-async def admin_teste_ativacao_modulos_page(request: Request):
-    """Página de teste de ativação de prompts modulares"""
-    return templates.TemplateResponse("admin_teste_ativacao_modulos.html", {"request": request})
-
-
-@app.get("/admin/variaveis")
-async def admin_variaveis_page(request: Request):
-    """Página do painel de variáveis de extração"""
-    return templates.TemplateResponse("admin_variaveis.html", {"request": request})
-
-
-@app.get("/admin/restaurar-slugs")
-async def admin_restaurar_slugs_page(request: Request):
-    """Página para restaurar slugs de variáveis a partir de backup"""
-    return templates.TemplateResponse("admin_restaurar_slugs.html", {"request": request})
-
-
-@app.get("/admin/performance")
-async def admin_performance_page(request: Request):
-    """Página para gerenciar logs de performance (diagnóstico de latência)"""
-    return templates.TemplateResponse("admin_performance.html", {"request": request})
-
-
-@app.get("/admin/tjms-docs")
-async def admin_tjms_docs_page(request: Request):
-    """Página de documentação da integração TJMS - explica como cada sistema consome do TJ-MS"""
-    return templates.TemplateResponse("admin_tjms_docs.html", {"request": request})
-
-
-@app.get("/admin/tjms-docs/plano")
-async def admin_tjms_plano_page():
-    """Retorna o plano de unificação TJMS em markdown"""
-    import os
-    plano_path = os.path.join(BASE_DIR, "docs", "PLANO_UNIFICACAO_TJMS.md")
-    if os.path.exists(plano_path):
-        with open(plano_path, "r", encoding="utf-8") as f:
-            content = f.read()
-        # Escapa backticks para uso em template literal JS
-        escaped_content = content.replace('`', '\\`')
-        return HTMLResponse(content=f"""
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>Plano Unificação TJMS</title>
-            <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/github-markdown-css/5.2.0/github-markdown.min.css">
-            <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-            <style>
-                body {{ max-width: 1200px; margin: 0 auto; padding: 20px; }}
-                .markdown-body {{ box-sizing: border-box; min-width: 200px; max-width: 980px; margin: 0 auto; padding: 45px; }}
-            </style>
-        </head>
-        <body class="markdown-body">
-            <a href="/admin/tjms-docs" style="display:inline-block;margin-bottom:20px;color:#0969da;">← Voltar</a>
-            <div id="content"></div>
-            <script>
-                document.getElementById('content').innerHTML = marked.parse(`{escaped_content}`);
-            </script>
-        </body>
-        </html>
-        """)
-    return HTMLResponse(content="Arquivo não encontrado", status_code=404)
-
-
-# ==================================================
-# FRONTEND REACT SPA (quando FRONTEND_MODE=react)
-# ==================================================
-
-if FRONTEND_MODE == "react":
-    # Monta assets estaticos do React build (JS, CSS, imagens)
-    react_assets_dir = REACT_DIST_DIR / "assets"
-    if react_assets_dir.exists():
-        app.mount("/assets", StaticFiles(directory=str(react_assets_dir)), name="react-assets")
-
-    # Serve arquivos estaticos na raiz do build (vite.svg, etc)
-    if REACT_DIST_DIR.exists():
-        @app.get("/vite.svg")
-        async def serve_vite_svg():
-            svg_path = REACT_DIST_DIR / "vite.svg"
-            if svg_path.exists():
-                return FileResponse(str(svg_path), media_type="image/svg+xml")
-            return HTMLResponse("Not found", status_code=404)
-
-    # Catch-all: qualquer rota nao capturada por API/rotas anteriores
-    # serve o index.html do React para que o React Router resolva
-    react_index = REACT_DIST_DIR / "index.html"
-    if react_index.exists():
-        @app.get("/{full_path:path}")
-        async def serve_react_spa(full_path: str):
-            """Serve o React SPA para qualquer rota nao-API"""
-            return FileResponse(
-                str(react_index),
-                media_type="text/html",
-                headers={
-                    "Cache-Control": "no-cache, no-store, must-revalidate",
-                    "Pragma": "no-cache",
-                }
-            )
-    else:
-        print(f"[WARN] FRONTEND_MODE=react mas build nao encontrado em {REACT_DIST_DIR}")
-        print("[WARN] Execute 'cd frontend-react && npm run build' primeiro")
-
+        )
     print(f"[+] Frontend React SPA ativado (build: {REACT_DIST_DIR})")
 else:
-    print(f"[+] Frontend Jinja2 legado ativado")
+    print(f"[WARN] Build React nao encontrado em {REACT_DIST_DIR}")
+    print("[WARN] Execute 'cd frontend-react && npm run build' primeiro")
 
 
 # ==================================================
