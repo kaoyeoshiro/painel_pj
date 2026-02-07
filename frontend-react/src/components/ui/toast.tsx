@@ -32,7 +32,7 @@ interface ToastContextType {
   dismiss: (id: string) => void
 }
 
-const ToastContext = React.createContext<ToastContextType | null>(null)
+export const ToastContext = React.createContext<ToastContextType | null>(null)
 
 // Provider que gerencia o estado das notificacoes e renderiza o container
 export function ToastProvider({ children }: { children: React.ReactNode }) {
