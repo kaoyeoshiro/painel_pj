@@ -42,20 +42,20 @@ export function AppLayout() {
 
         {/* Área de conteúdo (renderiza as páginas) */}
         <main className="flex-1 overflow-y-auto">
-          <div className="container mx-auto p-4 sm:p-6 lg:p-8">
-            {showBackButton && (
+          {showBackButton && (
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-4">
               <Button
                 variant="ghost"
                 size="sm"
-                className="mb-4 gap-2 text-muted-foreground hover:text-foreground"
+                className="gap-2 text-muted-foreground hover:text-foreground"
                 onClick={() => navigate({ to: '/dashboard' })}
               >
                 <ArrowLeft className="h-4 w-4" />
                 Voltar ao Dashboard
               </Button>
-            )}
-            <Outlet />
-          </div>
+            </div>
+          )}
+          <Outlet />
         </main>
       </div>
     </div>

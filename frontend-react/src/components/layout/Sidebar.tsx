@@ -23,10 +23,17 @@ import {
   History,
   FileEdit,
   BookOpen,
-  Shield,
+  PanelLeftClose,
+  PanelLeftOpen,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { Sheet, SheetContent } from '@/components/ui/sheet'
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip'
 
 interface NavItem {
   to: string
@@ -64,40 +71,62 @@ const adminItems: NavItem[] = [
   { to: '/admin/tjms-docs', icon: BookOpen, label: 'TJ-MS Docs', adminOnly: true },
 ]
 
-function SidebarContent() {
-  const { user } = useAuthStore()
-  const routerState = useRouterState()
-  const currentPath = routerState.location.pathname
+function NavLink({ item, collapsed }: { item: NavItem; collapsed: boolean }) {
+  const currentPath = useRouterState({ select: (s) => s.location.pathname })
 
   const isActive = (path: string) => {
-    if (path === '/dashboard') {
-      return currentPath === '/dashboard'
-    }
+    if (path === '/dashboard') return currentPath === '/dashboard'
     return currentPath.startsWith(path)
   }
+
+  const active = isActive(item.to)
+
+  const linkContent = (
+    <Link
+      to={item.to}
+      className={cn(
+        'flex items-center gap-3 px-3 py-2 text-sm font-medium rounded-lg transition-colors',
+        collapsed && 'justify-center px-2',
+        active
+          ? 'bg-primary/10 text-primary'
+          : 'text-gray-600 hover:bg-gray-100 hover:text-gray-900',
+      )}
+    >
+      <item.icon className="h-5 w-5 flex-shrink-0" />
+      {!collapsed && <span className="truncate">{item.label}</span>}
+    </Link>
+  )
+
+  if (collapsed) {
+    return (
+      <Tooltip delayDuration={0}>
+        <TooltipTrigger asChild>{linkContent}</TooltipTrigger>
+        <TooltipContent side="right" sideOffset={8}>
+          {item.label}
+        </TooltipContent>
+      </Tooltip>
+    )
+  }
+
+  return linkContent
+}
+
+function SidebarContent({ collapsed = false }: { collapsed?: boolean }) {
+  const { user } = useAuthStore()
 
   return (
     <nav className="flex-1 overflow-y-auto py-4">
       {/* Sistemas */}
-      <div className="px-3">
-        <h2 className="mb-2 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-          Sistemas
-        </h2>
-        <ul className="space-y-1">
+      <div className={cn('px-3', collapsed && 'px-2')}>
+        {!collapsed && (
+          <h2 className="mb-2 px-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+            Sistemas
+          </h2>
+        )}
+        <ul className="space-y-0.5">
           {systemItems.map((item) => (
             <li key={item.to}>
-              <Link
-                to={item.to}
-                className={cn(
-                  'flex items-center gap-3 px-4 py-2 text-sm font-medium rounded-lg transition-colors',
-                  isActive(item.to)
-                    ? 'bg-primary-50 text-primary-700'
-                    : 'text-gray-700 hover:bg-gray-100'
-                )}
-              >
-                <item.icon className="h-5 w-5" />
-                {item.label}
-              </Link>
+              <NavLink item={item} collapsed={collapsed} />
             </li>
           ))}
         </ul>
@@ -105,25 +134,17 @@ function SidebarContent() {
 
       {/* Admin (apenas se usuário é admin) */}
       {user?.is_admin && (
-        <div className="px-3 mt-6">
-          <h2 className="mb-2 px-4 text-xs font-semibold text-gray-500 uppercase tracking-wider">
-            Administração
-          </h2>
-          <ul className="space-y-1">
+        <div className={cn('px-3 mt-6', collapsed && 'px-2')}>
+          {!collapsed && (
+            <h2 className="mb-2 px-3 text-xs font-semibold text-gray-400 uppercase tracking-wider">
+              Administração
+            </h2>
+          )}
+          {collapsed && <div className="my-3 mx-2 border-t border-gray-200" />}
+          <ul className="space-y-0.5">
             {adminItems.map((item) => (
               <li key={item.to}>
-                <Link
-                  to={item.to}
-                  className={cn(
-                    'flex items-center gap-3 px-4 py-2 text-sm font-medium rounded-lg transition-colors',
-                    isActive(item.to)
-                      ? 'bg-primary-50 text-primary-700'
-                      : 'text-gray-700 hover:bg-gray-100'
-                  )}
-                >
-                  <item.icon className="h-5 w-5" />
-                  {item.label}
-                </Link>
+                <NavLink item={item} collapsed={collapsed} />
               </li>
             ))}
           </ul>
@@ -135,17 +156,41 @@ function SidebarContent() {
 
 /**
  * Sidebar da aplicação
- * Desktop: fixa na lateral esquerda
+ * Desktop: colapsada por padrão (icon-only), com toggle para expandir
  * Mobile: abre/fecha com Sheet (drawer)
  */
 export function Sidebar() {
-  const { sidebarOpen, setSidebarOpen } = useUiStore()
+  const { sidebarOpen, setSidebarOpen, sidebarCollapsed, toggleSidebarCollapsed } =
+    useUiStore()
 
   return (
-    <>
-      {/* Desktop: sidebar fixa */}
-      <aside className="hidden lg:flex lg:flex-col lg:w-64 lg:border-r lg:border-gray-200 lg:bg-white">
-        <SidebarContent />
+    <TooltipProvider>
+      {/* Desktop: sidebar fixa com collapse */}
+      <aside
+        className={cn(
+          'hidden lg:flex lg:flex-col lg:border-r lg:border-gray-200 lg:bg-white transition-[width] duration-200 ease-in-out',
+          sidebarCollapsed ? 'lg:w-16' : 'lg:w-60',
+        )}
+      >
+        {/* Toggle button */}
+        <div className={cn(
+          'flex items-center h-14 border-b border-gray-200 px-3',
+          sidebarCollapsed ? 'justify-center' : 'justify-end',
+        )}>
+          <button
+            onClick={toggleSidebarCollapsed}
+            className="p-1.5 rounded-md text-gray-400 hover:text-gray-600 hover:bg-gray-100 transition-colors"
+            title={sidebarCollapsed ? 'Expandir menu' : 'Recolher menu'}
+          >
+            {sidebarCollapsed ? (
+              <PanelLeftOpen className="h-5 w-5" />
+            ) : (
+              <PanelLeftClose className="h-5 w-5" />
+            )}
+          </button>
+        </div>
+
+        <SidebarContent collapsed={sidebarCollapsed} />
       </aside>
 
       {/* Mobile: sidebar em Sheet */}
@@ -155,10 +200,10 @@ export function Sidebar() {
             <div className="p-4 border-b border-gray-200">
               <img src="/logo/logo-pge.png" alt="PGE-MS" className="h-10 w-auto" />
             </div>
-            <SidebarContent />
+            <SidebarContent collapsed={false} />
           </div>
         </SheetContent>
       </Sheet>
-    </>
+    </TooltipProvider>
   )
 }
