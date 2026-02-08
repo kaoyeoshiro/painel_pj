@@ -60,6 +60,7 @@ export default function MatriculasPage() {
 
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const batchPollingRef = useRef<NodeJS.Timeout | null>(null)
+  const pollingTimeoutRef = useRef<NodeJS.Timeout | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Queries
@@ -72,6 +73,13 @@ export default function MatriculasPage() {
     return () => {
       if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current)
       if (batchPollingRef.current) clearInterval(batchPollingRef.current)
+      if (pollingTimeoutRef.current) clearTimeout(pollingTimeoutRef.current)
+    }
+  }, [])
+
+  // Revoga URL do PDF ao trocar
+  useEffect(() => {
+    return () => {
       if (pdfViewerUrl) URL.revokeObjectURL(pdfViewerUrl)
     }
   }, [pdfViewerUrl])
@@ -240,7 +248,7 @@ export default function MatriculasPage() {
     }, 2000)
 
     // Timeout de 5 minutos
-    setTimeout(() => {
+    pollingTimeoutRef.current = setTimeout(() => {
       if (pollingIntervalRef.current) {
         clearInterval(pollingIntervalRef.current)
         setIsAnalyzing(false)

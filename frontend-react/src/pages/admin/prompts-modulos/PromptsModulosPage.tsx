@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { adminApi } from '@/lib/api'
 import { useToast } from '@/components/ui/toast'
 import { Card } from '@/components/ui/card'
-import { Dialog } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
@@ -514,11 +514,12 @@ export function PromptsModulosPage() {
 
       {/* Dialog de criação/edição */}
       <Dialog open={dialogAberto} onOpenChange={setDialogAberto}>
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg shadow-lg max-w-3xl w-full max-h-[90vh] overflow-y-auto p-6">
-            <h2 className="text-2xl font-bold mb-4">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
               {moduloEditando ? 'Editar Módulo' : 'Novo Módulo'}
-            </h2>
+            </DialogTitle>
+          </DialogHeader>
 
             <div className="space-y-4">
               {/* Título */}
@@ -665,37 +666,35 @@ export function PromptsModulosPage() {
               </div>
             </div>
 
-            {/* Botões de ação */}
-            <div className="flex gap-2 justify-end mt-6 pt-4 border-t">
+            <DialogFooter className="mt-6 pt-4 border-t">
               <Button variant="outline" onClick={() => setDialogAberto(false)}>
                 Cancelar
               </Button>
               <Button onClick={salvarModulo}>
                 {moduloEditando ? 'Salvar' : 'Criar'}
               </Button>
-            </div>
-          </div>
-        </div>
+            </DialogFooter>
+        </DialogContent>
       </Dialog>
 
       {/* Dialog de confirmação de exclusão */}
       <Dialog open={dialogExclusao} onOpenChange={setDialogExclusao}>
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center p-4 z-50">
-          <div className="bg-white rounded-lg shadow-lg max-w-md w-full p-6">
-            <h2 className="text-xl font-bold mb-4">Confirmar Exclusão</h2>
-            <p className="mb-6">
-              Tem certeza que deseja excluir o módulo "{moduloEditando?.titulo}"?
-            </p>
-            <div className="flex gap-2 justify-end">
-              <Button variant="outline" onClick={() => setDialogExclusao(false)}>
-                Cancelar
-              </Button>
-              <Button variant="destructive" onClick={excluirModulo}>
-                Excluir
-              </Button>
-            </div>
-          </div>
-        </div>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Confirmar Exclusão</DialogTitle>
+          </DialogHeader>
+          <p className="mb-6">
+            Tem certeza que deseja excluir o módulo &quot;{moduloEditando?.titulo}&quot;?
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDialogExclusao(false)}>
+              Cancelar
+            </Button>
+            <Button variant="destructive" onClick={excluirModulo}>
+              Excluir
+            </Button>
+          </DialogFooter>
+        </DialogContent>
       </Dialog>
     </div>
   )

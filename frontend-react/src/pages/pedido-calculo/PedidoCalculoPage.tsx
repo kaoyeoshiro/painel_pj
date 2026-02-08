@@ -108,8 +108,6 @@ export function PedidoCalculoPage() {
 
   // Funcao para processar eventos SSE
   const processarEventoStream = (event: StreamEvent) => {
-    console.log('Evento SSE:', event)
-
     switch (event.tipo) {
       case 'inicio':
         setProgressMessage(event.mensagem)

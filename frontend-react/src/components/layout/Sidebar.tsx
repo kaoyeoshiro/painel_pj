@@ -139,7 +139,7 @@ function SidebarContent() {
  * Mobile: abre/fecha com Sheet (drawer)
  */
 export function Sidebar() {
-  const { sidebarOpen, closeSidebar } = useUiStore()
+  const { sidebarOpen, setSidebarOpen } = useUiStore()
 
   return (
     <>
@@ -149,7 +149,7 @@ export function Sidebar() {
       </aside>
 
       {/* Mobile: sidebar em Sheet */}
-      <Sheet open={sidebarOpen} onOpenChange={closeSidebar}>
+      <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
         <SheetContent side="left" className="w-64 p-0">
           <div className="flex flex-col h-full">
             <div className="p-4 border-b border-gray-200">

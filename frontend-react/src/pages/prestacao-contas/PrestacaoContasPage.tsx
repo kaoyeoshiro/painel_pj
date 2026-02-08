@@ -138,8 +138,6 @@ export function PrestacaoContasPage() {
 
   /** Processa um evento SSE recebido do backend */
   const processarEventoSSE = useCallback((evento: EventoSSE) => {
-    console.log('Evento SSE:', evento)
-
     switch (evento.tipo) {
       case 'inicio':
         setProgressoMensagem(evento.mensagem || 'Iniciando processamento...')
