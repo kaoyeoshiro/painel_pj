@@ -26,25 +26,23 @@ describe('CategoriasJsonPage', () => {
       id: 1,
       nome: 'Categoria Teste 1',
       descricao: 'Descrição da categoria 1',
-      codigos_documentos: ['10', '20'],
+      codigos_documento: ['10', '20'],
       formato_json: { campo1: 'string', campo2: 'number' },
-      exemplo_json: { campo1: 'exemplo', campo2: 123 },
-      modo_geracao: 'ia' as const,
       ativo: true,
-      created_at: '2024-01-01T00:00:00',
-      updated_at: '2024-01-01T00:00:00'
+      json_gerado_por_ia: true,
+      criado_em: '2024-01-01T00:00:00',
+      atualizado_em: '2024-01-01T00:00:00'
     },
     {
       id: 2,
       nome: 'Categoria Teste 2',
       descricao: 'Descrição da categoria 2',
-      codigos_documentos: ['30'],
+      codigos_documento: ['30'],
       formato_json: { campo3: 'boolean' },
-      exemplo_json: null,
-      modo_geracao: 'legado' as const,
       ativo: false,
-      created_at: '2024-01-02T00:00:00',
-      updated_at: '2024-01-02T00:00:00'
+      json_gerado_por_ia: false,
+      criado_em: '2024-01-02T00:00:00',
+      atualizado_em: '2024-01-02T00:00:00'
     }
   ]
 
@@ -78,7 +76,6 @@ describe('CategoriasJsonPage', () => {
     expect(screen.getAllByText('Ativo')).toHaveLength(1)
     expect(screen.getAllByText('Inativo')).toHaveLength(1)
     expect(screen.getAllByText('IA')).toHaveLength(1)
-    expect(screen.getAllByText('Legado')).toHaveLength(1)
 
     // Verificar códigos de documentos
     expect(screen.getByText('10')).toBeInTheDocument()
@@ -113,8 +110,6 @@ describe('CategoriasJsonPage', () => {
     expect(screen.getByLabelText(/descrição/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/códigos de documentos/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/formato json/i)).toBeInTheDocument()
-    expect(screen.getByLabelText(/exemplo json/i)).toBeInTheDocument()
-    expect(screen.getByLabelText(/modo de geração/i)).toBeInTheDocument()
     expect(screen.getByLabelText(/ativo/i)).toBeInTheDocument()
   })
 
@@ -166,9 +161,8 @@ describe('CategoriasJsonPage', () => {
         expect.objectContaining({
           nome: 'Nova Categoria',
           descricao: 'Descrição da nova categoria',
-          codigos_documentos: ['40', '50'],
+          codigos_documento: ['40', '50'],
           formato_json: { campo: 'string' },
-          modo_geracao: 'ia',
           ativo: true
         })
       )
@@ -189,7 +183,7 @@ describe('CategoriasJsonPage', () => {
   it('deve editar categoria existente', async () => {
     const categoriaCompleta = {
       ...mockCategorias[0],
-      codigos_documentos: ['10', '20']
+      codigos_documento: ['10', '20']
     }
 
     vi.mocked(adminApi.get)

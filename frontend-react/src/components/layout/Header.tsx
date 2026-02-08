@@ -48,7 +48,7 @@ export function Header() {
         {/* Direita: menu do usuário */}
         <div className="flex items-center gap-4">
           <span className="hidden sm:block text-sm font-medium text-gray-700">
-            {user?.nome}
+            {user?.full_name}
           </span>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>

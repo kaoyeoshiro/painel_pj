@@ -1,11 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import { UsersPage } from '../UsersPage'
-import { adminApi } from '@/lib/api'
+import { usersApi } from '@/lib/api'
 
-// Mock do adminApi
+// Mock do usersApi
 vi.mock('@/lib/api', () => ({
-  adminApi: {
+  usersApi: {
     get: vi.fn(),
     post: vi.fn(),
     put: vi.fn(),
@@ -27,7 +27,7 @@ describe('UsersPage', () => {
 
   it('renders title and "Novo Usuario" button', async () => {
     // Mock API retornando array vazio
-    vi.mocked(adminApi.get).mockResolvedValue([])
+    vi.mocked(usersApi.get).mockResolvedValue([])
 
     render(<UsersPage />)
 
@@ -39,7 +39,7 @@ describe('UsersPage', () => {
 
     // Aguardar carregamento dos dados
     await waitFor(() => {
-      expect(adminApi.get).toHaveBeenCalledWith('/users?skip=0&limit=200')
+      expect(usersApi.get).toHaveBeenCalledWith('?skip=0&limit=200')
     })
   })
 
@@ -69,7 +69,7 @@ describe('UsersPage', () => {
         sistemas_permitidos: null,
       },
     ]
-    vi.mocked(adminApi.get).mockResolvedValue(mockUsers)
+    vi.mocked(usersApi.get).mockResolvedValue(mockUsers)
 
     render(<UsersPage />)
 
@@ -103,7 +103,7 @@ describe('UsersPage', () => {
 
   it('shows loading state', () => {
     // Mock API com delay para simular loading
-    vi.mocked(adminApi.get).mockImplementation(
+    vi.mocked(usersApi.get).mockImplementation(
       () => new Promise((resolve) => setTimeout(() => resolve([]), 100))
     )
 
@@ -116,13 +116,13 @@ describe('UsersPage', () => {
 
   it('handles API error gracefully', async () => {
     // Mock API retornando erro
-    vi.mocked(adminApi.get).mockRejectedValue(new Error('Erro ao carregar usuarios'))
+    vi.mocked(usersApi.get).mockRejectedValue(new Error('Erro ao carregar usuarios'))
 
     const { container } = render(<UsersPage />)
 
     // Aguardar tentativa de carregamento
     await waitFor(() => {
-      expect(adminApi.get).toHaveBeenCalledWith('/users?skip=0&limit=200')
+      expect(usersApi.get).toHaveBeenCalledWith('?skip=0&limit=200')
     })
 
     // Verificar que a pagina ainda renderiza
@@ -145,7 +145,7 @@ describe('UsersPage', () => {
         sistemas_permitidos: null,
       },
     ]
-    vi.mocked(adminApi.get).mockResolvedValue(mockUsers)
+    vi.mocked(usersApi.get).mockResolvedValue(mockUsers)
 
     render(<UsersPage />)
 

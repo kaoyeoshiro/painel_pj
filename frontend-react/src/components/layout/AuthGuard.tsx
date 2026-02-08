@@ -9,13 +9,13 @@ import { Skeleton } from '@/components/ui/skeleton'
  * Exibe skeleton enquanto verifica a sessão.
  */
 export function AuthGuard({ children }: { children: React.ReactNode }) {
-  const { user, isLoading, checkAuth } = useAuthStore()
+  const { user, isLoading, initialize } = useAuthStore()
   const navigate = useNavigate()
 
   useEffect(() => {
     // Verifica autenticação ao montar
-    checkAuth()
-  }, [checkAuth])
+    initialize()
+  }, [initialize])
 
   useEffect(() => {
     // Se não está loading e não tem usuário, redireciona para login

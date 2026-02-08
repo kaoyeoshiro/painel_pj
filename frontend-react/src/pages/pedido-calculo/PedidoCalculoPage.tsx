@@ -12,7 +12,7 @@ import { Separator } from '@/components/ui/separator'
 import { useToast } from '@/components/ui/toast'
 import { useApiQuery } from '@/hooks/useApiQuery'
 import { pedidoCalculoApi, getToken } from '@/lib/api'
-import { marked } from 'marked'
+import { useMarkdown } from '@/hooks/useMarkdown'
 import {
   Calculator,
   History,
@@ -42,12 +42,6 @@ import type {
   ExportarDocxResponse,
   DocumentoResponse,
 } from '@/types/pedido-calculo'
-
-// Configuracao do marked para renderizar markdown
-marked.setOptions({
-  breaks: true,
-  gfm: true,
-})
 
 export function PedidoCalculoPage() {
   const { toast } = useToast()
@@ -922,16 +916,10 @@ export function PedidoCalculoPage() {
                         <Loader2 className="h-4 w-4 animate-spin" />
                         <span className="text-sm font-medium">Gerando pedido em tempo real...</span>
                       </div>
-                      <div
-                        className="prose prose-sm max-w-none"
-                        dangerouslySetInnerHTML={{ __html: marked(streamingContent) }}
-                      />
+                      <MarkdownContent text={streamingContent} />
                     </div>
                   ) : (
-                    <div
-                      className="prose prose-sm max-w-none"
-                      dangerouslySetInnerHTML={{ __html: marked(pedidoMarkdown) }}
-                    />
+                    <MarkdownContent text={pedidoMarkdown} />
                   )}
                 </div>
               </ScrollArea>
@@ -1151,5 +1139,15 @@ export function PedidoCalculoPage() {
         </DialogContent>
       </Dialog>
     </div>
+  )
+}
+
+function MarkdownContent({ text }: { text: string }) {
+  const { html } = useMarkdown(text)
+  return (
+    <div
+      className="prose prose-sm max-w-none"
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
   )
 }

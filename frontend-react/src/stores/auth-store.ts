@@ -5,7 +5,8 @@ import { getToken, setToken, clearToken, apiRequest } from '@/lib/api'
 interface User {
   id: number
   username: string
-  nome: string
+  full_name: string
+  role: string
   is_admin: boolean
 }
 
@@ -34,12 +35,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   login: async (username: string, password: string) => {
     set({ isLoading: true, error: null })
     try {
-      // O endpoint /auth/token espera FormData (x-www-form-urlencoded)
+      // O endpoint /auth/login espera FormData (x-www-form-urlencoded)
       const formData = new URLSearchParams()
       formData.append('username', username)
       formData.append('password', password)
 
-      const response = await apiRequest<{ access_token: string }>('/auth/token', {
+      const response = await apiRequest<{ access_token: string }>('/auth/login', {
         method: 'POST',
         body: formData,
         skipAuth: true,
@@ -72,9 +73,9 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   /** Carrega dados do usuario a partir do token */
   loadUser: async () => {
     try {
-      const user = await apiRequest<User>('/auth/me', { method: 'GET' })
+      const data = await apiRequest<{ id: number; username: string; full_name: string; role: string }>('/auth/me', { method: 'GET' })
       set({
-        user,
+        user: { ...data, is_admin: data.role === 'admin' },
         isAuthenticated: true,
         isLoading: false,
         error: null,

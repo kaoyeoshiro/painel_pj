@@ -45,16 +45,16 @@ const systemItems: NavItem[] = [
   { to: '/prestacao-contas', icon: ClipboardList, label: 'Prestação de Contas' },
   { to: '/relatorio-cumprimento', icon: FileCheck, label: 'Relatório de Cumprimento' },
   { to: '/cumprimento-beta', icon: FlaskConical, label: 'Cumprimento Beta' },
-  { to: '/assistencia-judiciaria', icon: Scale, label: 'Assistência Judiciária' },
-  { to: '/matriculas-confrontantes', icon: Map, label: 'Matrículas Confrontantes' },
+  { to: '/assistencia', icon: Scale, label: 'Assistência Judiciária' },
+  { to: '/matriculas', icon: Map, label: 'Matrículas Confrontantes' },
   { to: '/bert-training', icon: Brain, label: 'BERT Training' },
 ]
 
 // Links administrativos
 const adminItems: NavItem[] = [
-  { to: '/admin/usuarios', icon: Users, label: 'Usuários', adminOnly: true },
+  { to: '/admin/users', icon: Users, label: 'Usuários', adminOnly: true },
   { to: '/admin/prompts', icon: FileEdit, label: 'Prompts', adminOnly: true },
-  { to: '/admin/modulos', icon: FileJson, label: 'Módulos', adminOnly: true },
+  { to: '/admin/prompts-modulos', icon: FileJson, label: 'Módulos', adminOnly: true },
   { to: '/admin/feedbacks', icon: MessageSquare, label: 'Feedbacks', adminOnly: true },
   { to: '/admin/performance', icon: BarChart3, label: 'Performance', adminOnly: true },
   { to: '/admin/variaveis', icon: Variable, label: 'Variáveis', adminOnly: true },

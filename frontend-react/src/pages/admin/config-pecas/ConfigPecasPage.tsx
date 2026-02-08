@@ -91,7 +91,7 @@ export function ConfigPecasPage() {
     try {
       setLoadingCategorias(true)
       const response = await configApi.get<CategoriaDocumento[]>('/categorias')
-      setCategorias(response.data)
+      setCategorias(response)
     } catch (error) {
       toast({
         title: 'Erro ao carregar categorias',
@@ -107,7 +107,7 @@ export function ConfigPecasPage() {
     try {
       setLoadingTipos(true)
       const response = await configApi.get<TipoPeca[]>('/tipos-peca')
-      setTiposPeca(response.data)
+      setTiposPeca(response)
     } catch (error) {
       toast({
         title: 'Erro ao carregar tipos',

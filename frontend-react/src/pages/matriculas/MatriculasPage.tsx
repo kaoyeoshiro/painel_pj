@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useApiQuery } from '@/hooks/useApiQuery'
+import { useMarkdown } from '@/hooks/useMarkdown'
 import { matriculasApi } from '@/lib/api'
 import type {
   FileInfo,
@@ -427,17 +428,7 @@ export default function MatriculasPage() {
     }
   }
 
-  // Renderiza markdown simples
-  const renderMarkdown = (text: string) => {
-    return text
-      .replace(/^### (.*$)/gim, '<h3 class="text-lg font-semibold mt-4 mb-2">$1</h3>')
-      .replace(/^## (.*$)/gim, '<h2 class="text-xl font-bold mt-6 mb-3 text-primary">$1</h2>')
-      .replace(/^# (.*$)/gim, '<h1 class="text-2xl font-bold mt-6 mb-4 text-primary">$1</h1>')
-      .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-      .replace(/\*([^*]+)\*/g, '<em>$1</em>')
-      .replace(/^- (.*$)/gim, '<li class="ml-4">$1</li>')
-      .replace(/\n/gim, '<br>')
-  }
+  // renderMarkdown removido — usar componente MarkdownContent com sanitização
 
   return (
     <div className="flex h-screen flex-col bg-gray-50">
@@ -670,10 +661,7 @@ export default function MatriculasPage() {
                 </div>
               ) : reportText ? (
                 <div>
-                  <div
-                    className="prose prose-sm max-w-none"
-                    dangerouslySetInnerHTML={{ __html: renderMarkdown(reportText) }}
-                  />
+                  <MarkdownContent text={reportText} />
 
                   {/* Feedback Section */}
                   <Card className="mt-6">
@@ -953,5 +941,15 @@ export default function MatriculasPage() {
         </DialogContent>
       </Dialog>
     </div>
+  )
+}
+
+function MarkdownContent({ text }: { text: string }) {
+  const { html } = useMarkdown(text)
+  return (
+    <div
+      className="prose prose-sm max-w-none"
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
   )
 }

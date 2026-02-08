@@ -601,6 +601,7 @@ interface MeusLotesTabProps {
 
 function MeusLotesTab({ onSwitchTab }: MeusLotesTabProps) {
   const { toast } = useToast()
+  const execEventSourceRef = useRef<EventSource | null>(null)
   const [selectedProjeto, setSelectedProjeto] = useState<Projeto | null>(null)
   const [projetoCodigos, setProjetoCodigos] = useState<CodigoDocumento[]>([])
   const [projetoExecucoes, setProjetoExecucoes] = useState<Execucao[]>([])
@@ -617,6 +618,16 @@ function MeusLotesTab({ onSwitchTab }: MeusLotesTabProps) {
     () => classificadorApi.get<Execucao[]>('/execucoes-em-andamento'),
     { refetchInterval: 10000 }
   )
+
+  // Cleanup EventSource on unmount
+  useEffect(() => {
+    return () => {
+      if (execEventSourceRef.current) {
+        execEventSourceRef.current.close()
+        execEventSourceRef.current = null
+      }
+    }
+  }, [])
 
   const handleOpenProjeto = useCallback(async (projeto: Projeto) => {
     setSelectedProjeto(projeto)
@@ -641,21 +652,26 @@ function MeusLotesTab({ onSwitchTab }: MeusLotesTabProps) {
   const handleExecutarProjeto = useCallback(async (projetoId: number) => {
     setSelectedProjeto(null)
     toast({ title: 'Execucao iniciada', description: 'Acompanhe o progresso na aba "Novo Lote"' })
-    // Trigger SSE is complex, so we redirect user to monitor
-    // In practice: open SSE from Meus Lotes
+    // Close any previous EventSource
+    if (execEventSourceRef.current) {
+      execEventSourceRef.current.close()
+    }
     const token = getToken()
     const sseUrl = `/classificador/api/projetos/${projetoId}/executar${token ? `?token=${token}` : ''}`
     const es = new EventSource(sseUrl)
+    execEventSourceRef.current = es
     es.onmessage = (event: MessageEvent) => {
       if (event.data === '[DONE]') {
         es.close()
+        execEventSourceRef.current = null
         refetchProjetos()
         refetchEmAndamento()
-        toast({ title: 'Classificacao concluida', variant: 'success' as 'default' })
+        toast({ title: 'Classificacao concluida' })
       }
     }
     es.onerror = () => {
       es.close()
+      execEventSourceRef.current = null
       toast({ title: 'Erro na execucao', variant: 'destructive' })
     }
     refetchEmAndamento()

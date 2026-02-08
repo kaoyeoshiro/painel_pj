@@ -106,18 +106,18 @@ describe('PerformancePage', () => {
     // Mock padrão para todas as chamadas
     (adminApi.get as any).mockImplementation((url: string) => {
       if (url.includes('/admin/api/performance/summary')) {
-        return Promise.resolve({ data: mockPerfSummary });
+        return Promise.resolve(mockPerfSummary);
       }
       if (url.includes('/admin/api/performance/logs')) {
-        return Promise.resolve({ data: mockPerfLogs });
+        return Promise.resolve(mockPerfLogs);
       }
       if (url.includes('/admin/api/gemini-logs/summary')) {
-        return Promise.resolve({ data: mockGeminiSummary });
+        return Promise.resolve(mockGeminiSummary);
       }
       if (url.includes('/admin/api/gemini-logs')) {
-        return Promise.resolve({ data: mockGeminiLogs });
+        return Promise.resolve(mockGeminiLogs);
       }
-      return Promise.resolve({ data: {} });
+      return Promise.resolve({});
     });
   });
 
@@ -242,23 +242,21 @@ describe('PerformancePage', () => {
     (adminApi.get as any).mockImplementation((url: string) => {
       if (url.includes('/admin/api/performance/summary')) {
         return Promise.resolve({
-          data: {
-            bottleneck_summary: {},
-            avg_times: { llm: 0, db: 0, parse: 0, total: 0 },
-            recent_errors: [],
-          },
+          bottleneck_summary: {},
+          avg_times: { llm: 0, db: 0, parse: 0, total: 0 },
+          recent_errors: [],
         });
       }
       if (url.includes('/admin/api/performance/logs')) {
-        return Promise.resolve({ data: { logs: [] } });
+        return Promise.resolve({ logs: [] });
       }
       if (url.includes('/admin/api/gemini-logs/summary')) {
-        return Promise.resolve({ data: mockGeminiSummary });
+        return Promise.resolve(mockGeminiSummary);
       }
       if (url.includes('/admin/api/gemini-logs')) {
-        return Promise.resolve({ data: { logs: [] } });
+        return Promise.resolve({ logs: [] });
       }
-      return Promise.resolve({ data: {} });
+      return Promise.resolve({});
     });
 
     render(<PerformancePage />);

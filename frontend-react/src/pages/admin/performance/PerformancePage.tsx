@@ -71,17 +71,17 @@ export function PerformancePage() {
     try {
       // Performance Sistema
       const summaryRes = await adminApi.get<PerformanceSummary>(`/admin/api/performance/summary?hours=${timePeriod}`);
-      setPerfSummary(summaryRes.data);
+      setPerfSummary(summaryRes);
 
       const logsRes = await adminApi.get<{ logs: PerformanceLog[] }>(`/admin/api/performance/logs?hours=${timePeriod}&limit=50`);
-      setPerfLogs(logsRes.data.logs || []);
+      setPerfLogs(logsRes.logs || []);
 
       // Logs Gemini
       const geminiSummaryRes = await adminApi.get<GeminiSummary>(`/admin/api/gemini-logs/summary?hours=${timePeriod}`);
-      setGeminiSummary(geminiSummaryRes.data);
+      setGeminiSummary(geminiSummaryRes);
 
       const geminiLogsRes = await adminApi.get<{ logs: GeminiLog[] }>(`/admin/api/gemini-logs?hours=${timePeriod}&limit=50`);
-      setGeminiLogs(geminiLogsRes.data.logs || []);
+      setGeminiLogs(geminiLogsRes.logs || []);
     } catch (error) {
       toast({
         title: 'Erro ao carregar dados',

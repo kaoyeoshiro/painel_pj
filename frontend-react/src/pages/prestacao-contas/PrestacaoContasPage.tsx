@@ -14,7 +14,7 @@ import { Separator } from '@/components/ui/separator'
 import { useToast } from '@/components/ui/toast'
 import { useApiQuery } from '@/hooks/useApiQuery'
 import { prestacaoContasApi, getToken } from '@/lib/api'
-import { marked } from 'marked'
+import { useMarkdown } from '@/hooks/useMarkdown'
 import {
   FileText,
   History,
@@ -52,12 +52,6 @@ import type {
   TipoAvaliacao,
   ResponderDuvidaResponse,
 } from '@/types/prestacao-contas'
-
-// Configuracao do marked para renderizar markdown
-marked.setOptions({
-  breaks: true,
-  gfm: true,
-})
 
 // =====================================================
 // CONSTANTES
@@ -938,9 +932,7 @@ export function PrestacaoContasPage() {
   const renderResultado = () => {
     if (!geracaoAtual) return null
 
-    const htmlFundamentacao = geracaoAtual.fundamentacao
-      ? (marked.parse(geracaoAtual.fundamentacao) as string)
-      : ''
+    const fundamentacaoText = geracaoAtual.fundamentacao || ''
 
     return (
       <div className="space-y-4">
@@ -1014,7 +1006,7 @@ export function PrestacaoContasPage() {
         )}
 
         {/* Fundamentacao */}
-        {htmlFundamentacao && (
+        {fundamentacaoText && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2 text-base">
@@ -1023,10 +1015,7 @@ export function PrestacaoContasPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div
-                className="prose prose-sm max-w-none text-gray-700"
-                dangerouslySetInnerHTML={{ __html: htmlFundamentacao }}
-              />
+              <MarkdownContent text={fundamentacaoText} />
             </CardContent>
           </Card>
         )}
@@ -1595,5 +1584,15 @@ export function PrestacaoContasPage() {
       {renderFeedbackDialog()}
       {renderConfirmacaoDialog()}
     </div>
+  )
+}
+
+function MarkdownContent({ text }: { text: string }) {
+  const { html } = useMarkdown(text)
+  return (
+    <div
+      className="prose prose-sm max-w-none text-gray-700"
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
   )
 }

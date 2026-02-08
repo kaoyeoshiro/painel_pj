@@ -121,13 +121,10 @@ export function VariaveisPage() {
       setResumo(resumoData)
 
       // Carregar variáveis com filtros
-      const params = new URLSearchParams({
-        limit: '200',
-        offset: '0',
-        busca,
-        tipo: tipoFiltro,
-        categoria_id: categoriaFiltro,
-      })
+      const params = new URLSearchParams({ limit: '200', offset: '0' })
+      if (busca) params.append('busca', busca)
+      if (tipoFiltro) params.append('tipo', tipoFiltro)
+      if (categoriaFiltro) params.append('categoria_id', categoriaFiltro)
       const variaveisData = await adminApi.get<Variavel[]>(`/admin/api/extraction/variaveis?${params}`)
       setVariaveis(variaveisData)
 

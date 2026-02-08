@@ -36,7 +36,7 @@ describe('HistoricoPrestacaoContasPage', () => {
   })
 
   it('deve renderizar título e descrição da página', async () => {
-    mockGet.mockResolvedValueOnce({ data: [] })
+    mockGet.mockResolvedValueOnce([])
 
     render(<HistoricoPrestacaoContasPage />)
 
@@ -67,7 +67,7 @@ describe('HistoricoPrestacaoContasPage', () => {
       }
     ]
 
-    mockGet.mockResolvedValueOnce({ data: mockGeracoes })
+    mockGet.mockResolvedValueOnce(mockGeracoes)
 
     render(<HistoricoPrestacaoContasPage />)
 
@@ -83,10 +83,8 @@ describe('HistoricoPrestacaoContasPage', () => {
     expect(screen.getByText('Desfavorável')).toBeInTheDocument()
     expect(screen.getByText('gemini-1.5-pro')).toBeInTheDocument()
 
-    // Verificar chamada à API
-    expect(mockGet).toHaveBeenCalledWith('/geracoes', {
-      params: { limit: 200, offset: 0 }
-    })
+    // Verificar chamada à API com query params na URL
+    expect(mockGet).toHaveBeenCalledWith('/geracoes?limit=200&offset=0')
   })
 
   it('deve exibir toast de erro quando falhar ao carregar gerações', async () => {
@@ -141,8 +139,8 @@ describe('HistoricoPrestacaoContasPage', () => {
     }
 
     mockGet
-      .mockResolvedValueOnce({ data: mockGeracoes })
-      .mockResolvedValueOnce({ data: mockDetalhes })
+      .mockResolvedValueOnce(mockGeracoes)
+      .mockResolvedValueOnce(mockDetalhes)
 
     const user = userEvent.setup()
     render(<HistoricoPrestacaoContasPage />)
@@ -209,7 +207,7 @@ describe('HistoricoPrestacaoContasPage', () => {
       }
     ]
 
-    mockGet.mockResolvedValueOnce({ data: mockGeracoes })
+    mockGet.mockResolvedValueOnce(mockGeracoes)
 
     render(<HistoricoPrestacaoContasPage />)
 
@@ -258,8 +256,8 @@ describe('HistoricoPrestacaoContasPage', () => {
     }
 
     mockGet
-      .mockResolvedValueOnce({ data: mockGeracoes })
-      .mockResolvedValueOnce({ data: mockDetalhes })
+      .mockResolvedValueOnce(mockGeracoes)
+      .mockResolvedValueOnce(mockDetalhes)
 
     const user = userEvent.setup()
     render(<HistoricoPrestacaoContasPage />)

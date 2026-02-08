@@ -23,11 +23,12 @@ describe('FeedbacksPage', () => {
     total_consultas: 150,
     total_feedbacks: 120,
     taxa_acerto: 75.5,
-    sem_feedback: 30,
-    distribuicao_avaliacoes: {
-      bom: 90,
-      medio: 20,
-      ruim: 10,
+    consultas_sem_feedback: 30,
+    avaliacoes: {
+      correto: 90,
+      parcial: 20,
+      incorreto: 10,
+      erro_ia: 0,
     },
   }
 
@@ -37,7 +38,7 @@ describe('FeedbacksPage', () => {
         id: 1,
         sistema: 'gerador_pecas',
         usuario_nome: 'João Silva',
-        avaliacao: 'bom' as const,
+        avaliacao: 'correto' as const,
         comentario: 'Excelente ferramenta',
         created_at: '2026-02-07T10:30:00',
         modo_geracao: 'automatico',
@@ -46,7 +47,7 @@ describe('FeedbacksPage', () => {
         id: 2,
         sistema: 'relatorio_cumprimento',
         usuario_nome: 'Maria Santos',
-        avaliacao: 'medio' as const,
+        avaliacao: 'parcial' as const,
         comentario: 'Poderia melhorar',
         created_at: '2026-02-06T14:20:00',
       },
@@ -61,7 +62,8 @@ describe('FeedbacksPage', () => {
     ],
     total: 3,
     page: 1,
-    page_size: 20,
+    per_page: 20,
+    total_pages: 1,
   }
 
   beforeEach(() => {
@@ -69,8 +71,8 @@ describe('FeedbacksPage', () => {
   })
 
   it('deve renderizar o título e descrição da página', () => {
-    vi.mocked(adminApi.get).mockResolvedValue({ data: mockDashboard })
-    vi.mocked(adminApi.get).mockResolvedValue({ data: mockFeedbacks })
+    vi.mocked(adminApi.get).mockResolvedValue(mockDashboard)
+    vi.mocked(adminApi.get).mockResolvedValue(mockFeedbacks)
 
     render(<FeedbacksPage />)
 
@@ -83,10 +85,10 @@ describe('FeedbacksPage', () => {
   it('deve carregar e exibir estatísticas do dashboard', async () => {
     vi.mocked(adminApi.get).mockImplementation((url) => {
       if (url.includes('/admin/feedbacks/dashboard')) {
-        return Promise.resolve({ data: mockDashboard })
+        return Promise.resolve(mockDashboard)
       }
       if (url.includes('/admin/feedbacks/lista')) {
-        return Promise.resolve({ data: mockFeedbacks })
+        return Promise.resolve(mockFeedbacks)
       }
       return Promise.reject(new Error('Unknown endpoint'))
     })
@@ -104,10 +106,10 @@ describe('FeedbacksPage', () => {
   it('deve carregar e exibir lista de feedbacks', async () => {
     vi.mocked(adminApi.get).mockImplementation((url) => {
       if (url.includes('/admin/feedbacks/dashboard')) {
-        return Promise.resolve({ data: mockDashboard })
+        return Promise.resolve(mockDashboard)
       }
       if (url.includes('/admin/feedbacks/lista')) {
-        return Promise.resolve({ data: mockFeedbacks })
+        return Promise.resolve(mockFeedbacks)
       }
       return Promise.reject(new Error('Unknown endpoint'))
     })
@@ -126,10 +128,10 @@ describe('FeedbacksPage', () => {
   it('deve exibir badges de avaliação corretamente', async () => {
     vi.mocked(adminApi.get).mockImplementation((url) => {
       if (url.includes('/admin/feedbacks/dashboard')) {
-        return Promise.resolve({ data: mockDashboard })
+        return Promise.resolve(mockDashboard)
       }
       if (url.includes('/admin/feedbacks/lista')) {
-        return Promise.resolve({ data: mockFeedbacks })
+        return Promise.resolve(mockFeedbacks)
       }
       return Promise.reject(new Error('Unknown endpoint'))
     })
@@ -137,8 +139,8 @@ describe('FeedbacksPage', () => {
     render(<FeedbacksPage />)
 
     await waitFor(() => {
-      expect(screen.getByText('Bom')).toBeInTheDocument()
-      expect(screen.getByText('Médio')).toBeInTheDocument()
+      expect(screen.getByText('Correto')).toBeInTheDocument()
+      expect(screen.getByText('Parcial')).toBeInTheDocument()
       expect(screen.getByText('Sem avaliação')).toBeInTheDocument()
     })
   })
@@ -146,10 +148,10 @@ describe('FeedbacksPage', () => {
   it('deve exibir a distribuição de avaliações com cores corretas', async () => {
     vi.mocked(adminApi.get).mockImplementation((url) => {
       if (url.includes('/admin/feedbacks/dashboard')) {
-        return Promise.resolve({ data: mockDashboard })
+        return Promise.resolve(mockDashboard)
       }
       if (url.includes('/admin/feedbacks/lista')) {
-        return Promise.resolve({ data: mockFeedbacks })
+        return Promise.resolve(mockFeedbacks)
       }
       return Promise.reject(new Error('Unknown endpoint'))
     })
@@ -158,19 +160,19 @@ describe('FeedbacksPage', () => {
 
     await waitFor(() => {
       expect(screen.getByText('Distribuição de Avaliações')).toBeInTheDocument()
-      expect(screen.getByText('Bom: 90')).toBeInTheDocument()
-      expect(screen.getByText('Médio: 20')).toBeInTheDocument()
-      expect(screen.getByText('Ruim: 10')).toBeInTheDocument()
+      expect(screen.getByText('Correto: 90')).toBeInTheDocument()
+      expect(screen.getByText('Parcial: 20')).toBeInTheDocument()
+      expect(screen.getByText('Incorreto: 10')).toBeInTheDocument()
     })
   })
 
   it('deve aplicar filtros e recarregar dados', async () => {
     vi.mocked(adminApi.get).mockImplementation((url) => {
       if (url.includes('/admin/feedbacks/dashboard')) {
-        return Promise.resolve({ data: mockDashboard })
+        return Promise.resolve(mockDashboard)
       }
       if (url.includes('/admin/feedbacks/lista')) {
-        return Promise.resolve({ data: mockFeedbacks })
+        return Promise.resolve(mockFeedbacks)
       }
       return Promise.reject(new Error('Unknown endpoint'))
     })
@@ -201,10 +203,10 @@ describe('FeedbacksPage', () => {
   it('deve exibir botão para limpar filtros', async () => {
     vi.mocked(adminApi.get).mockImplementation((url) => {
       if (url.includes('/admin/feedbacks/dashboard')) {
-        return Promise.resolve({ data: mockDashboard })
+        return Promise.resolve(mockDashboard)
       }
       if (url.includes('/admin/feedbacks/lista')) {
-        return Promise.resolve({ data: mockFeedbacks })
+        return Promise.resolve(mockFeedbacks)
       }
       return Promise.reject(new Error('Unknown endpoint'))
     })
@@ -235,10 +237,10 @@ describe('FeedbacksPage', () => {
 
     vi.mocked(adminApi.get).mockImplementation((url) => {
       if (url.includes('/admin/feedbacks/dashboard')) {
-        return Promise.resolve({ data: mockDashboard })
+        return Promise.resolve(mockDashboard)
       }
       if (url.includes('/admin/feedbacks/lista')) {
-        return Promise.resolve({ data: mockManyFeedbacks })
+        return Promise.resolve(mockManyFeedbacks)
       }
       return Promise.reject(new Error('Unknown endpoint'))
     })
@@ -260,10 +262,10 @@ describe('FeedbacksPage', () => {
 
     vi.mocked(adminApi.get).mockImplementation((url) => {
       if (url.includes('/admin/feedbacks/dashboard')) {
-        return Promise.resolve({ data: mockDashboard })
+        return Promise.resolve(mockDashboard)
       }
       if (url.includes('/admin/feedbacks/lista')) {
-        return Promise.resolve({ data: mockManyFeedbacks })
+        return Promise.resolve(mockManyFeedbacks)
       }
       return Promise.reject(new Error('Unknown endpoint'))
     })
@@ -297,15 +299,16 @@ describe('FeedbacksPage', () => {
       feedbacks: [],
       total: 0,
       page: 1,
-      page_size: 20,
+      per_page: 20,
+      total_pages: 0,
     }
 
     vi.mocked(adminApi.get).mockImplementation((url) => {
       if (url.includes('/admin/feedbacks/dashboard')) {
-        return Promise.resolve({ data: mockDashboard })
+        return Promise.resolve(mockDashboard)
       }
       if (url.includes('/admin/feedbacks/lista')) {
-        return Promise.resolve({ data: mockEmptyFeedbacks })
+        return Promise.resolve(mockEmptyFeedbacks)
       }
       return Promise.reject(new Error('Unknown endpoint'))
     })
@@ -320,10 +323,10 @@ describe('FeedbacksPage', () => {
   it('deve formatar datas corretamente', async () => {
     vi.mocked(adminApi.get).mockImplementation((url) => {
       if (url.includes('/admin/feedbacks/dashboard')) {
-        return Promise.resolve({ data: mockDashboard })
+        return Promise.resolve(mockDashboard)
       }
       if (url.includes('/admin/feedbacks/lista')) {
-        return Promise.resolve({ data: mockFeedbacks })
+        return Promise.resolve(mockFeedbacks)
       }
       return Promise.reject(new Error('Unknown endpoint'))
     })

@@ -4,7 +4,7 @@ import { useToast } from '@/components/ui/toast'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Select } from '@/components/ui/select'
+// Usa native <select> para filtros simples
 import { DataTable } from '@/components/shared/DataTable'
 
 // Tipos locais
@@ -12,15 +12,15 @@ interface DashboardData {
   total_consultas: number
   total_feedbacks: number
   taxa_acerto: number
-  sem_feedback: number
-  distribuicao_avaliacoes: { bom: number; medio: number; ruim: number }
+  consultas_sem_feedback: number
+  avaliacoes: { correto: number; parcial: number; incorreto: number; erro_ia: number }
 }
 
 interface FeedbackItem {
   id: number
   sistema: string
   usuario_nome: string
-  avaliacao: 'bom' | 'medio' | 'ruim' | null
+  avaliacao: 'correto' | 'parcial' | 'incorreto' | null
   comentario: string | null
   created_at: string
   modo_geracao?: string
@@ -30,7 +30,8 @@ interface FeedbackLista {
   feedbacks: FeedbackItem[]
   total: number
   page: number
-  page_size: number
+  per_page: number
+  total_pages: number
 }
 
 const SISTEMAS = [
@@ -89,7 +90,7 @@ export function FeedbacksPage() {
       if (sistema) params.append('sistema', sistema)
 
       const response = await adminApi.get(`/admin/feedbacks/dashboard?${params}`)
-      setDashboard(response.data)
+      setDashboard(response)
     } catch (error) {
       console.error('Erro ao carregar dashboard:', error)
       toast({
@@ -110,7 +111,7 @@ export function FeedbacksPage() {
       params.append('page_size', String(pageSize))
 
       const response = await adminApi.get(`/admin/feedbacks/lista?${params}`)
-      setFeedbacks(response.data)
+      setFeedbacks(response)
     } catch (error) {
       console.error('Erro ao carregar feedbacks:', error)
       toast({
@@ -133,15 +134,15 @@ export function FeedbacksPage() {
   }, [sistema, page])
 
   // Renderizar badge de avaliação
-  const renderAvaliacaoBadge = (avaliacao: 'bom' | 'medio' | 'ruim' | null) => {
+  const renderAvaliacaoBadge = (avaliacao: 'correto' | 'parcial' | 'incorreto' | null) => {
     if (!avaliacao) {
       return <Badge variant="secondary">Sem avaliação</Badge>
     }
 
     const variants = {
-      bom: { variant: 'success' as const, label: 'Bom' },
-      medio: { variant: 'warning' as const, label: 'Médio' },
-      ruim: { variant: 'destructive' as const, label: 'Ruim' },
+      correto: { variant: 'success' as const, label: 'Correto' },
+      parcial: { variant: 'warning' as const, label: 'Parcial' },
+      incorreto: { variant: 'destructive' as const, label: 'Incorreto' },
     }
 
     const config = variants[avaliacao]
@@ -163,14 +164,14 @@ export function FeedbacksPage() {
   // Calcular porcentagens para barra de distribuição
   const calcularDistribuicao = () => {
     if (!dashboard || dashboard.total_feedbacks === 0) {
-      return { bom: 0, medio: 0, ruim: 0 }
+      return { correto: 0, parcial: 0, incorreto: 0 }
     }
 
     const total = dashboard.total_feedbacks
     return {
-      bom: (dashboard.distribuicao_avaliacoes.bom / total) * 100,
-      medio: (dashboard.distribuicao_avaliacoes.medio / total) * 100,
-      ruim: (dashboard.distribuicao_avaliacoes.ruim / total) * 100,
+      correto: (dashboard.avaliacoes.correto / total) * 100,
+      parcial: (dashboard.avaliacoes.parcial / total) * 100,
+      incorreto: (dashboard.avaliacoes.incorreto / total) * 100,
     }
   }
 
@@ -227,7 +228,8 @@ export function FeedbacksPage() {
         <div className="flex gap-4 items-end">
           <div className="flex-1">
             <label className="block text-sm font-medium mb-1">Sistema</label>
-            <Select
+            <select
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               value={sistema}
               onChange={(e) => {
                 setSistema(e.target.value)
@@ -239,27 +241,35 @@ export function FeedbacksPage() {
                   {s.label}
                 </option>
               ))}
-            </Select>
+            </select>
           </div>
           <div className="flex-1">
             <label className="block text-sm font-medium mb-1">Mês</label>
-            <Select value={mes} onChange={(e) => setMes(e.target.value)}>
+            <select
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              value={mes}
+              onChange={(e) => setMes(e.target.value)}
+            >
               {MESES.map((m) => (
                 <option key={m.value} value={m.value}>
                   {m.label}
                 </option>
               ))}
-            </Select>
+            </select>
           </div>
           <div className="flex-1">
             <label className="block text-sm font-medium mb-1">Ano</label>
-            <Select value={ano} onChange={(e) => setAno(e.target.value)}>
+            <select
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              value={ano}
+              onChange={(e) => setAno(e.target.value)}
+            >
               {ANOS.map((a) => (
                 <option key={a.value} value={a.value}>
                   {a.label}
                 </option>
               ))}
-            </Select>
+            </select>
           </div>
           <Button
             variant="outline"
@@ -299,7 +309,7 @@ export function FeedbacksPage() {
           <Card className="p-4">
             <div className="text-sm text-gray-600">Sem Feedback</div>
             <div className="text-2xl font-bold mt-1">
-              {dashboard.sem_feedback.toLocaleString()}
+              {dashboard.consultas_sem_feedback.toLocaleString()}
             </div>
           </Card>
         </div>
@@ -312,35 +322,35 @@ export function FeedbacksPage() {
           <div className="flex h-8 rounded-md overflow-hidden">
             <div
               className="bg-green-500 flex items-center justify-center text-white text-sm font-medium"
-              style={{ width: `${distribuicao.bom}%` }}
+              style={{ width: `${distribuicao.correto}%` }}
             >
-              {distribuicao.bom > 10 && `${distribuicao.bom.toFixed(0)}%`}
+              {distribuicao.correto > 10 && `${distribuicao.correto.toFixed(0)}%`}
             </div>
             <div
               className="bg-amber-500 flex items-center justify-center text-white text-sm font-medium"
-              style={{ width: `${distribuicao.medio}%` }}
+              style={{ width: `${distribuicao.parcial}%` }}
             >
-              {distribuicao.medio > 10 && `${distribuicao.medio.toFixed(0)}%`}
+              {distribuicao.parcial > 10 && `${distribuicao.parcial.toFixed(0)}%`}
             </div>
             <div
               className="bg-red-500 flex items-center justify-center text-white text-sm font-medium"
-              style={{ width: `${distribuicao.ruim}%` }}
+              style={{ width: `${distribuicao.incorreto}%` }}
             >
-              {distribuicao.ruim > 10 && `${distribuicao.ruim.toFixed(0)}%`}
+              {distribuicao.incorreto > 10 && `${distribuicao.incorreto.toFixed(0)}%`}
             </div>
           </div>
           <div className="flex gap-4 mt-3 text-sm">
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 bg-green-500 rounded"></div>
-              <span>Bom: {dashboard.distribuicao_avaliacoes.bom}</span>
+              <span>Correto: {dashboard.avaliacoes.correto}</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 bg-amber-500 rounded"></div>
-              <span>Médio: {dashboard.distribuicao_avaliacoes.medio}</span>
+              <span>Parcial: {dashboard.avaliacoes.parcial}</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-3 h-3 bg-red-500 rounded"></div>
-              <span>Ruim: {dashboard.distribuicao_avaliacoes.ruim}</span>
+              <span>Incorreto: {dashboard.avaliacoes.incorreto}</span>
             </div>
           </div>
         </Card>

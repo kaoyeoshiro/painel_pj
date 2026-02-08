@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Select } from '@/components/ui/select'
+// Usa native <select> para dropdowns simples com <option>
 
 // Interfaces de dados
 interface PromptModulo {
@@ -337,8 +337,9 @@ export function PromptsModulosPage() {
           {/* Seletor de grupo */}
           <div className="flex-1 min-w-[200px]">
             <Label htmlFor="grupo-select">Grupo</Label>
-            <Select
+            <select
               id="grupo-select"
+              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               value={grupoSelecionado?.toString() || ''}
               onChange={(e) => setGrupoSelecionado(Number(e.target.value))}
             >
@@ -348,7 +349,7 @@ export function PromptsModulosPage() {
                   {grupo.nome}
                 </option>
               ))}
-            </Select>
+            </select>
           </div>
 
           {/* Campo de busca */}
@@ -554,8 +555,9 @@ export function PromptsModulosPage() {
               {/* Grupo */}
               <div>
                 <Label htmlFor="group_id">Grupo</Label>
-                <Select
+                <select
                   id="group_id"
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   value={formData.group_id?.toString() || ''}
                   onChange={(e) => setFormData({
                     ...formData,
@@ -569,14 +571,15 @@ export function PromptsModulosPage() {
                       {grupo.nome}
                     </option>
                   ))}
-                </Select>
+                </select>
               </div>
 
               {/* Subgrupo */}
               <div>
                 <Label htmlFor="subgroup_id">Subgrupo</Label>
-                <Select
+                <select
                   id="subgroup_id"
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
                   value={formData.subgroup_id?.toString() || ''}
                   onChange={(e) => setFormData({
                     ...formData,
@@ -590,7 +593,7 @@ export function PromptsModulosPage() {
                       {subgrupo.nome}
                     </option>
                   ))}
-                </Select>
+                </select>
               </div>
 
               {/* Tags */}
@@ -607,8 +610,9 @@ export function PromptsModulosPage() {
               {/* Tipo */}
               <div>
                 <Label htmlFor="tipo">Tipo</Label>
-                <Select
+                <select
                   id="tipo"
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   value={formData.tipo}
                   onChange={(e) => setFormData({
                     ...formData,
@@ -618,14 +622,15 @@ export function PromptsModulosPage() {
                   <option value="conteudo">Conteúdo</option>
                   <option value="instrucao">Instrução</option>
                   <option value="exemplo">Exemplo</option>
-                </Select>
+                </select>
               </div>
 
               {/* Modo de ativação */}
               <div>
                 <Label htmlFor="modo_ativacao">Modo de Ativação</Label>
-                <Select
+                <select
                   id="modo_ativacao"
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
                   value={formData.modo_ativacao}
                   onChange={(e) => setFormData({
                     ...formData,
@@ -634,7 +639,7 @@ export function PromptsModulosPage() {
                 >
                   <option value="llm">LLM</option>
                   <option value="deterministic">Determinístico</option>
-                </Select>
+                </select>
               </div>
 
               {/* Ordem */}

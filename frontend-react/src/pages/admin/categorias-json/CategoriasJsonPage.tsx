@@ -7,41 +7,39 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+
 import { useToast } from '@/hooks/use-toast'
 
 // Estrutura de dados da categoria JSON
 interface CategoriaJSON {
   id: number
   nome: string
+  titulo?: string
   descricao: string
-  codigos_documentos: string[]
+  codigos_documento?: string[] | null
   formato_json: Record<string, unknown>
-  exemplo_json: Record<string, unknown> | null
-  modo_geracao: 'ia' | 'legado'
+  instrucoes_extracao?: string
+  is_residual?: boolean
   ativo: boolean
-  created_at: string
-  updated_at: string
+  json_gerado_por_ia?: boolean
+  criado_em?: string
+  atualizado_em?: string
 }
 
 // Formulário de criação/edição
 interface CategoriaFormData {
   nome: string
   descricao: string
-  codigos_documentos: string
+  codigos_documento: string
   formato_json: string
-  exemplo_json: string
-  modo_geracao: 'ia' | 'legado'
   ativo: boolean
 }
 
 const INITIAL_FORM_DATA: CategoriaFormData = {
   nome: '',
   descricao: '',
-  codigos_documentos: '',
+  codigos_documento: '',
   formato_json: '{}',
-  exemplo_json: '{}',
-  modo_geracao: 'ia',
   ativo: true
 }
 
@@ -54,7 +52,7 @@ export function CategoriasJsonPage() {
   const [editingId, setEditingId] = useState<number | null>(null)
   const [deletingId, setDeletingId] = useState<number | null>(null)
   const [formData, setFormData] = useState<CategoriaFormData>(INITIAL_FORM_DATA)
-  const [jsonErrors, setJsonErrors] = useState<{ formato?: string; exemplo?: string }>({})
+  const [jsonErrors, setJsonErrors] = useState<{ formato?: string }>({})
 
   // Carregar categorias
   useEffect(() => {
@@ -94,10 +92,8 @@ export function CategoriasJsonPage() {
       setFormData({
         nome: categoria.nome || '',
         descricao: categoria.descricao || '',
-        codigos_documentos: categoria.codigos_documentos ? categoria.codigos_documentos.join(', ') : '',
+        codigos_documento: categoria.codigos_documento ? categoria.codigos_documento.join(', ') : '',
         formato_json: JSON.stringify(categoria.formato_json || {}, null, 2),
-        exemplo_json: categoria.exemplo_json ? JSON.stringify(categoria.exemplo_json, null, 2) : '{}',
-        modo_geracao: categoria.modo_geracao || 'ia',
         ativo: categoria.ativo !== undefined ? categoria.ativo : true
       })
       setJsonErrors({})
@@ -113,7 +109,7 @@ export function CategoriasJsonPage() {
   }
 
   // Validar e parsear JSON
-  const validateJson = (jsonString: string, field: 'formato' | 'exemplo'): Record<string, unknown> | null => {
+  const validateJson = (jsonString: string, field: 'formato'): Record<string, unknown> | null => {
     try {
       const parsed = JSON.parse(jsonString)
       setJsonErrors(prev => ({ ...prev, [field]: undefined }))
@@ -128,9 +124,8 @@ export function CategoriasJsonPage() {
   const handleSave = async () => {
     // Validar JSONs
     const formatoJson = validateJson(formData.formato_json, 'formato')
-    const exemploJson = formData.exemplo_json.trim() ? validateJson(formData.exemplo_json, 'exemplo') : null
 
-    if (!formatoJson || (formData.exemplo_json.trim() && !exemploJson)) {
+    if (!formatoJson) {
       toast({
         title: 'Erro',
         description: 'Corrija os erros de JSON antes de salvar',
@@ -143,13 +138,11 @@ export function CategoriasJsonPage() {
     const payload = {
       nome: formData.nome.trim(),
       descricao: formData.descricao.trim(),
-      codigos_documentos: formData.codigos_documentos
+      codigos_documento: formData.codigos_documento
         .split(',')
         .map(c => c.trim())
         .filter(c => c.length > 0),
       formato_json: formatoJson,
-      exemplo_json: exemploJson,
-      modo_geracao: formData.modo_geracao,
       ativo: formData.ativo
     }
 
@@ -245,17 +238,17 @@ export function CategoriasJsonPage() {
                 <Badge variant={categoria.ativo ? 'default' : 'secondary'}>
                   {categoria.ativo ? 'Ativo' : 'Inativo'}
                 </Badge>
-                <Badge variant={categoria.modo_geracao === 'ia' ? 'default' : 'secondary'}>
-                  {categoria.modo_geracao === 'ia' ? 'IA' : 'Legado'}
-                </Badge>
+                {categoria.json_gerado_por_ia && (
+                  <Badge variant="default">IA</Badge>
+                )}
               </div>
 
               {/* Códigos de documentos */}
-              {categoria.codigos_documentos.length > 0 && (
+              {categoria.codigos_documento && categoria.codigos_documento.length > 0 && (
                 <div className="mb-3">
                   <div className="text-xs text-muted-foreground mb-1">Códigos:</div>
                   <div className="flex gap-1 flex-wrap">
-                    {categoria.codigos_documentos.map((codigo, idx) => (
+                    {categoria.codigos_documento.map((codigo, idx) => (
                       <Badge key={idx} variant="outline" className="text-xs">
                         {codigo}
                       </Badge>
@@ -326,8 +319,8 @@ export function CategoriasJsonPage() {
               <Label htmlFor="codigos">Códigos de Documentos</Label>
               <Input
                 id="codigos"
-                value={formData.codigos_documentos}
-                onChange={e => setFormData(prev => ({ ...prev, codigos_documentos: e.target.value }))}
+                value={formData.codigos_documento}
+                onChange={e => setFormData(prev => ({ ...prev, codigos_documento: e.target.value }))}
                 placeholder="Ex: 10, 20, 30 (separados por vírgula)"
               />
               <p className="text-xs text-muted-foreground mt-1">
@@ -352,48 +345,6 @@ export function CategoriasJsonPage() {
               {jsonErrors.formato && (
                 <p className="text-xs text-destructive mt-1">{jsonErrors.formato}</p>
               )}
-            </div>
-
-            {/* Exemplo JSON */}
-            <div>
-              <Label htmlFor="exemplo">Exemplo JSON</Label>
-              <Textarea
-                id="exemplo"
-                value={formData.exemplo_json}
-                onChange={e => {
-                  setFormData(prev => ({ ...prev, exemplo_json: e.target.value }))
-                  if (e.target.value.trim()) {
-                    validateJson(e.target.value, 'exemplo')
-                  } else {
-                    setJsonErrors(prev => ({ ...prev, exemplo: undefined }))
-                  }
-                }}
-                placeholder='{"campo": "valor exemplo"}'
-                rows={8}
-                className="font-mono text-sm"
-              />
-              {jsonErrors.exemplo && (
-                <p className="text-xs text-destructive mt-1">{jsonErrors.exemplo}</p>
-              )}
-            </div>
-
-            {/* Modo de geração */}
-            <div>
-              <Label htmlFor="modo">Modo de Geração</Label>
-              <Select
-                value={formData.modo_geracao}
-                onValueChange={(value: 'ia' | 'legado') =>
-                  setFormData(prev => ({ ...prev, modo_geracao: value }))
-                }
-              >
-                <SelectTrigger id="modo">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ia">IA</SelectItem>
-                  <SelectItem value="legado">Legado</SelectItem>
-                </SelectContent>
-              </Select>
             </div>
 
             {/* Ativo */}

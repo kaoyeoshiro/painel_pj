@@ -509,7 +509,7 @@ export function RelatorioCumprimentoPage() {
             </div>
           </div>
           <div className="flex items-center gap-4">
-            <span className="text-sm text-muted-foreground">{user?.nome}</span>
+            <span className="text-sm text-muted-foreground">{user?.full_name}</span>
             {/* Drawer de historico */}
             <Sheet>
               <SheetTrigger asChild>

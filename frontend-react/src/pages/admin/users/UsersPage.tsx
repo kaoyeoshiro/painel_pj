@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { adminApi } from '@/lib/api'
+import { usersApi } from '@/lib/api'
 import { DataTable } from '@/components/shared/DataTable'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -81,7 +81,7 @@ export function UsersPage() {
   const loadUsers = async () => {
     try {
       setLoading(true)
-      const data = await adminApi.get<User[]>('/users?skip=0&limit=200')
+      const data = await usersApi.get<User[]>('?skip=0&limit=200')
       setUsers(data)
     } catch (error) {
       toast({
@@ -135,14 +135,14 @@ export function UsersPage() {
           role: formData.role,
           sistemas_permitidos: formData.sistemas_permitidos,
         }
-        await adminApi.put(`/users/${editingUser.id}`, updateData)
+        await usersApi.put(`/${editingUser.id}`, updateData)
         toast({
           title: 'Usuario atualizado',
           description: 'Usuario atualizado com sucesso',
         })
       } else {
         // Criar novo usuario
-        await adminApi.post('/users', formData)
+        await usersApi.post('', formData)
         toast({
           title: 'Usuario criado',
           description: 'Usuario criado com sucesso',
@@ -181,7 +181,7 @@ export function UsersPage() {
     }
 
     try {
-      await adminApi.delete(`/users/${deletingUser.id}`)
+      await usersApi.delete(`/${deletingUser.id}`)
       toast({
         title: 'Usuario excluido',
         description: 'Usuario excluido com sucesso',
@@ -200,8 +200,8 @@ export function UsersPage() {
   // Resetar senha
   const handleResetPassword = async (user: User) => {
     try {
-      const response = await adminApi.post<{ message: string; new_password: string }>(
-        `/users/${user.id}/reset-password`,
+      const response = await usersApi.post<{ message: string; new_password: string }>(
+        `/${user.id}/reset-password`,
         {}
       )
       setNewPassword(response.new_password)

@@ -74,7 +74,7 @@ describe('HistoricoGeradorPage', () => {
   })
 
   it('deve carregar e exibir lista de geracoes', async () => {
-    mockGet.mockResolvedValueOnce({ data: mockGeracoes })
+    mockGet.mockResolvedValueOnce(mockGeracoes)
 
     render(<HistoricoGeradorPage />)
 
@@ -87,7 +87,7 @@ describe('HistoricoGeradorPage', () => {
     })
 
     // Verifica se chamou a API corretamente
-    expect(mockGet).toHaveBeenCalledWith('/geracoes', { params: { limit: 100 } })
+    expect(mockGet).toHaveBeenCalledWith('/geracoes?limit=100')
 
     // Verifica dados da tabela
     expect(screen.getByText('Contestacao')).toBeInTheDocument()
@@ -99,8 +99,8 @@ describe('HistoricoGeradorPage', () => {
   it('deve abrir dialog com detalhes ao clicar em uma linha', async () => {
     const user = userEvent.setup()
     mockGet
-      .mockResolvedValueOnce({ data: mockGeracoes })
-      .mockResolvedValueOnce({ data: mockGeracaoDetalhada })
+      .mockResolvedValueOnce(mockGeracoes)
+      .mockResolvedValueOnce(mockGeracaoDetalhada)
 
     render(<HistoricoGeradorPage />)
 
@@ -137,8 +137,8 @@ describe('HistoricoGeradorPage', () => {
   it('deve navegar entre tabs e mostrar conteudo correto', async () => {
     const user = userEvent.setup()
     mockGet
-      .mockResolvedValueOnce({ data: mockGeracoes })
-      .mockResolvedValueOnce({ data: mockGeracaoDetalhada })
+      .mockResolvedValueOnce(mockGeracoes)
+      .mockResolvedValueOnce(mockGeracaoDetalhada)
 
     render(<HistoricoGeradorPage />)
 
@@ -180,7 +180,7 @@ describe('HistoricoGeradorPage', () => {
     render(<HistoricoGeradorPage />)
 
     await waitFor(() => {
-      expect(mockGet).toHaveBeenCalledWith('/geracoes', { params: { limit: 100 } })
+      expect(mockGet).toHaveBeenCalledWith('/geracoes?limit=100')
     })
 
     // O toast de erro deve ser chamado (verificamos atraves do mock)
@@ -201,7 +201,7 @@ describe('HistoricoGeradorPage', () => {
       { ...mockGeracoes[0], id: 3, tempo_processamento: null },
     ]
 
-    mockGet.mockResolvedValueOnce({ data: geracoesComTempos })
+    mockGet.mockResolvedValueOnce(geracoesComTempos)
 
     render(<HistoricoGeradorPage />)
 
@@ -221,7 +221,7 @@ describe('HistoricoGeradorPage', () => {
       { ...mockGeracoes[0], id: 5, modo_ativacao_agente2: null },
     ]
 
-    mockGet.mockResolvedValueOnce({ data: geracoesComModos })
+    mockGet.mockResolvedValueOnce(geracoesComModos)
 
     render(<HistoricoGeradorPage />)
 

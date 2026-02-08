@@ -89,8 +89,8 @@ function formatData(isoString: string): string {
 // Componente de Log Colapsável
 function LogItem({ log }: { log: LogChamadaIA }) {
   const [expanded, setExpanded] = useState(false)
-  const promptHtml = useMarkdown(log.prompt_enviado || '')
-  const respostaHtml = useMarkdown(log.resposta_ia || '')
+  const { html: promptHtml } = useMarkdown(log.prompt_enviado || '')
+  const { html: respostaHtml } = useMarkdown(log.resposta_ia || '')
 
   return (
     <Card className="mb-2">
@@ -158,7 +158,7 @@ export function HistoricoPrestacaoContasPage() {
   const { toast } = useToast()
 
   const prestacaoAdminApi = useMemo(() => createApiClient('/admin/api/prestacao-admin'), [])
-  const fundamentacaoHtml = useMarkdown(selectedGeracao?.fundamentacao || '')
+  const { html: fundamentacaoHtml } = useMarkdown(selectedGeracao?.fundamentacao || '')
 
   // Carregar lista de gerações
   useEffect(() => {
@@ -168,10 +168,8 @@ export function HistoricoPrestacaoContasPage() {
   async function loadGeracoes() {
     try {
       setLoading(true)
-      const response = await prestacaoAdminApi.get<GeracaoAdmin[]>('/geracoes', {
-        params: { limit: 200, offset: 0 }
-      })
-      setGeracoes(response.data)
+      const response = await prestacaoAdminApi.get<GeracaoAdmin[]>('/geracoes?limit=200&offset=0')
+      setGeracoes(response)
     } catch (error) {
       console.error('Erro ao carregar gerações:', error)
       toast({
@@ -189,7 +187,7 @@ export function HistoricoPrestacaoContasPage() {
     try {
       setLoadingDetalhes(true)
       const response = await prestacaoAdminApi.get<GeracaoDetalhada>(`/geracoes/${id}`)
-      setSelectedGeracao(response.data)
+      setSelectedGeracao(response)
       setDialogOpen(true)
     } catch (error) {
       console.error('Erro ao carregar detalhes:', error)

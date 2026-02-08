@@ -77,13 +77,13 @@ const systemCards: SystemCard[] = [
     description: 'Versão experimental do relatório',
   },
   {
-    to: '/assistencia-judiciaria',
+    to: '/assistencia',
     icon: Scale,
     title: 'Assistência Judiciária',
     description: 'Análise de pedidos de assistência',
   },
   {
-    to: '/matriculas-confrontantes',
+    to: '/matriculas',
     icon: Map,
     title: 'Matrículas Confrontantes',
     description: 'Análise de matrículas e confrontações',
@@ -99,7 +99,7 @@ const systemCards: SystemCard[] = [
 // Cards administrativos
 const adminCards: SystemCard[] = [
   {
-    to: '/admin/usuarios',
+    to: '/admin/users',
     icon: Users,
     title: 'Usuários',
     description: 'Gerenciar usuários do sistema',
@@ -113,7 +113,7 @@ const adminCards: SystemCard[] = [
     adminOnly: true,
   },
   {
-    to: '/admin/modulos',
+    to: '/admin/prompts-modulos',
     icon: FileJson,
     title: 'Módulos',
     description: 'Gerenciar módulos de argumentação',
@@ -187,7 +187,7 @@ export function DashboardPage() {
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold text-gray-900">
-          Bem-vindo(a), {user?.nome}
+          Bem-vindo(a), {user?.full_name}
         </h1>
         <p className="mt-2 text-gray-600">
           Selecione um sistema para começar

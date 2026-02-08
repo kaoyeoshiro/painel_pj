@@ -70,7 +70,11 @@ export async function apiRequest<T>(
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({ detail: response.statusText }))
-    throw new Error(errorData.detail || `Erro ${response.status}`)
+    const detail = errorData.detail
+    const message = Array.isArray(detail)
+      ? detail.map((d: { msg?: string }) => d.msg || String(d)).join('; ')
+      : detail || `Erro ${response.status}`
+    throw new Error(message)
   }
 
   // Retorna conforme o tipo solicitado
@@ -109,7 +113,8 @@ export function createApiClient(baseUrl: string) {
 
 // Clientes pre-configurados para cada sistema
 export const authApi = createApiClient('/auth')
-export const adminApi = createApiClient('/admin/api')
+export const usersApi = createApiClient('/users')
+export const adminApi = createApiClient('')
 export const geradorApi = createApiClient('/gerador-pecas/api')
 export const geradorAdminApi = createApiClient('/gerador-pecas-admin')
 export const classificadorApi = createApiClient('/classificador/api')

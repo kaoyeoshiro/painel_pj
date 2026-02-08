@@ -1,6 +1,6 @@
-import { useState, useEffect, useCallback, useMemo } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { ArrowLeft, Search, Scale, Trash2, FileText, FileDown, RotateCw, Database } from 'lucide-react'
-import { marked } from 'marked'
+import { useMarkdown } from '@/hooks/useMarkdown'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -293,19 +293,6 @@ export function AssistenciaPage() {
     }
   }
 
-  // Renderiza markdown usando marked
-  const renderMarkdown = useMemo(() => {
-    return (text: string) => {
-      const html = marked.parse(text, { async: false }) as string
-      return (
-        <div
-          className="prose prose-sm max-w-none text-gray-700"
-          dangerouslySetInnerHTML={{ __html: html }}
-        />
-      )
-    }
-  }, [])
-
   return (
     <div className="flex min-h-screen flex-col bg-gray-50">
       {/* Header */}
@@ -527,7 +514,7 @@ export function AssistenciaPage() {
                   </CardHeader>
                   <CardContent>
                     {consultaAtual.relatorio ? (
-                      renderMarkdown(consultaAtual.relatorio)
+                      <MarkdownContent text={consultaAtual.relatorio} />
                     ) : (
                       <p className="italic text-gray-400">Relatório não disponível</p>
                     )}
@@ -594,5 +581,16 @@ export function AssistenciaPage() {
         </main>
       </div>
     </div>
+  )
+}
+
+// Componente para renderizar markdown com sanitização DOMPurify
+function MarkdownContent({ text }: { text: string }) {
+  const { html } = useMarkdown(text)
+  return (
+    <div
+      className="prose prose-sm max-w-none text-gray-700"
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
   )
 }

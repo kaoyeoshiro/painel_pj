@@ -11,7 +11,7 @@ vi.mock('@tanstack/react-router', () => ({
 
 // Mock do auth store com suporte a seletores zustand
 const mockAuthState = {
-  user: { id: 1, username: 'testuser', nome: 'Usuario Teste', is_admin: false },
+  user: { id: 1, username: 'testuser', full_name: 'Usuario Teste', role: 'user', is_admin: false },
   token: 'test-token',
   isAuthenticated: true,
   isLoading: false,

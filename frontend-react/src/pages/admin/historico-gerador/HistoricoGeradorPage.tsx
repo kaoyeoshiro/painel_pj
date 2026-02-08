@@ -53,10 +53,8 @@ export function HistoricoGeradorPage() {
   const loadGeracoes = async () => {
     try {
       setLoading(true)
-      const response = await geradorAdminApi.get<Geracao[]>('/geracoes', {
-        params: { limit: 100 }
-      })
-      setGeracoes(response.data)
+      const response = await geradorAdminApi.get<Geracao[]>('/geracoes?limit=100')
+      setGeracoes(response)
     } catch (error) {
       toast({
         title: 'Erro ao carregar historico',
@@ -72,7 +70,7 @@ export function HistoricoGeradorPage() {
     try {
       setDetailLoading(true)
       const response = await geradorAdminApi.get<GeracaoDetalhada>(`/geracoes/${id}`)
-      setSelectedGeracao(response.data)
+      setSelectedGeracao(response)
       setDialogOpen(true)
     } catch (error) {
       toast({
@@ -272,7 +270,7 @@ export function HistoricoGeradorPage() {
 }
 
 function MinutaContent({ content }: { content: string | null }) {
-  const html = useMarkdown(content || 'Nenhuma minuta disponivel')
+  const { html } = useMarkdown(content || 'Nenhuma minuta disponivel')
 
   return (
     <div
