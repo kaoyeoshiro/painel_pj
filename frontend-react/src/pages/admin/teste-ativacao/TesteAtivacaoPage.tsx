@@ -210,7 +210,7 @@ export function TesteAtivacaoPage() {
   return (
     <PageContainer className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">Teste de Ativação de Módulos</h1>
+        <h1 className="text-2xl font-bold">Teste de Ativação de Módulos</h1>
         <p className="text-muted-foreground">
           Simule a ativação de módulos baseado em variáveis do processo
         </p>

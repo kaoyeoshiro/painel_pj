@@ -354,7 +354,7 @@ export function HistoricoPedidoCalculoPage() {
   return (
     <PageContainer className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">Historico - Pedido de Calculo</h1>
+        <h1 className="text-2xl font-bold">Historico - Pedido de Calculo</h1>
         <p className="text-muted-foreground mt-1">
           Todas as geracoes de pedidos de calculo com logs de IA
         </p>

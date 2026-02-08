@@ -14,6 +14,7 @@ vi.mock('@/lib/api', () => ({
   pedidoCalculoAdminApi: {
     get: vi.fn(),
   },
+  getToken: vi.fn(() => null),
 }))
 
 // Mock do useMarkdown

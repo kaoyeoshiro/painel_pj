@@ -19,7 +19,8 @@ vi.mock('@/lib/api', () => ({
     put: vi.fn(),
     delete: vi.fn(),
     patch: vi.fn()
-  }
+  },
+  getToken: vi.fn(() => null),
 }))
 
 const mockGrupos = [
@@ -165,9 +166,9 @@ describe('PromptsModulosPage', () => {
     expect(screen.getByText('Módulo 2')).toBeInTheDocument()
     expect(screen.getByText('Módulo 3')).toBeInTheDocument()
 
-    // Clica no filtro de tipo "Instrução" (pega todos e usa o primeiro, que é o badge de filtro)
-    const filtroInstrucao = screen.getAllByText('Instrução')[0]
-    await user.click(filtroInstrucao)
+    // Seleciona "Instrução" no dropdown de tipo
+    const tipoSelect = screen.getByDisplayValue('Todos os tipos')
+    await user.selectOptions(tipoSelect, 'instrucao')
 
     // Apenas o Módulo 2 (tipo instrucao) deve estar visível
     await waitFor(() => {
@@ -334,15 +335,10 @@ describe('PromptsModulosPage', () => {
       expect(screen.getByText('Módulo 1')).toBeInTheDocument()
     })
 
-    // Encontra o checkbox "Ativo" do primeiro módulo
-    const checkboxes = screen.getAllByRole('checkbox')
-    const primeiroCheckbox = checkboxes.find(cb => {
-      const label = cb.parentElement
-      return label?.textContent?.includes('Ativo')
-    })
-
-    expect(primeiroCheckbox).toBeDefined()
-    await user.click(primeiroCheckbox!)
+    // Clica no primeiro botão de toggle (ToggleRight/ToggleLeft)
+    const toggleButtons = screen.getAllByTitle(/Desativar|Ativar/)
+    expect(toggleButtons.length).toBeGreaterThan(0)
+    await user.click(toggleButtons[0])
 
     // Verifica que a API foi chamada
     await waitFor(() => {

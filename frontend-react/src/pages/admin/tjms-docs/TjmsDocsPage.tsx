@@ -15,7 +15,7 @@ export function TjmsDocsPage() {
     <PageContainer className="space-y-6">
       {/* Título */}
       <div>
-        <h1 className="text-3xl font-bold">Documentação Integração TJ-MS</h1>
+        <h1 className="text-2xl font-bold">Documentação Integração TJ-MS</h1>
         <p className="text-muted-foreground mt-2">
           Módulo unificado de integração com o sistema MNI/SOAP do TJ-MS
         </p>

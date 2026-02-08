@@ -206,7 +206,7 @@ export function CategoriasJsonPage() {
     <PageContainer>
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-3xl font-bold">Categorias JSON</h1>
+        <h1 className="text-2xl font-bold">Categorias JSON</h1>
         <Button onClick={handleCreate}>Nova Categoria</Button>
       </div>
 

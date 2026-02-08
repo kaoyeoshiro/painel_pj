@@ -171,7 +171,7 @@ export function PerformancePage() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold">Performance do Sistema</h1>
+          <h1 className="text-2xl font-bold">Performance do Sistema</h1>
           <p className="text-gray-600 mt-1">Monitore o desempenho do sistema e da IA</p>
         </div>
         <div className="flex gap-3 items-center">

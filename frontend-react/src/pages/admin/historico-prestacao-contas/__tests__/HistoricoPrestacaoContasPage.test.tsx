@@ -6,7 +6,8 @@ import * as apiModule from '@/lib/api'
 
 // Mock do módulo de API
 vi.mock('@/lib/api', () => ({
-  createApiClient: vi.fn()
+  createApiClient: vi.fn(),
+  getToken: vi.fn(() => null),
 }))
 
 // Mock do useMarkdown

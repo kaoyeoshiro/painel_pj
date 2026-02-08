@@ -13,7 +13,8 @@ vi.mock('@/lib/api', () => {
   }
 
   return {
-    createApiClient: vi.fn(() => mockApiInstance)
+    createApiClient: vi.fn(() => mockApiInstance),
+    getToken: vi.fn(() => null),
   }
 })
 

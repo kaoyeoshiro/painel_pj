@@ -267,7 +267,7 @@ export function HistoricoPrestacaoContasPage() {
   return (
     <PageContainer>
       <div className="mb-6">
-        <h1 className="text-3xl font-bold">Histórico - Prestação de Contas</h1>
+        <h1 className="text-2xl font-bold">Histórico - Prestação de Contas</h1>
         <p className="text-muted-foreground mt-2">
           Visualize todas as prestações de contas geradas
         </p>

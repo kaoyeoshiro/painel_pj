@@ -176,7 +176,7 @@ export function TesteCategoriasPage() {
 
   return (
     <PageContainer className="space-y-6">
-      <h1 className="text-3xl font-bold">Teste de Categorias</h1>
+      <h1 className="text-2xl font-bold">Teste de Categorias</h1>
 
       {/* Seleção de categoria */}
       <Card className="p-4">

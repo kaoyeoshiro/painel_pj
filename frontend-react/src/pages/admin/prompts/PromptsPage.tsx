@@ -226,7 +226,7 @@ export function PromptsPage() {
   return (
     <PageContainer className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">Gerenciamento de Prompts e IA</h1>
+        <h1 className="text-2xl font-bold">Gerenciamento de Prompts e IA</h1>
         <p className="text-muted-foreground mt-2">
           Configure modelos de IA e gerencie prompts dos sistemas
         </p>

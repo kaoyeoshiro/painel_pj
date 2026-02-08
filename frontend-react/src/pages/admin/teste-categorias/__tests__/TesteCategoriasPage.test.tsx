@@ -30,7 +30,8 @@ vi.mock('@/lib/api', () => ({
   adminApi: {
     get: vi.fn(),
     post: vi.fn()
-  }
+  },
+  getToken: vi.fn(() => null),
 }))
 
 // Mock do toast

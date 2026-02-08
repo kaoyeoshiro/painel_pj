@@ -11,6 +11,7 @@ vi.mock('@/lib/api', () => ({
     post: vi.fn(),
     put: vi.fn(),
   },
+  getToken: vi.fn(() => null),
 }))
 
 // Mock do toast

@@ -1,14 +1,14 @@
 import { useState, useEffect } from 'react'
 import { adminApi } from '@/lib/api'
 import { useToast } from '@/components/ui/toast'
-import { Card } from '@/components/ui/card'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { PageContainer } from '@/components/layout'
+import { PageContainer, PageHeader, SectionCard } from '@/components/layout'
+import { ChevronDown, ChevronRight, Edit2, Trash2, ToggleLeft, ToggleRight, Plus, Search } from 'lucide-react'
 // Usa native <select> para dropdowns simples com <option>
 
 // Interfaces de dados
@@ -49,6 +49,133 @@ interface PromptSubgroup {
 type TipoFiltro = 'conteudo' | 'instrucao' | 'exemplo' | null
 type ModoFiltro = 'llm' | 'deterministic' | null
 type StatusFiltro = 'ativo' | 'inativo' | null
+
+// ---- Helpers de cor (badge) ----
+
+function getTipoBadgeColor(tipo: string) {
+  switch (tipo) {
+    case 'conteudo': return 'bg-blue-100 text-blue-700'
+    case 'instrucao': return 'bg-purple-100 text-purple-700'
+    case 'exemplo': return 'bg-green-100 text-green-700'
+    default: return 'bg-gray-100 text-gray-700'
+  }
+}
+
+function getModoBadgeColor(modo: string) {
+  switch (modo) {
+    case 'deterministic': return 'bg-emerald-100 text-emerald-700'
+    case 'llm': return 'bg-sky-100 text-sky-700'
+    default: return 'bg-gray-100 text-gray-700'
+  }
+}
+
+// ---- Componente de Grupo por Categoria (colapsável) ----
+
+interface CategoriaGroupProps {
+  categoria: string
+  modulos: PromptModulo[]
+  onEdit: (m: PromptModulo) => void
+  onDelete: (m: PromptModulo) => void
+  onToggle: (m: PromptModulo) => void
+}
+
+function CategoriaGroup({ categoria, modulos, onEdit, onDelete, onToggle }: CategoriaGroupProps) {
+  const [aberto, setAberto] = useState(true)
+
+  return (
+    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+      {/* Cabeçalho da categoria — clicável para colapsar */}
+      <button
+        type="button"
+        onClick={() => setAberto(!aberto)}
+        className="w-full flex items-center gap-2 px-4 py-3 bg-gray-50 hover:bg-gray-100 transition-colors text-left"
+      >
+        {aberto ? (
+          <ChevronDown className="h-4 w-4 text-gray-500 flex-shrink-0" />
+        ) : (
+          <ChevronRight className="h-4 w-4 text-gray-500 flex-shrink-0" />
+        )}
+        <span className="font-semibold text-gray-800">{categoria}</span>
+        <Badge variant="secondary" className="ml-auto text-xs">
+          {modulos.length}
+        </Badge>
+      </button>
+
+      {/* Lista de módulos */}
+      {aberto && (
+        <ul className="divide-y divide-gray-100">
+          {modulos
+            .sort((a, b) => a.ordem - b.ordem)
+            .map((modulo) => (
+              <li
+                key={modulo.id}
+                className={`flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors ${
+                  !modulo.ativo ? 'opacity-50' : ''
+                }`}
+              >
+                {/* Ordem */}
+                <span className="text-xs text-gray-400 w-6 text-right flex-shrink-0">
+                  #{modulo.ordem}
+                </span>
+
+                {/* Título + tags */}
+                <div className="flex-1 min-w-0">
+                  <span className="font-medium text-gray-900 truncate block">
+                    {modulo.titulo}
+                  </span>
+                  {modulo.tags.length > 0 && (
+                    <span className="text-xs text-gray-400 truncate block mt-0.5">
+                      {modulo.tags.join(', ')}
+                    </span>
+                  )}
+                </div>
+
+                {/* Badges: tipo + modo */}
+                <span className={`text-xs font-medium px-2 py-0.5 rounded-full flex-shrink-0 ${getTipoBadgeColor(modulo.tipo)}`}>
+                  {modulo.tipo}
+                </span>
+                <span className={`text-xs font-medium px-2 py-0.5 rounded-full flex-shrink-0 ${getModoBadgeColor(modulo.modo_ativacao)}`}>
+                  {modulo.modo_ativacao === 'deterministic' ? 'regra' : 'LLM'}
+                </span>
+
+                {/* Ações */}
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => onToggle(modulo)}
+                    title={modulo.ativo ? 'Desativar' : 'Ativar'}
+                    className="p-1.5 rounded-md hover:bg-gray-200 transition-colors"
+                  >
+                    {modulo.ativo ? (
+                      <ToggleRight className="h-4 w-4 text-green-600" />
+                    ) : (
+                      <ToggleLeft className="h-4 w-4 text-gray-400" />
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onEdit(modulo)}
+                    title="Editar"
+                    className="p-1.5 rounded-md hover:bg-gray-200 transition-colors"
+                  >
+                    <Edit2 className="h-4 w-4 text-gray-500" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => onDelete(modulo)}
+                    title="Excluir"
+                    className="p-1.5 rounded-md hover:bg-red-100 transition-colors"
+                  >
+                    <Trash2 className="h-4 w-4 text-red-500" />
+                  </button>
+                </div>
+              </li>
+            ))}
+        </ul>
+      )}
+    </div>
+  )
+}
 
 export function PromptsModulosPage() {
   const { toast } = useToast()
@@ -310,205 +437,100 @@ export function PromptsModulosPage() {
   // Ordenar categorias
   const categorias = Object.keys(modulosPorCategoria).sort()
 
-  function getTipoBadgeColor(tipo: string) {
-    switch (tipo) {
-      case 'conteudo': return 'bg-blue-500'
-      case 'instrucao': return 'bg-purple-500'
-      case 'exemplo': return 'bg-green-500'
-      default: return 'bg-gray-500'
-    }
-  }
-
-  function getModoBadgeColor(modo: string) {
-    switch (modo) {
-      case 'deterministic': return 'bg-green-500'
-      case 'llm': return 'bg-blue-500'
-      default: return 'bg-gray-500'
-    }
-  }
-
   return (
-    <PageContainer>
-      {/* Título */}
-      <h1 className="text-3xl font-bold mb-6">Módulos de Prompts</h1>
+    <PageContainer className="space-y-6">
+      {/* Header */}
+      <PageHeader
+        title="Módulos de Prompts"
+        description={`${modulosFiltrados.length} módulo(s) encontrado(s)`}
+        actions={
+          <Button onClick={abrirDialogNovo} disabled={grupoSelecionado === null} className="gap-1.5">
+            <Plus className="h-4 w-4" />
+            Novo Módulo
+          </Button>
+        }
+      />
 
-      {/* Header com filtros e ações */}
-      <div className="mb-6 space-y-4">
-        <div className="flex gap-4 flex-wrap items-center">
-          {/* Seletor de grupo */}
-          <div className="flex-1 min-w-[200px]">
-            <Label htmlFor="grupo-select">Grupo</Label>
-            <select
-              id="grupo-select"
-              className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              value={grupoSelecionado?.toString() || ''}
-              onChange={(e) => setGrupoSelecionado(Number(e.target.value))}
-            >
-              <option value="">Selecione um grupo</option>
-              {grupos.map(grupo => (
-                <option key={grupo.id} value={grupo.id}>
-                  {grupo.nome}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          {/* Campo de busca */}
-          <div className="flex-1 min-w-[200px]">
-            <Label htmlFor="busca">Buscar</Label>
+      {/* Filtros — card branco inline como no legado */}
+      <SectionCard>
+        <div className="flex flex-wrap gap-3 items-center">
+          {/* Busca */}
+          <div className="flex-1 min-w-[200px] relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
             <Input
-              id="busca"
-              type="text"
               placeholder="Buscar por título ou conteúdo..."
               value={busca}
               onChange={(e) => setBusca(e.target.value)}
+              className="pl-9"
             />
           </div>
 
-          {/* Botão novo módulo */}
-          <div className="flex items-end">
-            <Button onClick={abrirDialogNovo} disabled={grupoSelecionado === null}>
-              Novo Módulo
-            </Button>
-          </div>
-        </div>
+          {/* Tipo */}
+          <select
+            className="flex-shrink-0 w-[140px] px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white"
+            value={tipoFiltro || ''}
+            onChange={(e) => setTipoFiltro((e.target.value || null) as TipoFiltro)}
+          >
+            <option value="">Todos os tipos</option>
+            <option value="conteudo">Conteúdo</option>
+            <option value="instrucao">Instrução</option>
+            <option value="exemplo">Exemplo</option>
+          </select>
 
-        {/* Badges de filtro */}
-        <div className="flex gap-2 flex-wrap">
-          <Badge
-            className={`cursor-pointer ${tipoFiltro === 'conteudo' ? 'bg-blue-500' : 'bg-gray-200'}`}
-            onClick={() => setTipoFiltro(tipoFiltro === 'conteudo' ? null : 'conteudo')}
+          {/* Modo de ativação */}
+          <select
+            className="flex-shrink-0 w-[160px] px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white"
+            value={modoFiltro || ''}
+            onChange={(e) => setModoFiltro((e.target.value || null) as ModoFiltro)}
           >
-            Conteúdo
-          </Badge>
-          <Badge
-            className={`cursor-pointer ${tipoFiltro === 'instrucao' ? 'bg-purple-500' : 'bg-gray-200'}`}
-            onClick={() => setTipoFiltro(tipoFiltro === 'instrucao' ? null : 'instrucao')}
-          >
-            Instrução
-          </Badge>
-          <Badge
-            className={`cursor-pointer ${tipoFiltro === 'exemplo' ? 'bg-green-500' : 'bg-gray-200'}`}
-            onClick={() => setTipoFiltro(tipoFiltro === 'exemplo' ? null : 'exemplo')}
-          >
-            Exemplo
-          </Badge>
-          <Badge
-            className={`cursor-pointer ${modoFiltro === 'deterministic' ? 'bg-green-500' : 'bg-gray-200'}`}
-            onClick={() => setModoFiltro(modoFiltro === 'deterministic' ? null : 'deterministic')}
-          >
-            Determinístico
-          </Badge>
-          <Badge
-            className={`cursor-pointer ${modoFiltro === 'llm' ? 'bg-blue-500' : 'bg-gray-200'}`}
-            onClick={() => setModoFiltro(modoFiltro === 'llm' ? null : 'llm')}
-          >
-            LLM
-          </Badge>
-          <Badge
-            className={`cursor-pointer ${statusFiltro === 'ativo' ? 'bg-green-500' : 'bg-gray-200'}`}
-            onClick={() => setStatusFiltro(statusFiltro === 'ativo' ? null : 'ativo')}
-          >
-            Ativo
-          </Badge>
-          <Badge
-            className={`cursor-pointer ${statusFiltro === 'inativo' ? 'bg-red-500' : 'bg-gray-200'}`}
-            onClick={() => setStatusFiltro(statusFiltro === 'inativo' ? null : 'inativo')}
-          >
-            Inativo
-          </Badge>
-        </div>
-      </div>
+            <option value="">Tipo de Ativação</option>
+            <option value="llm">LLM</option>
+            <option value="deterministic">Regra Determinística</option>
+          </select>
 
-      {/* Lista de módulos agrupados por categoria */}
+          {/* Grupo */}
+          <select
+            className="flex-shrink-0 w-[150px] px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white"
+            value={grupoSelecionado?.toString() || ''}
+            onChange={(e) => setGrupoSelecionado(e.target.value ? Number(e.target.value) : null)}
+          >
+            <option value="">Todos os grupos</option>
+            {grupos.map(grupo => (
+              <option key={grupo.id} value={grupo.id}>
+                {grupo.nome}
+              </option>
+            ))}
+          </select>
+
+          {/* Status */}
+          <label className="flex-shrink-0 flex items-center gap-2 text-sm text-gray-600 whitespace-nowrap">
+            <input
+              type="checkbox"
+              checked={statusFiltro === 'ativo'}
+              onChange={(e) => setStatusFiltro(e.target.checked ? 'ativo' : null)}
+              className="rounded text-primary-600"
+            />
+            Apenas ativos
+          </label>
+        </div>
+      </SectionCard>
+
+      {/* Lista de módulos — estilo lista do legado */}
       {loading ? (
-        <div className="text-center py-8">Carregando...</div>
+        <div className="text-center py-12 text-gray-400">Carregando módulos...</div>
       ) : categorias.length === 0 ? (
-        <div className="text-center py-8 text-gray-500">
-          Nenhum módulo encontrado
-        </div>
+        <div className="text-center py-12 text-gray-400">Nenhum módulo encontrado</div>
       ) : (
-        <div className="space-y-6">
+        <div className="space-y-4">
           {categorias.map(categoria => (
-            <div key={categoria}>
-              {/* Header da categoria */}
-              <div className="flex items-center gap-2 mb-3">
-                <h2 className="text-xl font-semibold">{categoria}</h2>
-                <Badge variant="secondary">
-                  {modulosPorCategoria[categoria].length}
-                </Badge>
-              </div>
-
-              {/* Cards dos módulos */}
-              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-                {modulosPorCategoria[categoria].map(modulo => (
-                  <Card key={modulo.id} className="p-4">
-                    <div className="space-y-3">
-                      {/* Título e badges */}
-                      <div>
-                        <h3 className="font-semibold mb-2">{modulo.titulo}</h3>
-                        <div className="flex gap-2 flex-wrap">
-                          <Badge className={getTipoBadgeColor(modulo.tipo)}>
-                            {modulo.tipo}
-                          </Badge>
-                          <Badge className={getModoBadgeColor(modulo.modo_ativacao)}>
-                            {modulo.modo_ativacao}
-                          </Badge>
-                        </div>
-                      </div>
-
-                      {/* Tags */}
-                      {modulo.tags.length > 0 && (
-                        <div className="flex gap-1 flex-wrap">
-                          {modulo.tags.map((tag, idx) => (
-                            <Badge key={idx} variant="outline" className="text-xs">
-                              {tag}
-                            </Badge>
-                          ))}
-                        </div>
-                      )}
-
-                      {/* Info de atualização */}
-                      <div className="text-xs text-gray-500">
-                        Atualizado em {new Date(modulo.updated_at).toLocaleDateString('pt-BR')}
-                        {modulo.updated_by && ` por ${modulo.updated_by}`}
-                      </div>
-
-                      {/* Ações */}
-                      <div className="flex gap-2 justify-between items-center pt-2 border-t">
-                        <div className="flex items-center gap-2">
-                          <label className="text-sm">
-                            <input
-                              type="checkbox"
-                              checked={modulo.ativo}
-                              onChange={() => toggleAtivo(modulo)}
-                              className="mr-1"
-                            />
-                            Ativo
-                          </label>
-                        </div>
-                        <div className="flex gap-2">
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            onClick={() => abrirDialogEditar(modulo)}
-                          >
-                            Editar
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="destructive"
-                            onClick={() => abrirDialogExcluir(modulo)}
-                          >
-                            Excluir
-                          </Button>
-                        </div>
-                      </div>
-                    </div>
-                  </Card>
-                ))}
-              </div>
-            </div>
+            <CategoriaGroup
+              key={categoria}
+              categoria={categoria}
+              modulos={modulosPorCategoria[categoria]}
+              onEdit={abrirDialogEditar}
+              onDelete={abrirDialogExcluir}
+              onToggle={toggleAtivo}
+            />
           ))}
         </div>
       )}
