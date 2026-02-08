@@ -21,7 +21,7 @@ export default defineConfig({
     proxy: {
       '/auth': 'http://localhost:8000',
       '/users': 'http://localhost:8000',
-      '/admin': 'http://localhost:8000',
+      '/admin/api': 'http://localhost:8000',
       '/api': 'http://localhost:8000',
       '/assistencia/api': 'http://localhost:8000',
       '/matriculas/api': 'http://localhost:8000',
@@ -29,7 +29,7 @@ export default defineConfig({
       '/pedido-calculo/api': 'http://localhost:8000',
       '/prestacao-contas/api': 'http://localhost:8000',
       '/relatorio-cumprimento/api': 'http://localhost:8000',
-      '/cumprimento-beta': 'http://localhost:8000',
+      '/cumprimento-beta/api': 'http://localhost:8000',
       '/classificador/api': 'http://localhost:8000',
       '/bert-training/api': 'http://localhost:8000',
       '/extrator-autos/api': 'http://localhost:8000',

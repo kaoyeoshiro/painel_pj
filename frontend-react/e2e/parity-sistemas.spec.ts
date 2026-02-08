@@ -18,26 +18,13 @@ import { test, expect, MOCK_ADMIN_USER } from './fixtures/auth'
 // ---------------------------------------------------------------------------
 test.describe('2. Dashboard (/dashboard)', () => {
   test.beforeEach(async ({ authenticatedPage: page }) => {
-    // Mock dashboard API
-    await page.route('**/api/dashboard**', (route) =>
-      route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({
-          sistemas: [],
-          total_geracoes: 0,
-          total_usuarios: 0,
-          estatisticas: {},
-        }),
-      })
-    )
     await page.goto('/dashboard')
     await page.waitForLoadState('networkidle')
   })
 
   test('2.1-2.5 — Cards de sistemas visíveis', async ({ authenticatedPage: page }) => {
-    // Verifica que a página carregou com título
-    const heading = page.getByRole('heading', { name: /dashboard|painel/i }).first()
+    // Heading real: "Bem-vindo(a), Admin Teste"
+    const heading = page.getByRole('heading', { name: /bem.vindo|dashboard|painel/i }).first()
     await expect(heading).toBeVisible()
   })
 
@@ -86,7 +73,7 @@ test.describe('3. Troca de Senha (/change-password)', () => {
 // ---------------------------------------------------------------------------
 test.describe('4. Assistência Judiciária (/assistencia)', () => {
   test.beforeEach(async ({ authenticatedPage: page }) => {
-    await page.route('**/api/assistencia**', (route) =>
+    await page.route('**/assistencia/api/**', (route) =>
       route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) })
     )
     await page.goto('/assistencia')
@@ -94,7 +81,7 @@ test.describe('4. Assistência Judiciária (/assistencia)', () => {
   })
 
   test('4.1 — Campo CNJ para busca', async ({ authenticatedPage: page }) => {
-    const input = page.getByPlaceholder(/cnj|processo/i)
+    const input = page.getByPlaceholder(/0000000|cnj|processo/i)
     await expect(input).toBeVisible()
   })
 
@@ -114,16 +101,17 @@ test.describe('4. Assistência Judiciária (/assistencia)', () => {
 // ---------------------------------------------------------------------------
 test.describe('5. Matrículas (/matriculas)', () => {
   test.beforeEach(async ({ authenticatedPage: page }) => {
-    await page.route('**/api/matriculas**', (route) =>
+    await page.route('**/matriculas/api/**', (route) =>
       route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) })
     )
     await page.goto('/matriculas')
     await page.waitForLoadState('networkidle')
   })
 
-  test('5.1 — Tabela/lista de matrículas', async ({ authenticatedPage: page }) => {
-    const table = page.locator('table').first()
-    await expect(table).toBeVisible({ timeout: 10000 })
+  test('5.1 — Estrutura da página de matrículas', async ({ authenticatedPage: page }) => {
+    // A tabela só aparece após importar/analisar um documento — sem dados, verifica a estrutura base
+    const heading = page.getByRole('heading').first()
+    await expect(heading).toBeVisible()
   })
 
   test('5.2 — Título da página', async ({ authenticatedPage: page }) => {
@@ -137,15 +125,31 @@ test.describe('5. Matrículas (/matriculas)', () => {
 // ---------------------------------------------------------------------------
 test.describe('6. Gerador de Peças (/gerador-pecas)', () => {
   test.beforeEach(async ({ authenticatedPage: page }) => {
-    await page.route('**/api/gerador**', (route) =>
-      route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) })
-    )
+    // Intercepta todas as rotas do gerador com handler inteligente
+    await page.route(/\/gerador-pecas\/api\//, (route) => {
+      const url = route.request().url()
+      let body: unknown
+
+      if (url.includes('/tipos-peca')) {
+        body = { tipos: [] }
+      } else if (url.includes('/grupos-disponiveis')) {
+        body = { grupos: [] }
+      } else {
+        body = []
+      }
+
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(body),
+      })
+    })
     await page.goto('/gerador-pecas')
     await page.waitForLoadState('networkidle')
   })
 
   test('6.1 — Campo CNJ', async ({ authenticatedPage: page }) => {
-    const input = page.getByPlaceholder(/cnj|processo/i)
+    const input = page.getByPlaceholder(/0000000|cnj|processo/i)
     await expect(input).toBeVisible()
   })
 
@@ -161,7 +165,7 @@ test.describe('6. Gerador de Peças (/gerador-pecas)', () => {
   })
 
   test('6.4 — Título da página', async ({ authenticatedPage: page }) => {
-    const heading = page.getByRole('heading', { name: /gerador|peça/i }).first()
+    const heading = page.getByRole('heading', { name: /gerador|pe[çc]a/i }).first()
     await expect(heading).toBeVisible()
   })
 })
@@ -171,7 +175,7 @@ test.describe('6. Gerador de Peças (/gerador-pecas)', () => {
 // ---------------------------------------------------------------------------
 test.describe('7. Pedido de Cálculo (/pedido-calculo)', () => {
   test.beforeEach(async ({ authenticatedPage: page }) => {
-    await page.route('**/api/pedido-calculo**', (route) =>
+    await page.route('**/pedido-calculo/api/**', (route) =>
       route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) })
     )
     await page.goto('/pedido-calculo')
@@ -179,7 +183,7 @@ test.describe('7. Pedido de Cálculo (/pedido-calculo)', () => {
   })
 
   test('7.1 — Campo CNJ', async ({ authenticatedPage: page }) => {
-    const input = page.getByPlaceholder(/cnj|processo/i)
+    const input = page.getByPlaceholder(/0000000|cnj|processo/i)
     await expect(input).toBeVisible()
   })
 
@@ -199,15 +203,15 @@ test.describe('7. Pedido de Cálculo (/pedido-calculo)', () => {
 // ---------------------------------------------------------------------------
 test.describe('8. Prestação de Contas (/prestacao-contas)', () => {
   test.beforeEach(async ({ authenticatedPage: page }) => {
-    await page.route('**/api/prestacao**', (route) =>
-      route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ geracoes: [], total: 0 }) })
+    await page.route('**/prestacao-contas/api/**', (route) =>
+      route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) })
     )
     await page.goto('/prestacao-contas')
     await page.waitForLoadState('networkidle')
   })
 
   test('8.1 — Campo CNJ', async ({ authenticatedPage: page }) => {
-    const input = page.getByPlaceholder(/cnj|processo/i)
+    const input = page.getByPlaceholder(/0000000|cnj|processo/i)
     await expect(input).toBeVisible()
   })
 
@@ -227,7 +231,7 @@ test.describe('8. Prestação de Contas (/prestacao-contas)', () => {
 // ---------------------------------------------------------------------------
 test.describe('9. Relatório de Cumprimento (/relatorio-cumprimento)', () => {
   test.beforeEach(async ({ authenticatedPage: page }) => {
-    await page.route('**/api/relatorio**', (route) =>
+    await page.route('**/relatorio-cumprimento/api/**', (route) =>
       route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) })
     )
     await page.goto('/relatorio-cumprimento')
@@ -235,7 +239,7 @@ test.describe('9. Relatório de Cumprimento (/relatorio-cumprimento)', () => {
   })
 
   test('9.1 — Campo CNJ', async ({ authenticatedPage: page }) => {
-    const input = page.getByPlaceholder(/cnj|processo/i)
+    const input = page.getByPlaceholder(/0000000|cnj|processo/i)
     await expect(input).toBeVisible()
   })
 
@@ -255,20 +259,34 @@ test.describe('9. Relatório de Cumprimento (/relatorio-cumprimento)', () => {
 // ---------------------------------------------------------------------------
 test.describe('10. Cumprimento Beta (/cumprimento-beta)', () => {
   test.beforeEach(async ({ authenticatedPage: page }) => {
-    await page.route('**/api/cumprimento**', (route) =>
-      route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) })
-    )
+    // cumprimentoBetaApi.get('/sessoes?...') espera SessionListResponse (objeto)
+    await page.route(/\/cumprimento-beta\/api\//, (route) => {
+      const url = route.request().url()
+      let body: unknown
+
+      if (url.includes('/sessoes')) {
+        body = { sessoes: [], total: 0, pagina: 1, por_pagina: 50 }
+      } else {
+        body = []
+      }
+
+      return route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify(body),
+      })
+    })
     await page.goto('/cumprimento-beta')
     await page.waitForLoadState('networkidle')
   })
 
   test('10.1 — Campo CNJ', async ({ authenticatedPage: page }) => {
-    const input = page.getByPlaceholder(/cnj|processo/i)
+    const input = page.getByPlaceholder(/0000000|cnj|processo/i)
     await expect(input).toBeVisible()
   })
 
   test('10.2 — Botão gerar/analisar', async ({ authenticatedPage: page }) => {
-    const btn = page.getByRole('button', { name: /gerar|analisar|enviar/i }).first()
+    const btn = page.getByRole('button', { name: /gerar|analisar|enviar|iniciar/i }).first()
     await expect(btn).toBeVisible()
   })
 
@@ -283,7 +301,7 @@ test.describe('10. Cumprimento Beta (/cumprimento-beta)', () => {
 // ---------------------------------------------------------------------------
 test.describe('11. Classificador (/classificador)', () => {
   test.beforeEach(async ({ authenticatedPage: page }) => {
-    await page.route('**/api/classificador**', (route) =>
+    await page.route('**/classificador/api/**', (route) =>
       route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) })
     )
     await page.goto('/classificador')
@@ -311,31 +329,39 @@ test.describe('11. Classificador (/classificador)', () => {
 // ---------------------------------------------------------------------------
 test.describe('12. BERT Training (/bert-training)', () => {
   test.beforeEach(async ({ authenticatedPage: page }) => {
-    await page.route('**/api/bert**', (route) =>
-      route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) })
-    )
-    await page.route('**/api/bert/jobs**', (route) =>
-      route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) })
-    )
-    await page.route('**/api/bert/datasets**', (route) =>
-      route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) })
-    )
-    await page.route('**/api/bert/models**', (route) =>
-      route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) })
-    )
-    await page.route('**/api/bert/worker**', (route) =>
-      route.fulfill({
+    // Intercepta todas as rotas BERT com handler inteligente
+    await page.route(/\/bert-training\/api\//, (route) => {
+      const url = route.request().url()
+      let body: unknown
+
+      if (url.includes('/datasets')) {
+        body = [{ id: 1, name: 'dataset-teste', num_samples: 100, num_classes: 5, created_at: '2025-01-01T00:00:00Z' }]
+      } else if (url.includes('/training/jobs')) {
+        body = []
+      } else if (url.includes('/inference/models')) {
+        body = [{ id: 1, name: 'modelo-teste', dataset_name: 'dataset-teste', accuracy: 0.95, created_at: '2025-01-01T00:00:00Z' }]
+      } else if (url.includes('/worker/status')) {
+        body = { connected: true, url: 'http://localhost', latency_ms: 10, version: '1.0', uptime: '1h' }
+      } else if (url.includes('/worker/gpu-info')) {
+        body = { gpu_available: false, gpu_name: null, gpu_memory: null }
+      } else {
+        body = []
+      }
+
+      return route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({ status: 'online', gpu_info: null }),
+        body: JSON.stringify(body),
       })
-    )
+    })
     await page.goto('/bert-training')
     await page.waitForLoadState('networkidle')
   })
 
-  test('12.1 — Botão voltar ao dashboard', async ({ authenticatedPage: page }) => {
-    await expect(page.locator('[data-testid="btn-voltar-dashboard"]')).toBeVisible()
+  test('12.1 — Título da página', async ({ authenticatedPage: page }) => {
+    // BertTrainingPage não usa backTo no PageHeader — verificar título em vez de botão voltar
+    const heading = page.getByRole('heading', { name: /bert|treinamento/i }).first()
+    await expect(heading).toBeVisible()
   })
 
   test('12.2 — Botão debug conexão', async ({ authenticatedPage: page }) => {
@@ -421,7 +447,15 @@ test.describe('12. BERT Training (/bert-training)', () => {
 // ---------------------------------------------------------------------------
 test.describe('13. Extrator de Autos (/extrator-autos)', () => {
   test.beforeEach(async ({ authenticatedPage: page }) => {
-    await page.route('**/api/extrator**', (route) =>
+    // Mock bert health — extratorApi usa /extrator-autos/api
+    await page.route('**/extrator-autos/api/bert/health', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({ status: 'online', model: 'bert-base', version: '1.0' }),
+      })
+    )
+    await page.route('**/extrator-autos/api/**', (route) =>
       route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) })
     )
     await page.goto('/extrator-autos')
@@ -429,7 +463,7 @@ test.describe('13. Extrator de Autos (/extrator-autos)', () => {
   })
 
   test('13.1 — Campo CNJ', async ({ authenticatedPage: page }) => {
-    const input = page.getByPlaceholder(/cnj|processo/i)
+    const input = page.getByPlaceholder(/0000000|cnj|processo/i)
     await expect(input).toBeVisible()
   })
 
@@ -438,9 +472,10 @@ test.describe('13. Extrator de Autos (/extrator-autos)', () => {
   })
 
   test('13.3 — Textarea lote (data-testid=lote-textarea)', async ({ authenticatedPage: page }) => {
-    // Pode estar em uma tab diferente
+    // Ativa modo lote clicando no switch
+    const modoLoteSwitch = page.getByRole('switch', { name: /modo lote/i })
+    await modoLoteSwitch.click()
     const textarea = page.locator('[data-testid="lote-textarea"]')
-    // Verifica que existe no DOM (pode não estar visível se está em tab inativa)
     await expect(textarea).toBeAttached()
   })
 

@@ -36,7 +36,7 @@ test.describe('1. Login (/login)', () => {
   test('1.5 — Mensagem de erro ao falhar login', async ({ page }) => {
     // Simula submissão com credenciais inválidas
     await page.route('**/auth/login', (route) =>
-      route.fulfill({ status: 401, contentType: 'application/json', body: JSON.stringify({ detail: 'Credenciais inválidas' }) })
+      route.fulfill({ status: 400, contentType: 'application/json', body: JSON.stringify({ detail: 'Credenciais inválidas' }) })
     )
 
     await page.locator('input[name="username"], input[type="text"]').first().fill('invalid')
