@@ -532,7 +532,7 @@ export function ExtratorAutosPage() {
 
       {/* ===== Conteudo Principal ===== */}
       <main className="flex-1 overflow-auto p-6">
-        <div className="mx-auto max-w-5xl space-y-6">
+        <div className="mx-auto max-w-7xl space-y-6">
           {/* ===== Secao 1: Input ===== */}
           {(pageState === 'idle' || pageState === 'erro') && (
             <Card>

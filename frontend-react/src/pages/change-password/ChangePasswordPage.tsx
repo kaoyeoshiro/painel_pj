@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { authApi } from '@/lib/api'
+import { PageContainer } from '@/components/layout'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -99,7 +100,7 @@ export function ChangePasswordPage() {
   }
 
   return (
-    <div className="max-w-2xl mx-auto">
+    <PageContainer className="max-w-2xl">
       {/* Botão voltar */}
       <Button
         variant="ghost"
@@ -200,6 +201,6 @@ export function ChangePasswordPage() {
           </form>
         </CardContent>
       </Card>
-    </div>
+    </PageContainer>
   )
 }

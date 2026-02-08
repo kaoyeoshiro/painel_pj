@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useToast } from '@/hooks/use-toast'
+import { PageContainer } from '@/components/layout'
 
 interface Prompt {
   id: number
@@ -223,7 +224,7 @@ export function PromptsPage() {
   }
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
+    <PageContainer className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Gerenciamento de Prompts e IA</h1>
         <p className="text-muted-foreground mt-2">
@@ -456,6 +457,6 @@ export function PromptsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </PageContainer>
   )
 }

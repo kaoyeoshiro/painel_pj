@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Badge } from '@/components/ui/badge'
 
 import { useToast } from '@/hooks/use-toast'
+import { PageContainer } from '@/components/layout'
 
 // Estrutura de dados da categoria JSON
 interface CategoriaJSON {
@@ -202,7 +203,7 @@ export function CategoriasJsonPage() {
   }
 
   return (
-    <div className="container mx-auto py-8">
+    <PageContainer>
       {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-3xl font-bold">Categorias JSON</h1>
@@ -392,6 +393,6 @@ export function CategoriasJsonPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </PageContainer>
   )
 }

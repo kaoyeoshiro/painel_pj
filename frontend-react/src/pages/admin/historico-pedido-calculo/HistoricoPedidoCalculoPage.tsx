@@ -23,6 +23,7 @@ import { useToast } from '@/components/ui/toast'
 import { pedidoCalculoAdminApi } from '@/lib/api'
 import { useApiQuery } from '@/hooks/useApiQuery'
 import { useMarkdown } from '@/hooks/useMarkdown'
+import { PageContainer } from '@/components/layout'
 
 // ---------------------------------------------------------------------------
 // Tipos
@@ -351,7 +352,7 @@ export function HistoricoPedidoCalculoPage() {
   ]
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
+    <PageContainer className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Historico - Pedido de Calculo</h1>
         <p className="text-muted-foreground mt-1">
@@ -371,6 +372,6 @@ export function HistoricoPedidoCalculoPage() {
       />
 
       <DetalhesModal geracao={selectedGeracao} onClose={() => setSelectedGeracao(null)} />
-    </div>
+    </PageContainer>
   )
 }

@@ -6,6 +6,7 @@ import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { useToast } from '@/components/ui/toast'
 import { adminApi } from '@/lib/api'
+import { PageContainer } from '@/components/layout'
 
 // Backup simplificado de exemplo - em produção seria carregado de configuração
 const JSON_BACKUP = {
@@ -90,7 +91,7 @@ export function RestaurarSlugsPage() {
   }
 
   return (
-    <div className="container mx-auto py-8 px-4 max-w-4xl">
+    <PageContainer className="max-w-4xl">
       <Card>
         <CardHeader>
           <CardTitle>Restaurar Slugs</CardTitle>
@@ -137,6 +138,6 @@ export function RestaurarSlugsPage() {
           )}
         </CardContent>
       </Card>
-    </div>
+    </PageContainer>
   )
 }

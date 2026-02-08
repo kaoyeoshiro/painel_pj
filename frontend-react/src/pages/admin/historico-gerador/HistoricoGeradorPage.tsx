@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useToast } from '@/hooks/use-toast'
 import { useMarkdown } from '@/hooks/useMarkdown'
+import { PageContainer } from '@/components/layout'
 
 interface Geracao {
   id: number
@@ -158,15 +159,15 @@ export function HistoricoGeradorPage() {
 
   if (loading) {
     return (
-      <div className="container mx-auto py-8 space-y-4">
+      <PageContainer className="space-y-4">
         <h1 className="text-2xl font-bold">Historico - Gerador de Pecas</h1>
         <Skeleton className="h-96 w-full" />
-      </div>
+      </PageContainer>
     )
   }
 
   return (
-    <div className="container mx-auto py-8 space-y-4">
+    <PageContainer className="space-y-4">
       <h1 className="text-2xl font-bold">Historico - Gerador de Pecas</h1>
 
       <DataTable
@@ -265,7 +266,7 @@ export function HistoricoGeradorPage() {
           ) : null}
         </DialogContent>
       </Dialog>
-    </div>
+    </PageContainer>
   )
 }
 

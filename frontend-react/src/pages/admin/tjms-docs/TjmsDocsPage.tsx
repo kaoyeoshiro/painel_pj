@@ -8,10 +8,11 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
+import { PageContainer } from '@/components/layout';
 
 export function TjmsDocsPage() {
   return (
-    <div className="container mx-auto py-6 space-y-6">
+    <PageContainer className="space-y-6">
       {/* Título */}
       <div>
         <h1 className="text-3xl font-bold">Documentação Integração TJ-MS</h1>
@@ -327,6 +328,6 @@ export function TjmsDocsPage() {
           </div>
         </CardContent>
       </Card>
-    </div>
+    </PageContainer>
   );
 }

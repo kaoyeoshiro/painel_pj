@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { usersApi } from '@/lib/api'
+import { PageContainer } from '@/components/layout'
 import { DataTable } from '@/components/shared/DataTable'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -301,9 +302,9 @@ export function UsersPage() {
   ]
 
   return (
-    <div className="space-y-6">
+    <PageContainer className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">Gerenciar Usuarios</h1>
+        <h1 className="text-2xl font-bold">Gerenciar Usuarios</h1>
         <Button onClick={handleCreate}>Novo Usuario</Button>
       </div>
 
@@ -463,6 +464,6 @@ export function UsersPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </PageContainer>
   )
 }

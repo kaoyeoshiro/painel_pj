@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import { adminApi } from '@/lib/api'
+import { PageContainer } from '@/components/layout'
 import { useToast } from '@/components/ui/toast'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -214,10 +215,10 @@ export function FeedbacksPage() {
   ]
 
   return (
-    <div className="space-y-6">
+    <PageContainer className="space-y-6">
       {/* Título */}
       <div>
-        <h1 className="text-3xl font-bold">Feedbacks</h1>
+        <h1 className="text-2xl font-bold">Feedbacks</h1>
         <p className="text-gray-600 mt-1">
           Acompanhamento de avaliações e comentários dos usuários
         </p>
@@ -394,6 +395,6 @@ export function FeedbacksPage() {
           </div>
         )}
       </Card>
-    </div>
+    </PageContainer>
   )
 }

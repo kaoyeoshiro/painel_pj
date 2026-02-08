@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { PageContainer } from '@/components/layout'
 // Usa native <select> para dropdowns simples com <option>
 
 // Interfaces de dados
@@ -327,7 +328,7 @@ export function PromptsModulosPage() {
   }
 
   return (
-    <div className="container mx-auto py-8 px-4">
+    <PageContainer>
       {/* Título */}
       <h1 className="text-3xl font-bold mb-6">Módulos de Prompts</h1>
 
@@ -696,6 +697,6 @@ export function PromptsModulosPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </PageContainer>
   )
 }

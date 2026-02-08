@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/hooks/use-toast'
+import { PageContainer } from '@/components/layout'
 
 // Interfaces
 interface CategoriaDocumento {
@@ -297,7 +298,7 @@ export function ConfigPecasPage() {
   }
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
+    <PageContainer className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Configuração de Peças</h1>
         <p className="text-muted-foreground">
@@ -641,6 +642,6 @@ export function ConfigPecasPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </PageContainer>
   )
 }

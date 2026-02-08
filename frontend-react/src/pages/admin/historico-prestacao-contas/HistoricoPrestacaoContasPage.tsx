@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useToast } from '@/hooks/use-toast'
 import { useMarkdown } from '@/hooks/useMarkdown'
+import { PageContainer } from '@/components/layout'
 
 // Interfaces
 interface GeracaoAdmin {
@@ -264,7 +265,7 @@ export function HistoricoPrestacaoContasPage() {
   ]
 
   return (
-    <div className="container mx-auto py-6">
+    <PageContainer>
       <div className="mb-6">
         <h1 className="text-3xl font-bold">Histórico - Prestação de Contas</h1>
         <p className="text-muted-foreground mt-2">
@@ -429,6 +430,6 @@ export function HistoricoPrestacaoContasPage() {
           ) : null}
         </DialogContent>
       </Dialog>
-    </div>
+    </PageContainer>
   )
 }

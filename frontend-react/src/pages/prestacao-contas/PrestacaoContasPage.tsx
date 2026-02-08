@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { PageContainer } from '@/components/layout'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -1535,7 +1536,7 @@ export function PrestacaoContasPage() {
   // =====================================================
 
   return (
-    <div className="mx-auto max-w-5xl space-y-6 p-4 sm:p-6 lg:p-8">
+    <PageContainer className="max-w-5xl space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -1581,7 +1582,7 @@ export function PrestacaoContasPage() {
       {/* Dialogs */}
       {renderFeedbackDialog()}
       {renderConfirmacaoDialog()}
-    </div>
+    </PageContainer>
   )
 }
 

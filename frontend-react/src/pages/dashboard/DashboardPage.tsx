@@ -1,5 +1,6 @@
 import { useNavigate } from '@tanstack/react-router'
 import { useAuthStore } from '@/stores/auth-store'
+import { PageContainer } from '@/components/layout'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import {
   FileText,
@@ -183,13 +184,13 @@ export function DashboardPage() {
   }
 
   return (
-    <div className="space-y-8">
+    <PageContainer className="space-y-8">
       {/* Header */}
       <div>
-        <h1 className="text-3xl font-bold text-gray-900">
+        <h1 className="text-2xl font-bold text-gray-900">
           Bem-vindo(a), {user?.full_name}
         </h1>
-        <p className="mt-2 text-gray-600">
+        <p className="mt-1 text-sm text-gray-500">
           Selecione um sistema para começar
         </p>
       </div>
@@ -249,6 +250,6 @@ export function DashboardPage() {
           </div>
         </div>
       )}
-    </div>
+    </PageContainer>
   )
 }

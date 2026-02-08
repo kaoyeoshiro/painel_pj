@@ -6,6 +6,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge'
 import { useToast } from '@/hooks/use-toast'
 import { adminApi } from '@/lib/api'
+import { PageContainer } from '@/components/layout'
 
 // Estruturas de dados locais
 interface Categoria {
@@ -174,7 +175,7 @@ export function TesteCategoriasPage() {
   const podeClassificar = processosValidos.length > 0 && categoriaId !== ''
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <PageContainer className="space-y-6">
       <h1 className="text-3xl font-bold">Teste de Categorias</h1>
 
       {/* Seleção de categoria */}
@@ -321,6 +322,6 @@ export function TesteCategoriasPage() {
           </Card>
         </div>
       </div>
-    </div>
+    </PageContainer>
   )
 }

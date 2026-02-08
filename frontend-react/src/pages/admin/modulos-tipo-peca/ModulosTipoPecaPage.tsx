@@ -13,6 +13,7 @@ import {
 } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useToast } from '@/components/ui/toast'
+import { PageContainer } from '@/components/layout'
 
 interface PromptGroup {
   id: number
@@ -384,7 +385,7 @@ export function ModulosTipoPecaPage() {
   }
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
+    <PageContainer className="space-y-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold">Módulos por Tipo de Peça</h1>
@@ -609,6 +610,6 @@ export function ModulosTipoPecaPage() {
           })}
         </div>
       )}
-    </div>
+    </PageContainer>
   )
 }

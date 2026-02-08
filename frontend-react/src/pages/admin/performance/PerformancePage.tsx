@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { DataTable } from '@/components/shared/DataTable';
 import { useToast } from '@/hooks/use-toast';
 import { adminApi } from '@/lib/api';
+import { PageContainer } from '@/components/layout';
 
 // Interfaces locais
 interface PerformanceSummary {
@@ -166,7 +167,7 @@ export function PerformancePage() {
   ];
 
   return (
-    <div className="container mx-auto p-6 space-y-6">
+    <PageContainer className="space-y-6">
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
@@ -357,6 +358,6 @@ export function PerformancePage() {
           </Card>
         </TabsContent>
       </Tabs>
-    </div>
+    </PageContainer>
   );
 }

@@ -9,6 +9,7 @@ import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Checkbox } from '@/components/ui/checkbox'
 import { useToast } from '@/hooks/use-toast'
+import { PageContainer } from '@/components/layout'
 
 // Interfaces
 interface TipoPeca {
@@ -207,7 +208,7 @@ export function TesteAtivacaoPage() {
   const isLoading = loadingTipos || loadingCategorias || loadingVariaveis
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
+    <PageContainer className="space-y-6">
       <div>
         <h1 className="text-3xl font-bold">Teste de Ativação de Módulos</h1>
         <p className="text-muted-foreground">
@@ -468,6 +469,6 @@ export function TesteAtivacaoPage() {
           </Tabs>
         </div>
       </div>
-    </div>
+    </PageContainer>
   )
 }

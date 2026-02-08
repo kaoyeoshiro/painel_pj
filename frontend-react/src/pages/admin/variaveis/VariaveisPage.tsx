@@ -24,6 +24,7 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog'
 import { useToast } from '@/components/ui/toast'
+import { PageContainer } from '@/components/layout'
 
 // Interfaces locais
 interface Variavel {
@@ -381,7 +382,7 @@ export function VariaveisPage() {
   }
 
   return (
-    <div className="container mx-auto p-6">
+    <PageContainer>
       <h1 className="text-2xl font-bold mb-6">Gerenciar Variáveis</h1>
 
       {renderResumo()}
@@ -600,6 +601,6 @@ export function VariaveisPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
+    </PageContainer>
   )
 }

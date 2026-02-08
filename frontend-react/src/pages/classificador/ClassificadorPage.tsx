@@ -2,6 +2,7 @@ import { useState, useRef, useCallback, useEffect } from 'react'
 import { classificadorApi, getToken } from '@/lib/api'
 import { useApiQuery } from '@/hooks/useApiQuery'
 import { useToast } from '@/hooks/use-toast'
+import { PageContainer } from '@/components/layout'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -1395,7 +1396,7 @@ export function ClassificadorPage() {
   const promptsList = prompts ?? []
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
+    <PageContainer className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold">Classificador de Documentos</h1>
         <p className="text-muted-foreground">Classifique documentos automaticamente usando inteligencia artificial</p>
@@ -1437,6 +1438,6 @@ export function ClassificadorPage() {
           />
         </TabsContent>
       </Tabs>
-    </div>
+    </PageContainer>
   )
 }
