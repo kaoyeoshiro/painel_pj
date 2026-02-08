@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { useNavigate, Link } from '@tanstack/react-router'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -139,6 +140,7 @@ function AgentProgressItem(props: {
 // ============================================================
 
 export function GeradorPecasPage() {
+  const navigate = useNavigate()
   const { toast } = useToast()
 
   // --- Page state machine ---
@@ -146,9 +148,17 @@ export function GeradorPecasPage() {
   const [errorMessage, setErrorMessage] = useState('')
 
   // --- Form state ---
+  const [inputMode, setInputMode] = useState<'cnj' | 'pdf'>('cnj')
   const [numeroCNJ, setNumeroCNJ] = useState('')
   const [tipoPeca, setTipoPeca] = useState('')
   const [observacao, setObservacao] = useState('')
+  const [pdfFiles, setPdfFiles] = useState<File[]>([])
+  const pdfInputRef = useRef<HTMLInputElement>(null)
+
+  // --- Group/Subcategory filtering ---
+  const [selectedGroupId, setSelectedGroupId] = useState<number | null>(null)
+  const [subcategorias, setSubcategorias] = useState<Array<{ id: number; nome: string }>>([])
+  const [selectedSubcategorias, setSelectedSubcategorias] = useState<number[]>([])
 
   // --- Agent progress ---
   const [agentStatuses, setAgentStatuses] = useState<Record<number, AgentStatus>>({
@@ -189,6 +199,10 @@ export function GeradorPecasPage() {
   const [feedbackNota, setFeedbackNota] = useState<number | null>(null)
   const [feedbackComentario, setFeedbackComentario] = useState('')
 
+  // --- Version History ---
+  const [showVersionHistory, setShowVersionHistory] = useState(false)
+  const [versionList, setVersionList] = useState<Array<{ versao_id: number; numero_versao: number; linhas_adicionadas: number; linhas_removidas: number; descricao_alteracao: string; created_at: string }>>([])
+
   // --- Parecer NATJus dialog ---
   const [showParecerDialog, setShowParecerDialog] = useState(false)
   const [parecerFile, setParecerFile] = useState<File | null>(null)
@@ -214,6 +228,11 @@ export function GeradorPecasPage() {
     { enabled: true }
   )
 
+  const { data: gruposData } = useApiQuery<{ grupos: Array<{ id: number; nome: string; slug: string }> }>(
+    () => geradorApi.get('/grupos-disponiveis'),
+    { enabled: true }
+  )
+
   // --- Rendered markdown ---
   const { html: minutaHtml } = useMarkdown(
     pageState === 'streaming' ? streamingContent : minutaMarkdown
@@ -232,6 +251,18 @@ export function GeradorPecasPage() {
       abortControllerRef.current?.abort()
     }
   }, [])
+
+  // Load subcategorias when group changes
+  useEffect(() => {
+    if (selectedGroupId) {
+      geradorApi.get<Array<{ id: number; nome: string }>>(`/grupos/${selectedGroupId}/subcategorias`)
+        .then(setSubcategorias)
+        .catch(() => setSubcategorias([]))
+    } else {
+      setSubcategorias([])
+    }
+    setSelectedSubcategorias([])
+  }, [selectedGroupId])
 
   // ============================================================
   // SSE Stream Reader (POST-based)
@@ -291,6 +322,62 @@ export function GeradorPecasPage() {
   }, [])
 
   // ============================================================
+  // SSE Stream Reader (FormData-based, for PDF upload)
+  // ============================================================
+
+  const readSSEStreamFormData = useCallback(async (
+    url: string,
+    formData: FormData,
+    onEvent: (event: SSEEvent) => void,
+    signal?: AbortSignal
+  ) => {
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${getToken()}`,
+      },
+      body: formData,
+      signal,
+    })
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ detail: response.statusText }))
+      throw new Error(errorData.detail || `Erro ${response.status}`)
+    }
+
+    const reader = response.body?.getReader()
+    if (!reader) {
+      throw new Error('Erro ao iniciar streaming')
+    }
+
+    const decoder = new TextDecoder()
+    let buffer = ''
+
+    while (true) {
+      const { done, value } = await reader.read()
+      if (done) break
+
+      buffer += decoder.decode(value, { stream: true })
+      const segments = buffer.split('\n\n')
+      buffer = segments.pop() || ''
+
+      for (const segment of segments) {
+        const lines = segment.split('\n')
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            try {
+              const data = JSON.parse(line.slice(6)) as SSEEvent
+              onEvent(data)
+            } catch {
+              // Ignora linhas nao-JSON
+            }
+          }
+        }
+      }
+    }
+  }, [])
+
+  // ============================================================
   // Processar - Modo Automatico
   // ============================================================
 
@@ -317,6 +404,8 @@ export function GeradorPecasPage() {
           numero_cnj: numeroCNJ,
           tipo_peca: tipoPeca || undefined,
           observacao_usuario: observacao || undefined,
+          group_id: selectedGroupId || undefined,
+          subcategoria_ids: selectedSubcategorias.length > 0 ? selectedSubcategorias : undefined,
         },
         (event) => {
           switch (event.tipo) {
@@ -367,7 +456,81 @@ export function GeradorPecasPage() {
       setPageState('erro')
       toast({ title: 'Erro', description: msg, variant: 'destructive' })
     }
-  }, [numeroCNJ, tipoPeca, observacao, toast, readSSEStream, refetchHistorico])
+  }, [numeroCNJ, tipoPeca, observacao, selectedGroupId, selectedSubcategorias, toast, readSSEStream, refetchHistorico])
+
+  // ============================================================
+  // Processar - Modo PDF Upload
+  // ============================================================
+
+  const iniciarGeracaoPdf = useCallback(async () => {
+    if (pdfFiles.length === 0) {
+      toast({ title: 'Atencao', description: 'Selecione ao menos um arquivo PDF', variant: 'destructive' })
+      return
+    }
+
+    setPageState('streaming')
+    setStreamingContent('')
+    streamingContentRef.current = ''
+    setProgressMessage('Enviando PDFs...')
+    setAgentStatuses({ 1: 'aguardando', 2: 'aguardando', 3: 'aguardando' })
+    setParecerUploadId(null)
+
+    const controller = new AbortController()
+    abortControllerRef.current = controller
+
+    const formData = new FormData()
+    pdfFiles.forEach(file => formData.append('arquivos', file))
+    if (tipoPeca) formData.append('tipo_peca', tipoPeca)
+    if (observacao) formData.append('observacao_usuario', observacao)
+    if (selectedGroupId) formData.append('group_id', String(selectedGroupId))
+    if (selectedSubcategorias.length > 0) formData.append('subcategoria_ids', JSON.stringify(selectedSubcategorias))
+
+    try {
+      await readSSEStreamFormData(
+        '/gerador-pecas/api/processar-pdfs-stream',
+        formData,
+        (event) => {
+          switch (event.tipo) {
+            case 'inicio':
+            case 'info':
+              setProgressMessage(event.mensagem)
+              break
+            case 'agente':
+              setAgentStatuses((prev) => ({ ...prev, [event.agente]: event.status }))
+              setProgressMessage(event.mensagem)
+              break
+            case 'geracao_chunk':
+              streamingContentRef.current += event.content
+              setStreamingContent(streamingContentRef.current)
+              break
+            case 'parecer_natjus_ausente':
+              setShowParecerDialog(true)
+              break
+            case 'sucesso':
+              setGeracaoId(event.geracao_id)
+              setMinutaMarkdown(event.minuta_markdown || streamingContentRef.current)
+              setTipoPecaResultado(event.tipo_peca)
+              setPageState('resultado')
+              refetchHistorico()
+              toast({ title: 'Sucesso', description: 'Peca juridica gerada com sucesso!' })
+              break
+            case 'erro':
+              setErrorMessage(event.mensagem)
+              setPageState('erro')
+              toast({ title: 'Erro', description: event.mensagem, variant: 'destructive' })
+              break
+          }
+        },
+        controller.signal
+      )
+    } catch (error) {
+      if ((error as Error).name === 'AbortError') return
+      const msg = (error as Error).message || 'Erro desconhecido'
+      setErrorMessage(msg)
+      setPageState('erro')
+      toast({ title: 'Erro', description: msg, variant: 'destructive' })
+    }
+  }, [pdfFiles, tipoPeca, observacao, selectedGroupId, selectedSubcategorias, toast, readSSEStreamFormData, refetchHistorico])
 
   // ============================================================
   // Processar - Modo Semi-Automatico (Curadoria)
@@ -393,6 +556,8 @@ export function GeradorPecasPage() {
         numero_cnj: numeroCNJ,
         tipo_peca: tipoPeca,
         parecer_upload_id: parecerUploadId || undefined,
+        group_id: selectedGroupId || undefined,
+        subcategoria_ids: selectedSubcategorias.length > 0 ? selectedSubcategorias : undefined,
       })
 
       setCuradoriaModulos(result.modulos)
@@ -418,7 +583,7 @@ export function GeradorPecasPage() {
     } finally {
       setIsCuradoriaLoading(false)
     }
-  }, [numeroCNJ, tipoPeca, parecerUploadId, toast])
+  }, [numeroCNJ, tipoPeca, parecerUploadId, selectedGroupId, selectedSubcategorias, toast])
 
   // ============================================================
   // Curadoria - Gerar com selecionados
@@ -730,6 +895,42 @@ export function GeradorPecasPage() {
     }
   }, [toast])
 
+  const excluirDoHistorico = useCallback(async (id: number, e: React.MouseEvent) => {
+    e.stopPropagation()
+    if (!window.confirm('Deseja excluir esta geracao do historico?')) return
+    try {
+      await geradorApi.delete(`/historico/${id}`)
+      toast({ title: 'Sucesso', description: 'Geracao excluida do historico' })
+      refetchHistorico()
+    } catch (error) {
+      toast({ title: 'Erro', description: (error as Error).message, variant: 'destructive' })
+    }
+  }, [toast, refetchHistorico])
+
+  const abrirHistoricoVersoes = useCallback(async () => {
+    if (!geracaoId) return
+    try {
+      const data = await geradorApi.get<{ versoes: Array<{ versao_id: number; numero_versao: number; linhas_adicionadas: number; linhas_removidas: number; descricao_alteracao: string; created_at: string }> }>(`/historico/${geracaoId}/versoes`)
+      setVersionList(data.versoes)
+      setShowVersionHistory(true)
+    } catch (error) {
+      toast({ title: 'Erro', description: (error as Error).message, variant: 'destructive' })
+    }
+  }, [geracaoId, toast])
+
+  const restaurarVersao = useCallback(async (versaoId: number) => {
+    if (!geracaoId) return
+    if (!window.confirm('Restaurar esta versao? A versao atual sera preservada no historico.')) return
+    try {
+      const data = await geradorApi.post<{ minuta_markdown: string }>(`/historico/${geracaoId}/versoes/${versaoId}/restaurar`)
+      setMinutaMarkdown(data.minuta_markdown)
+      setShowVersionHistory(false)
+      toast({ title: 'Sucesso', description: 'Versao restaurada com sucesso' })
+    } catch (error) {
+      toast({ title: 'Erro', description: (error as Error).message, variant: 'destructive' })
+    }
+  }, [geracaoId, toast])
+
   // ============================================================
   // Reset
   // ============================================================
@@ -779,9 +980,9 @@ export function GeradorPecasPage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             <div className="flex items-center gap-4">
-              <a href="/dashboard" className="text-gray-500 hover:text-gray-700 transition-colors" aria-label="Voltar ao Dashboard">
+              <button type="button" onClick={() => navigate({ to: '/dashboard' })} className="text-gray-500 hover:text-gray-700 transition-colors" aria-label="Voltar ao Dashboard">
                 &larr;
-              </a>
+              </button>
               <div className="border-l border-gray-300 pl-4">
                 <h1 className="font-semibold text-gray-800">Gerador de Pecas Juridicas</h1>
                 <p className="text-xs text-gray-500">Gere pecas com inteligencia artificial</p>
@@ -824,7 +1025,17 @@ export function GeradorPecasPage() {
                           >
                             <div className="flex items-center justify-between mb-1">
                               <span className="text-sm font-medium text-gray-800 truncate">{item.cnj}</span>
-                              <span className="text-xs text-gray-400">{formatDate(item.data)}</span>
+                              <div className="flex items-center gap-2 flex-shrink-0">
+                                <span className="text-xs text-gray-400">{formatDate(item.data)}</span>
+                                <button
+                                  type="button"
+                                  onClick={(e) => excluirDoHistorico(item.id, e)}
+                                  className="text-gray-300 hover:text-red-500 transition-colors text-xs leading-none"
+                                  aria-label="Excluir geracao"
+                                >
+                                  {'\u2715'}
+                                </button>
+                              </div>
                             </div>
                             <div className="flex items-center gap-2">
                               <Badge variant="outline" className="text-xs">{item.tipo_peca || 'Peca'}</Badge>
@@ -838,7 +1049,7 @@ export function GeradorPecasPage() {
               </Sheet>
 
               <Button variant="ghost" asChild>
-                <a href="/dashboard">Dashboard</a>
+                <Link to="/dashboard">Dashboard</Link>
               </Button>
             </div>
           </div>
@@ -867,18 +1078,92 @@ export function GeradorPecasPage() {
               </CardHeader>
               <CardContent>
                 <div className="space-y-4">
-                  {/* CNJ Input */}
-                  <div>
-                    <Label htmlFor="numero-cnj">Numero do Processo (CNJ)</Label>
-                    <Input
-                      id="numero-cnj"
-                      value={numeroCNJ}
-                      onChange={(e) => setNumeroCNJ(formatCNJ(e.target.value))}
-                      placeholder="0000000-00.0000.0.00.0000"
-                      className="mt-2"
+                  {/* Input mode toggle */}
+                  <div className="flex gap-2">
+                    <Button
+                      type="button"
+                      variant={inputMode === 'cnj' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setInputMode('cnj')}
                       disabled={isFormDisabled}
-                    />
+                    >
+                      Por Processo (CNJ)
+                    </Button>
+                    <Button
+                      type="button"
+                      variant={inputMode === 'pdf' ? 'default' : 'outline'}
+                      size="sm"
+                      onClick={() => setInputMode('pdf')}
+                      disabled={isFormDisabled}
+                    >
+                      Por Upload de PDF
+                    </Button>
                   </div>
+
+                  {/* CNJ Input (modo CNJ) */}
+                  {inputMode === 'cnj' && (
+                    <div>
+                      <Label htmlFor="numero-cnj">Numero do Processo (CNJ)</Label>
+                      <Input
+                        id="numero-cnj"
+                        value={numeroCNJ}
+                        onChange={(e) => setNumeroCNJ(formatCNJ(e.target.value))}
+                        placeholder="0000000-00.0000.0.00.0000"
+                        className="mt-2"
+                        disabled={isFormDisabled}
+                      />
+                    </div>
+                  )}
+
+                  {/* PDF Upload (modo PDF) */}
+                  {inputMode === 'pdf' && (
+                    <div>
+                      <Label>Arquivos PDF</Label>
+                      <div className="mt-2 border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
+                        <input
+                          ref={pdfInputRef}
+                          type="file"
+                          accept=".pdf"
+                          multiple
+                          className="hidden"
+                          onChange={(e) => {
+                            const files = Array.from(e.target.files || [])
+                            setPdfFiles(prev => [...prev, ...files])
+                            e.target.value = ''
+                          }}
+                          disabled={isFormDisabled}
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          onClick={() => pdfInputRef.current?.click()}
+                          disabled={isFormDisabled}
+                        >
+                          Selecionar PDFs
+                        </Button>
+                        <p className="text-xs text-gray-500 mt-2">
+                          Envie os documentos do processo em PDF
+                        </p>
+                        {pdfFiles.length > 0 && (
+                          <div className="mt-3 space-y-1 text-left">
+                            {pdfFiles.map((file, idx) => (
+                              <div key={idx} className="flex items-center justify-between text-sm bg-gray-50 rounded px-3 py-1.5">
+                                <span className="truncate flex-1">{file.name}</span>
+                                <button
+                                  type="button"
+                                  onClick={() => setPdfFiles(prev => prev.filter((_, i) => i !== idx))}
+                                  className="text-red-500 hover:text-red-700 ml-2 text-xs"
+                                >
+                                  remover
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
 
                   {/* Tipo de Peca */}
                   <div>
@@ -905,6 +1190,55 @@ export function GeradorPecasPage() {
                     )}
                   </div>
 
+                  {/* Grupo (opcional) */}
+                  {gruposData && gruposData.grupos.length > 0 && (
+                    <div>
+                      <Label htmlFor="grupo">Grupo de Argumentos (opcional)</Label>
+                      <Select
+                        value={selectedGroupId ? String(selectedGroupId) : ''}
+                        onValueChange={(v) => setSelectedGroupId(v ? Number(v) : null)}
+                        disabled={isFormDisabled}
+                      >
+                        <SelectTrigger className="mt-2" id="grupo">
+                          <SelectValue placeholder="Todos os grupos" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="">Todos os grupos</SelectItem>
+                          {gruposData.grupos.map((g) => (
+                            <SelectItem key={g.id} value={String(g.id)}>{g.nome}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
+
+                  {/* Subcategorias */}
+                  {subcategorias.length > 0 && (
+                    <div>
+                      <Label>Subcategorias</Label>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {subcategorias.map((sub) => {
+                          const isSelected = selectedSubcategorias.includes(sub.id)
+                          return (
+                            <button
+                              key={sub.id}
+                              type="button"
+                              onClick={() => setSelectedSubcategorias(prev =>
+                                isSelected ? prev.filter(id => id !== sub.id) : [...prev, sub.id]
+                              )}
+                              className={`px-3 py-1 text-xs rounded-full border transition-colors ${
+                                isSelected ? 'bg-blue-100 border-blue-300 text-blue-700' : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'
+                              }`}
+                              disabled={isFormDisabled}
+                            >
+                              {sub.nome}
+                            </button>
+                          )
+                        })}
+                      </div>
+                    </div>
+                  )}
+
                   {/* Observacao */}
                   <div>
                     <Label htmlFor="observacao">Observacoes (opcional)</Label>
@@ -922,20 +1256,22 @@ export function GeradorPecasPage() {
                   {/* Action Buttons */}
                   <div className="flex gap-3">
                     <Button
-                      onClick={iniciarGeracaoAutomatica}
+                      onClick={inputMode === 'cnj' ? iniciarGeracaoAutomatica : iniciarGeracaoPdf}
                       className="flex-1"
-                      disabled={isFormDisabled || !numeroCNJ.trim()}
+                      disabled={isFormDisabled || (inputMode === 'cnj' ? !numeroCNJ.trim() : pdfFiles.length === 0)}
                     >
                       {isStreaming ? 'Gerando...' : 'Gerar Automatico'}
                     </Button>
-                    <Button
-                      onClick={iniciarCuradoria}
-                      variant="secondary"
-                      className="flex-1"
-                      disabled={isFormDisabled || !numeroCNJ.trim() || !tipoPeca || isCuradoriaLoading}
-                    >
-                      {isCuradoriaLoading ? 'Carregando...' : 'Modo Semi-Automatico'}
-                    </Button>
+                    {inputMode === 'cnj' && (
+                      <Button
+                        onClick={iniciarCuradoria}
+                        variant="secondary"
+                        className="flex-1"
+                        disabled={isFormDisabled || !numeroCNJ.trim() || !tipoPeca || isCuradoriaLoading}
+                      >
+                        {isCuradoriaLoading ? 'Carregando...' : 'Modo Semi-Automatico'}
+                      </Button>
+                    )}
                   </div>
                 </div>
               </CardContent>
@@ -1060,8 +1396,16 @@ export function GeradorPecasPage() {
                             <p className="font-medium text-gray-800 truncate group-hover:text-sky-700">{item.cnj}</p>
                             <Badge variant="outline" className="text-xs">{item.tipo_peca || 'Peca'}</Badge>
                           </div>
-                          <div className="text-right flex-shrink-0">
+                          <div className="text-right flex-shrink-0 flex items-center gap-2">
                             <p className="text-xs text-gray-400">{formatDate(item.data)}</p>
+                            <button
+                              type="button"
+                              onClick={(e) => excluirDoHistorico(item.id, e)}
+                              className="text-gray-300 hover:text-red-500 transition-colors text-xs leading-none opacity-0 group-hover:opacity-100"
+                              aria-label="Excluir geracao"
+                            >
+                              {'\u2715'}
+                            </button>
                           </div>
                         </div>
                       ))}
@@ -1181,6 +1525,9 @@ export function GeradorPecasPage() {
                     </Button>
                     <Button onClick={copiarMinuta} variant="secondary" size="sm">
                       Copiar
+                    </Button>
+                    <Button onClick={abrirHistoricoVersoes} variant="secondary" size="sm">
+                      Versoes
                     </Button>
                     <Button onClick={() => setPageState('editando')} size="sm">
                       Editar com Chat
@@ -1442,6 +1789,39 @@ export function GeradorPecasPage() {
               </Button>
             </div>
           </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* VERSION HISTORY DIALOG */}
+      <Dialog open={showVersionHistory} onOpenChange={setShowVersionHistory}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Historico de Versoes</DialogTitle>
+          </DialogHeader>
+          <ScrollArea className="max-h-[60vh]">
+            {versionList.length === 0 ? (
+              <p className="text-sm text-gray-500 text-center py-4">Nenhuma versao anterior encontrada</p>
+            ) : (
+              <div className="space-y-3">
+                {versionList.map((v) => (
+                  <div key={v.versao_id} className="p-3 border rounded-lg">
+                    <div className="flex items-center justify-between mb-1">
+                      <span className="text-sm font-medium">Versao {v.numero_versao}</span>
+                      <span className="text-xs text-gray-400">{formatDateTime(v.created_at)}</span>
+                    </div>
+                    <p className="text-xs text-gray-600 mb-2">{v.descricao_alteracao || 'Sem descricao'}</p>
+                    <div className="flex items-center gap-3">
+                      <span className="text-xs text-green-600">+{v.linhas_adicionadas}</span>
+                      <span className="text-xs text-red-600">-{v.linhas_removidas}</span>
+                      <Button onClick={() => restaurarVersao(v.versao_id)} size="sm" variant="outline" className="ml-auto text-xs">
+                        Restaurar
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </ScrollArea>
         </DialogContent>
       </Dialog>
     </div>

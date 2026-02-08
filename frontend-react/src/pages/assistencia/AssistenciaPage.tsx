@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react'
+import { useNavigate } from '@tanstack/react-router'
 import { ArrowLeft, Search, Scale, Trash2, FileText, FileDown, RotateCw, Database } from 'lucide-react'
 import { useMarkdown } from '@/hooks/useMarkdown'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
@@ -26,6 +27,7 @@ type ViewState = 'inicial' | 'loading' | 'resultado' | 'erro'
 type TipoAvaliacao = 'correto' | 'parcial' | 'incorreto' | 'erro_ia'
 
 export function AssistenciaPage() {
+  const navigate = useNavigate()
   const { toast } = useToast()
 
   // Estados da aplicação
@@ -298,10 +300,9 @@ export function AssistenciaPage() {
       {/* Header */}
       <header className="flex items-center justify-between border-b bg-white px-6 py-3 shadow-sm">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => (window.location.href = '/dashboard')}>
+          <Button variant="ghost" size="icon" onClick={() => navigate({ to: '/dashboard' })}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          <img src="/logo/logo-pge.png" alt="PGE-MS" className="h-10 w-auto" />
           <div className="flex items-center gap-2 border-l border-gray-300 pl-4">
             <Scale className="h-6 w-6 text-primary" />
             <div>

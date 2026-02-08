@@ -1,4 +1,5 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
+import { useNavigate } from '@tanstack/react-router'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -64,6 +65,7 @@ function timestamp(): string {
 // ---------------------------------------------------------------------------
 
 export function ExtratorAutosPage() {
+  const navigate = useNavigate()
   const { toast } = useToast()
 
   // -- Estado da maquina de estados --
@@ -473,7 +475,7 @@ export function ExtratorAutosPage() {
       {/* ===== Header ===== */}
       <header className="flex items-center justify-between border-b bg-white px-6 py-3 shadow-sm">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="sm" onClick={() => (window.location.href = '/dashboard')}>
+          <Button variant="ghost" size="sm" onClick={() => navigate({ to: '/dashboard' })}>
             ← Voltar
           </Button>
           <Separator orientation="vertical" className="h-8" />

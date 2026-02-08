@@ -3,6 +3,11 @@ import { render, screen, waitFor, act } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { BertTrainingPage } from '../BertTrainingPage'
 
+// Mock do router
+vi.mock('@tanstack/react-router', () => ({
+  useNavigate: () => vi.fn(),
+}))
+
 // Mock do modulo de API
 vi.mock('@/lib/api', () => ({
   bertApi: {

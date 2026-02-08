@@ -1,4 +1,5 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
+import { useNavigate } from '@tanstack/react-router'
 import {
   ArrowLeft,
   Brain,
@@ -12,6 +13,22 @@ import {
   CheckCircle2,
   Clock,
   XCircle,
+  HelpCircle,
+  Upload,
+  Trash2,
+  Wifi,
+  Cpu,
+  Terminal,
+  FileText,
+  Zap,
+  Settings,
+  Layers,
+  ChevronRight,
+  ChevronLeft,
+  Eye,
+  AlertTriangle,
+  Info,
+  X,
 } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -20,7 +37,7 @@ import { Badge } from '@/components/ui/badge'
 import { Label } from '@/components/ui/label'
 import { Skeleton } from '@/components/ui/skeleton'
 import { Textarea } from '@/components/ui/textarea'
-import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   Table,
@@ -37,6 +54,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import {
+  Dialog,
+  DialogClose,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog'
+import { ScrollArea } from '@/components/ui/scroll-area'
 import {
   LineChart,
   Line,
@@ -61,11 +89,70 @@ import type {
 import { cn } from '@/lib/utils'
 
 // ============================================================================
+// Tipos locais auxiliares
+// ============================================================================
+
+/** Informacoes de GPU do worker */
+interface GpuInfo {
+  gpu_name: string
+  gpu_memory_total: string
+  gpu_memory_used: string
+  gpu_memory_free: string
+  gpu_utilization: string
+  cuda_version: string
+  driver_version: string
+}
+
+/** Status de conexao com o worker */
+interface WorkerStatus {
+  connected: boolean
+  url: string
+  latency_ms: number
+  version: string
+  uptime: string
+  error?: string
+}
+
+/** Resultado de validacao do dataset (12.12) */
+interface DatasetValidation {
+  total_rows: number
+  valid_rows: number
+  invalid_rows: number
+  categories_count: Record<string, number>
+  warnings: string[]
+  errors: string[]
+  sample_rows: Array<{ texto: string; categoria: string }>
+}
+
+/** Resultado de classificacao de PDF (12.7) */
+interface PdfClassificationResult {
+  filename: string
+  total_pages: number
+  chunks: Array<{ texto: string; categoria_predita: string; confianca: number }>
+}
+
+/** Entrada de log em tempo real (12.23) */
+interface LogEntry {
+  timestamp: string
+  level: 'info' | 'warning' | 'error' | 'debug'
+  message: string
+}
+
+/** Filtro de status para runs (12.24) */
+type RunStatusFilter = 'all' | 'running' | 'completed' | 'failed'
+
+/** Passo do wizard de upload de dataset (12.26) */
+type UploadStep = 1 | 2 | 3 | 4
+
+// ============================================================================
 // Constantes
 // ============================================================================
 
 /** Intervalo de polling para jobs em execucao (ms) */
 const POLLING_INTERVAL = 5000
+
+/** Intervalo de polling para logs em tempo real (ms) */
+const LOG_POLLING_INTERVAL = 3000
 
 /** Modelos base disponiveis para treinamento */
 const MODELOS_BASE = [
@@ -82,6 +169,57 @@ const DEFAULT_CONFIG: TrainingConfig = {
   num_epochs: 5,
   max_length: 256,
 }
+
+/** Presets de treinamento (12.17) */
+const TRAINING_PRESETS = [
+  {
+    id: 'padrao',
+    label: 'Padrao',
+    description: 'Configuracao balanceada para a maioria dos casos. Bom equilibrio entre velocidade e qualidade.',
+    icon: Settings,
+    config: { ...DEFAULT_CONFIG },
+    color: 'border-blue-200 bg-blue-50 hover:bg-blue-100',
+    iconColor: 'text-blue-600',
+  },
+  {
+    id: 'rapido',
+    label: 'Rapido',
+    description: 'Treinamento acelerado com menos epocas. Ideal para testes rapidos e prototipagem.',
+    icon: Zap,
+    config: {
+      modelo_base: 'neuralmind/bert-base-portuguese-cased',
+      learning_rate: 5e-5,
+      batch_size: 32,
+      num_epochs: 2,
+      max_length: 128,
+    },
+    color: 'border-amber-200 bg-amber-50 hover:bg-amber-100',
+    iconColor: 'text-amber-600',
+  },
+  {
+    id: 'completo',
+    label: 'Completo',
+    description: 'Treinamento extensivo com mais epocas e maior max_length. Melhor qualidade final.',
+    icon: Layers,
+    config: {
+      modelo_base: 'neuralmind/bert-large-portuguese-cased',
+      learning_rate: 1e-5,
+      batch_size: 8,
+      num_epochs: 10,
+      max_length: 512,
+    },
+    color: 'border-green-200 bg-green-50 hover:bg-green-100',
+    iconColor: 'text-green-600',
+  },
+] as const
+
+/** Opcoes de filtro de status (12.24) */
+const STATUS_FILTER_OPTIONS: Array<{ value: RunStatusFilter; label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = [
+  { value: 'all', label: 'Todos', variant: 'secondary' },
+  { value: 'running', label: 'Em progresso', variant: 'default' },
+  { value: 'completed', label: 'Concluido', variant: 'outline' },
+  { value: 'failed', label: 'Erro', variant: 'destructive' },
+]
 
 // ============================================================================
 // Helpers
@@ -148,11 +286,26 @@ function formatarPct(valor: number): string {
   return `${(valor * 100).toFixed(2)}%`
 }
 
+/** Retorna cor do nivel de log para o terminal */
+function logLevelColor(level: LogEntry['level']): string {
+  switch (level) {
+    case 'error':
+      return 'text-red-400'
+    case 'warning':
+      return 'text-yellow-400'
+    case 'debug':
+      return 'text-gray-500'
+    default:
+      return 'text-green-400'
+  }
+}
+
 // ============================================================================
 // Componente principal
 // ============================================================================
 
 export function BertTrainingPage() {
+  const navigate = useNavigate()
   const { toast } = useToast()
 
   // --- Estado global ---
@@ -164,6 +317,7 @@ export function BertTrainingPage() {
   const [selectedDataset, setSelectedDataset] = useState('')
   const [config, setConfig] = useState<TrainingConfig>({ ...DEFAULT_CONFIG })
   const [startingTraining, setStartingTraining] = useState(false)
+  const [activePreset, setActivePreset] = useState<string>('padrao')
 
   // --- Aba 2: Monitorar Jobs ---
   const [jobs, setJobs] = useState<TrainingJob[]>([])
@@ -173,6 +327,15 @@ export function BertTrainingPage() {
   const [loadingMetrics, setLoadingMetrics] = useState(false)
   const [stoppingJobId, setStoppingJobId] = useState<number | null>(null)
   const pollingRef = useRef<ReturnType<typeof setInterval> | null>(null)
+
+  // 12.24 - Filtro de status para runs
+  const [statusFilter, setStatusFilter] = useState<RunStatusFilter>('all')
+
+  // 12.23 - Logs em tempo real
+  const [realtimeLogs, setRealtimeLogs] = useState<LogEntry[]>([])
+  const [logsAutoScroll, setLogsAutoScroll] = useState(true)
+  const logContainerRef = useRef<HTMLDivElement>(null)
+  const logPollingRef = useRef<ReturnType<typeof setInterval> | null>(null)
 
   // --- Aba 3: Testar Modelo ---
   const [models, setModels] = useState<ModelInfo[]>([])
@@ -185,10 +348,48 @@ export function BertTrainingPage() {
   const [batchResults, setBatchResults] = useState<PredictionResult[]>([])
   const [loadingBatch, setLoadingBatch] = useState(false)
 
+  // 12.7 - Classificar PDF (teste)
+  const [pdfFile, setPdfFile] = useState<File | null>(null)
+  const [pdfResult, setPdfResult] = useState<PdfClassificationResult | null>(null)
+  const [loadingPdf, setLoadingPdf] = useState(false)
+  const pdfInputRef = useRef<HTMLInputElement>(null)
+
+  // 12.8 - Historico de testes
+  const [testHistory, setTestHistory] = useState<PredictionResult[]>([])
+
   // --- Aba 4: Comparar BERT vs LLM ---
   const [compareText, setCompareText] = useState('')
   const [comparison, setComparison] = useState<ComparisonResult | null>(null)
   const [loadingComparison, setLoadingComparison] = useState(false)
+
+  // --- Modais globais ---
+  // 12.10 - Debug conexao worker
+  const [showDebugModal, setShowDebugModal] = useState(false)
+  const [workerStatus, setWorkerStatus] = useState<WorkerStatus | null>(null)
+  const [loadingWorkerStatus, setLoadingWorkerStatus] = useState(false)
+
+  // 12.11 - Ajuda/Onboarding
+  const [showHelpDialog, setShowHelpDialog] = useState(false)
+
+  // 12.22 - Worker GPU info
+  const [gpuInfo, setGpuInfo] = useState<GpuInfo | null>(null)
+  const [loadingGpuInfo, setLoadingGpuInfo] = useState(false)
+
+  // 12.26 - Modal upload dataset com 4 passos
+  const [showUploadDialog, setShowUploadDialog] = useState(false)
+  const [uploadStep, setUploadStep] = useState<UploadStep>(1)
+  const [uploadFile, setUploadFile] = useState<File | null>(null)
+  const [uploadPreview, setUploadPreview] = useState<string[][]>([])
+  const [uploadValidation, setUploadValidation] = useState<DatasetValidation | null>(null)
+  const [loadingUploadValidation, setLoadingUploadValidation] = useState(false)
+  const [uploadDatasetName, setUploadDatasetName] = useState('')
+  const [uploadDatasetDescription, setUploadDatasetDescription] = useState('')
+  const [uploading, setUploading] = useState(false)
+  const uploadInputRef = useRef<HTMLInputElement>(null)
+
+  // 12.30 - Chunk modal (comparacao)
+  const [showChunkModal, setShowChunkModal] = useState(false)
+  const [selectedChunkJobId, setSelectedChunkJobId] = useState<number | null>(null)
 
   // ========================================================================
   // Carregamento de dados
@@ -253,6 +454,54 @@ export function BertTrainingPage() {
     [toast]
   )
 
+  /** 12.22 - Carrega informacoes de GPU do worker */
+  const fetchGpuInfo = useCallback(async () => {
+    setLoadingGpuInfo(true)
+    try {
+      const data = await bertApi.get<GpuInfo>('/worker/gpu-info')
+      setGpuInfo(data)
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Erro ao carregar info de GPU'
+      toast({ title: 'Erro', description: msg, variant: 'destructive' })
+    } finally {
+      setLoadingGpuInfo(false)
+    }
+  }, [toast])
+
+  /** 12.10 - Busca status de conexao do worker */
+  const fetchWorkerStatus = useCallback(async () => {
+    setLoadingWorkerStatus(true)
+    try {
+      const data = await bertApi.get<WorkerStatus>('/worker/status')
+      setWorkerStatus(data)
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Erro ao verificar conexao'
+      setWorkerStatus({
+        connected: false,
+        url: 'N/A',
+        latency_ms: 0,
+        version: 'N/A',
+        uptime: 'N/A',
+        error: msg,
+      })
+    } finally {
+      setLoadingWorkerStatus(false)
+    }
+  }, [])
+
+  /** 12.23 - Busca logs em tempo real de um job */
+  const fetchRealtimeLogs = useCallback(
+    async (jobId: number) => {
+      try {
+        const data = await bertApi.get<LogEntry[]>(`/runs/${jobId}/logs`)
+        setRealtimeLogs(data)
+      } catch {
+        // Silencia erros de polling de logs
+      }
+    },
+    []
+  )
+
   // ========================================================================
   // Efeitos de carregamento por aba
   // ========================================================================
@@ -260,12 +509,13 @@ export function BertTrainingPage() {
   useEffect(() => {
     if (activeTab === 'novo-treino') {
       fetchDatasets()
+      fetchGpuInfo()
     } else if (activeTab === 'monitorar') {
       fetchJobs()
     } else if (activeTab === 'testar') {
       fetchModels()
     }
-  }, [activeTab, fetchDatasets, fetchJobs, fetchModels])
+  }, [activeTab, fetchDatasets, fetchJobs, fetchModels, fetchGpuInfo])
 
   // Polling automatico para jobs em execucao
   useEffect(() => {
@@ -308,6 +558,50 @@ export function BertTrainingPage() {
       }
     }
   }, [activeTab, jobs, selectedJob, fetchJobMetrics])
+
+  // 12.23 - Polling de logs em tempo real para o job selecionado
+  useEffect(() => {
+    if (!selectedJob || selectedJob.status !== 'running') {
+      if (logPollingRef.current) {
+        clearInterval(logPollingRef.current)
+        logPollingRef.current = null
+      }
+      return
+    }
+
+    // Carrega logs iniciais
+    fetchRealtimeLogs(selectedJob.id)
+
+    logPollingRef.current = setInterval(() => {
+      fetchRealtimeLogs(selectedJob.id)
+    }, LOG_POLLING_INTERVAL)
+
+    return () => {
+      if (logPollingRef.current) {
+        clearInterval(logPollingRef.current)
+        logPollingRef.current = null
+      }
+    }
+  }, [selectedJob, fetchRealtimeLogs])
+
+  // Auto-scroll do terminal de logs
+  useEffect(() => {
+    if (logsAutoScroll && logContainerRef.current) {
+      logContainerRef.current.scrollTop = logContainerRef.current.scrollHeight
+    }
+  }, [realtimeLogs, logsAutoScroll])
+
+  // ========================================================================
+  // 12.24 - Jobs filtrados por status
+  // ========================================================================
+
+  const filteredJobs = useMemo(() => {
+    if (statusFilter === 'all') return jobs
+    if (statusFilter === 'running') return jobs.filter((j) => j.status === 'running' || j.status === 'queued' || j.status === 'stopping')
+    if (statusFilter === 'completed') return jobs.filter((j) => j.status === 'completed')
+    if (statusFilter === 'failed') return jobs.filter((j) => j.status === 'failed' || j.status === 'stopped')
+    return jobs
+  }, [jobs, statusFilter])
 
   // ========================================================================
   // Acoes
@@ -360,6 +654,7 @@ export function BertTrainingPage() {
     (job: TrainingJob) => {
       setSelectedJob(job)
       setJobMetrics(job.metricas ?? null)
+      setRealtimeLogs([])
       if (job.status === 'running' || job.status === 'completed') {
         fetchJobMetrics(job.id)
       }
@@ -386,6 +681,8 @@ export function BertTrainingPage() {
         texto: testText.trim(),
       })
       setPrediction(result)
+      // 12.8 - Adiciona ao historico de testes
+      setTestHistory((prev) => [result, ...prev].slice(0, 50))
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Erro na predicao'
       toast({ title: 'Erro', description: msg, variant: 'destructive' })
@@ -414,6 +711,8 @@ export function BertTrainingPage() {
         textos: linhas,
       })
       setBatchResults(result)
+      // 12.8 - Adiciona resultados em lote ao historico
+      setTestHistory((prev) => [...result, ...prev].slice(0, 50))
       toast({ title: 'Predicao em lote concluida', description: `${result.length} textos classificados` })
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Erro na predicao em lote'
@@ -422,6 +721,43 @@ export function BertTrainingPage() {
       setLoadingBatch(false)
     }
   }, [selectedModel, batchText, toast])
+
+  /** 12.7 - Classifica PDF de teste */
+  const classificarPdf = useCallback(async () => {
+    if (!selectedModel) {
+      toast({ title: 'Campo obrigatorio', description: 'Selecione um modelo primeiro', variant: 'destructive' })
+      return
+    }
+    if (!pdfFile) {
+      toast({ title: 'Campo obrigatorio', description: 'Selecione um arquivo PDF', variant: 'destructive' })
+      return
+    }
+
+    setLoadingPdf(true)
+    setPdfResult(null)
+    try {
+      const formData = new FormData()
+      formData.append('file', pdfFile)
+      formData.append('model_id', selectedModel)
+      const result = await bertApi.post<PdfClassificationResult>('/inference/classify-pdf', formData)
+      setPdfResult(result)
+      toast({ title: 'PDF classificado', description: `${result.chunks.length} chunks processados` })
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Erro ao classificar PDF'
+      toast({ title: 'Erro', description: msg, variant: 'destructive' })
+    } finally {
+      setLoadingPdf(false)
+    }
+  }, [selectedModel, pdfFile, toast])
+
+  /** 12.8 - Limpa historico de testes */
+  const limparHistoricoTestes = useCallback(() => {
+    setTestHistory([])
+    setPrediction(null)
+    setBatchResults([])
+    setPdfResult(null)
+    toast({ title: 'Historico limpo', description: 'O historico de testes foi removido' })
+  }, [toast])
 
   /** Compara BERT vs LLM */
   const executarComparacao = useCallback(async () => {
@@ -445,6 +781,99 @@ export function BertTrainingPage() {
     }
   }, [compareText, toast])
 
+  /** 12.17 - Aplica preset de treinamento */
+  const aplicarPreset = useCallback((presetId: string) => {
+    const preset = TRAINING_PRESETS.find((p) => p.id === presetId)
+    if (preset) {
+      setConfig({ ...preset.config })
+      setActivePreset(presetId)
+    }
+  }, [])
+
+  // ========================================================================
+  // 12.26 - Acoes do wizard de upload de dataset
+  // ========================================================================
+
+  /** Passo 1: Selecao de arquivo */
+  const handleUploadFileSelect = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) {
+      setUploadFile(file)
+      // Le preview das primeiras linhas
+      const reader = new FileReader()
+      reader.onload = (event) => {
+        const text = event.target?.result as string
+        const lines = text.split('\n').slice(0, 6)
+        const rows = lines.map((line) => line.split(',').map((cell) => cell.trim().replace(/^"|"$/g, '')))
+        setUploadPreview(rows)
+      }
+      reader.readAsText(file)
+      setUploadStep(2)
+    }
+  }, [])
+
+  /** Passo 3: Validacao do dataset (12.12) */
+  const validarDatasetUpload = useCallback(async () => {
+    if (!uploadFile) return
+    setLoadingUploadValidation(true)
+    setUploadValidation(null)
+    try {
+      const formData = new FormData()
+      formData.append('file', uploadFile)
+      const result = await bertApi.post<DatasetValidation>('/datasets/validate', formData)
+      setUploadValidation(result)
+      setUploadStep(3)
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Erro ao validar dataset'
+      toast({ title: 'Erro na validacao', description: msg, variant: 'destructive' })
+    } finally {
+      setLoadingUploadValidation(false)
+    }
+  }, [uploadFile, toast])
+
+  /** Passo 4: Upload efetivo do dataset */
+  const executarUploadDataset = useCallback(async () => {
+    if (!uploadFile || !uploadDatasetName.trim()) {
+      toast({ title: 'Campo obrigatorio', description: 'Preencha o nome do dataset', variant: 'destructive' })
+      return
+    }
+
+    setUploading(true)
+    try {
+      const formData = new FormData()
+      formData.append('file', uploadFile)
+      formData.append('nome', uploadDatasetName.trim())
+      if (uploadDatasetDescription.trim()) {
+        formData.append('descricao', uploadDatasetDescription.trim())
+      }
+      await bertApi.post('/datasets/upload', formData)
+      toast({ title: 'Dataset enviado', description: 'O dataset foi enviado e esta sendo processado' })
+      setShowUploadDialog(false)
+      resetUploadWizard()
+      fetchDatasets()
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Erro ao enviar dataset'
+      toast({ title: 'Erro', description: msg, variant: 'destructive' })
+    } finally {
+      setUploading(false)
+    }
+  }, [uploadFile, uploadDatasetName, uploadDatasetDescription, toast, fetchDatasets])
+
+  /** Reseta estado do wizard de upload */
+  const resetUploadWizard = useCallback(() => {
+    setUploadStep(1)
+    setUploadFile(null)
+    setUploadPreview([])
+    setUploadValidation(null)
+    setUploadDatasetName('')
+    setUploadDatasetDescription('')
+    setLoadingUploadValidation(false)
+    setUploading(false)
+    if (uploadInputRef.current) {
+      uploadInputRef.current.value = ''
+    }
+  }, [])
+
   // ========================================================================
   // Dados para graficos (recharts)
   // ========================================================================
@@ -466,13 +895,14 @@ export function BertTrainingPage() {
 
   return (
     <div className="flex min-h-screen flex-col bg-gray-50">
-      {/* Header */}
+      {/* ================================================================ */}
+      {/* Header com botao de ajuda (12.11)                                */}
+      {/* ================================================================ */}
       <header className="flex items-center justify-between border-b bg-white px-6 py-3 shadow-sm">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => (window.location.href = '/dashboard')}>
+          <Button variant="ghost" size="icon" onClick={() => navigate({ to: '/dashboard' })} data-testid="btn-voltar-dashboard">
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          <img src="/logo/logo-pge.png" alt="PGE-MS" className="h-10 w-auto" />
           <div className="flex items-center gap-2 border-l border-gray-300 pl-4">
             <Brain className="h-6 w-6 text-primary" />
             <div>
@@ -481,25 +911,51 @@ export function BertTrainingPage() {
             </div>
           </div>
         </div>
+
+        <div className="flex items-center gap-2">
+          {/* 12.10 - Debug Conexao Worker */}
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => {
+              setShowDebugModal(true)
+              fetchWorkerStatus()
+            }}
+            data-testid="btn-debug-conexao"
+          >
+            <Wifi className="mr-2 h-4 w-4" />
+            Debug Conexao
+          </Button>
+
+          {/* 12.11 - Botao de Ajuda/Onboarding */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => setShowHelpDialog(true)}
+            data-testid="btn-ajuda-onboarding"
+          >
+            <HelpCircle className="h-5 w-5" />
+          </Button>
+        </div>
       </header>
 
       {/* Conteudo principal */}
       <main className="flex-1 p-6">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
           <TabsList className="grid w-full grid-cols-4">
-            <TabsTrigger value="novo-treino" className="gap-2">
+            <TabsTrigger value="novo-treino" className="gap-2" data-testid="tab-novo-treino">
               <Play className="h-4 w-4" />
               Novo Treino
             </TabsTrigger>
-            <TabsTrigger value="monitorar" className="gap-2">
+            <TabsTrigger value="monitorar" className="gap-2" data-testid="tab-monitorar">
               <RefreshCw className="h-4 w-4" />
               Monitorar Jobs
             </TabsTrigger>
-            <TabsTrigger value="testar" className="gap-2">
+            <TabsTrigger value="testar" className="gap-2" data-testid="tab-testar">
               <FlaskConical className="h-4 w-4" />
               Testar Modelo
             </TabsTrigger>
-            <TabsTrigger value="comparar" className="gap-2">
+            <TabsTrigger value="comparar" className="gap-2" data-testid="tab-comparar">
               <GitCompareArrows className="h-4 w-4" />
               Comparar BERT vs LLM
             </TabsTrigger>
@@ -509,12 +965,61 @@ export function BertTrainingPage() {
           {/* ABA 1: Novo Treino                                           */}
           {/* ============================================================ */}
           <TabsContent value="novo-treino">
+            {/* 12.17 - Preset cards (modos de treinamento) */}
+            <div className="mb-6">
+              <h3 className="mb-3 text-sm font-medium text-muted-foreground">Modo de Treinamento</h3>
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-3" data-testid="preset-cards-container">
+                {TRAINING_PRESETS.map((preset) => {
+                  const Icon = preset.icon
+                  return (
+                    <button
+                      key={preset.id}
+                      onClick={() => aplicarPreset(preset.id)}
+                      className={cn(
+                        'rounded-lg border-2 p-4 text-left transition-all',
+                        preset.color,
+                        activePreset === preset.id
+                          ? 'ring-2 ring-primary ring-offset-2'
+                          : 'opacity-80 hover:opacity-100'
+                      )}
+                      data-testid={`preset-card-${preset.id}`}
+                    >
+                      <div className="flex items-center gap-2 mb-2">
+                        <Icon className={cn('h-5 w-5', preset.iconColor)} />
+                        <span className="font-semibold">{preset.label}</span>
+                        {activePreset === preset.id && (
+                          <Badge variant="default" className="ml-auto text-xs">Ativo</Badge>
+                        )}
+                      </div>
+                      <p className="text-xs text-muted-foreground">{preset.description}</p>
+                    </button>
+                  )
+                })}
+              </div>
+            </div>
+
             <div className="grid gap-6 md:grid-cols-2">
-              {/* Selecao de dataset */}
+              {/* Selecao de dataset com botao de upload (12.26) */}
               <Card>
                 <CardHeader>
-                  <CardTitle>Dataset</CardTitle>
-                  <CardDescription>Selecione o dataset para treinamento</CardDescription>
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <CardTitle>Dataset</CardTitle>
+                      <CardDescription>Selecione o dataset para treinamento</CardDescription>
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        resetUploadWizard()
+                        setShowUploadDialog(true)
+                      }}
+                      data-testid="btn-upload-dataset"
+                    >
+                      <Upload className="mr-2 h-4 w-4" />
+                      Upload Dataset
+                    </Button>
+                  </div>
                 </CardHeader>
                 <CardContent className="space-y-4">
                   {loadingDatasets ? (
@@ -534,7 +1039,7 @@ export function BertTrainingPage() {
                       <div className="space-y-2">
                         <Label htmlFor="dataset-select">Dataset</Label>
                         <Select value={selectedDataset} onValueChange={setSelectedDataset}>
-                          <SelectTrigger id="dataset-select">
+                          <SelectTrigger id="dataset-select" data-testid="select-dataset">
                             <SelectValue placeholder="Selecione um dataset..." />
                           </SelectTrigger>
                           <SelectContent>
@@ -580,7 +1085,7 @@ export function BertTrainingPage() {
                       value={config.modelo_base}
                       onValueChange={(v) => setConfig((c) => ({ ...c, modelo_base: v }))}
                     >
-                      <SelectTrigger id="modelo-base">
+                      <SelectTrigger id="modelo-base" data-testid="select-modelo-base">
                         <SelectValue />
                       </SelectTrigger>
                       <SelectContent>
@@ -606,6 +1111,7 @@ export function BertTrainingPage() {
                         onChange={(e) =>
                           setConfig((c) => ({ ...c, learning_rate: Number(e.target.value) }))
                         }
+                        data-testid="input-learning-rate"
                       />
                     </div>
                     <div className="space-y-2">
@@ -619,6 +1125,7 @@ export function BertTrainingPage() {
                         onChange={(e) =>
                           setConfig((c) => ({ ...c, batch_size: Number(e.target.value) }))
                         }
+                        data-testid="input-batch-size"
                       />
                     </div>
                     <div className="space-y-2">
@@ -632,6 +1139,7 @@ export function BertTrainingPage() {
                         onChange={(e) =>
                           setConfig((c) => ({ ...c, num_epochs: Number(e.target.value) }))
                         }
+                        data-testid="input-num-epochs"
                       />
                     </div>
                     <div className="space-y-2">
@@ -645,6 +1153,7 @@ export function BertTrainingPage() {
                         onChange={(e) =>
                           setConfig((c) => ({ ...c, max_length: Number(e.target.value) }))
                         }
+                        data-testid="input-max-length"
                       />
                     </div>
                   </div>
@@ -653,6 +1162,7 @@ export function BertTrainingPage() {
                     onClick={iniciarTreinamento}
                     disabled={startingTraining || !selectedDataset}
                     className="w-full"
+                    data-testid="btn-iniciar-treinamento"
                   >
                     {startingTraining ? (
                       <>
@@ -669,18 +1179,104 @@ export function BertTrainingPage() {
                 </CardContent>
               </Card>
             </div>
+
+            {/* 12.22 - Secao de informacoes de GPU do Worker */}
+            <Card className="mt-6" data-testid="worker-gpu-info-card">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Cpu className="h-5 w-5 text-muted-foreground" />
+                    <CardTitle className="text-base">Informacoes do Worker (GPU)</CardTitle>
+                  </div>
+                  <Button variant="ghost" size="sm" onClick={fetchGpuInfo} disabled={loadingGpuInfo} data-testid="btn-refresh-gpu">
+                    <RefreshCw className={cn('h-4 w-4', loadingGpuInfo && 'animate-spin')} />
+                  </Button>
+                </div>
+              </CardHeader>
+              <CardContent>
+                {loadingGpuInfo ? (
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                    {Array.from({ length: 4 }).map((_, i) => (
+                      <Skeleton key={i} className="h-16 w-full" />
+                    ))}
+                  </div>
+                ) : gpuInfo ? (
+                  <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
+                    <div className="rounded-lg border p-3 text-center" data-testid="gpu-name">
+                      <p className="text-xs text-muted-foreground">GPU</p>
+                      <p className="text-sm font-semibold">{gpuInfo.gpu_name}</p>
+                    </div>
+                    <div className="rounded-lg border p-3 text-center" data-testid="gpu-memory-total">
+                      <p className="text-xs text-muted-foreground">Memoria Total</p>
+                      <p className="text-sm font-semibold">{gpuInfo.gpu_memory_total}</p>
+                    </div>
+                    <div className="rounded-lg border p-3 text-center" data-testid="gpu-memory-used">
+                      <p className="text-xs text-muted-foreground">Memoria em Uso</p>
+                      <p className="text-sm font-semibold">{gpuInfo.gpu_memory_used}</p>
+                    </div>
+                    <div className="rounded-lg border p-3 text-center" data-testid="gpu-utilization">
+                      <p className="text-xs text-muted-foreground">Utilizacao GPU</p>
+                      <p className="text-sm font-semibold">{gpuInfo.gpu_utilization}</p>
+                    </div>
+                    <div className="rounded-lg border p-3 text-center" data-testid="gpu-memory-free">
+                      <p className="text-xs text-muted-foreground">Memoria Livre</p>
+                      <p className="text-sm font-semibold">{gpuInfo.gpu_memory_free}</p>
+                    </div>
+                    <div className="rounded-lg border p-3 text-center" data-testid="gpu-cuda-version">
+                      <p className="text-xs text-muted-foreground">CUDA</p>
+                      <p className="text-sm font-semibold">{gpuInfo.cuda_version}</p>
+                    </div>
+                    <div className="rounded-lg border p-3 text-center" data-testid="gpu-driver-version">
+                      <p className="text-xs text-muted-foreground">Driver</p>
+                      <p className="text-sm font-semibold">{gpuInfo.driver_version}</p>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">
+                    Nao foi possivel carregar informacoes de GPU. Verifique a conexao com o worker.
+                  </p>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* ============================================================ */}
           {/* ABA 2: Monitorar Jobs                                        */}
           {/* ============================================================ */}
           <TabsContent value="monitorar">
+            {/* 12.24 - Filtro de status (pills) */}
+            <div className="mb-4 flex flex-wrap gap-2" data-testid="status-filter-pills">
+              {STATUS_FILTER_OPTIONS.map((option) => (
+                <Button
+                  key={option.value}
+                  variant={statusFilter === option.value ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setStatusFilter(option.value)}
+                  data-testid={`filter-status-${option.value}`}
+                  className={cn(
+                    statusFilter === option.value && option.value === 'failed' && 'bg-destructive text-destructive-foreground'
+                  )}
+                >
+                  {option.label}
+                  {option.value !== 'all' && (
+                    <Badge variant="secondary" className="ml-2 h-5 min-w-[20px] px-1 text-xs">
+                      {option.value === 'running'
+                        ? jobs.filter((j) => j.status === 'running' || j.status === 'queued' || j.status === 'stopping').length
+                        : option.value === 'completed'
+                          ? jobs.filter((j) => j.status === 'completed').length
+                          : jobs.filter((j) => j.status === 'failed' || j.status === 'stopped').length}
+                    </Badge>
+                  )}
+                </Button>
+              ))}
+            </div>
+
             <div className="grid gap-6 lg:grid-cols-3">
               {/* Lista de jobs */}
               <Card className="lg:col-span-1">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-base">Jobs de Treinamento</CardTitle>
-                  <Button variant="ghost" size="icon" onClick={fetchJobs} disabled={loadingJobs}>
+                  <Button variant="ghost" size="icon" onClick={fetchJobs} disabled={loadingJobs} data-testid="btn-refresh-jobs">
                     <RefreshCw className={cn('h-4 w-4', loadingJobs && 'animate-spin')} />
                   </Button>
                 </CardHeader>
@@ -691,13 +1287,13 @@ export function BertTrainingPage() {
                         <Skeleton key={i} className="h-16 w-full" />
                       ))}
                     </div>
-                  ) : jobs.length === 0 ? (
+                  ) : filteredJobs.length === 0 ? (
                     <p className="py-8 text-center text-sm text-muted-foreground">
                       Nenhum job encontrado
                     </p>
                   ) : (
                     <div className="max-h-[600px] space-y-2 overflow-y-auto">
-                      {jobs.map((job) => (
+                      {filteredJobs.map((job) => (
                         <button
                           key={job.id}
                           onClick={() => selecionarJob(job)}
@@ -705,6 +1301,7 @@ export function BertTrainingPage() {
                             'w-full rounded-lg border p-3 text-left transition-colors hover:bg-gray-50',
                             selectedJob?.id === job.id && 'border-primary bg-primary/5'
                           )}
+                          data-testid={`job-item-${job.id}`}
                         >
                           <div className="flex items-center justify-between">
                             <span className="text-sm font-medium">Job #{job.id}</span>
@@ -726,6 +1323,23 @@ export function BertTrainingPage() {
                                 />
                               </div>
                             </div>
+                          )}
+                          {/* 12.30 - Botao de ver chunks ao lado do job concluido */}
+                          {job.status === 'completed' && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="mt-1 h-6 px-2 text-xs"
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                setSelectedChunkJobId(job.id)
+                                setShowChunkModal(true)
+                              }}
+                              data-testid={`btn-chunks-job-${job.id}`}
+                            >
+                              <Eye className="mr-1 h-3 w-3" />
+                              Ver Chunks
+                            </Button>
                           )}
                         </button>
                       ))}
@@ -767,6 +1381,7 @@ export function BertTrainingPage() {
                             size="sm"
                             onClick={() => pararJob(selectedJob.id)}
                             disabled={stoppingJobId === selectedJob.id}
+                            data-testid="btn-parar-job"
                           >
                             {stoppingJobId === selectedJob.id ? (
                               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -945,6 +1560,47 @@ export function BertTrainingPage() {
                           </div>
                         </div>
                       )}
+
+                      {/* 12.23 - Terminal de logs em tempo real */}
+                      {selectedJob.status === 'running' && (
+                        <div data-testid="realtime-logs-terminal">
+                          <div className="mb-2 flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <Terminal className="h-4 w-4 text-muted-foreground" />
+                              <h4 className="text-sm font-medium">Logs em Tempo Real</h4>
+                            </div>
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => setLogsAutoScroll(!logsAutoScroll)}
+                              data-testid="btn-toggle-autoscroll"
+                            >
+                              {logsAutoScroll ? 'Auto-scroll: ON' : 'Auto-scroll: OFF'}
+                            </Button>
+                          </div>
+                          <div
+                            ref={logContainerRef}
+                            className="h-64 overflow-y-auto rounded-lg border bg-gray-900 p-3 font-mono text-xs"
+                            data-testid="logs-container"
+                          >
+                            {realtimeLogs.length === 0 ? (
+                              <p className="text-gray-500">Aguardando logs...</p>
+                            ) : (
+                              realtimeLogs.map((log, idx) => (
+                                <div key={idx} className="leading-5">
+                                  <span className="text-gray-500">{log.timestamp}</span>
+                                  {' '}
+                                  <span className={logLevelColor(log.level)}>
+                                    [{log.level.toUpperCase()}]
+                                  </span>
+                                  {' '}
+                                  <span className="text-gray-200">{log.message}</span>
+                                </div>
+                              ))
+                            )}
+                          </div>
+                        </div>
+                      )}
                     </div>
                   )}
                 </CardContent>
@@ -956,6 +1612,28 @@ export function BertTrainingPage() {
           {/* ABA 3: Testar Modelo                                         */}
           {/* ============================================================ */}
           <TabsContent value="testar">
+            {/* 12.8 - Barra de acoes do teste com botao Limpar Historico */}
+            <div className="mb-4 flex items-center justify-between">
+              <h3 className="text-lg font-semibold">Testes de Classificacao</h3>
+              <div className="flex items-center gap-2">
+                {testHistory.length > 0 && (
+                  <Badge variant="secondary" data-testid="badge-historico-count">
+                    {testHistory.length} teste{testHistory.length !== 1 ? 's' : ''} no historico
+                  </Badge>
+                )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={limparHistoricoTestes}
+                  disabled={testHistory.length === 0}
+                  data-testid="btn-limpar-historico-testes"
+                >
+                  <Trash2 className="mr-2 h-4 w-4" />
+                  Limpar Historico
+                </Button>
+              </div>
+            </div>
+
             <div className="grid gap-6 md:grid-cols-2">
               {/* Predicao individual */}
               <Card>
@@ -975,7 +1653,7 @@ export function BertTrainingPage() {
                       </Alert>
                     ) : (
                       <Select value={selectedModel} onValueChange={setSelectedModel}>
-                        <SelectTrigger id="model-select">
+                        <SelectTrigger id="model-select" data-testid="select-modelo-teste">
                           <SelectValue placeholder="Selecione um modelo..." />
                         </SelectTrigger>
                         <SelectContent>
@@ -997,6 +1675,7 @@ export function BertTrainingPage() {
                       onChange={(e) => setTestText(e.target.value)}
                       placeholder="Digite o texto que deseja classificar..."
                       rows={4}
+                      data-testid="textarea-texto-teste"
                     />
                   </div>
 
@@ -1004,6 +1683,7 @@ export function BertTrainingPage() {
                     onClick={executarPredicao}
                     disabled={loadingPrediction || !selectedModel || !testText.trim()}
                     className="w-full"
+                    data-testid="btn-classificar-texto"
                   >
                     {loadingPrediction ? (
                       <>
@@ -1020,7 +1700,7 @@ export function BertTrainingPage() {
 
                   {/* Resultado da predicao */}
                   {prediction && (
-                    <div className="space-y-3 rounded-lg border bg-gray-50 p-4">
+                    <div className="space-y-3 rounded-lg border bg-gray-50 p-4" data-testid="resultado-predicao">
                       <div className="flex items-center justify-between">
                         <span className="text-sm font-medium">Categoria predita:</span>
                         <Badge variant="default" className="text-sm">
@@ -1077,6 +1757,7 @@ export function BertTrainingPage() {
                       onChange={(e) => setBatchText(e.target.value)}
                       placeholder={"Texto 1 para classificar\nTexto 2 para classificar\nTexto 3 para classificar"}
                       rows={6}
+                      data-testid="textarea-batch-texto"
                     />
                   </div>
 
@@ -1084,6 +1765,7 @@ export function BertTrainingPage() {
                     onClick={executarPredicaoLote}
                     disabled={loadingBatch || !selectedModel || !batchText.trim()}
                     className="w-full"
+                    data-testid="btn-classificar-lote"
                   >
                     {loadingBatch ? (
                       <>
@@ -1100,7 +1782,7 @@ export function BertTrainingPage() {
 
                   {/* Resultados em lote */}
                   {batchResults.length > 0 && (
-                    <div className="max-h-[400px] overflow-y-auto">
+                    <div className="max-h-[400px] overflow-y-auto" data-testid="resultados-lote">
                       <Table>
                         <TableHeader>
                           <TableRow>
@@ -1132,6 +1814,132 @@ export function BertTrainingPage() {
                 </CardContent>
               </Card>
             </div>
+
+            {/* 12.7 - Classificar PDF (teste) */}
+            <Card className="mt-6" data-testid="classificar-pdf-card">
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <FileText className="h-5 w-5 text-muted-foreground" />
+                  <div>
+                    <CardTitle className="text-base">Classificar PDF (teste)</CardTitle>
+                    <CardDescription>
+                      Envie um arquivo PDF para classificar seus chunks com o modelo selecionado
+                    </CardDescription>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="flex items-center gap-4">
+                  {/* Zona de upload de PDF */}
+                  <div
+                    className={cn(
+                      'flex-1 cursor-pointer rounded-lg border-2 border-dashed p-6 text-center transition-colors',
+                      pdfFile ? 'border-green-300 bg-green-50' : 'border-gray-300 hover:border-primary hover:bg-gray-50'
+                    )}
+                    onClick={() => pdfInputRef.current?.click()}
+                    data-testid="pdf-upload-zone"
+                  >
+                    <input
+                      ref={pdfInputRef}
+                      type="file"
+                      accept=".pdf"
+                      className="hidden"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0]
+                        if (file) setPdfFile(file)
+                      }}
+                      data-testid="pdf-file-input"
+                    />
+                    {pdfFile ? (
+                      <div className="flex items-center justify-center gap-2">
+                        <CheckCircle2 className="h-5 w-5 text-green-600" />
+                        <span className="text-sm font-medium text-green-700">{pdfFile.name}</span>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="ml-2 h-6 px-2"
+                          onClick={(e) => {
+                            e.stopPropagation()
+                            setPdfFile(null)
+                            setPdfResult(null)
+                            if (pdfInputRef.current) pdfInputRef.current.value = ''
+                          }}
+                          data-testid="btn-remover-pdf"
+                        >
+                          <X className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <div>
+                        <Upload className="mx-auto mb-2 h-8 w-8 text-gray-400" />
+                        <p className="text-sm text-muted-foreground">
+                          Clique para selecionar um arquivo PDF
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  <Button
+                    onClick={classificarPdf}
+                    disabled={loadingPdf || !selectedModel || !pdfFile}
+                    data-testid="btn-classificar-pdf"
+                  >
+                    {loadingPdf ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Processando...
+                      </>
+                    ) : (
+                      <>
+                        <FlaskConical className="mr-2 h-4 w-4" />
+                        Classificar PDF
+                      </>
+                    )}
+                  </Button>
+                </div>
+
+                {/* Resultado da classificacao de PDF */}
+                {pdfResult && (
+                  <div className="space-y-3" data-testid="pdf-resultado">
+                    <div className="flex items-center gap-4 text-sm">
+                      <span><strong>Arquivo:</strong> {pdfResult.filename}</span>
+                      <span><strong>Paginas:</strong> {pdfResult.total_pages}</span>
+                      <span><strong>Chunks:</strong> {pdfResult.chunks.length}</span>
+                    </div>
+                    <div className="max-h-[300px] overflow-y-auto">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="text-xs">#</TableHead>
+                            <TableHead className="text-xs">Trecho</TableHead>
+                            <TableHead className="text-xs">Categoria</TableHead>
+                            <TableHead className="text-right text-xs">Confianca</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {pdfResult.chunks.map((chunk, idx) => (
+                            <TableRow key={idx}>
+                              <TableCell className="text-xs font-mono">{idx + 1}</TableCell>
+                              <TableCell className="max-w-[300px] truncate text-xs">
+                                {chunk.texto}
+                              </TableCell>
+                              <TableCell>
+                                <Badge variant="outline" className="text-xs">
+                                  {chunk.categoria_predita}
+                                </Badge>
+                              </TableCell>
+                              <TableCell className="text-right text-xs font-mono">
+                                {formatarPct(chunk.confianca)}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </div>
+                  </div>
+                )}
+              </CardContent>
+            </Card>
           </TabsContent>
 
           {/* ============================================================ */}
@@ -1154,6 +1962,7 @@ export function BertTrainingPage() {
                     onChange={(e) => setCompareText(e.target.value)}
                     placeholder="Digite o texto que deseja classificar com ambos os modelos..."
                     rows={4}
+                    data-testid="textarea-comparar"
                   />
                 </div>
 
@@ -1161,6 +1970,7 @@ export function BertTrainingPage() {
                   onClick={executarComparacao}
                   disabled={loadingComparison || !compareText.trim()}
                   className="w-full"
+                  data-testid="btn-comparar"
                 >
                   {loadingComparison ? (
                     <>
@@ -1177,7 +1987,7 @@ export function BertTrainingPage() {
 
                 {/* Resultado da comparacao */}
                 {comparison && (
-                  <div className="space-y-4">
+                  <div className="space-y-4" data-testid="resultado-comparacao">
                     {/* Indicador de concordancia */}
                     <Alert variant={comparison.concordam ? 'default' : 'destructive'}>
                       {comparison.concordam ? (
@@ -1241,6 +2051,633 @@ export function BertTrainingPage() {
           </TabsContent>
         </Tabs>
       </main>
+
+      {/* ================================================================ */}
+      {/* MODAIS GLOBAIS                                                   */}
+      {/* ================================================================ */}
+
+      {/* 12.10 - Modal Debug Conexao Worker */}
+      <Dialog open={showDebugModal} onOpenChange={setShowDebugModal}>
+        <DialogContent className="max-w-md" data-testid="modal-debug-conexao">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Wifi className="h-5 w-5" />
+              Debug Conexao Worker
+            </DialogTitle>
+            <DialogDescription>
+              Informacoes detalhadas sobre a conexao com o worker de treinamento
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            {loadingWorkerStatus ? (
+              <div className="space-y-3">
+                <Skeleton className="h-8 w-full" />
+                <Skeleton className="h-8 w-full" />
+                <Skeleton className="h-8 w-full" />
+              </div>
+            ) : workerStatus ? (
+              <>
+                <div className="flex items-center justify-between rounded-lg border p-3">
+                  <span className="text-sm font-medium">Status</span>
+                  <Badge variant={workerStatus.connected ? 'success' : 'destructive'}>
+                    {workerStatus.connected ? 'Conectado' : 'Desconectado'}
+                  </Badge>
+                </div>
+                <div className="flex items-center justify-between rounded-lg border p-3">
+                  <span className="text-sm font-medium">URL</span>
+                  <span className="text-sm font-mono text-muted-foreground">{workerStatus.url}</span>
+                </div>
+                <div className="flex items-center justify-between rounded-lg border p-3">
+                  <span className="text-sm font-medium">Latencia</span>
+                  <span className="text-sm font-mono">{workerStatus.latency_ms}ms</span>
+                </div>
+                <div className="flex items-center justify-between rounded-lg border p-3">
+                  <span className="text-sm font-medium">Versao</span>
+                  <span className="text-sm font-mono">{workerStatus.version}</span>
+                </div>
+                <div className="flex items-center justify-between rounded-lg border p-3">
+                  <span className="text-sm font-medium">Uptime</span>
+                  <span className="text-sm font-mono">{workerStatus.uptime}</span>
+                </div>
+                {workerStatus.error && (
+                  <Alert variant="destructive">
+                    <AlertCircle className="h-4 w-4" />
+                    <AlertDescription>{workerStatus.error}</AlertDescription>
+                  </Alert>
+                )}
+              </>
+            ) : (
+              <p className="text-sm text-muted-foreground">
+                Nao foi possivel obter informacoes do worker
+              </p>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={fetchWorkerStatus} disabled={loadingWorkerStatus} data-testid="btn-retry-debug">
+              <RefreshCw className={cn('mr-2 h-4 w-4', loadingWorkerStatus && 'animate-spin')} />
+              Tentar Novamente
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 12.11 - Dialog de Ajuda/Onboarding */}
+      <Dialog open={showHelpDialog} onOpenChange={setShowHelpDialog}>
+        <DialogContent className="max-w-2xl max-h-[80vh]" data-testid="modal-ajuda-onboarding">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <HelpCircle className="h-5 w-5" />
+              Ajuda - Sistema de Treinamento BERT
+            </DialogTitle>
+            <DialogDescription>
+              Guia completo para utilizar o sistema de treinamento de modelos BERT
+            </DialogDescription>
+          </DialogHeader>
+          <ScrollArea className="max-h-[60vh] pr-4">
+            <div className="space-y-6">
+              {/* Visao geral */}
+              <div>
+                <h3 className="mb-2 text-sm font-semibold">O que e este sistema?</h3>
+                <p className="text-sm text-muted-foreground">
+                  O sistema de Treinamento BERT permite treinar modelos de classificacao de documentos
+                  juridicos usando aprendizado de maquina. Voce pode criar datasets, treinar modelos
+                  BERT e testar os resultados diretamente nesta interface.
+                </p>
+              </div>
+
+              {/* Fluxo de trabalho */}
+              <div>
+                <h3 className="mb-2 text-sm font-semibold">Fluxo de Trabalho</h3>
+                <div className="space-y-3">
+                  <div className="flex items-start gap-3 rounded-lg border p-3">
+                    <Badge className="mt-0.5 shrink-0">1</Badge>
+                    <div>
+                      <p className="text-sm font-medium">Preparar Dataset</p>
+                      <p className="text-xs text-muted-foreground">
+                        Faca upload de um CSV com colunas 'texto' e 'categoria'. O sistema validara
+                        automaticamente o formato e a distribuicao das categorias.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3 rounded-lg border p-3">
+                    <Badge className="mt-0.5 shrink-0">2</Badge>
+                    <div>
+                      <p className="text-sm font-medium">Configurar e Iniciar Treinamento</p>
+                      <p className="text-xs text-muted-foreground">
+                        Escolha um preset (Rapido, Padrao ou Completo) ou ajuste os hiperparametros
+                        manualmente. Selecione o dataset e inicie o treinamento.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3 rounded-lg border p-3">
+                    <Badge className="mt-0.5 shrink-0">3</Badge>
+                    <div>
+                      <p className="text-sm font-medium">Monitorar</p>
+                      <p className="text-xs text-muted-foreground">
+                        Acompanhe o progresso na aba Monitorar. Veja metricas em tempo real,
+                        graficos de loss/accuracy e logs do treinamento.
+                      </p>
+                    </div>
+                  </div>
+                  <div className="flex items-start gap-3 rounded-lg border p-3">
+                    <Badge className="mt-0.5 shrink-0">4</Badge>
+                    <div>
+                      <p className="text-sm font-medium">Testar e Comparar</p>
+                      <p className="text-xs text-muted-foreground">
+                        Teste o modelo treinado com textos individuais, em lote ou com PDFs.
+                        Compare os resultados com a LLM para validar a qualidade.
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Dicas */}
+              <div>
+                <h3 className="mb-2 text-sm font-semibold">Dicas Importantes</h3>
+                <ul className="space-y-2 text-sm text-muted-foreground">
+                  <li className="flex items-start gap-2">
+                    <Info className="mt-0.5 h-4 w-4 shrink-0 text-blue-500" />
+                    Use o modelo BERTimbau (Base) para datasets menores e BERTimbau (Large) para resultados melhores.
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <Info className="mt-0.5 h-4 w-4 shrink-0 text-blue-500" />
+                    Datasets com pelo menos 100 exemplos por categoria produzem modelos mais confiaveis.
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <Info className="mt-0.5 h-4 w-4 shrink-0 text-blue-500" />
+                    Verifique a conexao com o worker antes de iniciar treinamentos longos.
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-amber-500" />
+                    O modelo Large requer mais memoria GPU. Verifique a disponibilidade no painel de GPU.
+                  </li>
+                </ul>
+              </div>
+
+              {/* Presets */}
+              <div>
+                <h3 className="mb-2 text-sm font-semibold">Presets de Treinamento</h3>
+                <div className="space-y-2">
+                  <div className="rounded-lg border bg-blue-50 p-3">
+                    <p className="text-sm font-medium text-blue-800">Padrao</p>
+                    <p className="text-xs text-blue-600">LR: 2e-5 | Batch: 16 | Epocas: 5 | MaxLen: 256</p>
+                  </div>
+                  <div className="rounded-lg border bg-amber-50 p-3">
+                    <p className="text-sm font-medium text-amber-800">Rapido</p>
+                    <p className="text-xs text-amber-600">LR: 5e-5 | Batch: 32 | Epocas: 2 | MaxLen: 128</p>
+                  </div>
+                  <div className="rounded-lg border bg-green-50 p-3">
+                    <p className="text-sm font-medium text-green-800">Completo</p>
+                    <p className="text-xs text-green-600">LR: 1e-5 | Batch: 8 | Epocas: 10 | MaxLen: 512</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </ScrollArea>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline" data-testid="btn-fechar-ajuda">Entendi</Button>
+            </DialogClose>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 12.26 - Modal Upload Dataset (4 passos) */}
+      <Dialog open={showUploadDialog} onOpenChange={(open) => {
+        setShowUploadDialog(open)
+        if (!open) resetUploadWizard()
+      }}>
+        <DialogContent className="max-w-2xl" data-testid="modal-upload-dataset">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Upload className="h-5 w-5" />
+              Upload de Dataset
+            </DialogTitle>
+            <DialogDescription>
+              Passo {uploadStep} de 4 - {
+                uploadStep === 1 ? 'Selecionar arquivo' :
+                uploadStep === 2 ? 'Pre-visualizar dados' :
+                uploadStep === 3 ? 'Configurar dataset' :
+                'Enviar dataset'
+              }
+            </DialogDescription>
+          </DialogHeader>
+
+          {/* Indicador de progresso dos passos */}
+          <div className="flex items-center gap-2" data-testid="upload-steps-indicator">
+            {[1, 2, 3, 4].map((step) => (
+              <div key={step} className="flex items-center gap-2">
+                <div
+                  className={cn(
+                    'flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold transition-colors',
+                    step === uploadStep
+                      ? 'bg-primary text-primary-foreground'
+                      : step < uploadStep
+                        ? 'bg-green-100 text-green-700'
+                        : 'bg-gray-100 text-gray-400'
+                  )}
+                >
+                  {step < uploadStep ? <CheckCircle2 className="h-4 w-4" /> : step}
+                </div>
+                {step < 4 && (
+                  <div className={cn('h-0.5 w-8', step < uploadStep ? 'bg-green-300' : 'bg-gray-200')} />
+                )}
+              </div>
+            ))}
+          </div>
+
+          {/* Passo 1: Selecionar Arquivo */}
+          {uploadStep === 1 && (
+            <div className="space-y-4 py-4" data-testid="upload-step-1">
+              <div
+                className={cn(
+                  'cursor-pointer rounded-lg border-2 border-dashed p-8 text-center transition-colors',
+                  uploadFile ? 'border-green-300 bg-green-50' : 'border-gray-300 hover:border-primary hover:bg-gray-50'
+                )}
+                onClick={() => uploadInputRef.current?.click()}
+              >
+                <input
+                  ref={uploadInputRef}
+                  type="file"
+                  accept=".csv,.xlsx,.xls"
+                  className="hidden"
+                  onChange={handleUploadFileSelect}
+                  data-testid="upload-file-input"
+                />
+                <Upload className="mx-auto mb-3 h-10 w-10 text-gray-400" />
+                <p className="text-sm font-medium">Clique para selecionar um arquivo</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Formatos aceitos: CSV, Excel (.xlsx, .xls)
+                </p>
+              </div>
+            </div>
+          )}
+
+          {/* Passo 2: Pre-visualizar dados */}
+          {uploadStep === 2 && (
+            <div className="space-y-4 py-4" data-testid="upload-step-2">
+              <div className="flex items-center gap-2 text-sm">
+                <FileText className="h-4 w-4 text-muted-foreground" />
+                <span className="font-medium">{uploadFile?.name}</span>
+                <span className="text-muted-foreground">
+                  ({((uploadFile?.size ?? 0) / 1024).toFixed(1)} KB)
+                </span>
+              </div>
+              {uploadPreview.length > 0 && (
+                <div className="overflow-x-auto rounded-lg border">
+                  <table className="w-full text-xs">
+                    <thead>
+                      <tr className="border-b bg-gray-50">
+                        {uploadPreview[0]?.map((header, i) => (
+                          <th key={i} className="px-3 py-2 text-left font-medium">
+                            {header}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {uploadPreview.slice(1, 6).map((row, rowIdx) => (
+                        <tr key={rowIdx} className="border-b">
+                          {row.map((cell, cellIdx) => (
+                            <td key={cellIdx} className="max-w-[200px] truncate px-3 py-2">
+                              {cell}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              )}
+              <p className="text-xs text-muted-foreground">
+                Mostrando as primeiras 5 linhas do arquivo. Clique em "Proximo" para validar o dataset.
+              </p>
+            </div>
+          )}
+
+          {/* Passo 3: Configurar (com validacao 12.12) */}
+          {uploadStep === 3 && (
+            <div className="space-y-4 py-4" data-testid="upload-step-3">
+              {/* Campos de configuracao */}
+              <div className="space-y-3">
+                <div className="space-y-2">
+                  <Label htmlFor="upload-nome">Nome do Dataset *</Label>
+                  <Input
+                    id="upload-nome"
+                    value={uploadDatasetName}
+                    onChange={(e) => setUploadDatasetName(e.target.value)}
+                    placeholder="Ex: Documentos Tributarios 2024"
+                    data-testid="input-upload-nome"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="upload-descricao">Descricao (opcional)</Label>
+                  <Textarea
+                    id="upload-descricao"
+                    value={uploadDatasetDescription}
+                    onChange={(e) => setUploadDatasetDescription(e.target.value)}
+                    placeholder="Breve descricao do conteudo do dataset..."
+                    rows={2}
+                    data-testid="input-upload-descricao"
+                  />
+                </div>
+              </div>
+
+              {/* 12.12 - Resultado da validacao */}
+              {loadingUploadValidation ? (
+                <div className="space-y-2">
+                  <Skeleton className="h-6 w-full" />
+                  <Skeleton className="h-6 w-full" />
+                  <Skeleton className="h-6 w-full" />
+                </div>
+              ) : uploadValidation ? (
+                <div className="space-y-3" data-testid="dataset-validation-result">
+                  {/* Estatisticas */}
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="rounded-lg border p-2 text-center">
+                      <p className="text-xs text-muted-foreground">Total</p>
+                      <p className="text-lg font-bold">{uploadValidation.total_rows}</p>
+                    </div>
+                    <div className="rounded-lg border border-green-200 bg-green-50 p-2 text-center">
+                      <p className="text-xs text-green-600">Validos</p>
+                      <p className="text-lg font-bold text-green-700">{uploadValidation.valid_rows}</p>
+                    </div>
+                    <div className="rounded-lg border border-red-200 bg-red-50 p-2 text-center">
+                      <p className="text-xs text-red-600">Invalidos</p>
+                      <p className="text-lg font-bold text-red-700">{uploadValidation.invalid_rows}</p>
+                    </div>
+                  </div>
+
+                  {/* Distribuicao de categorias */}
+                  {uploadValidation.categories_count && Object.keys(uploadValidation.categories_count).length > 0 && (
+                    <div>
+                      <p className="mb-2 text-xs font-medium text-muted-foreground">Categorias encontradas:</p>
+                      <div className="flex flex-wrap gap-1">
+                        {Object.entries(uploadValidation.categories_count).map(([cat, count]) => (
+                          <Badge key={cat} variant="secondary" className="text-xs">
+                            {cat}: {count}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Warnings */}
+                  {uploadValidation.warnings.length > 0 && (
+                    <Alert>
+                      <AlertTriangle className="h-4 w-4" />
+                      <AlertTitle className="text-sm">Avisos</AlertTitle>
+                      <AlertDescription>
+                        <ul className="mt-1 space-y-1">
+                          {uploadValidation.warnings.map((w, i) => (
+                            <li key={i} className="text-xs">{w}</li>
+                          ))}
+                        </ul>
+                      </AlertDescription>
+                    </Alert>
+                  )}
+
+                  {/* Erros */}
+                  {uploadValidation.errors.length > 0 && (
+                    <Alert variant="destructive">
+                      <AlertCircle className="h-4 w-4" />
+                      <AlertTitle className="text-sm">Erros</AlertTitle>
+                      <AlertDescription>
+                        <ul className="mt-1 space-y-1">
+                          {uploadValidation.errors.map((err, i) => (
+                            <li key={i} className="text-xs">{err}</li>
+                          ))}
+                        </ul>
+                      </AlertDescription>
+                    </Alert>
+                  )}
+                </div>
+              ) : null}
+            </div>
+          )}
+
+          {/* Passo 4: Confirmar e enviar */}
+          {uploadStep === 4 && (
+            <div className="space-y-4 py-4" data-testid="upload-step-4">
+              <div className="rounded-lg border bg-gray-50 p-4">
+                <h4 className="mb-3 text-sm font-medium">Resumo do Upload</h4>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Arquivo:</span>
+                    <span className="font-medium">{uploadFile?.name}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Nome:</span>
+                    <span className="font-medium">{uploadDatasetName}</span>
+                  </div>
+                  {uploadDatasetDescription && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">Descricao:</span>
+                      <span className="font-medium truncate max-w-[250px]">{uploadDatasetDescription}</span>
+                    </div>
+                  )}
+                  {uploadValidation && (
+                    <>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Registros validos:</span>
+                        <span className="font-medium">{uploadValidation.valid_rows}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Categorias:</span>
+                        <span className="font-medium">{Object.keys(uploadValidation.categories_count).length}</span>
+                      </div>
+                    </>
+                  )}
+                </div>
+              </div>
+
+              {uploading && (
+                <div className="flex items-center justify-center gap-2 py-4">
+                  <Loader2 className="h-5 w-5 animate-spin text-primary" />
+                  <span className="text-sm text-muted-foreground">Enviando dataset...</span>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Navegacao entre passos */}
+          <DialogFooter className="flex items-center justify-between sm:justify-between">
+            <div>
+              {uploadStep > 1 && (
+                <Button
+                  variant="outline"
+                  onClick={() => setUploadStep((s) => Math.max(1, s - 1) as UploadStep)}
+                  disabled={uploading}
+                  data-testid="btn-upload-anterior"
+                >
+                  <ChevronLeft className="mr-1 h-4 w-4" />
+                  Anterior
+                </Button>
+              )}
+            </div>
+            <div className="flex gap-2">
+              <DialogClose asChild>
+                <Button variant="ghost" disabled={uploading} data-testid="btn-upload-cancelar">
+                  Cancelar
+                </Button>
+              </DialogClose>
+              {uploadStep < 4 ? (
+                <Button
+                  onClick={() => {
+                    if (uploadStep === 2) {
+                      // Ao ir do passo 2 para o 3, valida o dataset
+                      validarDatasetUpload()
+                    } else {
+                      setUploadStep((s) => Math.min(4, s + 1) as UploadStep)
+                    }
+                  }}
+                  disabled={
+                    (uploadStep === 1 && !uploadFile) ||
+                    (uploadStep === 2 && loadingUploadValidation) ||
+                    (uploadStep === 3 && !uploadDatasetName.trim())
+                  }
+                  data-testid="btn-upload-proximo"
+                >
+                  Proximo
+                  <ChevronRight className="ml-1 h-4 w-4" />
+                </Button>
+              ) : (
+                <Button
+                  onClick={executarUploadDataset}
+                  disabled={uploading || !uploadDatasetName.trim()}
+                  data-testid="btn-upload-enviar"
+                >
+                  {uploading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Enviando...
+                    </>
+                  ) : (
+                    <>
+                      <Upload className="mr-2 h-4 w-4" />
+                      Enviar Dataset
+                    </>
+                  )}
+                </Button>
+              )}
+            </div>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 12.30 - Modal de comparacao de chunks */}
+      <Dialog open={showChunkModal} onOpenChange={setShowChunkModal}>
+        <DialogContent className="max-w-3xl max-h-[80vh]" data-testid="modal-chunks-comparacao">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Eye className="h-5 w-5" />
+              Chunks do Job #{selectedChunkJobId}
+            </DialogTitle>
+            <DialogDescription>
+              Visualize e compare os chunks processados durante o treinamento
+            </DialogDescription>
+          </DialogHeader>
+          <ScrollArea className="max-h-[60vh]">
+            {selectedChunkJobId && (() => {
+              const job = jobs.find((j) => j.id === selectedChunkJobId)
+              if (!job) return <p className="text-sm text-muted-foreground">Job nao encontrado</p>
+
+              return (
+                <div className="space-y-4">
+                  {/* Informacoes do job */}
+                  <div className="flex items-center gap-4 rounded-lg border bg-gray-50 p-3">
+                    <StatusBadge status={job.status} />
+                    <div className="text-sm">
+                      <span className="font-medium">{job.dataset_nome}</span>
+                      <span className="ml-2 text-muted-foreground">
+                        {job.total_epocas} epocas | {job.modelo_base.split('/').pop()}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Metricas resumidas */}
+                  {job.metricas && (
+                    <div className="grid grid-cols-4 gap-2">
+                      <div className="rounded border p-2 text-center">
+                        <p className="text-xs text-muted-foreground">Accuracy</p>
+                        <p className="text-sm font-bold text-green-600">{formatarPct(job.metricas.accuracy)}</p>
+                      </div>
+                      <div className="rounded border p-2 text-center">
+                        <p className="text-xs text-muted-foreground">F1</p>
+                        <p className="text-sm font-bold text-blue-600">{formatarPct(job.metricas.f1_score)}</p>
+                      </div>
+                      <div className="rounded border p-2 text-center">
+                        <p className="text-xs text-muted-foreground">Precision</p>
+                        <p className="text-sm font-bold text-purple-600">{formatarPct(job.metricas.precision)}</p>
+                      </div>
+                      <div className="rounded border p-2 text-center">
+                        <p className="text-xs text-muted-foreground">Recall</p>
+                        <p className="text-sm font-bold text-orange-600">{formatarPct(job.metricas.recall)}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Historico de loss por epoca (como chunks) */}
+                  {job.metricas?.historico_loss && (
+                    <div>
+                      <h4 className="mb-2 text-sm font-medium">Progresso por Epoca</h4>
+                      <div className="space-y-2">
+                        {job.metricas.historico_loss.map((loss, idx) => (
+                          <div
+                            key={idx}
+                            className="flex items-center gap-4 rounded-lg border p-3 transition-colors hover:bg-gray-50"
+                            data-testid={`chunk-epoca-${idx + 1}`}
+                          >
+                            <Badge variant="outline" className="shrink-0">
+                              Epoca {idx + 1}
+                            </Badge>
+                            <div className="flex-1 grid grid-cols-2 gap-4 text-sm">
+                              <div className="flex justify-between">
+                                <span className="text-muted-foreground">Loss:</span>
+                                <span className="font-mono text-red-600">{loss.toFixed(4)}</span>
+                              </div>
+                              <div className="flex justify-between">
+                                <span className="text-muted-foreground">Accuracy:</span>
+                                <span className="font-mono text-green-600">
+                                  {job.metricas?.historico_accuracy[idx]
+                                    ? formatarPct(job.metricas.historico_accuracy[idx])
+                                    : 'N/A'}
+                                </span>
+                              </div>
+                            </div>
+                            {/* Comparacao visual de melhoria */}
+                            {idx > 0 && (
+                              <div className="shrink-0">
+                                {loss < job.metricas!.historico_loss[idx - 1] ? (
+                                  <Badge variant="success" className="text-xs">Melhorou</Badge>
+                                ) : (
+                                  <Badge variant="warning" className="text-xs">Piorou</Badge>
+                                )}
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Datas */}
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span>Criado: {formatarData(job.created_at)}</span>
+                    <span>Atualizado: {formatarData(job.updated_at)}</span>
+                  </div>
+                </div>
+              )
+            })()}
+          </ScrollArea>
+          <DialogFooter>
+            <DialogClose asChild>
+              <Button variant="outline" data-testid="btn-fechar-chunks">Fechar</Button>
+            </DialogClose>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

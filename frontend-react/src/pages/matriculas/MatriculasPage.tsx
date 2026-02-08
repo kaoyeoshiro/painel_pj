@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { useNavigate } from '@tanstack/react-router'
 import { useApiQuery } from '@/hooks/useApiQuery'
 import { useMarkdown } from '@/hooks/useMarkdown'
 import { matriculasApi } from '@/lib/api'
@@ -29,6 +30,8 @@ import {
   Layers,
   Download,
   Printer,
+  Copy,
+  FileDown,
   Trash2,
   FileUp,
   CheckCircle,
@@ -36,11 +39,11 @@ import {
   Loader2,
   Info,
   ArrowLeft,
-  LogOut,
   HelpCircle,
 } from 'lucide-react'
 
 export default function MatriculasPage() {
+  const navigate = useNavigate()
   const { toast } = useToast()
 
   // Estado
@@ -384,6 +387,34 @@ export default function MatriculasPage() {
     }
   }
 
+  // Copia relatorio para clipboard
+  const handleCopyReport = async () => {
+    if (!reportText) return
+
+    try {
+      await navigator.clipboard.writeText(reportText)
+      toast({ title: 'Copiado', description: 'Relatorio copiado para a area de transferencia' })
+    } catch {
+      toast({ title: 'Erro', description: 'Nao foi possivel copiar o relatorio', variant: 'destructive' })
+    }
+  }
+
+  // Exporta dados extraidos como JSON
+  const handleExportJSON = () => {
+    if (!documentDetails) return
+
+    const json = JSON.stringify(documentDetails, null, 2)
+    const blob = new Blob([json], { type: 'application/json' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'dados_extraidos_matriculas.json'
+    a.click()
+    URL.revokeObjectURL(url)
+
+    toast({ title: 'Sucesso', description: 'Dados exportados como JSON' })
+  }
+
   // Envia feedback
   const handleFeedback = async (avaliacao: 'correto' | 'parcial' | 'incorreto' | 'erro_ia') => {
     if (!currentAnaliseId) {
@@ -443,10 +474,9 @@ export default function MatriculasPage() {
       {/* Header */}
       <header className="flex items-center justify-between border-b bg-white px-6 py-3 shadow-sm">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => (window.location.href = '/dashboard')}>
+          <Button variant="ghost" size="icon" onClick={() => navigate({ to: '/dashboard' })}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          <img src="/logo/logo-pge.png" alt="PGE-MS" className="h-10" />
           <div className="border-l pl-4">
             <div className="flex items-center gap-2">
               <FileText className="h-5 w-5 text-primary" />
@@ -457,16 +487,6 @@ export default function MatriculasPage() {
             </div>
           </div>
         </div>
-        <Button
-          variant="ghost"
-          size="icon"
-          onClick={() => {
-            localStorage.removeItem('access_token')
-            window.location.href = '/login'
-          }}
-        >
-          <LogOut className="h-5 w-5" />
-        </Button>
       </header>
 
       {/* Main Content */}
@@ -656,6 +676,14 @@ export default function MatriculasPage() {
                   <Button variant="outline" size="sm" onClick={() => window.print()}>
                     <Printer className="mr-2 h-4 w-4" />
                     PDF
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={handleCopyReport}>
+                    <Copy className="mr-2 h-4 w-4" />
+                    Copiar
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={handleExportJSON} disabled={!documentDetails}>
+                    <FileDown className="mr-2 h-4 w-4" />
+                    JSON
                   </Button>
                 </div>
               )}

@@ -294,6 +294,21 @@ export function TjmsDocsPage() {
         </CardContent>
       </Card>
 
+      {/* Link para Plano Completo */}
+      <Card>
+        <CardContent className="py-4">
+          <a
+            href="/docs/plano-integracao-tjms.md"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-primary hover:underline font-medium"
+            data-testid="link-ver-plano-completo"
+          >
+            Ver Plano Completo de Integração TJ-MS
+          </a>
+        </CardContent>
+      </Card>
+
       {/* Informações Técnicas */}
       <Card>
         <CardHeader>

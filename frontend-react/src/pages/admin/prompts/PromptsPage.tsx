@@ -11,6 +11,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useToast } from '@/hooks/use-toast'
 import { PageContainer } from '@/components/layout'
+import { RotateCcw, Plus } from 'lucide-react'
 
 interface Prompt {
   id: number
@@ -44,6 +45,7 @@ const TIPO_BADGES: Record<string, { label: string; variant: 'default' | 'seconda
   system: { label: 'Sistema', variant: 'default' },
   analise: { label: 'Análise', variant: 'secondary' },
   relatorio: { label: 'Relatório', variant: 'outline' },
+  resumo: { label: 'Resumo', variant: 'outline' },
 }
 
 export function PromptsPage() {
@@ -59,6 +61,13 @@ export function PromptsPage() {
   const [isLoadingPrompts, setIsLoadingPrompts] = useState(true)
   const [isSavingConfig, setIsSavingConfig] = useState<string | null>(null)
   const [isSavingPrompt, setIsSavingPrompt] = useState(false)
+
+  // Estado do dialog de confirmação para restaurar padrão
+  const [restoreConfirmPromptId, setRestoreConfirmPromptId] = useState<number | null>(null)
+  const [isRestoringDefault, setIsRestoringDefault] = useState(false)
+
+  // Estado para criação de prompts padrão por sistema
+  const [isCreatingDefaults, setIsCreatingDefaults] = useState<string | null>(null)
 
   // Carregar configurações de IA
   useEffect(() => {
@@ -204,8 +213,62 @@ export function PromptsPage() {
     }
   }
 
+  /** Restaura o prompt ao valor padrão via API */
+  const restoreDefaultPrompt = async (promptId: number) => {
+    setIsRestoringDefault(true)
+    try {
+      await adminApi.post(`/admin/api/prompts/${promptId}/restaurar-padrao`)
+
+      toast({
+        title: 'Prompt restaurado',
+        description: 'O prompt foi restaurado ao valor padrão com sucesso',
+      })
+
+      // Fechar dialog de confirmação e recarregar prompts
+      setRestoreConfirmPromptId(null)
+      await loadPrompts()
+    } catch (error) {
+      toast({
+        title: 'Erro ao restaurar prompt',
+        description: error instanceof Error ? error.message : 'Erro desconhecido',
+        variant: 'destructive',
+      })
+    } finally {
+      setIsRestoringDefault(false)
+    }
+  }
+
+  /** Cria prompts padrão para um sistema que não possui prompts configurados */
+  const createDefaultPrompts = async (sistema: string) => {
+    setIsCreatingDefaults(sistema)
+    try {
+      await adminApi.post(`/admin/api/prompts/criar-padrao/${sistema}`)
+
+      toast({
+        title: 'Prompts criados',
+        description: `Prompts padrão criados com sucesso para ${SISTEMAS.find(s => s.value === sistema)?.label || sistema}`,
+      })
+
+      // Recarregar prompts para exibir os recém-criados
+      await loadPrompts()
+    } catch (error) {
+      toast({
+        title: 'Erro ao criar prompts padrão',
+        description: error instanceof Error ? error.message : 'Erro desconhecido',
+        variant: 'destructive',
+      })
+    } finally {
+      setIsCreatingDefaults(null)
+    }
+  }
+
   const getConfigsForSistema = (sistema: string): ConfigIA[] => {
     return configsIA.filter(c => c.sistema === sistema)
+  }
+
+  /** Retorna os prompts filtrados para um sistema específico */
+  const getPromptsForSistema = (sistema: string): Prompt[] => {
+    return prompts.filter(p => p.sistema === sistema)
   }
 
   const formatDate = (dateString: string): string => {
@@ -221,6 +284,15 @@ export function PromptsPage() {
     } catch {
       return dateString
     }
+  }
+
+  /**
+   * Verifica se o filtro selecionado é um sistema específico (não "todos")
+   * e se esse sistema não possui prompts, para exibir o empty state.
+   */
+  const shouldShowEmptyStateForSistema = (): boolean => {
+    if (selectedSistema === 'todos') return false
+    return getPromptsForSistema(selectedSistema).length === 0
   }
 
   return (
@@ -330,6 +402,26 @@ export function PromptsPage() {
             <div className="text-center py-8 text-muted-foreground">
               Carregando prompts...
             </div>
+          ) : shouldShowEmptyStateForSistema() ? (
+            /* 14.6 - Empty state quando um sistema não possui prompts configurados */
+            <div
+              data-testid={`empty-state-${selectedSistema}`}
+              className="text-center py-12 space-y-4"
+            >
+              <p className="text-muted-foreground">
+                Nenhum prompt configurado para este sistema
+              </p>
+              <Button
+                data-testid={`btn-criar-padrao-${selectedSistema}`}
+                onClick={() => createDefaultPrompts(selectedSistema)}
+                disabled={isCreatingDefaults === selectedSistema}
+              >
+                <Plus className="mr-2 h-4 w-4" />
+                {isCreatingDefaults === selectedSistema
+                  ? 'Criando prompts padrão...'
+                  : 'Criar Prompts Padrão'}
+              </Button>
+            </div>
           ) : filteredPrompts.length === 0 ? (
             <div className="text-center py-8 text-muted-foreground">
               Nenhum prompt encontrado
@@ -372,9 +464,21 @@ export function PromptsPage() {
                           Atualizado em {formatDate(prompt.updated_at)}
                           {prompt.updated_by && ` por ${prompt.updated_by}`}
                         </div>
-                        <Button onClick={() => openEditDialog(prompt)} variant="outline" size="sm">
-                          Editar
-                        </Button>
+                        <div className="flex gap-2">
+                          {/* 14.2 - Botão para restaurar prompt ao valor padrão */}
+                          <Button
+                            data-testid={`btn-restaurar-padrao-${prompt.id}`}
+                            onClick={() => setRestoreConfirmPromptId(prompt.id)}
+                            variant="outline"
+                            size="sm"
+                          >
+                            <RotateCcw className="mr-2 h-4 w-4" />
+                            Restaurar Padrão
+                          </Button>
+                          <Button onClick={() => openEditDialog(prompt)} variant="outline" size="sm">
+                            Editar
+                          </Button>
+                        </div>
                       </div>
                     </CardContent>
                   </Card>
@@ -453,6 +557,43 @@ export function PromptsPage() {
             </Button>
             <Button onClick={savePrompt} disabled={isSavingPrompt}>
               {isSavingPrompt ? 'Salvando...' : 'Salvar'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* 14.2 - Dialog de confirmação para restaurar prompt ao padrão */}
+      <Dialog
+        open={restoreConfirmPromptId !== null}
+        onOpenChange={(open) => {
+          if (!open) setRestoreConfirmPromptId(null)
+        }}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Restaurar Prompt ao Padrão</DialogTitle>
+            <DialogDescription>
+              Tem certeza que deseja restaurar este prompt ao valor padrão?
+              Todas as alterações manuais serão perdidas.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setRestoreConfirmPromptId(null)}
+              disabled={isRestoringDefault}
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={() => {
+                if (restoreConfirmPromptId !== null) {
+                  restoreDefaultPrompt(restoreConfirmPromptId)
+                }
+              }}
+              disabled={isRestoringDefault}
+            >
+              {isRestoringDefault ? 'Restaurando...' : 'Restaurar Padrão'}
             </Button>
           </DialogFooter>
         </DialogContent>

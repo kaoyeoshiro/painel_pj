@@ -1,14 +1,17 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { adminApi } from '@/lib/api'
 import { useToast } from '@/components/ui/toast'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { PageContainer, PageHeader, SectionCard } from '@/components/layout'
-import { ChevronDown, ChevronRight, Edit2, Trash2, ToggleLeft, ToggleRight, Plus, Search } from 'lucide-react'
+import {
+  ChevronDown, ChevronRight, Edit2, Trash2, ToggleLeft, ToggleRight,
+  Plus, Search, Download, Upload, History, Settings, RotateCcw,
+} from 'lucide-react'
 // Usa native <select> para dropdowns simples com <option>
 
 // Interfaces de dados
@@ -46,6 +49,25 @@ interface PromptSubgroup {
   ativo: boolean
 }
 
+interface HistoricoVersao {
+  versao: number
+  conteudo: string
+  titulo: string
+  categoria: string
+  tipo: string
+  modo_ativacao: string
+  atualizado_em: string
+  atualizado_por: string | null
+}
+
+interface Subcategoria {
+  id: number
+  group_id: number
+  nome: string
+  slug: string
+  descricao: string | null
+}
+
 type TipoFiltro = 'conteudo' | 'instrucao' | 'exemplo' | null
 type ModoFiltro = 'llm' | 'deterministic' | null
 type StatusFiltro = 'ativo' | 'inativo' | null
@@ -77,9 +99,10 @@ interface CategoriaGroupProps {
   onEdit: (m: PromptModulo) => void
   onDelete: (m: PromptModulo) => void
   onToggle: (m: PromptModulo) => void
+  onHistory: (m: PromptModulo) => void
 }
 
-function CategoriaGroup({ categoria, modulos, onEdit, onDelete, onToggle }: CategoriaGroupProps) {
+function CategoriaGroup({ categoria, modulos, onEdit, onDelete, onToggle, onHistory }: CategoriaGroupProps) {
   const [aberto, setAberto] = useState(true)
 
   return (
@@ -154,6 +177,14 @@ function CategoriaGroup({ categoria, modulos, onEdit, onDelete, onToggle }: Cate
                   </button>
                   <button
                     type="button"
+                    onClick={() => onHistory(modulo)}
+                    title="Histórico"
+                    className="p-1.5 rounded-md hover:bg-gray-200 transition-colors"
+                  >
+                    <History className="h-4 w-4 text-gray-500" />
+                  </button>
+                  <button
+                    type="button"
                     onClick={() => onEdit(modulo)}
                     title="Editar"
                     className="p-1.5 rounded-md hover:bg-gray-200 transition-colors"
@@ -197,6 +228,28 @@ export function PromptsModulosPage() {
   const [dialogAberto, setDialogAberto] = useState(false)
   const [dialogExclusao, setDialogExclusao] = useState(false)
   const [moduloEditando, setModuloEditando] = useState<PromptModulo | null>(null)
+
+  // Estado de histórico
+  const [dialogHistorico, setDialogHistorico] = useState(false)
+  const [moduloHistorico, setModuloHistorico] = useState<PromptModulo | null>(null)
+  const [versoes, setVersoes] = useState<HistoricoVersao[]>([])
+  const [loadingHistorico, setLoadingHistorico] = useState(false)
+
+  // Estado de import/export
+  const [dialogImportar, setDialogImportar] = useState(false)
+  const [importData, setImportData] = useState('')
+  const [importando, setImportando] = useState(false)
+
+  // Estado de gestão de grupos
+  const [dialogGrupos, setDialogGrupos] = useState(false)
+  const [novoGrupoNome, setNovoGrupoNome] = useState('')
+  const [novoGrupoDescricao, setNovoGrupoDescricao] = useState('')
+
+  // Estado de subcategorias
+  const [subcategorias, setSubcategorias] = useState<Subcategoria[]>([])
+
+  // Ref para input de arquivo (importação)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Estado do formulário
   const [formData, setFormData] = useState({
@@ -395,6 +448,157 @@ export function PromptsModulosPage() {
     }
   }
 
+  // ========== Histórico ==========
+
+  async function abrirHistorico(modulo: PromptModulo) {
+    setModuloHistorico(modulo)
+    setDialogHistorico(true)
+    setLoadingHistorico(true)
+    try {
+      const data = await adminApi.get<HistoricoVersao[]>(
+        `/admin/api/prompts-modulos/${modulo.id}/historico`
+      )
+      setVersoes(data)
+    } catch (error) {
+      toast({
+        title: 'Erro ao carregar histórico',
+        description: error instanceof Error ? error.message : 'Erro desconhecido',
+        variant: 'destructive'
+      })
+    } finally {
+      setLoadingHistorico(false)
+    }
+  }
+
+  async function restaurarVersao(versao: number) {
+    if (!moduloHistorico) return
+    try {
+      await adminApi.post(`/admin/api/prompts-modulos/${moduloHistorico.id}/restaurar/${versao}`)
+      toast({
+        title: 'Versão restaurada',
+        description: `Módulo restaurado para a versão ${versao}`
+      })
+      setDialogHistorico(false)
+      carregarModulos()
+    } catch (error) {
+      toast({
+        title: 'Erro ao restaurar versão',
+        description: error instanceof Error ? error.message : 'Erro desconhecido',
+        variant: 'destructive'
+      })
+    }
+  }
+
+  // ========== Import/Export ==========
+
+  async function exportarTodos() {
+    try {
+      const data = await adminApi.get<unknown>('/admin/api/prompts-modulos/exportar/todos')
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `prompts-modulos-export-${new Date().toISOString().slice(0, 10)}.json`
+      a.click()
+      URL.revokeObjectURL(url)
+      toast({
+        title: 'Exportação concluída',
+        description: 'Arquivo JSON baixado com sucesso'
+      })
+    } catch (error) {
+      toast({
+        title: 'Erro ao exportar',
+        description: error instanceof Error ? error.message : 'Erro desconhecido',
+        variant: 'destructive'
+      })
+    }
+  }
+
+  async function importarModulos() {
+    if (!importData.trim()) return
+    setImportando(true)
+    try {
+      const parsed = JSON.parse(importData)
+      await adminApi.post('/admin/api/prompts-modulos/importar', parsed)
+      toast({
+        title: 'Importação concluída',
+        description: 'Módulos importados com sucesso'
+      })
+      setDialogImportar(false)
+      setImportData('')
+      carregarGrupos()
+      carregarModulos()
+    } catch (error) {
+      toast({
+        title: 'Erro ao importar',
+        description: error instanceof Error ? error.message : 'Erro desconhecido',
+        variant: 'destructive'
+      })
+    } finally {
+      setImportando(false)
+    }
+  }
+
+  function handleFileImport(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (ev) => {
+      setImportData(ev.target?.result as string)
+      setDialogImportar(true)
+    }
+    reader.readAsText(file)
+    // Reset input so the same file can be selected again
+    e.target.value = ''
+  }
+
+  // ========== Gestão de Grupos ==========
+
+  async function criarGrupo() {
+    if (!novoGrupoNome.trim()) return
+    try {
+      await adminApi.post('/admin/api/prompts-modulos/grupos', {
+        nome: novoGrupoNome.trim(),
+        descricao: novoGrupoDescricao.trim() || null,
+        ordem: grupos.length + 1,
+        ativo: true
+      })
+      toast({
+        title: 'Grupo criado',
+        description: `Grupo "${novoGrupoNome}" criado com sucesso`
+      })
+      setNovoGrupoNome('')
+      setNovoGrupoDescricao('')
+      carregarGrupos()
+    } catch (error) {
+      toast({
+        title: 'Erro ao criar grupo',
+        description: error instanceof Error ? error.message : 'Erro desconhecido',
+        variant: 'destructive'
+      })
+    }
+  }
+
+  // ========== Subcategorias ==========
+
+  useEffect(() => {
+    if (grupoSelecionado !== null) {
+      carregarSubcategorias(grupoSelecionado)
+    }
+  }, [grupoSelecionado])
+
+  async function carregarSubcategorias(groupId: number) {
+    try {
+      const data = await adminApi.get<Subcategoria[]>(
+        `/admin/api/prompts-modulos/grupos/${groupId}/subcategorias`
+      )
+      setSubcategorias(data)
+    } catch {
+      // Subcategorias são opcionais, ignorar erro silenciosamente
+      setSubcategorias([])
+    }
+  }
+
   // Aplicar filtros
   const modulosFiltrados = modulos.filter(modulo => {
     // Filtro de busca
@@ -444,10 +648,31 @@ export function PromptsModulosPage() {
         title="Módulos de Prompts"
         description={`${modulosFiltrados.length} módulo(s) encontrado(s)`}
         actions={
-          <Button onClick={abrirDialogNovo} disabled={grupoSelecionado === null} className="gap-1.5">
-            <Plus className="h-4 w-4" />
-            Novo Módulo
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" onClick={() => setDialogGrupos(true)} className="gap-1.5">
+              <Settings className="h-4 w-4" />
+              Grupos
+            </Button>
+            <Button variant="outline" size="sm" onClick={exportarTodos} className="gap-1.5">
+              <Download className="h-4 w-4" />
+              Exportar
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => fileInputRef.current?.click()} className="gap-1.5">
+              <Upload className="h-4 w-4" />
+              Importar
+            </Button>
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".json"
+              className="hidden"
+              onChange={handleFileImport}
+            />
+            <Button onClick={abrirDialogNovo} disabled={grupoSelecionado === null} className="gap-1.5">
+              <Plus className="h-4 w-4" />
+              Novo Módulo
+            </Button>
+          </div>
         }
       />
 
@@ -530,6 +755,7 @@ export function PromptsModulosPage() {
               onEdit={abrirDialogEditar}
               onDelete={abrirDialogExcluir}
               onToggle={toggleAtivo}
+              onHistory={abrirHistorico}
             />
           ))}
         </div>
@@ -717,6 +943,135 @@ export function PromptsModulosPage() {
               Excluir
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de histórico */}
+      <Dialog open={dialogHistorico} onOpenChange={setDialogHistorico}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Histórico — {moduloHistorico?.titulo}</DialogTitle>
+            <DialogDescription>Versões anteriores deste módulo</DialogDescription>
+          </DialogHeader>
+          {loadingHistorico ? (
+            <div className="text-center py-8 text-gray-400">Carregando histórico...</div>
+          ) : versoes.length === 0 ? (
+            <div className="text-center py-8 text-gray-400">Nenhuma versão anterior encontrada</div>
+          ) : (
+            <div className="space-y-3">
+              {versoes.map((versao) => (
+                <div key={versao.versao} className="border rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <Badge variant="secondary">v{versao.versao}</Badge>
+                      <span className="text-sm text-gray-500">
+                        {new Date(versao.atualizado_em).toLocaleString('pt-BR')}
+                      </span>
+                      {versao.atualizado_por && (
+                        <span className="text-xs text-gray-400">por {versao.atualizado_por}</span>
+                      )}
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => restaurarVersao(versao.versao)}
+                      className="gap-1.5"
+                    >
+                      <RotateCcw className="h-3 w-3" />
+                      Restaurar
+                    </Button>
+                  </div>
+                  <div className="text-sm">
+                    <span className="font-medium">{versao.titulo}</span>
+                    <span className="text-gray-400 ml-2">({versao.categoria})</span>
+                  </div>
+                  <pre className="mt-2 text-xs text-gray-600 bg-gray-50 p-2 rounded max-h-32 overflow-y-auto whitespace-pre-wrap">
+                    {versao.conteudo.slice(0, 500)}{versao.conteudo.length > 500 ? '...' : ''}
+                  </pre>
+                </div>
+              ))}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de importação */}
+      <Dialog open={dialogImportar} onOpenChange={setDialogImportar}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Importar Módulos</DialogTitle>
+            <DialogDescription>
+              Cole ou carregue um arquivo JSON exportado anteriormente
+            </DialogDescription>
+          </DialogHeader>
+          <Textarea
+            value={importData}
+            onChange={(e) => setImportData(e.target.value)}
+            className="font-mono text-xs min-h-[300px]"
+            placeholder='{"version": "2.0", "modulos": [...]}'
+          />
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setDialogImportar(false); setImportData('') }}>
+              Cancelar
+            </Button>
+            <Button onClick={importarModulos} disabled={importando || !importData.trim()}>
+              {importando ? 'Importando...' : 'Importar'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de gestão de grupos */}
+      <Dialog open={dialogGrupos} onOpenChange={setDialogGrupos}>
+        <DialogContent className="max-w-lg max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Gerenciar Grupos</DialogTitle>
+            <DialogDescription>Gerencie os grupos de módulos de prompts</DialogDescription>
+          </DialogHeader>
+
+          {/* Lista de grupos existentes */}
+          <div className="space-y-2">
+            {grupos.map(grupo => (
+              <div key={grupo.id} className="flex items-center justify-between p-3 border rounded-lg">
+                <div>
+                  <span className="font-medium">{grupo.nome}</span>
+                  {grupo.descricao && (
+                    <p className="text-xs text-gray-500 mt-0.5">{grupo.descricao}</p>
+                  )}
+                </div>
+                <Badge variant={grupo.ativo ? 'default' : 'secondary'}>
+                  {grupo.ativo ? 'Ativo' : 'Inativo'}
+                </Badge>
+              </div>
+            ))}
+          </div>
+
+          {/* Formulário de novo grupo */}
+          <div className="border-t pt-4 mt-4 space-y-3">
+            <h4 className="font-medium text-sm">Novo Grupo</h4>
+            <div>
+              <Label htmlFor="novo-grupo-nome">Nome</Label>
+              <Input
+                id="novo-grupo-nome"
+                value={novoGrupoNome}
+                onChange={(e) => setNovoGrupoNome(e.target.value)}
+                placeholder="Nome do grupo"
+              />
+            </div>
+            <div>
+              <Label htmlFor="novo-grupo-desc">Descrição (opcional)</Label>
+              <Input
+                id="novo-grupo-desc"
+                value={novoGrupoDescricao}
+                onChange={(e) => setNovoGrupoDescricao(e.target.value)}
+                placeholder="Descrição do grupo"
+              />
+            </div>
+            <Button onClick={criarGrupo} disabled={!novoGrupoNome.trim()} className="gap-1.5">
+              <Plus className="h-4 w-4" />
+              Criar Grupo
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
     </PageContainer>

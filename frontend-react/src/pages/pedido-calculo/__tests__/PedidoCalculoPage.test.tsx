@@ -3,6 +3,12 @@ import { render, screen, waitFor } from '@testing-library/react'
 import { PedidoCalculoPage } from '../PedidoCalculoPage'
 import * as api from '@/lib/api'
 
+// Mock do router (Link e useNavigate precisam de contexto)
+vi.mock('@tanstack/react-router', () => ({
+  useNavigate: () => vi.fn(),
+  Link: ({ children, ...props }: { children: React.ReactNode; to?: string }) => <a href={props.to}>{children}</a>,
+}))
+
 // Mock do toast
 vi.mock('@/components/ui/toast', () => ({
   useToast: () => ({

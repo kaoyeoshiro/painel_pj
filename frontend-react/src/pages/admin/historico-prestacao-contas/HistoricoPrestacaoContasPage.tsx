@@ -1,12 +1,13 @@
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect, useMemo, useRef } from 'react'
 import { createApiClient } from '@/lib/api'
 import { DataTable, type ColumnDef } from '@/components/shared/DataTable'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
+import { ScrollArea } from '@/components/ui/scroll-area'
 import { useToast } from '@/hooks/use-toast'
 import { useMarkdown } from '@/hooks/useMarkdown'
 import { PageContainer } from '@/components/layout'
@@ -33,6 +34,7 @@ interface GeracaoDetalhada extends GeracaoAdmin {
   extrato_subconta_texto?: string
   irregularidades?: string[]
   perguntas_usuario?: string[]
+  resultado_raw?: string
 }
 
 interface LogChamadaIA {
@@ -156,10 +158,70 @@ export function HistoricoPrestacaoContasPage() {
   const [selectedGeracao, setSelectedGeracao] = useState<GeracaoDetalhada | null>(null)
   const [dialogOpen, setDialogOpen] = useState(false)
   const [loadingDetalhes, setLoadingDetalhes] = useState(false)
+  const [expandedView, setExpandedView] = useState<string | null>(null)
+  const [uploadDialogOpen, setUploadDialogOpen] = useState(false)
+  const [uploading, setUploading] = useState(false)
+  const [reprocessing, setReprocessing] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const { toast } = useToast()
 
   const prestacaoAdminApi = useMemo(() => createApiClient('/admin/api/prestacao-admin'), [])
   const { html: fundamentacaoHtml } = useMarkdown(selectedGeracao?.fundamentacao || '')
+
+  /** Copiar texto para clipboard */
+  const copiarConteudo = async (texto: string) => {
+    try {
+      await navigator.clipboard.writeText(texto)
+      toast({ title: 'Copiado', description: 'Conteúdo copiado para a área de transferência' })
+    } catch {
+      toast({ title: 'Erro', description: 'Não foi possível copiar', variant: 'destructive' })
+    }
+  }
+
+  /** Anexar documentos a uma geração */
+  const handleUploadDocumentos = async (files: FileList) => {
+    if (!selectedGeracao || files.length === 0) return
+
+    setUploading(true)
+    try {
+      const formData = new FormData()
+      Array.from(files).forEach(file => formData.append('files', file))
+
+      await prestacaoAdminApi.post(`/geracoes/${selectedGeracao.id}/documentos`, formData)
+      toast({ title: 'Documentos anexados', description: `${files.length} arquivo(s) enviado(s)` })
+      setUploadDialogOpen(false)
+      // Recarregar detalhes
+      loadDetalhes(selectedGeracao.id)
+    } catch (error) {
+      toast({
+        title: 'Erro ao enviar documentos',
+        description: error instanceof Error ? error.message : 'Erro desconhecido',
+        variant: 'destructive'
+      })
+    } finally {
+      setUploading(false)
+    }
+  }
+
+  /** Reprocessar a geração */
+  const handleReprocessar = async () => {
+    if (!selectedGeracao) return
+
+    setReprocessing(true)
+    try {
+      await prestacaoAdminApi.post(`/geracoes/${selectedGeracao.id}/reprocessar`)
+      toast({ title: 'Reprocessamento iniciado', description: 'A geração será reprocessada' })
+      loadGeracoes()
+    } catch (error) {
+      toast({
+        title: 'Erro ao reprocessar',
+        description: error instanceof Error ? error.message : 'Erro desconhecido',
+        variant: 'destructive'
+      })
+    } finally {
+      setReprocessing(false)
+    }
+  }
 
   // Carregar lista de gerações
   useEffect(() => {
@@ -302,11 +364,54 @@ export function HistoricoPrestacaoContasPage() {
               <Skeleton className="h-64 w-full" />
             </div>
           ) : selectedGeracao ? (
+            <>
+            {/* Botões de ação */}
+            <div className="flex gap-2 mb-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setUploadDialogOpen(true)}
+                data-testid="btn-anexar-documentos"
+              >
+                Anexar Documentos
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleReprocessar}
+                disabled={reprocessing}
+                data-testid="btn-reprocessar"
+              >
+                {reprocessing ? 'Reprocessando...' : 'Enviar e Reprocessar'}
+              </Button>
+              {selectedGeracao.fundamentacao && (
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setExpandedView(selectedGeracao.fundamentacao!)}
+                    data-testid="btn-expand-parecer"
+                  >
+                    Expandir
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => copiarConteudo(selectedGeracao.fundamentacao!)}
+                    data-testid="btn-copiar-parecer"
+                  >
+                    Copiar
+                  </Button>
+                </>
+              )}
+            </div>
+
             <Tabs defaultValue="parecer" className="w-full">
-              <TabsList className="grid w-full grid-cols-3">
+              <TabsList className="grid w-full grid-cols-4">
                 <TabsTrigger value="parecer">Parecer</TabsTrigger>
                 <TabsTrigger value="dados">Dados</TabsTrigger>
                 <TabsTrigger value="logs">Logs IA</TabsTrigger>
+                <TabsTrigger value="raw">Resposta Bruta</TabsTrigger>
               </TabsList>
 
               {/* Tab 1: Parecer */}
@@ -426,8 +531,108 @@ export function HistoricoPrestacaoContasPage() {
                   </CardContent>
                 </Card>
               </TabsContent>
+
+              {/* Tab 4: Resposta Bruta */}
+              <TabsContent value="raw" className="space-y-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center justify-between">
+                      <span>Resposta Bruta da IA</span>
+                      <div className="flex gap-2">
+                        {selectedGeracao.resultado_raw && (
+                          <>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => setExpandedView(selectedGeracao.resultado_raw!)}
+                              data-testid="btn-expand-raw"
+                            >
+                              Expandir
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={() => copiarConteudo(selectedGeracao.resultado_raw!)}
+                              data-testid="btn-copiar-raw"
+                            >
+                              Copiar
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <ScrollArea className="h-[400px]">
+                      <pre className="text-sm bg-muted p-4 rounded whitespace-pre-wrap">
+                        {selectedGeracao.resultado_raw || 'Sem resposta bruta disponível'}
+                      </pre>
+                    </ScrollArea>
+                  </CardContent>
+                </Card>
+              </TabsContent>
             </Tabs>
+            </>
           ) : null}
+
+          {/* Dialog de expand (fullscreen viewer) */}
+          {expandedView && (
+            <Dialog open={!!expandedView} onOpenChange={() => setExpandedView(null)}>
+              <DialogContent className="max-w-[95vw] max-h-[95vh] flex flex-col">
+                <DialogHeader>
+                  <DialogTitle className="flex items-center justify-between">
+                    <span>Visualização Expandida</span>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => copiarConteudo(expandedView)}
+                    >
+                      Copiar
+                    </Button>
+                  </DialogTitle>
+                </DialogHeader>
+                <ScrollArea className="flex-1">
+                  <pre className="text-sm bg-muted p-4 rounded whitespace-pre-wrap">
+                    {expandedView}
+                  </pre>
+                </ScrollArea>
+              </DialogContent>
+            </Dialog>
+          )}
+
+          {/* Dialog de upload de documentos */}
+          <Dialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Anexar Documentos</DialogTitle>
+              </DialogHeader>
+              <div
+                className="border-2 border-dashed rounded-lg p-8 text-center cursor-pointer hover:border-primary transition-colors"
+                onClick={() => fileInputRef.current?.click()}
+                data-testid="upload-dropzone"
+              >
+                <p className="text-muted-foreground">
+                  Clique ou arraste arquivos aqui para anexar
+                </p>
+                <p className="text-xs text-muted-foreground mt-2">
+                  PDF, DOCX, imagens aceitos
+                </p>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  multiple
+                  accept=".pdf,.docx,.doc,.png,.jpg,.jpeg"
+                  className="hidden"
+                  onChange={(e) => e.target.files && handleUploadDocumentos(e.target.files)}
+                />
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setUploadDialogOpen(false)}>
+                  Cancelar
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </DialogContent>
       </Dialog>
     </PageContainer>

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { usersApi } from '@/lib/api'
 import { PageContainer } from '@/components/layout'
 import { DataTable } from '@/components/shared/DataTable'
@@ -12,7 +12,10 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { useToast } from '@/hooks/use-toast'
 import { Card } from '@/components/ui/card'
 
+// ---------------------------------------------------------------------------
 // Tipos de dados
+// ---------------------------------------------------------------------------
+
 interface User {
   id: number
   username: string
@@ -23,6 +26,11 @@ interface User {
   is_active: boolean
   created_at: string
   sistemas_permitidos: string[] | null
+  content_group_ids?: number[] | null
+  pode_curar?: boolean
+  pode_exportar?: boolean
+  pode_ver_debug?: boolean
+  pode_gerenciar_prompts?: boolean
 }
 
 interface UserCreate {
@@ -33,6 +41,11 @@ interface UserCreate {
   role: 'user' | 'admin'
   password?: string
   sistemas_permitidos?: string[] | null
+  content_group_ids?: number[] | null
+  pode_curar?: boolean
+  pode_exportar?: boolean
+  pode_ver_debug?: boolean
+  pode_gerenciar_prompts?: boolean
 }
 
 interface UserUpdate {
@@ -42,7 +55,22 @@ interface UserUpdate {
   role?: 'user' | 'admin'
   is_active?: boolean
   sistemas_permitidos?: string[] | null
+  content_group_ids?: number[] | null
+  pode_curar?: boolean
+  pode_exportar?: boolean
+  pode_ver_debug?: boolean
+  pode_gerenciar_prompts?: boolean
 }
+
+/** Grupo de conteudo retornado pela API */
+interface ContentGroup {
+  id: number
+  nome: string
+  descricao: string
+}
+
+/** Opcoes de agrupamento da tabela */
+type GroupByOption = 'none' | 'sistema' | 'setor'
 
 // Opcoes de sistemas
 const SISTEMAS = [
@@ -54,6 +82,14 @@ const SISTEMAS = [
   { id: 'relatorio_cumprimento', label: 'Relatorio de Cumprimento' },
 ]
 
+// Definicao das permissoes especiais
+const SPECIAL_PERMISSIONS = [
+  { key: 'pode_curar', label: 'Pode curar pecas' },
+  { key: 'pode_exportar', label: 'Pode exportar dados' },
+  { key: 'pode_ver_debug', label: 'Pode ver debug' },
+  { key: 'pode_gerenciar_prompts', label: 'Pode gerenciar prompts' },
+] as const
+
 export function UsersPage() {
   const { toast } = useToast()
   const [users, setUsers] = useState<User[]>([])
@@ -64,6 +100,16 @@ export function UsersPage() {
   const [editingUser, setEditingUser] = useState<User | null>(null)
   const [deletingUser, setDeleteingUser] = useState<User | null>(null)
   const [newPassword, setNewPassword] = useState<string>('')
+
+  // Estado do filtro "Agrupar por"
+  const [groupBy, setGroupBy] = useState<GroupByOption>('none')
+  // Secoes colapsadas (armazena nomes dos grupos fechados)
+  const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
+
+  // Grupos de conteudo vindos da API
+  const [contentGroups, setContentGroups] = useState<ContentGroup[]>([])
+
+  // Formulario de criacao/edicao
   const [formData, setFormData] = useState<UserCreate>({
     username: '',
     full_name: '',
@@ -72,11 +118,20 @@ export function UsersPage() {
     role: 'user',
     password: '',
     sistemas_permitidos: [],
+    content_group_ids: [],
+    pode_curar: false,
+    pode_exportar: false,
+    pode_ver_debug: false,
+    pode_gerenciar_prompts: false,
   })
+
+  // Campo is_active para edicao (separado pois nao existe em UserCreate)
+  const [formIsActive, setFormIsActive] = useState(true)
 
   // Carregar usuarios
   useEffect(() => {
     loadUsers()
+    loadContentGroups()
   }, [])
 
   const loadUsers = async () => {
@@ -95,6 +150,17 @@ export function UsersPage() {
     }
   }
 
+  /** Carrega grupos de conteudo disponiveis da API */
+  const loadContentGroups = async () => {
+    try {
+      const data = await usersApi.get<ContentGroup[]>('/content-groups')
+      setContentGroups(data)
+    } catch (error) {
+      // Falha silenciosa — grupos de conteudo sao opcionais
+      console.warn('Nao foi possivel carregar grupos de conteudo:', error)
+    }
+  }
+
   // Abrir dialog para criar usuario
   const handleCreate = () => {
     setEditingUser(null)
@@ -106,7 +172,13 @@ export function UsersPage() {
       role: 'user',
       password: '',
       sistemas_permitidos: [],
+      content_group_ids: [],
+      pode_curar: false,
+      pode_exportar: false,
+      pode_ver_debug: false,
+      pode_gerenciar_prompts: false,
     })
+    setFormIsActive(true)
     setShowDialog(true)
   }
 
@@ -120,7 +192,13 @@ export function UsersPage() {
       setor: user.setor || '',
       role: user.role,
       sistemas_permitidos: user.sistemas_permitidos || [],
+      content_group_ids: user.content_group_ids || [],
+      pode_curar: user.pode_curar ?? false,
+      pode_exportar: user.pode_exportar ?? false,
+      pode_ver_debug: user.pode_ver_debug ?? false,
+      pode_gerenciar_prompts: user.pode_gerenciar_prompts ?? false,
     })
+    setFormIsActive(user.is_active)
     setShowDialog(true)
   }
 
@@ -134,7 +212,13 @@ export function UsersPage() {
           email: formData.email || undefined,
           setor: formData.setor || undefined,
           role: formData.role,
+          is_active: formIsActive,
           sistemas_permitidos: formData.sistemas_permitidos,
+          content_group_ids: formData.content_group_ids,
+          pode_curar: formData.pode_curar,
+          pode_exportar: formData.pode_exportar,
+          pode_ver_debug: formData.pode_ver_debug,
+          pode_gerenciar_prompts: formData.pode_gerenciar_prompts,
         }
         await usersApi.put(`/${editingUser.id}`, updateData)
         toast({
@@ -229,6 +313,76 @@ export function UsersPage() {
     setFormData({ ...formData, sistemas_permitidos: updated })
   }
 
+  /** Toggle grupo de conteudo selecionado no formulario */
+  const toggleContentGroup = (groupId: number) => {
+    const current = formData.content_group_ids || []
+    const updated = current.includes(groupId)
+      ? current.filter((id) => id !== groupId)
+      : [...current, groupId]
+    setFormData({ ...formData, content_group_ids: updated })
+  }
+
+  /** Toggle permissao especial no formulario */
+  const togglePermission = (key: keyof Pick<UserCreate, 'pode_curar' | 'pode_exportar' | 'pode_ver_debug' | 'pode_gerenciar_prompts'>) => {
+    setFormData({ ...formData, [key]: !formData[key] })
+  }
+
+  /** Alterna colapso de um grupo na tabela agrupada */
+  const toggleGroupCollapse = (groupName: string) => {
+    setCollapsedGroups((prev) => {
+      const next = new Set(prev)
+      if (next.has(groupName)) {
+        next.delete(groupName)
+      } else {
+        next.add(groupName)
+      }
+      return next
+    })
+  }
+
+  // ---------------------------------------------------------------------------
+  // Agrupamento dos usuarios para exibicao
+  // ---------------------------------------------------------------------------
+
+  /** Retorna usuarios organizados em grupos conforme a opcao selecionada */
+  const groupedUsers = useMemo(() => {
+    if (groupBy === 'none') return null
+
+    const groups: Record<string, User[]> = {}
+
+    if (groupBy === 'sistema') {
+      // Agrupa por cada sistema permitido (um usuario pode aparecer em varios)
+      for (const user of users) {
+        const sistemas = user.sistemas_permitidos || []
+        if (sistemas.length === 0) {
+          const key = 'Sem sistema'
+          if (!groups[key]) groups[key] = []
+          groups[key].push(user)
+        } else {
+          for (const sistemaId of sistemas) {
+            const sistemaInfo = SISTEMAS.find((s) => s.id === sistemaId)
+            const key = sistemaInfo?.label || sistemaId
+            if (!groups[key]) groups[key] = []
+            groups[key].push(user)
+          }
+        }
+      }
+    } else if (groupBy === 'setor') {
+      for (const user of users) {
+        const key = user.setor || 'Sem setor'
+        if (!groups[key]) groups[key] = []
+        groups[key].push(user)
+      }
+    }
+
+    // Ordena nomes dos grupos alfabeticamente
+    const sortedEntries = Object.entries(groups).sort(([a], [b]) =>
+      a.localeCompare(b, 'pt-BR')
+    )
+
+    return sortedEntries
+  }, [users, groupBy])
+
   // Colunas da tabela
   const columns = [
     {
@@ -308,13 +462,75 @@ export function UsersPage() {
         <Button onClick={handleCreate}>Novo Usuario</Button>
       </div>
 
-      <Card className="p-6">
-        <DataTable
-          data={users}
-          columns={columns}
-          isLoading={loading}
-        />
-      </Card>
+      {/* Filtro "Agrupar por" */}
+      <div className="flex items-center gap-4" data-testid="group-by-filter">
+        <Label htmlFor="group-by-select">Agrupar por</Label>
+        <Select
+          value={groupBy}
+          onValueChange={(value: GroupByOption) => {
+            setGroupBy(value)
+            setCollapsedGroups(new Set())
+          }}
+        >
+          <SelectTrigger id="group-by-select" className="w-48" data-testid="group-by-select">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="none">Nenhum</SelectItem>
+            <SelectItem value="sistema">Sistema</SelectItem>
+            <SelectItem value="setor">Setor</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      {/* Tabela de usuarios — exibicao agrupada ou normal */}
+      {groupBy === 'none' || !groupedUsers ? (
+        <Card className="p-6">
+          <DataTable
+            data={users}
+            columns={columns}
+            isLoading={loading}
+          />
+        </Card>
+      ) : (
+        <div className="space-y-4" data-testid="grouped-table">
+          {groupedUsers.map(([groupName, groupUsers]) => {
+            const isCollapsed = collapsedGroups.has(groupName)
+            return (
+              <Card key={groupName} className="overflow-hidden">
+                {/* Cabecalho do grupo — clicavel para colapsar/expandir */}
+                <button
+                  type="button"
+                  className="flex w-full items-center justify-between p-4 text-left hover:bg-muted/50 transition-colors"
+                  onClick={() => toggleGroupCollapse(groupName)}
+                  data-testid={`group-header-${groupName}`}
+                >
+                  <div className="flex items-center gap-3">
+                    <span className="text-sm font-medium transition-transform duration-200"
+                      style={{ display: 'inline-block', transform: isCollapsed ? 'rotate(-90deg)' : 'rotate(0deg)' }}
+                    >
+                      ▼
+                    </span>
+                    <span className="font-semibold text-lg">{groupName}</span>
+                    <Badge variant="secondary">{groupUsers.length}</Badge>
+                  </div>
+                </button>
+
+                {/* Conteudo do grupo (colapsavel) */}
+                {!isCollapsed && (
+                  <div className="px-4 pb-4" data-testid={`group-content-${groupName}`}>
+                    <DataTable
+                      data={groupUsers}
+                      columns={columns}
+                      isLoading={loading}
+                    />
+                  </div>
+                )}
+              </Card>
+            )
+          })}
+        </div>
+      )}
 
       {/* Dialog de criacao/edicao */}
       <Dialog open={showDialog} onOpenChange={setShowDialog}>
@@ -392,6 +608,24 @@ export function UsersPage() {
               </Select>
             </div>
 
+            {/* Toggle "Usuario ativo" — apenas no modo edicao */}
+            {editingUser && (
+              <div className="flex items-center space-x-2 rounded-md border p-3" data-testid="user-active-toggle">
+                <Checkbox
+                  id="is_active"
+                  checked={formIsActive}
+                  onCheckedChange={(checked) => setFormIsActive(checked === true)}
+                  data-testid="is-active-checkbox"
+                />
+                <Label htmlFor="is_active" className="font-normal cursor-pointer">
+                  Usuario ativo
+                </Label>
+                <Badge variant={formIsActive ? 'default' : 'secondary'} className="ml-auto">
+                  {formIsActive ? 'Ativo' : 'Inativo'}
+                </Badge>
+              </div>
+            )}
+
             <div className="space-y-2">
               <Label>Sistemas Permitidos</Label>
               <div className="space-y-2">
@@ -404,6 +638,53 @@ export function UsersPage() {
                     />
                     <Label htmlFor={sistema.id} className="font-normal cursor-pointer">
                       {sistema.label}
+                    </Label>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Secao: Grupos de Conteudo */}
+            {contentGroups.length > 0 && (
+              <div className="space-y-2" data-testid="content-groups-section">
+                <Label>Grupos de Conteudo</Label>
+                <div className="space-y-2 rounded-md border p-3">
+                  {contentGroups.map((group) => (
+                    <div key={group.id} className="flex items-center space-x-2" data-testid={`content-group-${group.id}`}>
+                      <Checkbox
+                        id={`content-group-${group.id}`}
+                        checked={(formData.content_group_ids || []).includes(group.id)}
+                        onCheckedChange={() => toggleContentGroup(group.id)}
+                        data-testid={`content-group-checkbox-${group.id}`}
+                      />
+                      <div className="flex flex-col">
+                        <Label htmlFor={`content-group-${group.id}`} className="font-normal cursor-pointer">
+                          {group.nome}
+                        </Label>
+                        {group.descricao && (
+                          <span className="text-xs text-muted-foreground">{group.descricao}</span>
+                        )}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Secao: Permissoes Especiais */}
+            <div className="space-y-2" data-testid="special-permissions-section">
+              <Label>Permissoes Especiais</Label>
+              <div className="space-y-2 rounded-md border p-3">
+                {SPECIAL_PERMISSIONS.map((perm) => (
+                  <div key={perm.key} className="flex items-center space-x-2" data-testid={`permission-${perm.key}`}>
+                    <Checkbox
+                      id={perm.key}
+                      checked={formData[perm.key] ?? false}
+                      onCheckedChange={() => togglePermission(perm.key)}
+                      data-testid={`permission-checkbox-${perm.key}`}
+                    />
+                    <Label htmlFor={perm.key} className="font-normal cursor-pointer">
+                      {perm.label}
                     </Label>
                   </div>
                 ))}

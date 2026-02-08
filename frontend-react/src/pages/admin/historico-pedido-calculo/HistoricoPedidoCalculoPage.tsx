@@ -61,6 +61,7 @@ interface GeracaoDetalhada extends GeracaoResumo {
   dados_agente2?: Record<string, unknown>
   documentos_baixados?: Array<{ id: number; tipo?: string; classificacao_ia?: string }>
   conteudo_gerado?: string
+  resultado_raw?: string
   logs_ia: LogChamadaIA[]
 }
 
@@ -174,8 +175,46 @@ function DetalhesModal({
   onClose: () => void
 }) {
   const { html: pedidoHtml } = useMarkdown(geracao?.conteudo_gerado ?? '')
+  const [expandedView, setExpandedView] = useState<string | null>(null)
+
+  /** Copiar conteúdo para clipboard */
+  const copiarConteudo = async (texto: string) => {
+    try {
+      await navigator.clipboard.writeText(texto)
+    } catch {
+      // Fallback silencioso
+    }
+  }
 
   if (!geracao) return null
+
+  // Modal expandido (fullscreen viewer)
+  if (expandedView) {
+    return (
+      <Dialog open onOpenChange={() => setExpandedView(null)}>
+        <DialogContent className="max-w-[95vw] max-h-[95vh] flex flex-col">
+          <DialogHeader>
+            <DialogTitle className="flex items-center justify-between">
+              <span>Visualização Expandida</span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => copiarConteudo(expandedView)}
+                data-testid="btn-copiar-expandido"
+              >
+                Copiar
+              </Button>
+            </DialogTitle>
+          </DialogHeader>
+          <ScrollArea className="flex-1">
+            <pre className="text-sm bg-muted p-4 rounded whitespace-pre-wrap">
+              {expandedView}
+            </pre>
+          </ScrollArea>
+        </DialogContent>
+      </Dialog>
+    )
+  }
 
   return (
     <Dialog open={!!geracao} onOpenChange={onClose}>
@@ -189,13 +228,36 @@ function DetalhesModal({
         </DialogHeader>
 
         <Tabs defaultValue="pedido" className="flex-1 flex flex-col min-h-0">
-          <TabsList className="grid w-full grid-cols-3">
+          <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="pedido">Pedido</TabsTrigger>
             <TabsTrigger value="dados">Dados</TabsTrigger>
             <TabsTrigger value="logs">Logs IA ({geracao.logs_ia.length})</TabsTrigger>
+            <TabsTrigger value="raw">Resultado Raw</TabsTrigger>
           </TabsList>
 
           <TabsContent value="pedido" className="flex-1 min-h-0 mt-2">
+            <div className="flex gap-2 mb-2">
+              {geracao.conteudo_gerado && (
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setExpandedView(geracao.conteudo_gerado!)}
+                    data-testid="btn-expand-pedido"
+                  >
+                    Expandir
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => copiarConteudo(geracao.conteudo_gerado!)}
+                    data-testid="btn-copiar-pedido"
+                  >
+                    Copiar
+                  </Button>
+                </>
+              )}
+            </div>
             <ScrollArea className="h-[500px] rounded-md border">
               {geracao.conteudo_gerado ? (
                 <div
@@ -255,6 +317,36 @@ function DetalhesModal({
                   geracao.logs_ia.map((log) => <LogItem key={log.id} log={log} />)
                 )}
               </div>
+            </ScrollArea>
+          </TabsContent>
+
+          <TabsContent value="raw" className="flex-1 min-h-0 mt-2">
+            <div className="flex gap-2 mb-2">
+              {geracao.resultado_raw && (
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setExpandedView(geracao.resultado_raw!)}
+                    data-testid="btn-expand-raw"
+                  >
+                    Expandir
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => copiarConteudo(geracao.resultado_raw!)}
+                    data-testid="btn-copiar-raw"
+                  >
+                    Copiar
+                  </Button>
+                </>
+              )}
+            </div>
+            <ScrollArea className="h-[500px] rounded-md border">
+              <pre className="text-sm p-4 whitespace-pre-wrap">
+                {geracao.resultado_raw || 'Sem resultado bruto disponível'}
+              </pre>
             </ScrollArea>
           </TabsContent>
         </Tabs>

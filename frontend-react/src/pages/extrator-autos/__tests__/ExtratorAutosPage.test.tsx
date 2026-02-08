@@ -3,6 +3,11 @@ import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import { ExtratorAutosPage } from '../ExtratorAutosPage'
 import * as api from '@/lib/api'
 
+// Mock do router
+vi.mock('@tanstack/react-router', () => ({
+  useNavigate: () => vi.fn(),
+}))
+
 // Mock do modulo de API
 vi.mock('@/lib/api', () => ({
   extratorApi: {

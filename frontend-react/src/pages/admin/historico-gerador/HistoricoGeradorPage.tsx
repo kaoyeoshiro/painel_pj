@@ -5,6 +5,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useToast } from '@/hooks/use-toast'
 import { useMarkdown } from '@/hooks/useMarkdown'
@@ -28,6 +29,10 @@ interface GeracaoDetalhada extends Geracao {
   resumo_consolidado: string | null
   conteudo_gerado: string | null
   historico_chat: Array<{ role: string; content: string }> | null
+  versoes: Array<{ id: number; versao: number; conteudo: string; criado_em: string }> | null
+  resultado_raw: string | null
+  curadoria_humana: boolean
+  curadoria_detalhes: string | null
 }
 
 const TIPO_PECA_LABELS: Record<string, string> = {
@@ -157,6 +162,27 @@ export function HistoricoGeradorPage() {
     },
   ]
 
+  // Baixar DOCX da geração
+  const handleDownloadDocx = async (id: number) => {
+    try {
+      const blob = await geradorAdminApi.get<Blob>(`/geracoes/${id}/download-docx`, {
+        responseType: 'blob',
+      } as any)
+      const url = window.URL.createObjectURL(blob as unknown as Blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `geracao_${id}.docx`
+      link.click()
+      window.URL.revokeObjectURL(url)
+    } catch (error) {
+      toast({
+        title: 'Erro ao baixar DOCX',
+        description: error instanceof Error ? error.message : 'Erro desconhecido',
+        variant: 'destructive',
+      })
+    }
+  }
+
   if (loading) {
     return (
       <PageContainer className="space-y-4">
@@ -191,12 +217,31 @@ export function HistoricoGeradorPage() {
                 </DialogTitle>
               </DialogHeader>
 
+              {/* Badge curadoria e botão download */}
+              <div className="flex items-center gap-3 mb-4">
+                {selectedGeracao.curadoria_humana && (
+                  <Badge variant="warning" data-testid="badge-curadoria">
+                    Curadoria Humana
+                  </Badge>
+                )}
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handleDownloadDocx(selectedGeracao.id)}
+                  data-testid="btn-download-docx"
+                >
+                  Baixar DOCX
+                </Button>
+              </div>
+
               <Tabs defaultValue="prompt" className="w-full">
-                <TabsList className="grid w-full grid-cols-4">
+                <TabsList className="grid w-full grid-cols-6">
                   <TabsTrigger value="prompt">Prompt</TabsTrigger>
                   <TabsTrigger value="resumo">Resumo</TabsTrigger>
                   <TabsTrigger value="minuta">Minuta</TabsTrigger>
                   <TabsTrigger value="chat">Chat</TabsTrigger>
+                  <TabsTrigger value="versoes">Versões</TabsTrigger>
+                  <TabsTrigger value="raw">Resultado Raw</TabsTrigger>
                 </TabsList>
 
                 <TabsContent value="prompt">
@@ -254,7 +299,53 @@ export function HistoricoGeradorPage() {
                     </CardContent>
                   </Card>
                 </TabsContent>
+
+                <TabsContent value="versoes">
+                  <Card>
+                    <CardContent className="pt-6">
+                      {selectedGeracao.versoes && selectedGeracao.versoes.length > 0 ? (
+                        <div className="space-y-4">
+                          {selectedGeracao.versoes.map((versao) => (
+                            <div key={versao.id} className="border rounded-lg p-4">
+                              <div className="flex justify-between items-center mb-2">
+                                <Badge variant="outline">Versão {versao.versao}</Badge>
+                                <span className="text-xs text-gray-500">
+                                  {formatData(versao.criado_em)}
+                                </span>
+                              </div>
+                              <VersaoContent content={versao.conteudo} />
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <div className="text-sm text-gray-500">Nenhuma versão disponível</div>
+                      )}
+                    </CardContent>
+                  </Card>
+                </TabsContent>
+
+                <TabsContent value="raw">
+                  <Card>
+                    <CardContent className="pt-6">
+                      <pre className="whitespace-pre-wrap text-sm bg-gray-50 p-4 rounded overflow-auto max-h-[500px]">
+                        {selectedGeracao.resultado_raw || 'Sem resultado bruto disponível'}
+                      </pre>
+                    </CardContent>
+                  </Card>
+                </TabsContent>
               </Tabs>
+
+              {/* Detalhes de curadoria */}
+              {selectedGeracao.curadoria_humana && selectedGeracao.curadoria_detalhes && (
+                <Card className="mt-4 border-amber-200 bg-amber-50">
+                  <CardContent className="pt-6">
+                    <h4 className="font-semibold text-amber-800 mb-2">Detalhes da Curadoria</h4>
+                    <p className="text-sm text-amber-700 whitespace-pre-wrap">
+                      {selectedGeracao.curadoria_detalhes}
+                    </p>
+                  </CardContent>
+                </Card>
+              )}
 
               <DialogFooter className="flex items-center justify-between">
                 <div className="text-sm text-gray-600">
@@ -272,6 +363,17 @@ export function HistoricoGeradorPage() {
 
 function MinutaContent({ content }: { content: string | null }) {
   const { html } = useMarkdown(content || 'Nenhuma minuta disponivel')
+
+  return (
+    <div
+      className="prose prose-sm max-w-none"
+      dangerouslySetInnerHTML={{ __html: html }}
+    />
+  )
+}
+
+function VersaoContent({ content }: { content: string }) {
+  const { html } = useMarkdown(content)
 
   return (
     <div

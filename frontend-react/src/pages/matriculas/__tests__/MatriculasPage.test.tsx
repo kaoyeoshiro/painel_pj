@@ -3,6 +3,11 @@ import { render, screen, waitFor } from '@testing-library/react'
 import MatriculasPage from '../MatriculasPage'
 import { matriculasApi } from '@/lib/api'
 
+// Mock do router
+vi.mock('@tanstack/react-router', () => ({
+  useNavigate: () => vi.fn(),
+}))
+
 // Mock da API
 vi.mock('@/lib/api', () => ({
   matriculasApi: {
