@@ -57,9 +57,10 @@ def load_model(model_path: Path) -> Optional[Dict[str, Any]]:
         return None
 
     try:
-        # Carrega checkpoint
+        # SECURITY: Usa safe_torch_load para prevenir RCE via pickle deserialization
+        from utils.safe_torch import safe_torch_load
         device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-        checkpoint = torch.load(checkpoint_path, map_location=device)
+        checkpoint = safe_torch_load(checkpoint_path, map_location="cpu")
 
         # Carrega tokenizer - suporta ambos os formatos de checkpoint
         base_model = checkpoint.get("model_name") or checkpoint.get("base_model", "neuralmind/bert-base-portuguese-cased")
@@ -74,7 +75,8 @@ def load_model(model_path: Path) -> Optional[Dict[str, Any]]:
         num_labels = len(id_to_label)
 
         model = BertClassifier(base_model, num_labels)
-        model.load_state_dict(checkpoint["model_state_dict"])
+        # assign=True evita erro "Cannot copy out of meta tensor" em PyTorch 2.x + transformers novos
+        model.load_state_dict(checkpoint["model_state_dict"], assign=True)
         model.to(device)
         model.eval()
 
@@ -169,7 +171,9 @@ def create_app(models_dir: Path) -> Flask:
 
                 # Carrega info basica do modelo - suporta ambos os formatos de checkpoint
                 try:
-                    checkpoint = torch.load(model_path / "model.pt", map_location="cpu")
+                    # SECURITY: Usa safe_torch_load para prevenir RCE
+                    from utils.safe_torch import safe_torch_load
+                    checkpoint = safe_torch_load(model_path / "model.pt", map_location="cpu")
                     id_to_label = checkpoint.get("label_map") or checkpoint.get("id_to_label", {})
                     base_model = checkpoint.get("model_name") or checkpoint.get("base_model", "unknown")
 

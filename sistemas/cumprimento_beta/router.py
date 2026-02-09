@@ -16,13 +16,17 @@ import json
 import logging
 from typing import Optional, List
 from datetime import datetime
-from fastapi import APIRouter, HTTPException, Depends, Query, BackgroundTasks
+from fastapi import APIRouter, HTTPException, Depends, Query, BackgroundTasks, Request
 from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy.orm import Session
 
 from database.connection import get_db
 from auth.models import User
 from auth.dependencies import get_current_active_user
+
+# SECURITY: Rate Limiting para endpoints de IA
+from utils.rate_limit import limiter, LIMITS, get_user_identifier
+from utils.quota_manager import check_ai_quota
 from sistemas.cumprimento_beta.dependencies import require_beta_access, get_user_pode_acessar_beta
 from sistemas.cumprimento_beta.models import (
     SessaoCumprimentoBeta, DocumentoBeta, JSONResumoBeta,
@@ -232,7 +236,9 @@ def _sessao_para_response(sessao: SessaoCumprimentoBeta, db: Session) -> StatusS
 # ==========================================
 
 @router.post("/sessoes/{sessao_id}/processar")
+@limiter.limit(LIMITS["ai"], key_func=get_user_identifier)
 async def processar_sessao(
+    request: Request,
     sessao_id: int,
     background_tasks: BackgroundTasks,
     current_user: User = Depends(require_beta_access),
@@ -243,6 +249,7 @@ async def processar_sessao(
 
     Baixa documentos, avalia relevância e extrai JSONs.
     """
+    await check_ai_quota(current_user)
     sessao = _obter_sessao_usuario(db, sessao_id, current_user)
 
     # Verifica se já está processando
@@ -351,7 +358,9 @@ async def obter_consolidacao(
 
 
 @router.post("/sessoes/{sessao_id}/consolidar")
+@limiter.limit(LIMITS["ai"], key_func=get_user_identifier)
 async def iniciar_consolidacao(
+    request: Request,
     sessao_id: int,
     streaming: bool = Query(True),
     current_user: User = Depends(require_beta_access),
@@ -362,6 +371,7 @@ async def iniciar_consolidacao(
 
     Se streaming=True, retorna SSE com chunks.
     """
+    await check_ai_quota(current_user)
     sessao = _obter_sessao_usuario(db, sessao_id, current_user)
 
     if sessao.status not in [StatusSessao.CONSOLIDANDO, StatusSessao.CHATBOT]:
@@ -391,9 +401,11 @@ async def _consolidar_streaming(db: Session, sessao: SessaoCumprimentoBeta):
 # ==========================================
 
 @router.post("/sessoes/{sessao_id}/chat")
+@limiter.limit(LIMITS["ai"], key_func=get_user_identifier)
 async def enviar_mensagem(
+    http_request: Request,
     sessao_id: int,
-    request: MensagemChatRequest,
+    chat_request: MensagemChatRequest,
     streaming: bool = Query(True),
     current_user: User = Depends(require_beta_access),
     db: Session = Depends(get_db)
@@ -403,6 +415,7 @@ async def enviar_mensagem(
 
     Se streaming=True, retorna SSE com chunks.
     """
+    await check_ai_quota(current_user)
     sessao = _obter_sessao_usuario(db, sessao_id, current_user)
 
     if sessao.status not in [StatusSessao.CHATBOT, StatusSessao.CONSOLIDANDO]:
@@ -413,11 +426,11 @@ async def enviar_mensagem(
 
     if streaming:
         return StreamingResponse(
-            _chat_streaming(db, sessao, request.conteudo),
+            _chat_streaming(db, sessao, chat_request.conteudo),
             media_type="text/event-stream"
         )
 
-    mensagem = await enviar_mensagem_chat(db, sessao, request.conteudo)
+    mensagem = await enviar_mensagem_chat(db, sessao, chat_request.conteudo)
     return MensagemChatResponse(
         id=mensagem.id,
         role=mensagem.role,
@@ -468,13 +481,16 @@ async def listar_conversas(
 # ==========================================
 
 @router.post("/sessoes/{sessao_id}/gerar-peca")
+@limiter.limit(LIMITS["ai"], key_func=get_user_identifier)
 async def criar_peca(
+    http_request: Request,
     sessao_id: int,
-    request: GerarPecaRequest,
+    peca_request: GerarPecaRequest,
     current_user: User = Depends(require_beta_access),
     db: Session = Depends(get_db)
 ):
     """Gera uma peça jurídica."""
+    await check_ai_quota(current_user)
     sessao = _obter_sessao_usuario(db, sessao_id, current_user)
 
     if sessao.status not in [StatusSessao.CHATBOT, StatusSessao.CONSOLIDANDO]:
@@ -486,8 +502,8 @@ async def criar_peca(
     peca = await gerar_peca(
         db=db,
         sessao=sessao,
-        tipo_peca=request.tipo_peca,
-        instrucoes=request.instrucoes_adicionais
+        tipo_peca=peca_request.tipo_peca,
+        instrucoes=peca_request.instrucoes_adicionais
     )
 
     download_url = f"/api/cumprimento-beta/sessoes/{sessao_id}/pecas/{peca.id}/download"

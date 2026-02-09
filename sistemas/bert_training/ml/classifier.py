@@ -173,7 +173,9 @@ class BertClassifier(nn.Module):
             Tuple de (modelo, label_map, tokenizer_name, truncation_side)
         """
         path = Path(path)
-        checkpoint = torch.load(path / 'model.pt', map_location=device)
+        # SECURITY: Usa safe_torch_load para prevenir RCE via pickle deserialization
+        from utils.safe_torch import safe_torch_load
+        checkpoint = safe_torch_load(path / 'model.pt', map_location='cpu')
 
         # Recria o modelo
         model = cls(
@@ -182,7 +184,8 @@ class BertClassifier(nn.Module):
             dropout_prob=checkpoint['config']['dropout_prob']
         )
 
-        model.load_state_dict(checkpoint['model_state_dict'])
+        # assign=True evita erro "Cannot copy out of meta tensor" em PyTorch 2.x
+        model.load_state_dict(checkpoint['model_state_dict'], assign=True)
         model.to(device)
         model.eval()
 

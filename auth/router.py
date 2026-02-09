@@ -295,3 +295,17 @@ async def password_requirements():
     Não requer autenticação.
     """
     return get_password_requirements()
+
+
+@router.get("/quota")
+async def get_quota(current_user: User = Depends(get_current_active_user)):
+    """
+    Retorna uso atual de cota de IA do usuario.
+
+    SECURITY (LLM10:2025): Permite ao usuario monitorar seu consumo diario.
+    """
+    from utils.quota_manager import quota_manager
+    return quota_manager.get_usage(
+        user_id=current_user.id,
+        is_admin=current_user.role == "admin",
+    )

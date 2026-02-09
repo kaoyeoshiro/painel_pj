@@ -34,7 +34,7 @@ from sistemas.bert_training.schemas import (
     TaskTypeEnum, JobStatusEnum, LogLevel,
     DatasetUploadResponse, DatasetListItem, DatasetDetail, ExcelValidationResult,
     RunCreate, RunCreateSimple, RunResponse, RunListItem, RunDetailResponse,
-    JobResponse, JobListItem, JobClaimRequest, JobClaimResponse, JobProgressUpdate,
+    JobResponse, JobListItem, JobClaimRequest, JobClaimResponse, JobProgressUpdate, JobCompleteRequest, JobStatusRequest,
     MetricCreate, MetricResponse, MetricDetailResponse,
     LogCreate, LogResponse, LogBatchCreate,
     WorkerRegister, WorkerRegisterResponse, WorkerResponse, WorkerHeartbeat,
@@ -49,6 +49,12 @@ from sistemas.bert_training.error_translator import (
     get_friendly_error_message, translate_error, get_quality_alert
 )
 from utils.json_sanitizer import sanitize_dataframe_dict
+from sistemas.bert_training.worker.worker_manager import (
+    ensure_worker_running, ensure_inference_server_running,
+    get_worker_status, get_full_status, get_inference_status,
+    start_training_worker, stop_training_worker,
+    start_inference_server, stop_inference_server,
+)
 import math
 import re
 import asyncio
@@ -56,6 +62,14 @@ import aiohttp
 import httpx
 
 logger = logging.getLogger(__name__)
+
+
+def _auto_start_worker():
+    """Tenta iniciar o worker automaticamente em background thread."""
+    try:
+        ensure_worker_running(api_url="http://localhost:8000")
+    except Exception as e:
+        logger.warning(f"Falha ao auto-iniciar worker BERT: {e}")
 
 router = APIRouter(prefix="/bert-training", tags=["BERT Training"])
 
@@ -231,6 +245,16 @@ async def upload_dataset(
 
     # Lê conteúdo e calcula hash
     content = await file.read()
+
+    # SECURITY: Valida magic bytes do Excel (previne upload de arquivos falsificados)
+    _XLSX_MAGIC = b"\x50\x4b\x03\x04"  # ZIP (xlsx)
+    _XLS_MAGIC = b"\xd0\xcf\x11\xe0"   # OLE2 (xls)
+    if len(content) < 4 or (content[:4] != _XLSX_MAGIC and content[:4] != _XLS_MAGIC):
+        raise HTTPException(
+            status_code=400,
+            detail="Arquivo não é um Excel válido. Verifique se o arquivo não foi renomeado."
+        )
+
     sha256_hash = hashlib.sha256(content).hexdigest()
 
     # Verifica se já existe
@@ -584,6 +608,9 @@ async def create_run(
     # Cria job na fila
     services.create_job_for_run(db, run)
 
+    # Auto-inicia worker se nao estiver rodando
+    _auto_start_worker()
+
     # Traduz mensagem de erro se houver
     error_friendly = None
     if run.error_message:
@@ -663,6 +690,9 @@ async def create_run_simple(
 
     # Cria job na fila
     services.create_job_for_run(db, run)
+
+    # Auto-inicia worker se nao estiver rodando
+    _auto_start_worker()
 
     return RunResponse(
         id=run.id,
@@ -1437,6 +1467,9 @@ async def reproduce_run(
 
     services.create_job_for_run(db, run)
 
+    # Auto-inicia worker se nao estiver rodando
+    _auto_start_worker()
+
     return RunResponse(
         id=run.id,
         name=run.name,
@@ -1550,17 +1583,13 @@ async def update_job_progress(
 @router.post("/api/jobs/{job_id}/complete")
 async def complete_job(
     job_id: int,
-    worker_token: str,
-    final_accuracy: float,
-    final_macro_f1: float,
-    final_weighted_f1: float,
-    model_fingerprint: Optional[str] = None,
+    request: JobCompleteRequest,
     db: Session = Depends(get_db)
 ):
     """
     Worker marca job como completo.
     """
-    worker = services.get_worker_by_token(db, worker_token)
+    worker = services.get_worker_by_token(db, request.worker_token)
     if not worker:
         raise HTTPException(status_code=401, detail="Token inválido")
 
@@ -1580,10 +1609,10 @@ async def complete_job(
         db=db,
         run=run,
         success=True,
-        final_accuracy=final_accuracy,
-        final_macro_f1=final_macro_f1,
-        final_weighted_f1=final_weighted_f1,
-        model_fingerprint=model_fingerprint
+        final_accuracy=request.final_accuracy,
+        final_macro_f1=request.final_macro_f1,
+        final_weighted_f1=request.final_weighted_f1,
+        model_fingerprint=request.model_fingerprint
     )
 
     # Atualiza stats do worker
@@ -1718,121 +1747,47 @@ async def start_local_worker(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    """
-    Inicia o worker local em background.
-    Útil para iniciar treinamentos sem precisar de terminal separado.
-    """
-    import subprocess
-    import sys
-    from pathlib import Path
-
-    # Verifica se há token de worker
-    token_file = Path('.bert_worker_token')
-    if not token_file.exists():
+    """Inicia o training worker local em background."""
+    success = start_training_worker()
+    if not success:
         raise HTTPException(
-            status_code=400,
-            detail="Worker local não configurado. Registre um worker primeiro."
+            status_code=500,
+            detail="Falha ao iniciar training worker. Verifique .bert_worker_token e logs."
         )
-
-    # Verifica se já há worker ativo
-    active_worker = db.query(BertWorker).filter(
-        BertWorker.is_active == True,
-        BertWorker.name == 'worker-local'
-    ).first()
-
-    if active_worker and active_worker.last_heartbeat:
-        from datetime import datetime, timedelta
-        # Usa utcnow() para comparar com datetime naive do banco
-        if active_worker.last_heartbeat > datetime.utcnow() - timedelta(minutes=2):
-            return {
-                "status": "already_running",
-                "message": "Worker local já está em execução",
-                "worker_id": active_worker.id
-            }
-
-    # Inicia worker como subprocess
-    try:
-        cmd = [
-            sys.executable,
-            '-c',
-            '''
-import sys
-sys.path.insert(0, '.')
-from sistemas.bert_training.worker.bert_worker import BertWorker
-import json
-
-token_data = json.loads(open('.bert_worker_token').read())
-token = token_data['token']
-
-worker = BertWorker(
-    api_url='http://localhost:8000',
-    token=token,
-    models_dir='./bert_models',
-    poll_interval=10
-)
-
-worker.run()
-'''
-        ]
-
-        process = subprocess.Popen(
-            cmd,
-            cwd='.',
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            creationflags=subprocess.CREATE_NEW_CONSOLE if sys.platform == 'win32' else 0
-        )
-
-        logger.info(f"Worker local iniciado por {current_user.email} (PID: {process.pid})")
-
-        return {
-            "status": "started",
-            "message": "Worker local iniciado com sucesso",
-            "pid": process.pid
-        }
-    except Exception as e:
-        logger.error(f"Erro ao iniciar worker: {e}")
-        raise HTTPException(status_code=500, detail=f"Erro ao iniciar worker: {str(e)}")
+    logger.info(f"Training worker iniciado por {current_user.email}")
+    return {"status": "started", **get_worker_status()}
 
 
 @router.post("/api/workers/start-inference")
-async def start_inference_server(
-    db: Session = Depends(get_db),
+async def start_inference_endpoint(
     current_user: User = Depends(get_current_active_user)
 ):
-    """
-    Inicia o servidor de inferência local em background.
-    Este servidor é usado para testar modelos treinados.
-    """
-    import subprocess
-    import sys
-
-    try:
-        cmd = [
-            sys.executable,
-            '-m', 'sistemas.bert_training.worker.inference_server',
-            '--models-dir', './bert_models',
-            '--port', '8765'
-        ]
-
-        process = subprocess.Popen(
-            cmd,
-            cwd='.',
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-            creationflags=subprocess.CREATE_NEW_CONSOLE if sys.platform == 'win32' else 0
+    """Inicia o servidor de inferencia local (porta 8765)."""
+    success = start_inference_server()
+    if not success:
+        raise HTTPException(
+            status_code=500,
+            detail="Falha ao iniciar inference server. Verifique bert_inference.log."
         )
+    logger.info(f"Inference server iniciado por {current_user.email}")
+    return {"status": "started", **get_inference_status()}
 
-        logger.info(f"Servidor de inferência iniciado por {current_user.email} (PID: {process.pid})")
 
-        return {
-            "status": "started",
-            "message": "Servidor de inferência iniciado na porta 8765",
-            "pid": process.pid
-        }
-    except Exception as e:
-        logger.error(f"Erro ao iniciar servidor de inferência: {e}")
-        raise HTTPException(status_code=500, detail=f"Erro ao iniciar servidor: {str(e)}")
+@router.post("/api/workers/stop-inference")
+async def stop_inference_endpoint(
+    current_user: User = Depends(get_current_active_user)
+):
+    """Para o servidor de inferencia."""
+    stop_inference_server()
+    return {"status": "stopped", **get_inference_status()}
+
+
+@router.get("/api/workers/status")
+async def workers_status_endpoint(
+    current_user: User = Depends(get_current_active_user)
+):
+    """Status de todos os processos BERT (training worker + inference server)."""
+    return get_full_status()
 
 
 @router.post("/api/workers/register", response_model=WorkerRegisterResponse)
@@ -2324,6 +2279,14 @@ async def comparar_cnj(
     """
     from sistemas.gerador_pecas.models_config_pecas import CategoriaDocumento
     from sistemas.classificador_documentos.services_extraction import get_text_extractor
+
+    # 0. Verificar inference server - auto-start se necessario
+    if not ensure_inference_server_running():
+        raise HTTPException(
+            status_code=503,
+            detail="Servidor de inferencia BERT nao esta ativo e nao foi possivel inicia-lo automaticamente. "
+                   "Inicie o servidor manualmente pelo botao 'Iniciar Servidor'."
+        )
 
     # 1. Validar e buscar categoria
     categoria = db.query(CategoriaDocumento).filter(

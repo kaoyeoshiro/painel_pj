@@ -10,7 +10,7 @@ import uuid
 import asyncio
 import logging
 from datetime import datetime
-from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends, Query, UploadFile, File, Form, status
+from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends, Query, UploadFile, File, Form, status, Request
 from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
 from typing import Optional, List, Dict, Any, AsyncGenerator
@@ -28,6 +28,11 @@ from services.performance_tracker import (
 )
 from services.config_cache import config_cache
 from admin.services_request_perf import log_request_perf
+
+# SECURITY: Rate Limiting para endpoints de IA
+from utils.rate_limit import limiter, LIMITS, get_user_identifier
+# SECURITY: Quota de IA por usuario/dia
+from utils.quota_manager import check_ai_quota
 from sistemas.gerador_pecas.models import GeracaoPeca, FeedbackPeca, VersaoPeca
 from sistemas.gerador_pecas.services import GeradorPecasService
 from sistemas.gerador_pecas.orquestrador_agentes import consolidar_dados_extracao
@@ -45,6 +50,7 @@ from sistemas.gerador_pecas.services_parecer_natjus import (
     build_parecer_audit_payload,
     evaluate_parecer_status,
     load_parecer_natjus_config,
+    piece_requires_parecer,
 )
 
 router = APIRouter(tags=["Gerador de Peças"])
@@ -812,7 +818,9 @@ async def processar_processo(
 
 
 @router.post("/processar-stream")
+@limiter.limit(LIMITS["ai"], key_func=get_user_identifier)
 async def processar_processo_stream(
+    request: Request,
     req: ProcessarProcessoRequest,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
@@ -826,6 +834,9 @@ async def processar_processo_stream(
 
     Se a flag estiver desabilitada, tipo_peca é OBRIGATÓRIO.
     """
+    # SECURITY: Verifica cota de IA
+    await check_ai_quota(current_user)
+
     from admin.models import ConfiguracaoIA
 
     # Verifica se detecção automática está habilitada (com cache)
@@ -943,6 +954,28 @@ async def processar_processo_stream(
                         print(f"[ROUTER] ERRO ao carregar filtro de categorias: {e}")
                         print(f"[ROUTER] Traceback: {traceback.format_exc()}")
                 
+                # === EARLY PARECER CHECK (pré-Agent 1) ===
+                parecer_config_early = load_parecer_natjus_config(db, use_cache=False)
+                if piece_requires_parecer(tipo_peca_inicial, parecer_config_early) and not req.parecer_upload_id:
+                    yield f"data: {json.dumps({'tipo': 'info', 'mensagem': 'Verificando documentos do processo...'})}\n\n"
+                    try:
+                        docs_metadata = await orq.agente1.consultar_codigos_documentos(cnj_limpo)
+                        parecer_status_early = evaluate_parecer_status(
+                            tipo_peca=tipo_peca_inicial,
+                            documentos=docs_metadata,
+                            config=parecer_config_early,
+                            has_user_upload=False,
+                        )
+                        if parecer_status_early.get("parecer_required") and not parecer_status_early.get("parecer_found"):
+                            logger.warning(
+                                "[PARECER-NATJUS] Early check: parecer ausente (pre-Agent 1): cnj=%s tipo_peca=%s",
+                                cnj_limpo, tipo_peca_inicial,
+                            )
+                            yield f"data: {json.dumps({'tipo': 'parecer_natjus_ausente', 'titulo': 'Parecer NATJus não encontrado', 'mensagem': 'Não foi encontrado parecer NATJus no processo. Ele é essencial para a geração adequada desta peça.', 'instrucao': 'Anexe o parecer em PDF para prosseguir.', 'tipo_peca': tipo_peca_inicial, 'modo_atual': 'automatico', 'parecer_required': True, 'parecer_found': False, 'parecer_document_codes': parecer_status_early.get('parecer_document_codes', [])})}\n\n"
+                            return
+                    except Exception as e:
+                        logger.warning("[PARECER-NATJUS] Early check falhou, continuando com pipeline normal: %s", e)
+
                 # Agente 1: Coletor TJ-MS
                 print(f"[ROUTER] >>> Iniciando Agente 1...")
                 tracker.mark("agente1_start")
@@ -1416,7 +1449,9 @@ def _extrair_texto_pdf(pdf_bytes: bytes) -> str:
 
 
 @router.post("/processar-pdfs-stream")
+@limiter.limit(LIMITS["ai"], key_func=get_user_identifier)
 async def processar_pdfs_stream(
+    request: Request,
     arquivos: List[UploadFile] = File(..., description="Arquivos PDF a serem analisados"),
     tipo_peca: Optional[str] = Form(None, description="Tipo de peça a gerar"),
     observacao_usuario: Optional[str] = Form(None, description="Observações do usuário para a IA"),
@@ -1443,6 +1478,9 @@ async def processar_pdfs_stream(
     Returns:
         Stream SSE com progresso da geração
     """
+    # SECURITY: Verifica cota de IA
+    await check_ai_quota(current_user)
+
     from admin.models import ConfiguracaoIA
 
     # Verifica se detecção automática está habilitada
@@ -2088,7 +2126,9 @@ async def editar_minuta(
 
 
 @router.post("/editar-minuta-stream")
+@limiter.limit(LIMITS["ai"], key_func=get_user_identifier)
 async def editar_minuta_stream(
+    request: Request,
     req: EditarMinutaRequest,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
@@ -2105,6 +2145,9 @@ async def editar_minuta_stream(
     - event: done - conclusão do streaming
     - event: error - erro durante o processo
     """
+    # SECURITY: Verifica cota de IA
+    await check_ai_quota(current_user)
+
     from fastapi.responses import StreamingResponse
     from services.gemini_service import stream_to_sse
     import json
@@ -2962,7 +3005,9 @@ class CurationGenerateRequest(BaseModel):
 
 
 @router.post("/curadoria/preview")
+@limiter.limit(LIMITS["ai"], key_func=get_user_identifier)
 async def curation_preview(
+    request: Request,
     req: CurationPreviewRequest,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
@@ -2983,6 +3028,9 @@ async def curation_preview(
     - Buscar argumentos adicionais
     - Gerar a peca com o endpoint /curadoria/gerar
     """
+    # SECURITY: Verifica cota de IA
+    await check_ai_quota(current_user)
+
     from sistemas.gerador_pecas.services import GeradorPecasService
     from sistemas.gerador_pecas.services_curadoria import ServicoCuradoria
     from sistemas.gerador_pecas.orquestrador_agentes import consolidar_dados_extracao
@@ -3040,6 +3088,43 @@ async def curation_preview(
                     orq.agente1.atualizar_codigos_permitidos(codigos, codigos_primeiro)
         except Exception as e:
             print(f"[CURADORIA] Aviso: filtro de categorias: {e}")
+
+        # === EARLY PARECER CHECK (pré-Agent 1, curadoria) ===
+        parecer_config_early = load_parecer_natjus_config(db, use_cache=False)
+        if (
+            piece_requires_parecer(req.tipo_peca, parecer_config_early)
+            and req.parecer_user_choice_when_missing != "continue_without"
+            and not req.parecer_upload_id
+        ):
+            try:
+                docs_metadata = await orq.agente1.consultar_codigos_documentos(cnj_limpo)
+                parecer_status_early = evaluate_parecer_status(
+                    tipo_peca=req.tipo_peca,
+                    documentos=docs_metadata,
+                    config=parecer_config_early,
+                    has_user_upload=False,
+                )
+                if parecer_status_early.get("parecer_required") and not parecer_status_early.get("parecer_found"):
+                    logger.warning(
+                        "[PARECER-NATJUS] Early check curadoria: parecer ausente (pre-Agent 1): cnj=%s tipo_peca=%s",
+                        cnj_limpo, req.tipo_peca,
+                    )
+                    raise HTTPException(
+                        status_code=409,
+                        detail={
+                            "error_code": "PARECER_NATJUS_MISSING",
+                            "title": "Parecer NATJus não encontrado",
+                            "message": "Não foi encontrado parecer NATJus no processo. Ele é essencial para a geração adequada desta peça.",
+                            "instruction": "Anexe o parecer em PDF para prosseguir.",
+                            "modo_atual": "semi_automatico",
+                            "tipo_peca": req.tipo_peca,
+                            "parecer_document_codes": parecer_status_early.get("parecer_document_codes", []),
+                        },
+                    )
+            except HTTPException:
+                raise
+            except Exception as e:
+                logger.warning("[PARECER-NATJUS] Early check curadoria falhou, continuando: %s", e)
 
         # ====== AGENTE 1: Coletor TJ-MS ======
         print(f"\n[CURADORIA] Iniciando Agente 1 para CNJ {cnj_limpo}...")
@@ -3256,7 +3341,9 @@ async def curation_search(
 
 
 @router.post("/curadoria/gerar-stream")
+@limiter.limit(LIMITS["ai"], key_func=get_user_identifier)
 async def curation_generate_stream(
+    request: Request,
     req: CurationGenerateRequest,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
@@ -3272,6 +3359,9 @@ async def curation_generate_stream(
 
     O Agente 3 permanece INALTERADO - apenas recebe o prompt curado.
     """
+    # SECURITY: Verifica cota de IA
+    await check_ai_quota(current_user)
+
     from sistemas.gerador_pecas.services import GeradorPecasService
     from sistemas.gerador_pecas.services_curadoria import ServicoCuradoria, OrigemAtivacao
 

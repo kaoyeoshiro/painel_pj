@@ -21,7 +21,7 @@ import time
 from datetime import datetime, timezone, timedelta
 from typing import Optional, List, Dict, AsyncGenerator
 
-from fastapi import APIRouter, HTTPException, Depends, Query
+from fastapi import APIRouter, HTTPException, Depends, Query, Request
 from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -40,6 +40,10 @@ from .models import (
     InfoTransitoJulgado
 )
 from .services import RelatorioCumprimentoService
+
+# SECURITY: Rate Limiting para endpoints de IA
+from utils.rate_limit import limiter, LIMITS, get_user_identifier
+from utils.quota_manager import check_ai_quota
 
 # Detector de Agravo de Instrumento
 from sistemas.pedido_calculo.document_downloader import DocumentDownloader
@@ -94,7 +98,9 @@ class FeedbackRequest(BaseModel):
 # ============================================
 
 @router.post("/processar-stream")
+@limiter.limit(LIMITS["ai"], key_func=get_user_identifier)
 async def processar_stream(
+    request: Request,
     req: ProcessarRequest,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
@@ -109,6 +115,7 @@ async def processar_stream(
     4. Localiza trânsito em julgado
     5. Gera relatório com IA
     """
+    await check_ai_quota(current_user)
     import logging
     logger = logging.getLogger(__name__)
 

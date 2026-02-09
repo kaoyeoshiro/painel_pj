@@ -19,7 +19,7 @@ import base64
 from datetime import datetime
 from typing import Optional, List
 
-from fastapi import APIRouter, HTTPException, Depends, Query, File, UploadFile, Form
+from fastapi import APIRouter, HTTPException, Depends, Query, File, UploadFile, Form, Request
 from fastapi.responses import StreamingResponse, FileResponse
 from sqlalchemy.orm import Session
 from pydantic import BaseModel
@@ -39,6 +39,10 @@ from sistemas.prestacao_contas.schemas import (
 )
 from sistemas.prestacao_contas.services import OrquestradorPrestacaoContas
 
+# SECURITY: Rate Limiting para endpoints de IA
+from utils.rate_limit import limiter, LIMITS, get_user_identifier
+from utils.quota_manager import check_ai_quota
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["Prestação de Contas"])
@@ -49,7 +53,9 @@ router = APIRouter(tags=["Prestação de Contas"])
 # =====================================================
 
 @router.post("/analisar-stream")
+@limiter.limit(LIMITS["ai"], key_func=get_user_identifier)
 async def analisar_processo_stream(
+    http_request: Request,
     request: AnalisarProcessoRequest,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
@@ -59,6 +65,7 @@ async def analisar_processo_stream(
 
     Retorna eventos SSE com progresso do processamento.
     """
+    await check_ai_quota(current_user)
 
     async def gerar_eventos():
         logger.debug(f"SSE: Iniciando stream para {request.numero_cnj}")

@@ -12,7 +12,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import Dict, List, Optional, Any
 
-from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, BackgroundTasks
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, BackgroundTasks, Request
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -22,6 +22,9 @@ from database.connection import get_db
 from utils.timezone import to_iso_utc, now_utc
 from auth.dependencies import get_current_active_user, get_current_user_from_token_or_query
 from auth.models import User
+# SECURITY: Rate Limiting para endpoints de IA
+from utils.rate_limit import limiter, LIMITS, get_user_identifier
+from utils.quota_manager import check_ai_quota
 from config import UPLOAD_FOLDER, ALLOWED_EXTENSIONS, DEFAULT_MODEL, FULL_REPORT_MODEL
 
 from sistemas.matriculas_confrontantes.models import Analise, Registro, LogSistema, FeedbackMatricula, GrupoAnalise, ArquivoUpload
@@ -399,7 +402,9 @@ async def list_analyses(
 
 
 @router.post("/analisar/{file_id}")
+@limiter.limit(LIMITS["ai"], key_func=get_user_identifier)
 async def analisar_documento(
+    request: Request,
     file_id: str,
     background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_active_user),
@@ -408,6 +413,7 @@ async def analisar_documento(
     matricula_principal: Optional[str] = None
 ):
     """Inicia análise de documento com IA"""
+    await check_ai_quota(current_user)
     from admin.models import ConfiguracaoIA
     
     filepath = UPLOAD_FOLDER / file_id
@@ -458,21 +464,24 @@ async def analisar_documento(
 
 
 @router.post("/analisar-lote")
+@limiter.limit(LIMITS["ai"], key_func=get_user_identifier)
 async def analisar_lote(
-    request: AnaliseLoteRequest,
+    http_request: Request,
+    lote_request: AnaliseLoteRequest,
     background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
     """Inicia análise conjunta de múltiplos documentos"""
+    await check_ai_quota(current_user)
     from admin.models import ConfiguracaoIA
-    
-    if not request.file_ids or len(request.file_ids) == 0:
+
+    if not lote_request.file_ids or len(lote_request.file_ids) == 0:
         raise HTTPException(status_code=400, detail="Nenhum arquivo selecionado")
     
     # Verifica se todos os arquivos existem
     file_paths = []
-    for file_id in request.file_ids:
+    for file_id in lote_request.file_ids:
         filepath = UPLOAD_FOLDER / file_id
         if not filepath.exists():
             raise HTTPException(status_code=404, detail=f"Arquivo não encontrado: {file_id}")
@@ -494,7 +503,7 @@ async def analisar_lote(
     
     # Cria grupo de análise
     grupo = GrupoAnalise(
-        nome=request.nome_grupo or f"Análise de {len(request.file_ids)} documentos",
+        nome=lote_request.nome_grupo or f"Análise de {len(lote_request.file_ids)} documentos",
         status="processando",
         usuario_id=current_user.id
     )
@@ -503,26 +512,26 @@ async def analisar_lote(
     db.refresh(grupo)
     
     # Marca arquivos como em processamento
-    for file_id in request.file_ids:
+    for file_id in lote_request.file_ids:
         state.processing[file_id] = True
-    
-    add_log(db, f"Iniciando análise em lote: {len(request.file_ids)} arquivos (grupo {grupo.id})", "info")
+
+    add_log(db, f"Iniciando análise em lote: {len(lote_request.file_ids)} arquivos (grupo {grupo.id})", "info")
     
     # Executa análise em background
     background_tasks.add_task(
         run_batch_analysis_task,
         grupo.id,
-        request.file_ids,
+        lote_request.file_ids,
         file_paths,
         state.model,
         api_key,
         current_user.id,
-        request.matricula_principal
+        lote_request.matricula_principal
     )
-    
+
     return {
-        "success": True, 
-        "message": f"Análise em lote iniciada com {len(request.file_ids)} arquivos",
+        "success": True,
+        "message": f"Análise em lote iniciada com {len(lote_request.file_ids)} arquivos",
         "grupo_id": grupo.id
     }
 
@@ -1106,11 +1115,14 @@ async def clear_logs(
 # ============================================
 
 @router.post("/relatorio/gerar", response_model=RelatorioResponse)
+@limiter.limit(LIMITS["ai"], key_func=get_user_identifier)
 async def gerar_relatorio(
+    request: Request,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
     """Gera relatório completo usando IA ou retorna o salvo"""
+    await check_ai_quota(current_user)
     import logging
     logger = logging.getLogger("matriculas_router")
     

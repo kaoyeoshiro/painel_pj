@@ -30,6 +30,9 @@ from sqlalchemy.orm import Session
 from auth.dependencies import get_current_active_user
 from auth.models import User
 from database.connection import get_db
+# SECURITY: Rate Limiting para endpoints de IA
+from utils.rate_limit import limiter, LIMITS, get_user_identifier
+from utils.quota_manager import check_ai_quota
 from utils.timezone import to_iso_utc, get_utc_now
 
 from .models import (
@@ -1038,7 +1041,9 @@ async def exportar_json(
 # ============================================
 
 @router.post("/classificar-avulso")
+@limiter.limit(LIMITS["ai"], key_func=get_user_identifier)
 async def classificar_documento_avulso(
+    request: Request,
     arquivo: UploadFile = File(...),
     prompt_id: Optional[int] = Form(None),
     prompt_texto: Optional[str] = Form(None),
@@ -1054,6 +1059,7 @@ async def classificar_documento_avulso(
 
     Permite classificação rápida sem criar projeto.
     """
+    await check_ai_quota(current_user)
     service = ClassificadorService(db)
 
     # Obtém prompt
@@ -1270,6 +1276,15 @@ async def upload_arquivos_lote(
             if len(conteudo) > MAX_SIZE:
                 erros.append({"arquivo": arquivo.filename, "erro": "Arquivo muito grande"})
                 continue
+
+            # SECURITY: Valida magic bytes (previne upload de arquivos falsificados)
+            if len(conteudo) >= 4:
+                if ext == '.pdf' and conteudo[:4] != b"%PDF":
+                    erros.append({"arquivo": arquivo.filename, "erro": "Não é um arquivo PDF válido"})
+                    continue
+                if ext == '.zip' and conteudo[:4] != b"\x50\x4b\x03\x04":
+                    erros.append({"arquivo": arquivo.filename, "erro": "Não é um arquivo ZIP válido"})
+                    continue
 
             # Calcula hash
             arquivo_hash = hashlib.sha256(conteudo).hexdigest()

@@ -20,7 +20,7 @@ import asyncio
 from datetime import datetime
 from typing import Optional, List, Dict, AsyncGenerator
 
-from fastapi import APIRouter, HTTPException, Depends, Query
+from fastapi import APIRouter, HTTPException, Depends, Query, Request
 from fastapi.responses import FileResponse, StreamingResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
@@ -34,6 +34,10 @@ from admin.models import ConfiguracaoIA, PromptConfig
 from .services import PedidoCalculoService
 from .models import ResultadoAgente1, ResultadoAgente2
 from .ia_logger import create_logger, get_logger
+
+# SECURITY: Rate Limiting para endpoints de IA
+from utils.rate_limit import limiter, LIMITS, get_user_identifier
+from utils.quota_manager import check_ai_quota
 
 
 def _converter_rtf_para_pdf(rtf_bytes: bytes) -> bytes:
@@ -273,15 +277,18 @@ async def extrair_informacoes(
 
 
 @router.post("/gerar-pedido")
+@limiter.limit(LIMITS["ai"], key_func=get_user_identifier)
 async def gerar_pedido(
+    request: Request,
     req: GerarPedidoRequest,
     current_user: User = Depends(get_current_active_user)
 ):
     """
     Gera pedido de cálculo (Agente 3).
-    
+
     Retorna documento em formato Markdown.
     """
+    await check_ai_quota(current_user)
     try:
         from .agentes import Agente3GeracaoPedido
         from .models import (
@@ -386,7 +393,9 @@ async def gerar_pedido(
 
 
 @router.post("/processar-stream")
+@limiter.limit(LIMITS["ai"], key_func=get_user_identifier)
 async def processar_stream(
+    request: Request,
     req: ProcessarStreamRequest,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
@@ -396,6 +405,7 @@ async def processar_stream(
 
     Pipeline completo: Consulta TJ-MS → XML → Documentos → Extração → Geração
     """
+    await check_ai_quota(current_user)
     # Captura IDs fora do gerador para poder salvar no banco
     user_id = current_user.id
     numero_cnj = req.numero_cnj
@@ -1439,7 +1449,9 @@ class EditarPedidoRequest(BaseModel):
 
 
 @router.post("/editar-pedido")
+@limiter.limit(LIMITS["ai"], key_func=get_user_identifier)
 async def editar_pedido(
+    request: Request,
     req: EditarPedidoRequest,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
@@ -1447,6 +1459,7 @@ async def editar_pedido(
     """
     Edita pedido de cálculo via chat com IA.
     """
+    await check_ai_quota(current_user)
     try:
         # Busca prompt do banco de dados
         prompt_db = db.query(PromptConfig).filter(

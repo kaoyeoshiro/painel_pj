@@ -9,7 +9,7 @@ import re
 import json
 import tempfile
 from datetime import datetime
-from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends
+from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends, Request
 from fastapi.responses import FileResponse
 from pydantic import BaseModel
 from typing import Optional
@@ -18,6 +18,9 @@ from sqlalchemy.orm import Session
 from auth.dependencies import get_current_active_user
 from auth.models import User
 from database.connection import get_db
+# SECURITY: Rate Limiting para endpoints de IA
+from utils.rate_limit import limiter, LIMITS, get_user_identifier
+from utils.quota_manager import check_ai_quota
 from utils.timezone import to_iso_utc
 from sistemas.assistencia_judiciaria.core.logic import full_flow, DEFAULT_MODEL
 from sistemas.assistencia_judiciaria.core.document import markdown_to_docx, docx_to_pdf
@@ -210,18 +213,21 @@ async def test_tjms_connection(current_user: User = Depends(get_current_active_u
 
 
 @router.post("/consultar")
+@limiter.limit(LIMITS["ai"], key_func=get_user_identifier)
 async def consultar_processo(
+    request: Request,
     req: ConsultationRequest,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
     """
     Consulta um processo no TJ-MS e gera relatório com IA.
-    
+
     - **cnj**: Número do processo no formato CNJ
     - **model**: Modelo de IA a ser usado (opcional)
     - **force**: Forçar nova consulta mesmo se já existir cache
     """
+    await check_ai_quota(current_user)
     import logging
     logger = logging.getLogger("assistencia_router")
     
