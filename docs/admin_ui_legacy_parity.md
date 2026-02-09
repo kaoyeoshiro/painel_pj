@@ -110,3 +110,71 @@ Componentes e camada de paridade efetivamente usados:
 - `frontend-react/src/components/layout/AppLayout.tsx` (shell admin sem interferência visual)
 - `main.py` (exposição das rotas legadas no modo React + fallback de `restaurar-slugs`)
 
+## E) Operação do Frame Bridge (Passo 3)
+
+### Objetivo
+Permitir que o React (Vite em outra origem) abra telas legadas em `iframe` com o mesmo token de autenticação durante desenvolvimento local.
+
+### Fluxo técnico
+1. `LegacyAdminFramePage` monta URL para `/admin/_frame-bridge?target=...&token=...`.
+2. O endpoint `/admin/_frame-bridge` grava o token em `localStorage/sessionStorage` na origem do backend.
+3. O bridge redireciona para a rota legada alvo (`target`), já autenticada na mesma origem.
+
+Arquivos:
+- `frontend-react/src/pages/admin/legacy/LegacyAdminFramePage.tsx`
+- `main.py` (`/admin/_frame-bridge`)
+
+### Prefixos permitidos no bridge
+Atualmente permitidos no `allowed_prefixes`:
+1. `/admin/`
+2. `/api/gerador-pecas/config/admin`
+3. `/assistencia`
+4. `/matriculas`
+5. `/gerador-pecas`
+6. `/pedido-calculo`
+7. `/prestacao-contas`
+8. `/relatorio-cumprimento`
+9. `/classificador`
+10. `/bert-training`
+
+Se `target` vier fora dessa lista, o bridge aplica fallback para `/admin/users`.
+
+### Matriz de variáveis de ambiente
+
+| Variável | Escopo | Valor padrão | Uso |
+|---|---|---|---|
+| `FRONTEND_MODE` | Backend FastAPI | `react` | Define se o backend serve SPA React (`react`) ou frontend Jinja legado (`legacy`). |
+| `VITE_LEGACY_ADMIN_ORIGIN` | Frontend React (Vite) | vazio | Origem do backend legado para o iframe. Em dev, se vazio, `LegacyAdminFramePage` usa `http://127.0.0.1:8000`. |
+| `VITE_PORTAL_NATIVE_MATRICULAS` | Frontend React (Vite) | `0`/ausente | Canary de migração progressiva. `1` ativa rota nativa React em `/matriculas`; ausente mantém espelhamento legado via iframe. |
+| `E2E_BASE_URL` | Playwright | `http://127.0.0.1:5178` | Base URL dos testes no frontend React. |
+| `E2E_LEGACY_BASE_URL` | Playwright | `http://127.0.0.1:8000` | Base URL do legado para baseline visual. |
+
+### Segurança por ambiente (iframe)
+
+Desenvolvimento:
+1. `X-Frame-Options` não é enviado para permitir comparação visual cross-origin (`Vite -> backend`).
+2. CSP inclui `frame-ancestors` com localhost/127.0.0.1 em portas 5173/5178.
+
+Produção:
+1. `X-Frame-Options: SAMEORIGIN`.
+2. CSP mais restritiva (sem `unsafe-eval`).
+
+Arquivo de referência:
+- `main.py` (`SecurityHeadersMiddleware`)
+
+### Checklist de diagnóstico rápido
+1. Confirmar backend em `http://127.0.0.1:8000` e frontend em `http://127.0.0.1:5178`.
+2. Confirmar `FRONTEND_MODE=react`.
+3. Abrir rota React de admin/sistema e validar presença de `iframe[title="Tela administrativa legada"]`.
+4. Se tela em branco:
+   - verificar URL final do iframe (deve cair em rota legada válida),
+   - verificar console do navegador para erro CSP/frame,
+   - conferir se `target` do bridge está em `allowed_prefixes`.
+5. Validar com Playwright:
+   - `npm run test:admin-visual`
+   - `npm run test:portal-visual`
+   - `npm run test:portal-smoke`
+
+### Resultado operacional atual
+1. Bridge ativo e validado para admin + 8 sistemas.
+2. Sem falhas recorrentes de carregamento nos testes automatizados desta rodada.

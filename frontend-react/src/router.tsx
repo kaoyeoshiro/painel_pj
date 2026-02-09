@@ -15,6 +15,7 @@ import { DesignSystemPage } from '@/pages/dev/DesignSystemPage'
 import { CumprimentoBetaPage } from '@/pages/cumprimento-beta/CumprimentoBetaPage'
 import { ExtratorAutosPage } from '@/pages/extrator-autos/ExtratorAutosPage'
 import { LegacyAdminFramePage } from '@/pages/admin/legacy/LegacyAdminFramePage'
+import MatriculasPage from '@/pages/matriculas/MatriculasPage'
 
 
 // ---------------------------------------------------------------------------
@@ -117,7 +118,7 @@ const assistenciaRoute = createRoute({
 const matriculasRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: '/matriculas',
-  component: MatriculasLegacyPage,
+  component: MatriculasRoutePage,
 })
 
 const bertTrainingRoute = createRoute({
@@ -164,6 +165,15 @@ function AdminTesteCategoriasLegacyPage() { return <LegacyAdminFramePage legacyP
 function AdminTjmsDocsLegacyPage() { return <LegacyAdminFramePage legacyPath="/admin/tjms-docs" /> }
 function AdminTjmsDocsPlanoLegacyPage() { return <LegacyAdminFramePage legacyPath="/admin/tjms-docs/plano" /> }
 function AdminRestaurarSlugsLegacyPage() { return <LegacyAdminFramePage legacyPath="/admin/restaurar-slugs" /> }
+
+function shouldUseNativeMatriculas(): boolean {
+  return import.meta.env.VITE_PORTAL_NATIVE_MATRICULAS === '1'
+}
+
+function MatriculasRoutePage() {
+  if (shouldUseNativeMatriculas()) return <MatriculasPage />
+  return <MatriculasLegacyPage />
+}
 
 // ---------------------------------------------------------------------------
 // Rotas administrativas (/admin/*) - com layout

@@ -59,26 +59,36 @@ Evidencia de execucao:
 ---
 
 ### Passo 3 - Consolidacao de estabilidade do frame bridge
-Status: EM ANDAMENTO (parcialmente concluido)
+Status: CONCLUIDO
 
-Ja concluido:
+Entregas implementadas:
 1. `main.py` com `allowed_prefixes` do `/admin/_frame-bridge` cobrindo admin + 8 sistemas.
 2. Espelhos de rotas legadas dos 8 sistemas ativos em `FRONTEND_MODE=react`.
+3. Guia operacional documentado em `docs/admin_ui_legacy_parity.md`, com:
+   - fluxo do bridge,
+   - prefixos permitidos,
+   - matriz de variaveis (`FRONTEND_MODE`, `VITE_LEGACY_ADMIN_ORIGIN`, `E2E_*`),
+   - politica de seguranca dev/prod (`X-Frame-Options`, `CSP frame-ancestors`),
+   - checklist de diagnostico.
 
-Pendente para fechar o passo:
-1. Documentar operacao/diagnostico de iframe em um guia curto (ex.: `docs/admin_ui_legacy_parity.md`).
-2. Registrar matriz de variaveis de ambiente e exemplos:
-   - `FRONTEND_MODE`
-   - `VITE_LEGACY_ADMIN_ORIGIN`
-3. Revisao final de headers/politica de iframe por ambiente (dev/prod).
-
-Critrio de aceite para fechar:
-1. Sem erro recorrente de carregamento de iframe em execucao local padrao.
+Evidencia de execucao/estabilidade:
+1. `npm run test:admin-visual` -> `32 passed`
+2. `npm run test:portal-visual` -> `16 passed`
+3. `npm run test:portal-smoke` -> `8 passed`
 
 ---
 
 ### Passo 4 - Roteiro de migracao progressiva para React nativo
-Status: PENDENTE (planejado)
+Status: EM ANDAMENTO
+
+Implementacao inicial concluida:
+1. Canary de migracao criado para o primeiro sistema da fila (`/matriculas`).
+2. A rota `/matriculas` no `frontend-react/src/router.tsx` agora suporta:
+   - `VITE_PORTAL_NATIVE_MATRICULAS=1` -> componente React nativo (`MatriculasPage`)
+   - default/ausente -> espelho legado via `LegacyAdminFramePage`
+3. Validacao apos canary:
+   - `npm run build` -> OK
+   - `npm run test:portal-smoke` -> `8 passed`
 
 Ordem proposta:
 1. Matriculas
