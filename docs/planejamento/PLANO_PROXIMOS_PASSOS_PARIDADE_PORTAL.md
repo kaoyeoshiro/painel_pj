@@ -82,12 +82,14 @@ Evidencia de execucao/estabilidade:
 Status: EM ANDAMENTO
 
 Implementacao inicial concluida:
-1. Canary de migracao criado para os dois primeiros sistemas da fila:
+1. Canary de migracao criado para os tres primeiros sistemas da fila:
    - `/matriculas`
    - `/assistencia`
+   - `/classificador`
 2. Rotas no `frontend-react/src/router.tsx` agora suportam:
    - `VITE_PORTAL_NATIVE_MATRICULAS=1` -> `MatriculasPage`
    - `VITE_PORTAL_NATIVE_ASSISTENCIA=1` -> `AssistenciaPage`
+   - `VITE_PORTAL_NATIVE_CLASSIFICADOR=1` -> `ClassificadorPage`
    - default/ausente -> espelho legado via `LegacyAdminFramePage`
 3. Ajuste de suporte nos testes para modo nativo sem iframe:
    - `frontend-react/e2e/portal.visual.spec.ts` aceita fluxo com ou sem iframe
@@ -96,7 +98,9 @@ Implementacao inicial concluida:
    - `npm run build` -> OK
    - `CI=1 VITE_PORTAL_NATIVE_MATRICULAS=1 ... portal.visual --grep matriculas` -> `2 passed`
    - `CI=1 VITE_PORTAL_NATIVE_ASSISTENCIA=1 ... portal.visual --grep assistencia` -> `2 passed`
+   - `CI=1 VITE_PORTAL_NATIVE_CLASSIFICADOR=1 ... portal.visual --grep classificador` -> `2 passed`
    - `CI=1 VITE_PORTAL_NATIVE_MATRICULAS=1 VITE_PORTAL_NATIVE_ASSISTENCIA=1 ... portal.smoke --grep "assistencia|matriculas"` -> `2 passed`
+   - `CI=1 VITE_PORTAL_NATIVE_CLASSIFICADOR=1 ... portal.smoke --grep classificador` -> `1 passed`
 
 Ordem proposta:
 1. Matriculas
@@ -115,7 +119,7 @@ Regra de migracao por sistema:
 4. Trocar rota de iframe para componente React apenas se ambos verdes.
 
 Proximo item imediato:
-1. Repetir o mesmo padrao canary para `classificador` e validar visual/smoke.
+1. Repetir o mesmo padrao canary para `pedido-calculo` e validar visual/smoke.
 
 ---
 

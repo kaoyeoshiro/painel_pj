@@ -17,6 +17,7 @@ import { ExtratorAutosPage } from '@/pages/extrator-autos/ExtratorAutosPage'
 import { LegacyAdminFramePage } from '@/pages/admin/legacy/LegacyAdminFramePage'
 import MatriculasPage from '@/pages/matriculas/MatriculasPage'
 import { AssistenciaPage } from '@/pages/assistencia/AssistenciaPage'
+import { ClassificadorPage } from '@/pages/classificador/ClassificadorPage'
 
 
 // ---------------------------------------------------------------------------
@@ -83,7 +84,7 @@ const extratorAutosRoute = createRoute({
 const classificadorRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: '/classificador',
-  component: ClassificadorLegacyPage,
+  component: ClassificadorRoutePage,
 })
 
 const pedidoCalculoRoute = createRoute({
@@ -183,6 +184,15 @@ function shouldUseNativeAssistencia(): boolean {
 function AssistenciaRoutePage() {
   if (shouldUseNativeAssistencia()) return <AssistenciaPage />
   return <AssistenciaLegacyPage />
+}
+
+function shouldUseNativeClassificador(): boolean {
+  return import.meta.env.VITE_PORTAL_NATIVE_CLASSIFICADOR === '1'
+}
+
+function ClassificadorRoutePage() {
+  if (shouldUseNativeClassificador()) return <ClassificadorPage />
+  return <ClassificadorLegacyPage />
 }
 
 // ---------------------------------------------------------------------------
