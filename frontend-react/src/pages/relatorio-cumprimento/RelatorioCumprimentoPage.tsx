@@ -1,7 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { useNavigate } from '@tanstack/react-router'
 import {
-  ArrowLeft,
   Play,
   FileText,
   Send,
@@ -29,6 +27,8 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { Textarea } from '@/components/ui/textarea'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
+import { PageContainer } from '@/components/layout/PageContainer'
+import { PageHeader } from '@/components/layout/PageHeader'
 import { useAuthStore } from '@/stores/auth-store'
 import { useApiQuery } from '@/hooks/useApiQuery'
 import { useMarkdown } from '@/hooks/useMarkdown'
@@ -62,7 +62,6 @@ const ETAPAS_INICIAIS: EtapaPipeline[] = [
 ]
 
 export function RelatorioCumprimentoPage() {
-  const navigate = useNavigate()
   const user = useAuthStore((state) => state.user)
 
   // Estado principal da pagina (maquina de estados)
@@ -492,22 +491,12 @@ export function RelatorioCumprimentoPage() {
   )
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
-      {/* Header */}
-      <header className="sticky top-0 z-50 w-full border-b bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60">
-        <div className="container flex h-16 items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => navigate({ to: '/dashboard' })}>
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <div className="flex items-center gap-2">
-              <FileText className="h-6 w-6 text-emerald-600" />
-              <div>
-                <h1 className="text-lg font-semibold">Relatorio de Cumprimento</h1>
-                <p className="text-xs text-muted-foreground">Cumprimento de Sentenca</p>
-              </div>
-            </div>
-          </div>
+    <PageContainer>
+      <PageHeader
+        title="Relatorio de Cumprimento"
+        subtitle="Cumprimento de Sentenca"
+        backTo="/dashboard"
+        actions={
           <div className="flex items-center gap-4">
             <span className="text-sm text-muted-foreground">{user?.full_name}</span>
             {/* Drawer de historico */}
@@ -571,11 +560,10 @@ export function RelatorioCumprimentoPage() {
               </SheetContent>
             </Sheet>
           </div>
-        </div>
-      </header>
+        }
+      />
 
-      {/* Conteudo Principal */}
-      <main className="container py-6 space-y-6">
+      <div className="space-y-6">
         {/* Card de Entrada - Numero do Processo */}
         <Card>
           <CardHeader>
@@ -997,8 +985,8 @@ export function RelatorioCumprimentoPage() {
             </Card>
           </>
         )}
-      </main>
-    </div>
+      </div>
+    </PageContainer>
   )
 }
 

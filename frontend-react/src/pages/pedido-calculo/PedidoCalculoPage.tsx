@@ -1,5 +1,4 @@
 import { useState, useEffect, useRef } from 'react'
-import { useNavigate, Link } from '@tanstack/react-router'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -14,6 +13,8 @@ import { useToast } from '@/components/ui/toast'
 import { useApiQuery } from '@/hooks/useApiQuery'
 import { pedidoCalculoApi, getToken } from '@/lib/api'
 import { useMarkdown } from '@/hooks/useMarkdown'
+import { PageContainer } from '@/components/layout/PageContainer'
+import { PageHeader } from '@/components/layout/PageHeader'
 import {
   Calculator,
   History,
@@ -45,7 +46,6 @@ import type {
 } from '@/types/pedido-calculo'
 
 export function PedidoCalculoPage() {
-  const navigate = useNavigate()
   const { toast } = useToast()
 
   // Estado do formulario
@@ -647,90 +647,72 @@ export function PedidoCalculoPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-sky-50 via-white to-blue-50">
-      {/* Header */}
-      <header className="bg-white/90 backdrop-blur-sm shadow-sm border-b sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-4">
-              <button type="button" onClick={() => navigate({ to: '/dashboard' })} className="text-gray-500 hover:text-gray-700 transition-colors" aria-label="Voltar ao Dashboard">
-                ←
-              </button>
-              <div className="border-l border-gray-300 pl-4">
-                <h1 className="font-semibold text-gray-800">Pedido de Cálculo Judicial</h1>
-                <p className="text-xs text-gray-500">Cumprimento de Sentença contra a Fazenda Pública</p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <Sheet>
-                <SheetTrigger asChild>
-                  <Button variant="ghost" size="icon">
-                    <History className="h-5 w-5" />
-                  </Button>
-                </SheetTrigger>
-                <SheetContent>
-                  <SheetHeader>
-                    <SheetTitle>Histórico</SheetTitle>
-                  </SheetHeader>
-                  <ScrollArea className="h-[calc(100vh-80px)] mt-4">
-                    {isLoadingHistorico ? (
-                      <div className="flex items-center justify-center py-8">
-                        <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
-                      </div>
-                    ) : !historico || historico.length === 0 ? (
-                      <div className="text-center py-8 text-gray-400">
-                        <Calculator className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                        <p className="text-sm">Nenhum pedido gerado ainda</p>
-                      </div>
-                    ) : (
-                      <div className="space-y-2">
-                        {historico.map((item) => {
-                          const numero = item.numero_cnj_formatado || item.numero_cnj || 'Processo'
-                          const autor =
-                            item.dados_processo?.autor ||
-                            item.dados_agente1?.dados_basicos?.autor ||
-                            'Pedido de Cálculo'
-                          const data = item.criado_em ? new Date(item.criado_em) : null
-
-                          return (
-                            <div
-                              key={item.id}
-                              onClick={() => carregarDoHistorico(item.id)}
-                              className="p-3 bg-gray-50 hover:bg-gray-100 rounded-lg cursor-pointer transition-colors"
-                            >
-                              <div className="flex items-center justify-between mb-1">
-                                <span className="text-sm font-medium text-gray-800 truncate">{numero}</span>
-                                <span className="text-xs text-gray-400">
-                                  {data ? data.toLocaleDateString('pt-BR') : '-'}
-                                </span>
-                              </div>
-                              <div className="flex items-center justify-between">
-                                <span className="text-xs text-gray-500 truncate">{autor}</span>
-                                <span className="text-xs text-gray-400">
-                                  {data ? data.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '-'}
-                                </span>
-                              </div>
-                            </div>
-                          )
-                        })}
-                      </div>
-                    )}
-                  </ScrollArea>
-                </SheetContent>
-              </Sheet>
-
-              <Button variant="ghost" asChild>
-                <Link to="/dashboard">Dashboard</Link>
+    <PageContainer>
+      <PageHeader
+        title="Pedido de Cálculo Judicial"
+        subtitle="Cumprimento de Sentença contra a Fazenda Pública"
+        backTo="/dashboard"
+        actions={
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="icon">
+                <History className="h-5 w-5" />
               </Button>
-            </div>
-          </div>
-        </div>
-      </header>
+            </SheetTrigger>
+            <SheetContent>
+              <SheetHeader>
+                <SheetTitle>Histórico</SheetTitle>
+              </SheetHeader>
+              <ScrollArea className="h-[calc(100vh-80px)] mt-4">
+                {isLoadingHistorico ? (
+                  <div className="flex items-center justify-center py-8">
+                    <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
+                  </div>
+                ) : !historico || historico.length === 0 ? (
+                  <div className="text-center py-8 text-gray-400">
+                    <Calculator className="h-12 w-12 mx-auto mb-3 opacity-50" />
+                    <p className="text-sm">Nenhum pedido gerado ainda</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {historico.map((item) => {
+                      const numero = item.numero_cnj_formatado || item.numero_cnj || 'Processo'
+                      const autor =
+                        item.dados_processo?.autor ||
+                        item.dados_agente1?.dados_basicos?.autor ||
+                        'Pedido de Cálculo'
+                      const data = item.criado_em ? new Date(item.criado_em) : null
 
-      {/* Main Content */}
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        {/* Formulario Principal */}
+                      return (
+                        <div
+                          key={item.id}
+                          onClick={() => carregarDoHistorico(item.id)}
+                          className="p-3 bg-gray-50 hover:bg-gray-100 rounded-lg cursor-pointer transition-colors"
+                        >
+                          <div className="flex items-center justify-between mb-1">
+                            <span className="text-sm font-medium text-gray-800 truncate">{numero}</span>
+                            <span className="text-xs text-gray-400">
+                              {data ? data.toLocaleDateString('pt-BR') : '-'}
+                            </span>
+                          </div>
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs text-gray-500 truncate">{autor}</span>
+                            <span className="text-xs text-gray-400">
+                              {data ? data.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '-'}
+                            </span>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </ScrollArea>
+            </SheetContent>
+          </Sheet>
+        }
+      />
+
+      {/* Formulario Principal */}
         <Card className="mb-6">
           <CardHeader>
             <div className="flex items-center gap-3">
@@ -837,7 +819,6 @@ export function PedidoCalculoPage() {
             )}
           </CardContent>
         </Card>
-      </main>
 
       {/* Modal de Progresso */}
       <Dialog open={isProcessing} onOpenChange={setIsProcessing}>
@@ -1138,7 +1119,7 @@ export function PedidoCalculoPage() {
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+    </PageContainer>
   )
 }
 

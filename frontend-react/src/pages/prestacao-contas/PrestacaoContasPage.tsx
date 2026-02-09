@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { PageContainer } from '@/components/layout'
+import { PageContainer, PageHeader } from '@/components/layout'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -1537,14 +1537,12 @@ export function PrestacaoContasPage() {
 
   return (
     <PageContainer className="max-w-5xl space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Analise de Prestacao de Contas</h1>
-          <p className="text-muted-foreground">Processos de Medicamentos</p>
-        </div>
-        {renderHistoricoSheet()}
-      </div>
+      <PageHeader
+        title="Análise de Prestação de Contas"
+        subtitle="Processos de Medicamentos"
+        backTo="/dashboard"
+        actions={renderHistoricoSheet()}
+      />
 
       <Separator />
 

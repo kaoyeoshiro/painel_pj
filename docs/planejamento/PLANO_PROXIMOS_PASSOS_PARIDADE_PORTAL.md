@@ -249,6 +249,18 @@ Leitura do status:
 2. Portal ainda precisa de ajuste fino em 5 telas mobile para concluir etapa `0.08`.
 3. Threshold operacional permanece em `0.12` ate fechamento da etapa `0.08`.
 
+Ajustes aplicados nesta iteracao:
+1. `PageHeader`: botao de voltar simplificado para icone (sem container circular), alinhado ao pedido de UX.
+2. Removidos icones-badge no titulo das telas:
+   - `assistencia`
+   - `pedido-calculo`
+   - `prestacao-contas`
+   - `relatorio-cumprimento`
+3. Validacao apos ajustes:
+   - `E2E_MAX_DIFF_RATIO=0.08` (rotas criticas) -> permanecem as mesmas 5 falhas mobile.
+   - `E2E_MAX_DIFF_RATIO=0.12 npm run test:portal-visual` -> `16 passed`.
+   - `npm run test:portal-smoke` -> `8 passed`.
+
 ---
 
 ## Proximos passos (sequencia pratica)
@@ -281,3 +293,8 @@ Leitura do status:
 6. `docs/planejamento/PLANO_PROXIMOS_PASSOS_PARIDADE_PORTAL.md` (este relatorio)
 7. `frontend-react/src/pages/admin/legacy/LegacyAdminFramePage.tsx` (hardening anti-tela-vazia)
 8. `frontend-react/src/pages/matriculas/MatriculasPage.tsx` (ajustes de paridade mobile no estado vazio/header)
+9. `frontend-react/src/components/layout/PageHeader.tsx` (botao voltar iconico)
+10. `frontend-react/src/pages/assistencia/AssistenciaPage.tsx` (ajuste de header)
+11. `frontend-react/src/pages/pedido-calculo/PedidoCalculoPage.tsx` (ajuste de header)
+12. `frontend-react/src/pages/prestacao-contas/PrestacaoContasPage.tsx` (ajuste de header)
+13. `frontend-react/src/pages/relatorio-cumprimento/RelatorioCumprimentoPage.tsx` (ajuste de header)

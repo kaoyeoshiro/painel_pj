@@ -56,7 +56,7 @@ export function PageHeader({ title, description, subtitle, icon, actions, backTo
               to={backTo}
               title={backLabel || 'Voltar ao Dashboard'}
               aria-label={backLabel || 'Voltar ao Dashboard'}
-              className="mt-0.5 inline-flex h-9 w-9 items-center justify-center rounded-full border border-gray-200 bg-white text-gray-500 shadow-sm transition-colors hover:bg-gray-100 hover:text-gray-700"
+              className="mt-0.5 inline-flex h-7 w-7 items-center justify-center text-gray-500 transition-colors hover:text-gray-700"
               data-testid="btn-voltar-dashboard"
             >
               <ArrowLeft className="h-4 w-4" />

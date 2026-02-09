@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback } from 'react'
-import { useNavigate } from '@tanstack/react-router'
-import { ArrowLeft, Search, Scale, Trash2, FileText, FileDown, RotateCw, Database } from 'lucide-react'
+import { useState, useCallback } from 'react'
+import { Search, Scale, Trash2, FileText, FileDown, RotateCw, Database } from 'lucide-react'
 import { useMarkdown } from '@/hooks/useMarkdown'
+import { PageContainer } from '@/components/layout/PageContainer'
+import { PageHeader } from '@/components/layout/PageHeader'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -18,7 +19,6 @@ import type {
   FeedbackRequest,
   FeedbackResponse,
 } from '@/types/assistencia'
-import { cn } from '@/lib/utils'
 
 /** Tipo para o estado da tela */
 type ViewState = 'inicial' | 'loading' | 'resultado' | 'erro'
@@ -27,7 +27,6 @@ type ViewState = 'inicial' | 'loading' | 'resultado' | 'erro'
 type TipoAvaliacao = 'correto' | 'parcial' | 'incorreto' | 'erro_ia'
 
 export function AssistenciaPage() {
-  const navigate = useNavigate()
   const { toast } = useToast()
 
   // Estados da aplicação
@@ -296,22 +295,14 @@ export function AssistenciaPage() {
   }
 
   return (
-    <div className="flex min-h-screen flex-col bg-gray-50">
-      {/* Header */}
-      <header className="flex items-center justify-between border-b bg-white px-6 py-3 shadow-sm">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate({ to: '/dashboard' })}>
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <div className="flex items-center gap-2 border-l border-gray-300 pl-4">
-            <Scale className="h-6 w-6 text-primary" />
-            <div>
-              <h1 className="text-lg font-semibold">Assistência Judiciária</h1>
-              <span className="text-xs text-gray-500">Consulta de Processos TJ-MS</span>
-            </div>
-          </div>
-        </div>
-      </header>
+    <PageContainer noPadding fluid className="flex flex-col h-full">
+      <div className="px-4 sm:px-6 lg:px-8 pt-6">
+        <PageHeader
+          title="Assistência Judiciária"
+          subtitle="Consulta de Processos TJ-MS"
+          backTo="/dashboard"
+        />
+      </div>
 
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar - Consulta e Histórico */}
@@ -581,7 +572,7 @@ export function AssistenciaPage() {
           </ScrollArea>
         </main>
       </div>
-    </div>
+    </PageContainer>
   )
 }
 
