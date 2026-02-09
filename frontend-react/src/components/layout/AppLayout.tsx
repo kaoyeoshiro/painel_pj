@@ -4,6 +4,14 @@ import { Sidebar } from './Sidebar'
 
 const ALWAYS_LEGACY_FRAME_PREFIXES = ['/admin/']
 
+const MOBILE_INLINE_TOPBAR_PREFIXES = [
+  '/assistencia',
+  '/matriculas',
+  '/pedido-calculo',
+  '/prestacao-contas',
+  '/relatorio-cumprimento',
+]
+
 const CONDITIONAL_LEGACY_SYSTEM_PREFIXES: Array<{ prefix: string; nativeFlag: string | undefined }> = [
   { prefix: '/assistencia', nativeFlag: import.meta.env.VITE_PORTAL_NATIVE_ASSISTENCIA },
   { prefix: '/matriculas', nativeFlag: import.meta.env.VITE_PORTAL_NATIVE_MATRICULAS },
@@ -34,6 +42,10 @@ function shouldRenderWithoutReactShell(pathname: string): boolean {
   )
 }
 
+function shouldUseInlineTopbarOnMobile(pathname: string): boolean {
+  return MOBILE_INLINE_TOPBAR_PREFIXES.some((prefix) => pathMatchesPrefix(pathname, prefix))
+}
+
 /**
  * Layout principal da aplicação autenticada
  * Estrutura: Header (topo) + Sidebar (esquerda) + Content (centro)
@@ -42,6 +54,7 @@ function shouldRenderWithoutReactShell(pathname: string): boolean {
 export function AppLayout() {
   const pathname = useRouterState({ select: (s) => s.location.pathname })
   const shouldSkipShell = shouldRenderWithoutReactShell(pathname)
+  const useInlineTopbarOnMobile = shouldUseInlineTopbarOnMobile(pathname)
 
   if (shouldSkipShell) {
     return <Outlet />
@@ -55,7 +68,13 @@ export function AppLayout() {
       {/* Container principal: Header + Content */}
       <div className="flex flex-col flex-1 overflow-hidden">
         {/* Header */}
-        <Header />
+        {useInlineTopbarOnMobile ? (
+          <div className="hidden sm:block">
+            <Header />
+          </div>
+        ) : (
+          <Header />
+        )}
 
         {/* Área de conteúdo (renderiza as páginas) */}
         <main className="flex-1 overflow-y-auto bg-gray-50">

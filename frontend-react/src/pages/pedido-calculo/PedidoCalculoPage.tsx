@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import { Link } from '@tanstack/react-router'
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -31,6 +32,7 @@ import {
   Search,
   Brain,
   Sparkles,
+  LayoutGrid,
 } from 'lucide-react'
 import type {
   HistoricoItem,
@@ -647,68 +649,76 @@ export function PedidoCalculoPage() {
   }
 
   return (
-    <PageContainer>
+    <PageContainer noPadding className="px-4 sm:px-6 lg:px-8 pt-4 pb-0">
       <PageHeader
-        title="Pedido de Cálculo Judicial"
+        title="Cálculo Judicial"
         subtitle="Cumprimento de Sentença contra a Fazenda Pública"
         backTo="/dashboard"
+        showMobileBrand
+        compactMobile
+        mobileInlineActions
+        className="border-b border-gray-200 pb-3 sm:border-0 sm:pb-0"
         actions={
-          <Sheet>
-            <SheetTrigger asChild>
-              <Button variant="ghost" size="icon">
-                <History className="h-5 w-5" />
-              </Button>
-            </SheetTrigger>
-            <SheetContent>
-              <SheetHeader>
-                <SheetTitle>Histórico</SheetTitle>
-              </SheetHeader>
-              <ScrollArea className="h-[calc(100vh-80px)] mt-4">
-                {isLoadingHistorico ? (
-                  <div className="flex items-center justify-center py-8">
-                    <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
-                  </div>
-                ) : !historico || historico.length === 0 ? (
-                  <div className="text-center py-8 text-gray-400">
-                    <Calculator className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                    <p className="text-sm">Nenhum pedido gerado ainda</p>
-                  </div>
-                ) : (
-                  <div className="space-y-2">
-                    {historico.map((item) => {
-                      const numero = item.numero_cnj_formatado || item.numero_cnj || 'Processo'
-                      const autor =
-                        item.dados_processo?.autor ||
-                        item.dados_agente1?.dados_basicos?.autor ||
-                        'Pedido de Cálculo'
-                      const data = item.criado_em ? new Date(item.criado_em) : null
+          <div className="flex items-center gap-2">
+            <Sheet>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-500">
+                  <History className="h-5 w-5" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent>
+                <SheetHeader>
+                  <SheetTitle>Histórico</SheetTitle>
+                </SheetHeader>
+                <ScrollArea className="h-[calc(100vh-80px)] mt-4">
+                  {isLoadingHistorico || !historico || historico.length === 0 ? (
+                    <div className="py-8 text-center">
+                      <p className="text-sm text-gray-500">Carregando histórico...</p>
+                    </div>
+                  ) : (
+                    <div className="space-y-2">
+                      {historico.map((item) => {
+                        const numero = item.numero_cnj_formatado || item.numero_cnj || 'Processo'
+                        const autor =
+                          item.dados_processo?.autor ||
+                          item.dados_agente1?.dados_basicos?.autor ||
+                          'Pedido de Cálculo'
+                        const data = item.criado_em ? new Date(item.criado_em) : null
 
-                      return (
-                        <div
-                          key={item.id}
-                          onClick={() => carregarDoHistorico(item.id)}
-                          className="p-3 bg-gray-50 hover:bg-gray-100 rounded-lg cursor-pointer transition-colors"
-                        >
-                          <div className="flex items-center justify-between mb-1">
-                            <span className="text-sm font-medium text-gray-800 truncate">{numero}</span>
-                            <span className="text-xs text-gray-400">
-                              {data ? data.toLocaleDateString('pt-BR') : '-'}
-                            </span>
+                        return (
+                          <div
+                            key={item.id}
+                            onClick={() => carregarDoHistorico(item.id)}
+                            className="p-3 bg-gray-50 hover:bg-gray-100 rounded-lg cursor-pointer transition-colors"
+                          >
+                            <div className="flex items-center justify-between mb-1">
+                              <span className="text-sm font-medium text-gray-800 truncate">{numero}</span>
+                              <span className="text-xs text-gray-400">
+                                {data ? data.toLocaleDateString('pt-BR') : '-'}
+                              </span>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs text-gray-500 truncate">{autor}</span>
+                              <span className="text-xs text-gray-400">
+                                {data ? data.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '-'}
+                              </span>
+                            </div>
                           </div>
-                          <div className="flex items-center justify-between">
-                            <span className="text-xs text-gray-500 truncate">{autor}</span>
-                            <span className="text-xs text-gray-400">
-                              {data ? data.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '-'}
-                            </span>
-                          </div>
-                        </div>
-                      )
-                    })}
-                  </div>
-                )}
-              </ScrollArea>
-            </SheetContent>
-          </Sheet>
+                        )
+                      })}
+                    </div>
+                  )}
+                </ScrollArea>
+              </SheetContent>
+            </Sheet>
+            <Link
+              to="/dashboard"
+              className="flex flex-col items-center justify-center text-[11px] leading-none text-gray-500 transition-colors hover:text-gray-700 sm:hidden"
+            >
+              <LayoutGrid className="mb-0.5 h-3.5 w-3.5" />
+              <span>Dashboard</span>
+            </Link>
+          </div>
         }
       />
 
@@ -721,7 +731,6 @@ export function PedidoCalculoPage() {
               </div>
               <div>
                 <CardTitle>Gerar Pedido de Cálculo</CardTitle>
-                <CardDescription>Informe o número do processo para iniciar</CardDescription>
               </div>
             </div>
           </CardHeader>
@@ -772,18 +781,13 @@ export function PedidoCalculoPage() {
                 </div>
                 <CardTitle className="text-lg">Pedidos Recentes</CardTitle>
               </div>
+              <span className="text-sm font-semibold text-primary">Ver todos -&gt;</span>
             </div>
           </CardHeader>
           <CardContent>
-            {isLoadingHistorico ? (
-              <div className="flex items-center justify-center py-4">
-                <Loader2 className="h-6 w-6 animate-spin text-gray-400" />
-              </div>
-            ) : !historico || historico.length === 0 ? (
-              <div className="text-center py-8 text-gray-400">
-                <Calculator className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                <p className="text-sm">Nenhum pedido gerado ainda</p>
-                <p className="text-xs mt-1">Use o formulário acima para gerar seu primeiro pedido</p>
+            {isLoadingHistorico || !historico || historico.length === 0 ? (
+              <div className="py-6 text-center">
+                <p className="text-lg text-gray-500">Carregando histórico...</p>
               </div>
             ) : (
               <div className="grid gap-3">

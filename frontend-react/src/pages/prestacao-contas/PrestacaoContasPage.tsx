@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
+import { Link } from '@tanstack/react-router'
 import { PageContainer, PageHeader } from '@/components/layout'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -11,7 +12,6 @@ import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Separator } from '@/components/ui/separator'
 import { useToast } from '@/components/ui/toast'
 import { useApiQuery } from '@/hooks/useApiQuery'
 import { prestacaoContasApi, getToken } from '@/lib/api'
@@ -41,6 +41,7 @@ import {
   MessageSquare,
   ChevronRight,
   Info,
+  LayoutGrid,
 } from 'lucide-react'
 import type {
   GeracaoHistorico,
@@ -785,8 +786,7 @@ export function PrestacaoContasPage() {
             <FileText className="h-5 w-5 text-white" />
           </div>
           <div>
-            <CardTitle>Analisar Prestacao de Contas</CardTitle>
-            <CardDescription>Processos de Medicamentos</CardDescription>
+            <CardTitle>Analisar Prestação de Contas</CardTitle>
           </div>
         </div>
       </CardHeader>
@@ -815,14 +815,14 @@ export function PrestacaoContasPage() {
           <Button
             type="submit"
             className="w-full"
-            disabled={estadoPagina === 'processando' || estadoPagina === 'verificando' || !numeroCNJ.trim()}
+            disabled={estadoPagina === 'processando' || estadoPagina === 'verificando'}
           >
             {estadoPagina === 'verificando' ? (
               <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Verificando...</>
             ) : estadoPagina === 'processando' ? (
               <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Processando...</>
             ) : (
-              <><Search className="mr-2 h-4 w-4" /> Analisar Prestacao de Contas</>
+              <><Search className="mr-2 h-4 w-4" /> Analisar Prestação de Contas</>
             )}
           </Button>
         </form>
@@ -1248,7 +1248,7 @@ export function PrestacaoContasPage() {
           <div className="flex items-center justify-between">
             <CardTitle className="flex items-center gap-2 text-base">
               <History className="h-4 w-4" />
-              Analises Recentes
+              Análises Recentes
             </CardTitle>
             {geracoes.length > 0 && (
               <Badge variant="secondary">{historicoData?.total || 0} total</Badge>
@@ -1270,11 +1270,7 @@ export function PrestacaoContasPage() {
             </div>
           ) : geracoes.length === 0 ? (
             <div className="py-8 text-center">
-              <FileText className="mx-auto h-8 w-8 text-muted-foreground/50" />
-              <p className="mt-2 text-sm text-muted-foreground">Nenhuma analise realizada ainda</p>
-              <p className="text-xs text-muted-foreground">
-                Use o formulario acima para analisar seu primeiro processo
-              </p>
+              <p className="text-sm text-muted-foreground">Nenhuma analise realizada ainda</p>
             </div>
           ) : (
             <div className="space-y-2">
@@ -1323,7 +1319,7 @@ export function PrestacaoContasPage() {
     return (
       <Sheet>
         <SheetTrigger asChild>
-          <Button variant="outline" size="icon" title="Historico completo">
+          <Button variant="ghost" size="icon" title="Historico completo" className="h-8 w-8 text-gray-500">
             <History className="h-4 w-4" />
           </Button>
         </SheetTrigger>
@@ -1536,15 +1532,28 @@ export function PrestacaoContasPage() {
   // =====================================================
 
   return (
-    <PageContainer className="max-w-5xl space-y-6">
+    <PageContainer noPadding className="max-w-5xl px-4 sm:px-6 lg:px-8 pt-4 pb-0 space-y-6">
       <PageHeader
-        title="Análise de Prestação de Contas"
-        subtitle="Processos de Medicamentos"
+        title="Prestação de Contas"
+        subtitle="processos de Medicamentos"
         backTo="/dashboard"
-        actions={renderHistoricoSheet()}
+        showMobileBrand
+        compactMobile
+        mobileInlineActions
+        className="border-b border-gray-200 pb-3 sm:border-0 sm:pb-0"
+        actions={
+          <div className="flex items-center gap-2">
+            {renderHistoricoSheet()}
+            <Link
+              to="/dashboard"
+              className="flex flex-col items-center justify-center text-[11px] leading-none text-gray-500 transition-colors hover:text-gray-700 sm:hidden"
+            >
+              <LayoutGrid className="mb-0.5 h-3.5 w-3.5" />
+              <span>Dashboard</span>
+            </Link>
+          </div>
+        }
       />
-
-      <Separator />
 
       {/* Conteudo principal baseado no estado */}
       {estadoPagina === 'idle' && (

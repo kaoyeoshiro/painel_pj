@@ -260,6 +260,19 @@ Ajustes aplicados nesta iteracao:
    - `E2E_MAX_DIFF_RATIO=0.08` (rotas criticas) -> permanecem as mesmas 5 falhas mobile.
    - `E2E_MAX_DIFF_RATIO=0.12 npm run test:portal-visual` -> `16 passed`.
    - `npm run test:portal-smoke` -> `8 passed`.
+4. Iteracao adicional (mobile header/cards em sistemas):
+   - `AppLayout`: ocultacao do header global no mobile para rotas de sistemas com topbar inline (`assistencia`, `matriculas`, `pedido-calculo`, `prestacao-contas`, `relatorio-cumprimento`).
+   - `PageHeader`: adicionados modos `compactMobile` e `mobileInlineActions` para aproximar densidade/posicionamento do topo legado.
+   - `pedido-calculo`: topo mobile alinhado ao legado (titulo curto + acao dashboard em coluna), card inicial sem subtitulo duplicado, "Pedidos Recentes" com CTA e estado "Carregando historico...".
+   - `prestacao-contas`: topo mobile alinhado ao legado (titulo curto + acao dashboard em coluna), card inicial sem subtitulo duplicado, botao principal habilitado com CNJ vazio como no legado, estado vazio de "Analises Recentes" simplificado.
+5. Validacao apos iteracao adicional:
+   - `npm run build` -> OK.
+   - `E2E_MAX_DIFF_RATIO=0.08 npx playwright test -c playwright.portal-visual.config.ts --grep "pedido-calculo|prestacao-contas"` -> `3 passed / 1 failed`.
+   - Resultado detalhado:
+     - `pedido-calculo` mobile: PASSOU em `0.08`.
+     - `prestacao-contas` mobile: reduzido de `0.12` para `0.09` (gap residual).
+   - `E2E_MAX_DIFF_RATIO=0.12 npx playwright test -c playwright.portal-visual.config.ts --grep "pedido-calculo|prestacao-contas"` -> `4 passed`.
+   - `npm run test:portal-smoke` -> `8 passed`.
 
 ---
 
@@ -271,18 +284,19 @@ Ajustes aplicados nesta iteracao:
    - `prestacao-contas`
    - `relatorio-cumprimento`
 2. Revalidar `portal.visual` com `E2E_MAX_DIFF_RATIO=0.08` ate `16 passed`.
-3. Somente apos fechar `0.08`, iniciar calibracao final para `0.05`.
-4. Monitorar por 7 dias os logs/feedbacks de carregamento para confirmar reducao de casos de tela vazia em admin/sistemas com fallback.
-5. Reduzir gradualmente tolerancia visual (`E2E_MAX_DIFF_RATIO`) para apertar paridade:
+3. Prioridade imediata: fechar gap residual de `prestacao-contas` mobile (`0.09 -> <= 0.08`) com ajuste fino de topo/card info.
+4. Somente apos fechar `0.08`, iniciar calibracao final para `0.05`.
+5. Monitorar por 7 dias os logs/feedbacks de carregamento para confirmar reducao de casos de tela vazia em admin/sistemas com fallback.
+6. Reduzir gradualmente tolerancia visual (`E2E_MAX_DIFF_RATIO`) para apertar paridade:
    - etapa 1: `0.18 -> 0.12`
    - etapa 2: `0.12 -> 0.08`
    - etapa 3: `0.08 -> 0.05`
-6. Para cada reducao de tolerancia:
+7. Para cada reducao de tolerancia:
    - rodar `admin.visual`
    - rodar `portal.visual`
    - corrigir pagina divergente ate ficar verde.
-7. Encerrar rollback por sistema (remocao progressiva de `VITE_PORTAL_NATIVE_*=0`) somente apos janela sem incidentes.
-8. Reavaliar remocao da pasta legada apenas quando Passos 4/5 estiverem 100% fechados.
+8. Encerrar rollback por sistema (remocao progressiva de `VITE_PORTAL_NATIVE_*=0`) somente apos janela sem incidentes.
+9. Reavaliar remocao da pasta legada apenas quando Passos 4/5 estiverem 100% fechados.
 
 ## Arquivos criados/alterados nesta rodada
 1. `frontend-react/e2e/portal.visual.spec.ts` (novo)

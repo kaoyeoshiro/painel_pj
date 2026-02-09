@@ -19,6 +19,12 @@ interface PageHeaderProps {
   backLabel?: string
   /** Classes CSS adicionais */
   className?: string
+  /** Exibe logo PGE inline no topo da página (somente mobile) */
+  showMobileBrand?: boolean
+  /** Reduz tipografia e espaçamento no mobile para aproximar do topo legado */
+  compactMobile?: boolean
+  /** Mantém ações na mesma linha do título no mobile */
+  mobileInlineActions?: boolean
 }
 
 /**
@@ -26,7 +32,19 @@ interface PageHeaderProps {
  * Título à esquerda, ações opcionais à direita.
  * Suporta ícone como badge gradiente, subtítulo e navegação de retorno.
  */
-export function PageHeader({ title, description, subtitle, icon, actions, backTo, backLabel, className }: PageHeaderProps) {
+export function PageHeader({
+  title,
+  description,
+  subtitle,
+  icon,
+  actions,
+  backTo,
+  backLabel,
+  className,
+  showMobileBrand,
+  compactMobile,
+  mobileInlineActions,
+}: PageHeaderProps) {
   const pathname = useRouterState({ select: (s) => s.location.pathname })
   const isAdminRoute = pathname.startsWith('/admin/')
 
@@ -48,8 +66,14 @@ export function PageHeader({ title, description, subtitle, icon, actions, backTo
   }
 
   return (
-    <div className={cn('mb-6', className)}>
-      <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4">
+    <div className={cn(compactMobile ? 'mb-4 sm:mb-6' : 'mb-6', className)}>
+      <div
+        className={cn(
+          mobileInlineActions
+            ? 'flex items-start justify-between gap-3'
+            : 'flex flex-col sm:flex-row sm:items-start sm:justify-between gap-4'
+        )}
+      >
         <div className="flex items-start gap-3">
           {backTo && (
             <Link
@@ -63,6 +87,17 @@ export function PageHeader({ title, description, subtitle, icon, actions, backTo
             </Link>
           )}
 
+          {showMobileBrand && (
+            <>
+              <img
+                src="/logo/logo-pge.png"
+                alt="PGE-MS"
+                className="h-7 w-auto shrink-0 sm:hidden"
+              />
+              <div className={cn('h-8 w-px bg-gray-200', compactMobile ? 'block' : 'hidden sm:block')} />
+            </>
+          )}
+
           {icon && (
             <div className="flex items-center justify-center w-10 h-10 bg-gradient-to-br from-primary-500 to-primary-600 rounded-xl text-white shadow-sm">
               {icon}
@@ -70,16 +105,29 @@ export function PageHeader({ title, description, subtitle, icon, actions, backTo
           )}
 
           <div className="min-w-0">
-            <h1 className="text-2xl font-bold text-gray-900">{title}</h1>
+            <h1
+              className={cn(
+                'font-bold text-gray-900',
+                compactMobile ? 'text-xl leading-tight sm:text-2xl' : 'text-2xl'
+              )}
+            >
+              {title}
+            </h1>
             {subtitle && (
-              <p className="mt-0.5 text-xs text-gray-500">{subtitle}</p>
+              <p className={cn('mt-0.5 text-xs text-gray-500', compactMobile && 'leading-tight')}>
+                {subtitle}
+              </p>
             )}
             {description && (
               <p className="mt-1 text-sm text-gray-500">{description}</p>
             )}
           </div>
         </div>
-        {actions && <div className="flex items-center gap-2 flex-shrink-0">{actions}</div>}
+        {actions && (
+          <div className={cn('flex items-center gap-2 flex-shrink-0', mobileInlineActions && 'pt-0.5')}>
+            {actions}
+          </div>
+        )}
       </div>
     </div>
   )
