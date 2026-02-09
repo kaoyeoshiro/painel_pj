@@ -82,10 +82,13 @@ async def analisar_processo_stream(
                 evento_json = evento.model_dump_json()
                 yield f"data: {evento_json}\n\n"
         except Exception as e:
-            logger.error(f"SSE: Erro no stream: {e}")
-            import traceback
-            traceback.print_exc()
-            yield f'data: {{"tipo": "erro", "mensagem": "{str(e)}"}}\n\n'
+            # Safety net: garante envio do evento de erro mesmo com falha de encoding
+            erro_msg = str(e)
+            try:
+                logger.error(f"SSE: Erro no stream: {erro_msg}", exc_info=True)
+            except Exception:
+                pass
+            yield f"data: {json.dumps({'tipo': 'erro', 'mensagem': erro_msg}, ensure_ascii=True)}\n\n"
         finally:
             logger.debug("SSE: Stream finalizado")
 

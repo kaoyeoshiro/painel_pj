@@ -497,25 +497,34 @@ async def processar_stream(
             yield f"data: {json.dumps({'tipo': 'sucesso', 'geracao_id': geracao_id, 'request_id': request_id, 'dados_cumprimento': dados_cumprimento.to_dict(), 'dados_principal': dados_principal.to_dict() if dados_principal else None, 'relatorio_markdown': relatorio_completo, 'documentos_baixados': [d.to_dict() for d in documentos], 'transito_julgado': transito_julgado.to_dict()})}\n\n"
 
         except Exception as e:
-            import traceback
-            traceback.print_exc()
-            tempo_total = int(time.time() - tempo_inicio)
-            logger.error(
-                f"{log_prefix} PROCESSAR_STREAM_EXCEPTION | "
-                f"geracao_id={geracao_id} | "
-                f"tempo_total={tempo_total}s | "
-                f"error={str(e)}"
-            )
-            yield f"data: {json.dumps({'tipo': 'erro', 'mensagem': f'Erro inesperado: {str(e)}'})}\n\n"
+            # Safety net: garante que o evento de erro SEMPRE e enviado ao frontend,
+            # mesmo que logging/traceback falhe (ex: charmap encoding no Windows)
+            erro_msg = str(e)
+            try:
+                tempo_total = int(time.time() - tempo_inicio)
+                logger.error(
+                    f"{log_prefix} PROCESSAR_STREAM_EXCEPTION | "
+                    f"geracao_id={geracao_id} | "
+                    f"tempo_total={tempo_total}s | "
+                    f"error={erro_msg}",
+                    exc_info=True
+                )
+            except Exception:
+                pass  # Nao deixa falha de logging matar o SSE stream
 
-            if geracao_id:
-                geracao = db.query(GeracaoRelatorioCumprimento).filter(
-                    GeracaoRelatorioCumprimento.id == geracao_id
-                ).first()
-                if geracao:
-                    geracao.status = StatusProcessamento.ERRO.value
-                    geracao.erro_mensagem = str(e)
-                    db.commit()
+            yield f"data: {json.dumps({'tipo': 'erro', 'mensagem': f'Erro durante análise: {erro_msg}'}, ensure_ascii=True)}\n\n"
+
+            try:
+                if geracao_id:
+                    geracao = db.query(GeracaoRelatorioCumprimento).filter(
+                        GeracaoRelatorioCumprimento.id == geracao_id
+                    ).first()
+                    if geracao:
+                        geracao.status = StatusProcessamento.ERRO.value
+                        geracao.erro_mensagem = erro_msg[:500]
+                        db.commit()
+            except Exception:
+                pass  # DB cleanup nao deve impedir envio do evento de erro
 
     return StreamingResponse(
         event_generator(),

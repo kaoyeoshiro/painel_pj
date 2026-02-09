@@ -5,15 +5,15 @@
 
 ## Resultado Consolidado
 
-| # | Teste | Processo/Arquivo | Status | Tempo | Causa Raiz (se falha) |
-|---|-------|-----------------|--------|-------|----------------------|
-| 1 | Assistencia Judiciaria | `0800079-49.2019.8.12.0040` | **PASS** | 11.9s | - |
-| 2 | Gerador de Pecas | `0828724-58.2025.8.12.0110` | **PASS** | 32.7s | Detectou erro TJ-MS (esperado) |
-| 3 | Matriculas Confrontantes | `matriculas.pdf` | **PASS** | 10.7s | - |
-| 4 | Prestacao de Contas | `0801359-69.2021.8.12.0045` | **PASS** | 28.1s | IA retornou duvidas (fluxo valido) |
-| 5 | Relatorio de Cumprimento | `0800311-80.2026.8.12.0019` | **FAIL** | 5.0m (timeout) | Backend: pipeline trava na Etapa 4 |
+| # | Teste | Processo/Arquivo | Status | Tempo | Notas |
+|---|-------|-----------------|--------|-------|-------|
+| 1 | Assistencia Judiciaria | `0800079-49.2019.8.12.0040` | **PASS** | 9.6s | Parecer exibido, download disponivel |
+| 2 | Gerador de Pecas | `0828724-58.2025.8.12.0110` | **PASS** | 32.8s | Detectou erro TJ-MS (esperado — rede) |
+| 3 | Matriculas Confrontantes | `matriculas.pdf` | **PASS** | 10.7s | Dados de matricula exibidos |
+| 4 | Prestacao de Contas | `0801359-69.2021.8.12.0045` | **PASS** | 28.2s | IA retornou duvidas (fluxo valido) |
+| 5 | Relatorio de Cumprimento | `0800311-80.2026.8.12.0019` | **PASS** | 49.4s | Relatorio completo com transito julgado |
 
-**Total: 4/5 PASS (80%)**
+**Total: 5/5 PASS (100%)**
 
 ---
 
@@ -54,17 +54,12 @@
 - **Erros console**: 2 (warnings menores)
 - **Screenshots**: `e2e-artifacts/runs/20260209/fluxo_completo__analisar_presta__o_de_contas/`
 
-### 5. Relatorio de Cumprimento — FAIL
+### 5. Relatorio de Cumprimento — PASS
 
 - **Processo**: `0800311-80.2026.8.12.0019`
-- **Fluxo**: Navegar → Preencher CNJ → Gerar Relatorio → Aguardar pipeline
-- **Estado no timeout**: Pipeline travado na **Etapa 4 (Transito em Julgado)** — etapas 1-3 concluidas
-- **Causa raiz**: Bug de **backend** (NAO frontend):
-  1. O backend encontra erro de encoding: `'charmap' codec can't encode character '\u25cb'`
-  2. Isso e um bug de Windows onde Python tenta logar conteudo Unicode para console cp1252
-  3. O stream SSE morre sem enviar evento `erro` para o frontend
-  4. Frontend fica em estado `streaming` ("Processando") infinitamente
-- **Recomendacao**: Definir `PYTHONUTF8=1` no ambiente ou corrigir o handler SSE para capturar encoding errors
+- **Fluxo**: Navegar → Preencher CNJ → Gerar Relatorio → Aguardar pipeline (5 etapas)
+- **Resultado**: Relatorio completo com transito julgado, dados do processo, documentos
+- **Bug corrigido**: Pipeline travava por encoding error no Windows (ver secao abaixo)
 - **Screenshots**: `e2e-artifacts/runs/20260209/fluxo_completo__gerar_relat_rio_de_cumprimento/`
 
 ---
@@ -100,15 +95,19 @@
 
 ---
 
-## Bug de Backend Identificado (nao corrigido)
+## Bug de Backend Corrigido
 
 ### Encoding crash no SSE stream (Windows)
 
-**Sistema**: Relatorio de Cumprimento
+**Sistema**: Relatorio de Cumprimento (e Prestacao de Contas)
 **Erro**: `'charmap' codec can't encode character '\u25cb' in position 6`
-**Impacto**: Pipeline trava sem enviar evento de erro; frontend fica em "Processando" infinitamente
-**Causa**: Python no Windows usa cp1252 para stdout/stderr, que nao suporta o caracter Unicode (WHITE CIRCLE)
-**Fix sugerido**: `set PYTHONUTF8=1` no ambiente de execucao, ou adicionar `errors='replace'` nos handlers de logging
+**Impacto**: Pipeline travava sem enviar evento de erro; frontend ficava em "Processando" infinitamente
+**Causa raiz**: Python no Windows usa cp1252 para stdout/stderr, que nao suporta caracteres Unicode como WHITE CIRCLE
+
+**Correcao aplicada** (3 arquivos):
+1. `utils/logging_config.py` — StreamHandler agora usa `io.TextIOWrapper` com UTF-8 + `errors='replace'` no Windows
+2. `sistemas/relatorio_cumprimento/router.py` — Removido `traceback.print_exc()` (usa stderr direto), substituido por `logger.error(exc_info=True)`. Logging e DB cleanup em try/except para garantir que o yield do evento de erro SEMPRE executa
+3. `sistemas/prestacao_contas/router.py` — Mesmo padrao: removido `traceback.print_exc()`, yield de erro com `ensure_ascii=True`
 
 ---
 
@@ -159,7 +158,8 @@ node node_modules/@playwright/test/cli.js test --config=playwright-real.config.t
 | Run 1 | 3/5 PASS | Gerador (timeout) + Relatorio (timeout) |
 | Run 2 (fix Gerador+Relatorio) | 2/2 PASS | Testes isolados passaram |
 | Run 3 (bateria completa) | 3/5 PASS | Matriculas (selector) + Relatorio (encoding) |
-| Run 4 (fix Matriculas) | 4/5 PASS | **Relatorio: bug de backend (encoding Windows)** |
+| Run 4 (fix Matriculas) | 4/5 PASS | Relatorio: bug backend encoding Windows |
+| **Run 5 (fix encoding)** | **5/5 PASS** | **Todos passando — encoding fix + SSE safety net** |
 
 ---
 
