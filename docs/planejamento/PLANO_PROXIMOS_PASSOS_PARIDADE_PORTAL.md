@@ -152,6 +152,17 @@ Regra de migracao por sistema:
 
 Proximo item imediato:
 1. Planejar remocao progressiva do fallback legado por sistema (apos janela de observacao em homolog/prod).
+2. Roteiro proposto de rollout (homologacao -> producao):
+   - Semana 1: monitorar `matriculas`, `assistencia`, `classificador` (fallback ativo por env em caso de incidente).
+   - Semana 2: monitorar `pedido-calculo`, `prestacao-contas`, `relatorio-cumprimento`.
+   - Semana 3: monitorar `gerador-pecas`, `bert-training`.
+3. Criterio para remover fallback de um sistema:
+   - 7 dias sem regressao funcional reportada.
+   - smoke do sistema passando.
+   - sem necessidade de rollback no periodo.
+4. Criterio para remover `LegacyAdminFramePage` dos sistemas:
+   - todos os 8 sistemas com fallback removido.
+   - variaveis `VITE_PORTAL_NATIVE_*` eliminadas do deploy.
 
 ---
 
