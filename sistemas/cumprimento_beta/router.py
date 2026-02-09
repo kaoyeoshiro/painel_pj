@@ -403,7 +403,7 @@ async def _consolidar_streaming(db: Session, sessao: SessaoCumprimentoBeta):
 @router.post("/sessoes/{sessao_id}/chat")
 @limiter.limit(LIMITS["ai"], key_func=get_user_identifier)
 async def enviar_mensagem(
-    http_request: Request,
+    request: Request,
     sessao_id: int,
     chat_request: MensagemChatRequest,
     streaming: bool = Query(True),
@@ -483,7 +483,7 @@ async def listar_conversas(
 @router.post("/sessoes/{sessao_id}/gerar-peca")
 @limiter.limit(LIMITS["ai"], key_func=get_user_identifier)
 async def criar_peca(
-    http_request: Request,
+    request: Request,
     sessao_id: int,
     peca_request: GerarPecaRequest,
     current_user: User = Depends(require_beta_access),

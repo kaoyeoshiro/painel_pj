@@ -55,8 +55,8 @@ router = APIRouter(tags=["Prestação de Contas"])
 @router.post("/analisar-stream")
 @limiter.limit(LIMITS["ai"], key_func=get_user_identifier)
 async def analisar_processo_stream(
-    http_request: Request,
-    request: AnalisarProcessoRequest,
+    request: Request,
+    analise_request: AnalisarProcessoRequest,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
@@ -68,7 +68,7 @@ async def analisar_processo_stream(
     await check_ai_quota(current_user)
 
     async def gerar_eventos():
-        logger.debug(f"SSE: Iniciando stream para {request.numero_cnj}")
+        logger.debug(f"SSE: Iniciando stream para {analise_request.numero_cnj}")
         orquestrador = OrquestradorPrestacaoContas(
             db=db,
             usuario_id=current_user.id
@@ -76,8 +76,8 @@ async def analisar_processo_stream(
 
         try:
             async for evento in orquestrador.processar_completo(
-                numero_cnj=request.numero_cnj,
-                sobrescrever=request.sobrescrever_existente
+                numero_cnj=analise_request.numero_cnj,
+                sobrescrever=analise_request.sobrescrever_existente
             ):
                 evento_json = evento.model_dump_json()
                 yield f"data: {evento_json}\n\n"

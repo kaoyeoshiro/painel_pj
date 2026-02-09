@@ -466,7 +466,7 @@ async def analisar_documento(
 @router.post("/analisar-lote")
 @limiter.limit(LIMITS["ai"], key_func=get_user_identifier)
 async def analisar_lote(
-    http_request: Request,
+    request: Request,
     lote_request: AnaliseLoteRequest,
     background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_active_user),
