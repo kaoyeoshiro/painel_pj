@@ -1532,7 +1532,7 @@ export function PrestacaoContasPage() {
   // =====================================================
 
   return (
-    <PageContainer noPadding className="max-w-5xl px-4 sm:px-6 lg:px-8 pt-4 pb-0 space-y-6">
+    <PageContainer noPadding className="max-w-5xl px-4 sm:px-6 lg:px-8 pt-1 sm:pt-4 pb-0 space-y-6">
       <PageHeader
         title="Prestação de Contas"
         subtitle="processos de Medicamentos"
