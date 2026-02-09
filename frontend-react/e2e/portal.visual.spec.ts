@@ -76,7 +76,15 @@ async function setupVisualPage(page: Page): Promise<void> {
 
 async function waitForReactVisualReady(page: Page): Promise<void> {
   const iframe = page.locator('iframe[title="Tela administrativa legada"]')
-  await expect(iframe).toHaveCount(1, { timeout: 10_000 })
+  const iframeCount = await iframe.count()
+
+  if (iframeCount === 0) {
+    // Modo canary de migração: rota pode estar em componente React nativo.
+    await page.waitForLoadState('domcontentloaded', { timeout: 10_000 })
+    await page.waitForTimeout(1200)
+    return
+  }
+
   await expect(iframe.first()).toBeVisible({ timeout: 10_000 })
 
   const handle = await iframe.first().elementHandle()
@@ -162,6 +170,11 @@ test.describe('Portal Visual Parity - Sistemas', () => {
 
       await reactPage.goto(route.reactPath, { waitUntil: 'domcontentloaded' })
       await waitForReactVisualReady(reactPage)
+      if (process.env.E2E_DEBUG_VISUAL === '1') {
+        const iframeCount = await reactPage.locator('iframe[title="Tela administrativa legada"]').count()
+        // eslint-disable-next-line no-console
+        console.log(`[portal-visual-debug] route=${route.id} iframeCount=${iframeCount} url=${reactPage.url()}`)
+      }
       if (route.id === 'bert-training') {
         const frame = await getReactLegacyFrame(reactPage)
         if (frame) {

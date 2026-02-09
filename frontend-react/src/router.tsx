@@ -16,6 +16,7 @@ import { CumprimentoBetaPage } from '@/pages/cumprimento-beta/CumprimentoBetaPag
 import { ExtratorAutosPage } from '@/pages/extrator-autos/ExtratorAutosPage'
 import { LegacyAdminFramePage } from '@/pages/admin/legacy/LegacyAdminFramePage'
 import MatriculasPage from '@/pages/matriculas/MatriculasPage'
+import { AssistenciaPage } from '@/pages/assistencia/AssistenciaPage'
 
 
 // ---------------------------------------------------------------------------
@@ -112,7 +113,7 @@ const cumprimentoBetaRoute = createRoute({
 const assistenciaRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: '/assistencia',
-  component: AssistenciaLegacyPage,
+  component: AssistenciaRoutePage,
 })
 
 const matriculasRoute = createRoute({
@@ -173,6 +174,15 @@ function shouldUseNativeMatriculas(): boolean {
 function MatriculasRoutePage() {
   if (shouldUseNativeMatriculas()) return <MatriculasPage />
   return <MatriculasLegacyPage />
+}
+
+function shouldUseNativeAssistencia(): boolean {
+  return import.meta.env.VITE_PORTAL_NATIVE_ASSISTENCIA === '1'
+}
+
+function AssistenciaRoutePage() {
+  if (shouldUseNativeAssistencia()) return <AssistenciaPage />
+  return <AssistenciaLegacyPage />
 }
 
 // ---------------------------------------------------------------------------

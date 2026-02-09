@@ -69,15 +69,16 @@ async function setupSmokePage(page: Page): Promise<void> {
   })
 }
 
-async function getLegacyFrame(page: Page): Promise<Frame> {
+async function getLegacyFrameIfAny(page: Page): Promise<Frame | null> {
   const iframe = page.locator('iframe[title="Tela administrativa legada"]')
-  await expect(iframe).toHaveCount(1, { timeout: 10_000 })
-  await expect(iframe.first()).toBeVisible({ timeout: 10_000 })
+  const count = await iframe.count()
+  if (count === 0) return null
 
+  await expect(iframe.first()).toBeVisible({ timeout: 10_000 })
   const handle = await iframe.first().elementHandle()
   const frame = await handle?.contentFrame()
   if (!frame) {
-    throw new Error('Nao foi possivel obter o contentFrame do iframe legado')
+    return null
   }
 
   try {
@@ -90,18 +91,24 @@ async function getLegacyFrame(page: Page): Promise<Frame> {
   return frame
 }
 
-async function assertFrameNotBlank(frame: Frame, expectedUrlContains: string): Promise<void> {
-  const frameUrl = frame.url()
-  expect(frameUrl).toContain(expectedUrlContains)
+async function assertRouteLoaded(page: Page, frame: Frame | null, expectedUrlContains: string): Promise<void> {
+  if (frame) {
+    const frameUrl = frame.url()
+    expect(frameUrl).toContain(expectedUrlContains)
+  } else {
+    expect(page.url()).toContain(expectedUrlContains)
+  }
+}
 
-  const body = frame.locator('body')
+async function assertContextNotBlank(context: Page | Frame): Promise<void> {
+  const body = context.locator('body')
   await expect(body).toBeVisible()
   const text = (await body.innerText()).trim()
   expect(text.length).toBeGreaterThan(25)
 }
 
-async function runBasicInteraction(frame: Frame): Promise<void> {
-  const interactive = frame.locator(
+async function runBasicInteraction(context: Page | Frame): Promise<void> {
+  const interactive = context.locator(
     'button:not([disabled]), [role="tab"], select:not([disabled]), textarea:not([disabled]), input:not([disabled]):not([type="hidden"])'
   )
 
@@ -119,10 +126,11 @@ test.describe('Portal Smoke - Sistemas iframe legado no React', () => {
       await setupSmokePage(page)
 
       await page.goto(route.reactPath, { waitUntil: 'domcontentloaded' })
-      const frame = await getLegacyFrame(page)
+      const frame = await getLegacyFrameIfAny(page)
 
-      await assertFrameNotBlank(frame, route.expectedUrlContains)
-      await runBasicInteraction(frame)
+      await assertRouteLoaded(page, frame, route.expectedUrlContains)
+      await assertContextNotBlank(frame ?? page)
+      await runBasicInteraction(frame ?? page)
     })
   }
 })
