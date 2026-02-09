@@ -202,7 +202,7 @@ Evidencia de execucao:
 ---
 
 ### Passo 7 - Calibracao de tolerancia visual (aperto de paridade)
-Status: EM ANDAMENTO
+Status: CONCLUIDO (etapa `0.12` fechada)
 
 Rodada executada (etapa `0.18 -> 0.12`):
 1. Execucao inicial em paralelo gerou falso negativo por indisponibilidade de webserver (`ERR_CONNECTION_REFUSED`), confirmando novamente necessidade de execucao sequencial.
@@ -218,26 +218,59 @@ Leitura do resultado:
 2. Portal ainda depende de ajuste visual pontual em `matriculas` mobile para fechar a etapa.
 
 Acao imediata do proximo ciclo:
-1. Ajustar `matriculas` mobile para reduzir diff visual residual.
-2. Revalidar `portal.visual` em `0.12`.
-3. Somente apos fechar `0.12` avancar para `0.08`.
+1. Ajustado `matriculas` mobile para reduzir diff visual residual:
+   - simplificacao do header da pagina (sem badge de icone no titulo).
+   - estado vazio da lista de arquivos alinhado ao legado (sem card/icone extra).
+2. Revalidacao apos ajuste:
+   - `E2E_MAX_DIFF_RATIO=0.12 npx playwright test -c playwright.portal-visual.config.ts --grep "matriculas"` -> `2 passed`.
+   - `E2E_MAX_DIFF_RATIO=0.12 npm run test:portal-visual` -> `16 passed`.
+   - `E2E_MAX_DIFF_RATIO=0.12 npm run test:admin-visual` -> `32 passed`.
+   - `npm run test:portal-smoke` -> `8 passed`.
+3. Proxima etapa passa a ser `0.08`.
+
+---
+
+### Passo 8 - Calibracao de tolerancia visual (etapa `0.08`)
+Status: EM ANDAMENTO (parcial)
+
+Evidencias desta rodada:
+1. `E2E_MAX_DIFF_RATIO=0.08 npm run test:admin-visual` -> `32 passed`.
+2. `E2E_MAX_DIFF_RATIO=0.08 npm run test:portal-visual` -> `11 passed / 5 failed`.
+
+Falhas residuais (todas mobile):
+1. `assistencia` -> diff `0.09`
+2. `matriculas` -> diff `0.12`
+3. `pedido-calculo` -> diff `0.11`
+4. `prestacao-contas` -> diff `0.12`
+5. `relatorio-cumprimento` -> diff `0.09`
+
+Leitura do status:
+1. Admin ja suporta tolerancia mais agressiva (`0.08`).
+2. Portal ainda precisa de ajuste fino em 5 telas mobile para concluir etapa `0.08`.
+3. Threshold operacional permanece em `0.12` ate fechamento da etapa `0.08`.
 
 ---
 
 ## Proximos passos (sequencia pratica)
-1. Ajustar `matriculas` mobile para fechar o gap residual de `0.13 -> <= 0.12`.
-2. Reexecutar `portal.visual` com `E2E_MAX_DIFF_RATIO=0.12`.
-3. Monitorar por 7 dias os logs/feedbacks de carregamento para confirmar reducao de casos de tela vazia em admin/sistemas com fallback.
-4. Reduzir gradualmente tolerancia visual (`E2E_MAX_DIFF_RATIO`) para apertar paridade:
+1. Corrigir divergencias mobile nas 5 rotas pendentes do portal:
+   - `assistencia`
+   - `matriculas`
+   - `pedido-calculo`
+   - `prestacao-contas`
+   - `relatorio-cumprimento`
+2. Revalidar `portal.visual` com `E2E_MAX_DIFF_RATIO=0.08` ate `16 passed`.
+3. Somente apos fechar `0.08`, iniciar calibracao final para `0.05`.
+4. Monitorar por 7 dias os logs/feedbacks de carregamento para confirmar reducao de casos de tela vazia em admin/sistemas com fallback.
+5. Reduzir gradualmente tolerancia visual (`E2E_MAX_DIFF_RATIO`) para apertar paridade:
    - etapa 1: `0.18 -> 0.12`
    - etapa 2: `0.12 -> 0.08`
    - etapa 3: `0.08 -> 0.05`
-5. Para cada reducao de tolerancia:
+6. Para cada reducao de tolerancia:
    - rodar `admin.visual`
    - rodar `portal.visual`
    - corrigir pagina divergente ate ficar verde.
-6. Encerrar rollback por sistema (remocao progressiva de `VITE_PORTAL_NATIVE_*=0`) somente apos janela sem incidentes.
-7. Reavaliar remocao da pasta legada apenas quando Passos 4/5 estiverem 100% fechados.
+7. Encerrar rollback por sistema (remocao progressiva de `VITE_PORTAL_NATIVE_*=0`) somente apos janela sem incidentes.
+8. Reavaliar remocao da pasta legada apenas quando Passos 4/5 estiverem 100% fechados.
 
 ## Arquivos criados/alterados nesta rodada
 1. `frontend-react/e2e/portal.visual.spec.ts` (novo)
@@ -247,3 +280,4 @@ Acao imediata do proximo ciclo:
 5. `frontend-react/package.json` (scripts)
 6. `docs/planejamento/PLANO_PROXIMOS_PASSOS_PARIDADE_PORTAL.md` (este relatorio)
 7. `frontend-react/src/pages/admin/legacy/LegacyAdminFramePage.tsx` (hardening anti-tela-vazia)
+8. `frontend-react/src/pages/matriculas/MatriculasPage.tsx` (ajustes de paridade mobile no estado vazio/header)

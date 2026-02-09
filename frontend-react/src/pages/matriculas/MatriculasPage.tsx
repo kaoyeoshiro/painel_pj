@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useNavigate } from '@tanstack/react-router'
 import { useApiQuery } from '@/hooks/useApiQuery'
 import { useMarkdown } from '@/hooks/useMarkdown'
 import { matriculasApi } from '@/lib/api'
@@ -14,6 +13,8 @@ import type {
   BatchStatusResponse,
   FeedbackRequest,
 } from '@/types/matriculas'
+import { PageContainer } from '@/components/layout/PageContainer'
+import { PageHeader } from '@/components/layout/PageHeader'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -38,12 +39,10 @@ import {
   AlertCircle,
   Loader2,
   Info,
-  ArrowLeft,
   HelpCircle,
 } from 'lucide-react'
 
 export default function MatriculasPage() {
-  const navigate = useNavigate()
   const { toast } = useToast()
 
   // Estado
@@ -470,24 +469,14 @@ export default function MatriculasPage() {
   // renderMarkdown removido — usar componente MarkdownContent com sanitização
 
   return (
-    <div className="flex h-screen flex-col bg-gray-50">
-      {/* Header */}
-      <header className="flex items-center justify-between border-b bg-white px-6 py-3 shadow-sm">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate({ to: '/dashboard' })}>
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <div className="border-l pl-4">
-            <div className="flex items-center gap-2">
-              <FileText className="h-5 w-5 text-primary" />
-              <div>
-                <h1 className="text-lg font-semibold">Matriculas Confrontantes</h1>
-                <span className="text-xs text-gray-500">Sistema de Analise Documental</span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </header>
+    <PageContainer noPadding fluid className="flex flex-col h-full">
+      <div className="px-4 sm:px-6 lg:px-8 pt-6">
+        <PageHeader
+          title="Matrículas Confrontantes"
+          subtitle="Sistema de Análise Documental"
+          backTo="/dashboard"
+        />
+      </div>
 
       {/* Main Content */}
       <div className="flex flex-1 overflow-hidden">
@@ -587,10 +576,8 @@ export default function MatriculasPage() {
           {/* File List */}
           <div className="flex-1 overflow-y-auto p-2">
             {!files || files.length === 0 ? (
-              <div className="py-8 text-center text-gray-400">
-                <FileUp className="mx-auto mb-2 h-10 w-10" />
-                <p className="text-sm">Nenhum arquivo importado</p>
-                <p className="mt-1 text-xs">Clique em "Importar"</p>
+              <div className="h-full" aria-label="lista-vazia-matriculas">
+                {/* No legado, a lista vazia permanece em branco sem card de estado vazio. */}
               </div>
             ) : (
               files.map((file) => {
@@ -976,7 +963,7 @@ export default function MatriculasPage() {
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+    </PageContainer>
   )
 }
 
