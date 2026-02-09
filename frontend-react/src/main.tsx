@@ -6,9 +6,7 @@ import { ToastProvider } from '@/components/ui/toast'
 import './index.css'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
-  <React.StrictMode>
-    <ToastProvider>
-      <RouterProvider router={router} />
-    </ToastProvider>
-  </React.StrictMode>,
+  <ToastProvider>
+    <RouterProvider router={router} />
+  </ToastProvider>,
 )
