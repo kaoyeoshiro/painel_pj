@@ -1,7 +1,7 @@
 # Plano de Proximos Passos - Paridade Visual Portal
 
 Data base: 09/02/2026
-Atualizado: 09/02/2026 (execucao desta etapa)
+Atualizado: 09/02/2026 (execucao desta etapa + hardening de tela vazia em frame legado)
 
 ## Objetivo
 Garantir paridade visual e comportamental com o legado em todo o portal (admins + sistemas), mantendo frontend React funcional sem copiar templates HTML gigantes para componentes React.
@@ -178,6 +178,42 @@ So remover quando TODOS forem verdadeiros:
 Conclusao atual:
 1. Ainda NAO e seguro remover a pasta legada.
 
+---
+
+### Passo 6 - Hardening contra tela vazia no frame legado
+Status: CONCLUIDO
+
+Entregas implementadas:
+1. `LegacyAdminFramePage` com estado explicito de carregamento (overlay "Carregando tela legada...").
+2. Timeout de carregamento do iframe com fallback amigavel:
+   - default: `15s`
+   - configuravel por `VITE_LEGACY_FRAME_TIMEOUT_MS`.
+3. Fallback de erro com acoes de recuperacao imediata:
+   - botao `Recarregar`
+   - acao `Abrir em nova aba`.
+4. Objetivo: evitar tela totalmente em branco/cinza quando o legado nao responde.
+
+Evidencia de execucao:
+1. `npm run build` -> OK
+2. `npm run test:portal-smoke` -> `8 passed`
+3. `npm run test:admin-visual` -> `32 passed`
+4. `npm run test:portal-visual` -> `16 passed`
+
+---
+
+## Proximos passos (sequencia pratica)
+1. Monitorar por 7 dias os logs/feedbacks de carregamento para confirmar reducao de casos de tela vazia em admin/sistemas com fallback.
+2. Reduzir gradualmente tolerancia visual (`E2E_MAX_DIFF_RATIO`) para apertar paridade:
+   - etapa 1: `0.18 -> 0.12`
+   - etapa 2: `0.12 -> 0.08`
+   - etapa 3: `0.08 -> 0.05`
+3. Para cada reducao de tolerancia:
+   - rodar `admin.visual`
+   - rodar `portal.visual`
+   - corrigir pagina divergente ate ficar verde.
+4. Encerrar rollback por sistema (remocao progressiva de `VITE_PORTAL_NATIVE_*=0`) somente apos janela sem incidentes.
+5. Reavaliar remocao da pasta legada apenas quando Passos 4/5 estiverem 100% fechados.
+
 ## Arquivos criados/alterados nesta rodada
 1. `frontend-react/e2e/portal.visual.spec.ts` (novo)
 2. `frontend-react/e2e/portal.smoke.spec.ts` (novo)
@@ -185,3 +221,4 @@ Conclusao atual:
 4. `frontend-react/playwright.portal-smoke.config.ts` (novo)
 5. `frontend-react/package.json` (scripts)
 6. `docs/planejamento/PLANO_PROXIMOS_PASSOS_PARIDADE_PORTAL.md` (este relatorio)
+7. `frontend-react/src/pages/admin/legacy/LegacyAdminFramePage.tsx` (hardening anti-tela-vazia)
