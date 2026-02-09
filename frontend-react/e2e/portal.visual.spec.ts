@@ -105,6 +105,66 @@ async function waitForReactVisualReady(page: Page): Promise<void> {
   await page.waitForTimeout(1200)
 }
 
+async function resetScrollToOrigin(context: Page | Frame): Promise<void> {
+  try {
+    await context.evaluate(() => {
+      window.scrollTo(0, 0)
+      const scrollingElement = document.scrollingElement as HTMLElement | null
+      if (scrollingElement) {
+        scrollingElement.scrollTop = 0
+        scrollingElement.scrollLeft = 0
+      }
+      if (document.documentElement) {
+        document.documentElement.scrollTop = 0
+        document.documentElement.scrollLeft = 0
+      }
+      if (document.body) {
+        document.body.scrollTop = 0
+        document.body.scrollLeft = 0
+      }
+
+      // Alguns templates legados usam wrappers com overflow próprio.
+      // Força reset de posição em qualquer container scrollável para evitar drift
+      // horizontal entre baseline e captura atual.
+      for (const element of Array.from(document.querySelectorAll<HTMLElement>('*'))) {
+        if (element.scrollTop !== 0) element.scrollTop = 0
+        if (element.scrollLeft !== 0) element.scrollLeft = 0
+      }
+    })
+  } catch {
+    // Algumas páginas legadas podem redirecionar no momento da avaliação.
+  }
+}
+
+async function waitForLegacyFontAwesomeReady(context: Page | Frame): Promise<void> {
+  try {
+    await context.waitForFunction(
+      () => {
+        const icon = document.querySelector('i.fas, i.fa-solid, i.far, i.fa-regular')
+        if (!icon) return true
+
+        const before = window.getComputedStyle(icon, '::before').content
+        const family = window.getComputedStyle(icon).fontFamily.toLowerCase()
+        const hasGlyph = !!before && before !== 'none' && before !== 'normal' && before !== '""'
+        return hasGlyph && family.includes('awesome')
+      },
+      {},
+      { timeout: 8_000 }
+    )
+  } catch {
+    // Se a página não depender de Font Awesome, segue normalmente.
+  }
+
+  try {
+    await context.evaluate(async () => {
+      if (!('fonts' in document) || !document.fonts?.ready) return
+      await document.fonts.ready
+    })
+  } catch {
+    // Alguns frames podem redirecionar durante o carregamento.
+  }
+}
+
 async function dismissBertTrainingWelcome(context: Page | Frame): Promise<void> {
   const closeButton = context
     .getByRole('button', { name: /comecar|comecar|começar/i })
@@ -153,6 +213,8 @@ test.describe('Portal Visual Parity - Sistemas', () => {
       if (route.id === 'bert-training') {
         await dismissBertTrainingWelcome(legacyPage)
       }
+      await waitForLegacyFontAwesomeReady(legacyPage)
+      await resetScrollToOrigin(legacyPage)
 
       const snapshotName = `portal-${route.id}.png`
       const snapshotPath = testInfo.snapshotPath(snapshotName)
@@ -170,17 +232,20 @@ test.describe('Portal Visual Parity - Sistemas', () => {
 
       await reactPage.goto(route.reactPath, { waitUntil: 'domcontentloaded' })
       await waitForReactVisualReady(reactPage)
-      if (process.env.E2E_DEBUG_VISUAL === '1') {
-        const iframeCount = await reactPage.locator('iframe[title="Tela administrativa legada"]').count()
-        // eslint-disable-next-line no-console
-        console.log(`[portal-visual-debug] route=${route.id} iframeCount=${iframeCount} url=${reactPage.url()}`)
-      }
       if (route.id === 'bert-training') {
         const frame = await getReactLegacyFrame(reactPage)
         if (frame) {
           await dismissBertTrainingWelcome(frame)
+          await waitForLegacyFontAwesomeReady(frame)
+          await resetScrollToOrigin(frame)
+        }
+      } else {
+        const frame = await getReactLegacyFrame(reactPage)
+        if (frame) {
+          await waitForLegacyFontAwesomeReady(frame)
         }
       }
+      await resetScrollToOrigin(reactPage)
 
       await expect(reactPage).toHaveScreenshot(snapshotName, {
         fullPage: false,

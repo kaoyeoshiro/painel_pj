@@ -354,6 +354,20 @@ Atualizacao desta rodada (execucao atual):
    - Falha residual unica: `bert-training` mobile com diff `0.06`.
 11. Fechamento operacional mantido:
    - `E2E_MAX_DIFF_RATIO=0.06 npm run test:portal-visual` -> `16 passed`.
+12. Hardening adicional da suite visual do portal:
+   - removidos logs e dumps de debug temporarios em `frontend-react/e2e/portal.visual.spec.ts`;
+   - mantida apenas a estabilizacao util (reset de `scrollTop`/`scrollLeft` em containers scrollaveis).
+13. Revalidacao completa apos limpeza de debug:
+   - `npm run test:portal-visual` -> `16 passed`;
+   - `npm run test:admin-visual` -> `32 passed`;
+   - `npm run test:portal-smoke` -> `8 passed`;
+   - `npm run build` -> OK.
+14. Revalidacao estrita pos-hardening:
+   - `E2E_MAX_DIFF_RATIO=0.05 npm run test:admin-visual` -> `32 passed`;
+   - `E2E_MAX_DIFF_RATIO=0.05 npm run test:portal-visual` -> `15 passed / 1 failed`;
+   - falha residual permanece unica: `bert-training` mobile (`0.06`).
+15. Confirmacao operacional:
+   - `E2E_MAX_DIFF_RATIO=0.06 npm run test:portal-visual` -> `16 passed`.
 ---
 
 ## Proximos passos (sequencia pratica)
