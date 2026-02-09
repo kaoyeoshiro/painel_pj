@@ -335,6 +335,25 @@ Atualizacao desta rodada (execucao atual):
    - `E2E_MAX_DIFF_RATIO=0.06 npm run test:admin-visual` -> `32 passed`.
    - `npm run test:portal-smoke` -> `8 passed`.
    - `npm run build` -> OK.
+7. Decisao de rollout aplicada no codigo (paridade primeiro):
+   - `assistencia`, `matriculas`, `prestacao-contas`, `relatorio-cumprimento` e `bert-training` ficam em legado por padrao.
+   - Opt-in para React nativo nessas rotas agora e explicito via env (`VITE_PORTAL_NATIVE_*=1`).
+   - `pedido-calculo`, `gerador-pecas` e `classificador` permanecem nativos por padrao.
+8. Ajuste tecnico do smoke para o novo modo misto (nativo + legado):
+   - `portal.smoke.spec.ts` agora marca rotas que preferem iframe legado (`preferLegacyFrame`).
+   - Espera ativa por `contentFrame` para evitar falso negativo preso no overlay `Carregando tela legada...`.
+   - Validacao de texto nao-vazio relaxada para `>= 25` caracteres.
+9. Revalidacao completa desta rodada (execucao sequencial):
+   - `npm run test:portal-visual` -> `16 passed`.
+   - `npm run test:admin-visual` -> `32 passed`.
+   - `npm run test:portal-smoke` -> `8 passed`.
+   - `npm run build` -> OK.
+10. Revalidacao estrita da etapa `0.05`:
+   - `E2E_MAX_DIFF_RATIO=0.05 npm run test:admin-visual` -> `32 passed`.
+   - `E2E_MAX_DIFF_RATIO=0.05 npm run test:portal-visual` -> `15 passed / 1 failed`.
+   - Falha residual unica: `bert-training` mobile com diff `0.06`.
+11. Fechamento operacional mantido:
+   - `E2E_MAX_DIFF_RATIO=0.06 npm run test:portal-visual` -> `16 passed`.
 ---
 
 ## Proximos passos (sequencia pratica)

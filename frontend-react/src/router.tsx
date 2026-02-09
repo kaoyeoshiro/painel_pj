@@ -174,7 +174,7 @@ function AdminTjmsDocsPlanoLegacyPage() { return <LegacyAdminFramePage legacyPat
 function AdminRestaurarSlugsLegacyPage() { return <LegacyAdminFramePage legacyPath="/admin/restaurar-slugs" /> }
 
 function shouldUseNativeMatriculas(): boolean {
-  return import.meta.env.VITE_PORTAL_NATIVE_MATRICULAS !== '0'
+  return import.meta.env.VITE_PORTAL_NATIVE_MATRICULAS === '1'
 }
 
 function MatriculasRoutePage() {
@@ -183,7 +183,7 @@ function MatriculasRoutePage() {
 }
 
 function shouldUseNativeAssistencia(): boolean {
-  return import.meta.env.VITE_PORTAL_NATIVE_ASSISTENCIA !== '0'
+  return import.meta.env.VITE_PORTAL_NATIVE_ASSISTENCIA === '1'
 }
 
 function AssistenciaRoutePage() {
@@ -210,7 +210,7 @@ function PedidoCalculoRoutePage() {
 }
 
 function shouldUseNativePrestacaoContas(): boolean {
-  return import.meta.env.VITE_PORTAL_NATIVE_PRESTACAO_CONTAS !== '0'
+  return import.meta.env.VITE_PORTAL_NATIVE_PRESTACAO_CONTAS === '1'
 }
 
 function PrestacaoContasRoutePage() {
@@ -219,7 +219,7 @@ function PrestacaoContasRoutePage() {
 }
 
 function shouldUseNativeRelatorioCumprimento(): boolean {
-  return import.meta.env.VITE_PORTAL_NATIVE_RELATORIO_CUMPRIMENTO !== '0'
+  return import.meta.env.VITE_PORTAL_NATIVE_RELATORIO_CUMPRIMENTO === '1'
 }
 
 function RelatorioCumprimentoRoutePage() {
@@ -237,7 +237,7 @@ function GeradorPecasRoutePage() {
 }
 
 function shouldUseNativeBertTraining(): boolean {
-  return import.meta.env.VITE_PORTAL_NATIVE_BERT_TRAINING !== '0'
+  return import.meta.env.VITE_PORTAL_NATIVE_BERT_TRAINING === '1'
 }
 
 function BertTrainingRoutePage() {

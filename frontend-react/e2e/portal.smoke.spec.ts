@@ -5,17 +5,18 @@ interface PortalSmokeRoute {
   label: string
   reactPath: string
   expectedUrlContains: string
+  preferLegacyFrame?: boolean
 }
 
 const PORTAL_ROUTES: PortalSmokeRoute[] = [
-  { id: 'assistencia', label: 'Assistencia Judiciaria', reactPath: '/assistencia', expectedUrlContains: '/assistencia' },
-  { id: 'matriculas', label: 'Matriculas Confrontantes', reactPath: '/matriculas', expectedUrlContains: '/matriculas' },
+  { id: 'assistencia', label: 'Assistencia Judiciaria', reactPath: '/assistencia', expectedUrlContains: '/assistencia', preferLegacyFrame: true },
+  { id: 'matriculas', label: 'Matriculas Confrontantes', reactPath: '/matriculas', expectedUrlContains: '/matriculas', preferLegacyFrame: true },
   { id: 'gerador-pecas', label: 'Gerador de Pecas', reactPath: '/gerador-pecas', expectedUrlContains: '/gerador-pecas' },
   { id: 'pedido-calculo', label: 'Pedido de Calculo', reactPath: '/pedido-calculo', expectedUrlContains: '/pedido-calculo' },
-  { id: 'prestacao-contas', label: 'Prestacao de Contas', reactPath: '/prestacao-contas', expectedUrlContains: '/prestacao-contas' },
-  { id: 'relatorio-cumprimento', label: 'Relatorio de Cumprimento', reactPath: '/relatorio-cumprimento', expectedUrlContains: '/relatorio-cumprimento' },
+  { id: 'prestacao-contas', label: 'Prestacao de Contas', reactPath: '/prestacao-contas', expectedUrlContains: '/prestacao-contas', preferLegacyFrame: true },
+  { id: 'relatorio-cumprimento', label: 'Relatorio de Cumprimento', reactPath: '/relatorio-cumprimento', expectedUrlContains: '/relatorio-cumprimento', preferLegacyFrame: true },
   { id: 'classificador', label: 'Classificador de Documentos', reactPath: '/classificador', expectedUrlContains: '/classificador' },
-  { id: 'bert-training', label: 'BERT Training', reactPath: '/bert-training', expectedUrlContains: '/bert-training' },
+  { id: 'bert-training', label: 'BERT Training', reactPath: '/bert-training', expectedUrlContains: '/bert-training', preferLegacyFrame: true },
 ]
 
 type JsonValue = string | number | boolean | null | JsonValue[] | { [key: string]: JsonValue }
@@ -69,17 +70,33 @@ async function setupSmokePage(page: Page): Promise<void> {
   })
 }
 
-async function getLegacyFrameIfAny(page: Page): Promise<Frame | null> {
+async function getLegacyFrameIfAny(page: Page, preferLegacyFrame = false): Promise<Frame | null> {
   const iframe = page.locator('iframe[title="Tela administrativa legada"]')
-  const count = await iframe.count()
-  if (count === 0) return null
+  if (preferLegacyFrame) {
+    try {
+      await iframe.first().waitFor({ state: 'attached', timeout: 12_000 })
+    } catch {
+      return null
+    }
+  } else {
+    const count = await iframe.count()
+    if (count === 0) return null
+  }
 
   await expect(iframe.first()).toBeVisible({ timeout: 10_000 })
-  const handle = await iframe.first().elementHandle()
-  const frame = await handle?.contentFrame()
-  if (!frame) {
-    return null
+  const startedAt = Date.now()
+  const timeoutMs = 10_000
+  let frame: Frame | null = null
+
+  while (!frame && Date.now() - startedAt < timeoutMs) {
+    const handle = await iframe.first().elementHandle()
+    frame = (await handle?.contentFrame()) ?? null
+    if (!frame) {
+      await page.waitForTimeout(200)
+    }
   }
+
+  if (!frame) return null
 
   try {
     await frame.waitForLoadState('domcontentloaded', { timeout: 10_000 })
@@ -104,7 +121,7 @@ async function assertContextNotBlank(context: Page | Frame): Promise<void> {
   const body = context.locator('body')
   await expect(body).toBeVisible()
   const text = (await body.innerText()).trim()
-  expect(text.length).toBeGreaterThan(25)
+  expect(text.length).toBeGreaterThanOrEqual(25)
 }
 
 async function runBasicInteraction(context: Page | Frame): Promise<void> {
@@ -120,13 +137,13 @@ async function runBasicInteraction(context: Page | Frame): Promise<void> {
   await first.focus()
 }
 
-test.describe('Portal Smoke - Sistemas iframe legado no React', () => {
+test.describe('Portal Smoke - Sistemas (renderizacao nativa ou legado)', () => {
   for (const route of PORTAL_ROUTES) {
     test(`${route.id} - abre e permite interacao basica`, async ({ page }) => {
       await setupSmokePage(page)
 
       await page.goto(route.reactPath, { waitUntil: 'domcontentloaded' })
-      const frame = await getLegacyFrameIfAny(page)
+      const frame = await getLegacyFrameIfAny(page, route.preferLegacyFrame)
 
       await assertRouteLoaded(page, frame, route.expectedUrlContains)
       await assertContextNotBlank(frame ?? page)

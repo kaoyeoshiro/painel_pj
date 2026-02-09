@@ -8,6 +8,13 @@ const ALWAYS_NATIVE_NO_SHELL_PREFIXES = [
   '/prestacao-contas',
   '/bert-training',
 ]
+const LEGACY_BY_DEFAULT_PREFIXES = [
+  '/assistencia',
+  '/matriculas',
+  '/prestacao-contas',
+  '/relatorio-cumprimento',
+  '/bert-training',
+]
 
 const MOBILE_INLINE_TOPBAR_PREFIXES = [
   '/assistencia',
@@ -46,6 +53,17 @@ function shouldRenderWithoutReactShell(pathname: string): boolean {
   )
 
   if (isAlwaysNativeNoShell) return true
+
+  const isLegacyByDefault = LEGACY_BY_DEFAULT_PREFIXES.some((prefix) =>
+    pathMatchesPrefix(pathname, prefix)
+  )
+  if (isLegacyByDefault) {
+    const legacyDefaultEntry = CONDITIONAL_LEGACY_SYSTEM_PREFIXES.find(({ prefix }) =>
+      pathMatchesPrefix(pathname, prefix)
+    )
+    // Sistemas em rollback legado por padrao: shell removido exceto quando nativo foi habilitado explicitamente.
+    if (!legacyDefaultEntry || legacyDefaultEntry.nativeFlag !== '1') return true
+  }
 
   // Em sistemas do portal, só removemos o shell quando houver rollback explícito
   // para legado (VITE_PORTAL_NATIVE_*=0).
