@@ -1,12 +1,14 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { useNavigate, Link } from '@tanstack/react-router'
+import { FileText } from 'lucide-react'
+import { PageContainer } from '@/components/layout/PageContainer'
+import { PageHeader } from '@/components/layout/PageHeader'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Textarea } from '@/components/ui/textarea'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
@@ -140,7 +142,6 @@ function AgentProgressItem(props: {
 // ============================================================
 
 export function GeradorPecasPage() {
-  const navigate = useNavigate()
   const { toast } = useToast()
 
   // --- Page state machine ---
@@ -209,6 +210,7 @@ export function GeradorPecasPage() {
   const [isUploadingParecer, setIsUploadingParecer] = useState(false)
   const parecerResolveRef = useRef<((choice: 'uploaded' | 'continue_without') => void) | null>(null)
   const [parecerUploadId, setParecerUploadId] = useState<string | null>(null)
+  const parecerUserChoiceRef = useRef<string | null>(null)
 
   // --- Data loading ---
   const {
@@ -406,6 +408,8 @@ export function GeradorPecasPage() {
           observacao_usuario: observacao || undefined,
           group_id: selectedGroupId || undefined,
           subcategoria_ids: selectedSubcategorias.length > 0 ? selectedSubcategorias : undefined,
+          parecer_upload_id: parecerUploadId || undefined,
+          parecer_user_choice_when_missing: parecerUserChoiceRef.current || undefined,
         },
         (event) => {
           switch (event.tipo) {
@@ -429,6 +433,7 @@ export function GeradorPecasPage() {
 
             case 'parecer_natjus_ausente':
               setShowParecerDialog(true)
+              setPageState('idle')
               break
 
             case 'sucesso':
@@ -449,6 +454,8 @@ export function GeradorPecasPage() {
         },
         controller.signal
       )
+      // Stream terminou sem evento sucesso/erro (ex: parecer_natjus_ausente)
+      setPageState((prev) => prev === 'streaming' ? 'idle' : prev)
     } catch (error) {
       if ((error as Error).name === 'AbortError') return
       const msg = (error as Error).message || 'Erro desconhecido'
@@ -456,7 +463,7 @@ export function GeradorPecasPage() {
       setPageState('erro')
       toast({ title: 'Erro', description: msg, variant: 'destructive' })
     }
-  }, [numeroCNJ, tipoPeca, observacao, selectedGroupId, selectedSubcategorias, toast, readSSEStream, refetchHistorico])
+  }, [numeroCNJ, tipoPeca, observacao, selectedGroupId, selectedSubcategorias, parecerUploadId, toast, readSSEStream, refetchHistorico])
 
   // ============================================================
   // Processar - Modo PDF Upload
@@ -484,6 +491,8 @@ export function GeradorPecasPage() {
     if (observacao) formData.append('observacao_usuario', observacao)
     if (selectedGroupId) formData.append('group_id', String(selectedGroupId))
     if (selectedSubcategorias.length > 0) formData.append('subcategoria_ids', JSON.stringify(selectedSubcategorias))
+    if (parecerUploadId) formData.append('parecer_upload_id', parecerUploadId)
+    if (parecerUserChoiceRef.current) formData.append('parecer_user_choice_when_missing', parecerUserChoiceRef.current)
 
     try {
       await readSSEStreamFormData(
@@ -505,6 +514,7 @@ export function GeradorPecasPage() {
               break
             case 'parecer_natjus_ausente':
               setShowParecerDialog(true)
+              setPageState('idle')
               break
             case 'sucesso':
               setGeracaoId(event.geracao_id)
@@ -523,6 +533,8 @@ export function GeradorPecasPage() {
         },
         controller.signal
       )
+      // Stream terminou sem evento sucesso/erro
+      setPageState((prev) => prev === 'streaming' ? 'idle' : prev)
     } catch (error) {
       if ((error as Error).name === 'AbortError') return
       const msg = (error as Error).message || 'Erro desconhecido'
@@ -530,7 +542,7 @@ export function GeradorPecasPage() {
       setPageState('erro')
       toast({ title: 'Erro', description: msg, variant: 'destructive' })
     }
-  }, [pdfFiles, tipoPeca, observacao, selectedGroupId, selectedSubcategorias, toast, readSSEStreamFormData, refetchHistorico])
+  }, [pdfFiles, tipoPeca, observacao, selectedGroupId, selectedSubcategorias, parecerUploadId, toast, readSSEStreamFormData, refetchHistorico])
 
   // ============================================================
   // Processar - Modo Semi-Automatico (Curadoria)
@@ -698,10 +710,17 @@ export function GeradorPecasPage() {
   }, [parecerFile, numeroCNJ, tipoPeca, toast])
 
   const handleContinuarSemParecer = useCallback(() => {
+    if (!window.confirm('Confirmar continuidade sem parecer NATJus? A ausencia sera registrada em auditoria.')) return
     setShowParecerDialog(false)
     setParecerFile(null)
-    parecerResolveRef.current?.('continue_without')
-  }, [])
+    parecerUserChoiceRef.current = 'continue_without'
+    // Re-dispara a geracao automatica com o flag continue_without
+    if (inputMode === 'cnj') {
+      iniciarGeracaoAutomatica()
+    } else {
+      iniciarGeracaoPdf()
+    }
+  }, [inputMode, iniciarGeracaoAutomatica, iniciarGeracaoPdf])
 
   // ============================================================
   // Editor - Chat
@@ -948,6 +967,7 @@ export function GeradorPecasPage() {
     setProgressMessage('')
     setCuradoriaModulos([])
     setCuradoriaSelected(new Set())
+    parecerUserChoiceRef.current = null
   }, [])
 
   // ============================================================
@@ -974,90 +994,71 @@ export function GeradorPecasPage() {
   const isStreaming = pageState === 'streaming' || pageState === 'curadoria_gerando'
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-sky-50 via-white to-blue-50">
-      {/* Header */}
-      <header className="bg-white/90 backdrop-blur-sm shadow-sm border-b sticky top-0 z-40">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center justify-between h-16">
-            <div className="flex items-center gap-4">
-              <button type="button" onClick={() => navigate({ to: '/dashboard' })} className="text-gray-500 hover:text-gray-700 transition-colors" aria-label="Voltar ao Dashboard">
-                &larr;
-              </button>
-              <div className="border-l border-gray-300 pl-4">
-                <h1 className="font-semibold text-gray-800">Gerador de Pecas Juridicas</h1>
-                <p className="text-xs text-gray-500">Gere pecas com inteligencia artificial</p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-3">
-              {/* History drawer trigger */}
-              <Sheet>
-                <SheetTrigger asChild>
-                  <Button variant="ghost" size="sm" aria-label="Historico">
-                    Historico
-                  </Button>
-                </SheetTrigger>
-                <SheetContent>
-                  <SheetHeader>
-                    <SheetTitle>Historico de Geracoes</SheetTitle>
-                  </SheetHeader>
-                  <ScrollArea className="h-[calc(100vh-80px)] mt-4">
-                    {isLoadingHistorico ? (
-                      <div className="space-y-3 p-2">
-                        <Skeleton className="h-16 w-full" />
-                        <Skeleton className="h-16 w-full" />
-                        <Skeleton className="h-16 w-full" />
-                      </div>
-                    ) : !historico || historico.length === 0 ? (
-                      <div className="text-center py-8 text-gray-400">
-                        <p className="text-sm">Nenhuma geracao encontrada</p>
-                      </div>
-                    ) : (
-                      <div className="space-y-2 pr-2">
-                        {historico.map((item) => (
-                          <div
-                            key={item.id}
-                            onClick={() => carregarDoHistorico(item.id)}
-                            className="p-3 bg-gray-50 hover:bg-gray-100 rounded-lg cursor-pointer transition-colors"
-                            role="button"
-                            tabIndex={0}
-                            onKeyDown={(e) => { if (e.key === 'Enter') carregarDoHistorico(item.id) }}
-                          >
-                            <div className="flex items-center justify-between mb-1">
-                              <span className="text-sm font-medium text-gray-800 truncate">{item.cnj}</span>
-                              <div className="flex items-center gap-2 flex-shrink-0">
-                                <span className="text-xs text-gray-400">{formatDate(item.data)}</span>
-                                <button
-                                  type="button"
-                                  onClick={(e) => excluirDoHistorico(item.id, e)}
-                                  className="text-gray-300 hover:text-red-500 transition-colors text-xs leading-none"
-                                  aria-label="Excluir geracao"
-                                >
-                                  {'\u2715'}
-                                </button>
-                              </div>
-                            </div>
-                            <div className="flex items-center gap-2">
-                              <Badge variant="outline" className="text-xs">{item.tipo_peca || 'Peca'}</Badge>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                  </ScrollArea>
-                </SheetContent>
-              </Sheet>
-
-              <Button variant="ghost" asChild>
-                <Link to="/dashboard">Dashboard</Link>
+    <PageContainer>
+      <PageHeader
+        title="Gerador de Pecas Juridicas"
+        subtitle="Gere pecas com inteligencia artificial"
+        icon={<FileText className="h-5 w-5" />}
+        backTo="/dashboard"
+        actions={
+          <Sheet>
+            <SheetTrigger asChild>
+              <Button variant="ghost" size="sm" aria-label="Historico">
+                Historico
               </Button>
-            </div>
-          </div>
-        </div>
-      </header>
-
-      {/* Main Content */}
-      <main className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+            </SheetTrigger>
+            <SheetContent>
+              <SheetHeader>
+                <SheetTitle>Historico de Geracoes</SheetTitle>
+              </SheetHeader>
+              <ScrollArea className="h-[calc(100vh-80px)] mt-4">
+                {isLoadingHistorico ? (
+                  <div className="space-y-3 p-2">
+                    <Skeleton className="h-16 w-full" />
+                    <Skeleton className="h-16 w-full" />
+                    <Skeleton className="h-16 w-full" />
+                  </div>
+                ) : !historico || historico.length === 0 ? (
+                  <div className="text-center py-8 text-gray-400">
+                    <p className="text-sm">Nenhuma geracao encontrada</p>
+                  </div>
+                ) : (
+                  <div className="space-y-2 pr-2">
+                    {historico.map((item) => (
+                      <div
+                        key={item.id}
+                        onClick={() => carregarDoHistorico(item.id)}
+                        className="p-3 bg-gray-50 hover:bg-gray-100 rounded-lg cursor-pointer transition-colors"
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => { if (e.key === 'Enter') carregarDoHistorico(item.id) }}
+                      >
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-sm font-medium text-gray-800 truncate">{item.cnj}</span>
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            <span className="text-xs text-gray-400">{formatDate(item.data)}</span>
+                            <button
+                              type="button"
+                              onClick={(e) => excluirDoHistorico(item.id, e)}
+                              className="text-gray-300 hover:text-red-500 transition-colors text-xs leading-none"
+                              aria-label="Excluir geracao"
+                            >
+                              {'\u2715'}
+                            </button>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <Badge variant="outline" className="text-xs">{item.tipo_peca || 'Peca'}</Badge>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </ScrollArea>
+            </SheetContent>
+          </Sheet>
+        }
+      />
 
         {/* ============================================================ */}
         {/* IDLE STATE - Form */}
@@ -1071,8 +1072,8 @@ export function GeradorPecasPage() {
                     G
                   </div>
                   <div>
-                    <CardTitle>Gerar Peca Juridica</CardTitle>
-                    <CardDescription>Informe os dados do processo para iniciar a geracao</CardDescription>
+                    <CardTitle>Dados da Geracao</CardTitle>
+                    <CardDescription>Preencha os parametros do processo para iniciar</CardDescription>
                   </div>
                 </div>
               </CardHeader>
@@ -1195,15 +1196,15 @@ export function GeradorPecasPage() {
                     <div>
                       <Label htmlFor="grupo">Grupo de Argumentos (opcional)</Label>
                       <Select
-                        value={selectedGroupId ? String(selectedGroupId) : ''}
-                        onValueChange={(v) => setSelectedGroupId(v ? Number(v) : null)}
+                        value={selectedGroupId ? String(selectedGroupId) : '__all__'}
+                        onValueChange={(v) => setSelectedGroupId(v === '__all__' ? null : Number(v))}
                         disabled={isFormDisabled}
                       >
                         <SelectTrigger className="mt-2" id="grupo">
                           <SelectValue placeholder="Todos os grupos" />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="">Todos os grupos</SelectItem>
+                          <SelectItem value="__all__">Todos os grupos</SelectItem>
                           {gruposData.grupos.map((g) => (
                             <SelectItem key={g.id} value={String(g.id)}>{g.nome}</SelectItem>
                           ))}
@@ -1277,38 +1278,7 @@ export function GeradorPecasPage() {
               </CardContent>
             </Card>
 
-            {/* Agent Progress (visible during streaming) */}
-            {isStreaming && (
-              <Card className="mb-6">
-                <CardHeader>
-                  <CardTitle className="text-lg">Progresso</CardTitle>
-                  <CardDescription>{progressMessage}</CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="space-y-3">
-                    <AgentProgressItem numero={1} nome="Agente 1: Coletor" descricao="Coleta documentos do TJ-MS" status={agentStatuses[1]} />
-                    <AgentProgressItem numero={2} nome="Agente 2: Ativador" descricao="Detecta argumentos relevantes" status={agentStatuses[2]} />
-                    <AgentProgressItem numero={3} nome="Agente 3: Gerador" descricao="Gera a peca juridica" status={agentStatuses[3]} />
-                  </div>
-
-                  {/* Streaming preview */}
-                  {streamingContent && (
-                    <>
-                      <Separator className="my-4" />
-                      <div className="bg-white rounded-lg border p-4 max-h-64 overflow-y-auto">
-                        <div className="flex items-center gap-2 text-blue-600 mb-3">
-                          <span className="animate-pulse text-sm font-medium">Gerando peca em tempo real...</span>
-                        </div>
-                        <div
-                          className="prose prose-sm max-w-none"
-                          dangerouslySetInnerHTML={{ __html: minutaHtml }}
-                        />
-                      </div>
-                    </>
-                  )}
-                </CardContent>
-              </Card>
-            )}
+            {/* Progress is now shown in the modal Dialog below */}
 
             {/* Error state */}
             {pageState === 'erro' && (
@@ -1699,7 +1669,62 @@ export function GeradorPecasPage() {
             </Card>
           </div>
         )}
-      </main>
+      {/* ============================================================ */}
+      {/* PROGRESS MODAL (igual ao sistema legado) */}
+      {/* ============================================================ */}
+      <Dialog open={isStreaming} onOpenChange={(open) => { if (!open) voltarParaInicio() }}>
+        <DialogContent
+          className="max-w-lg"
+          onInteractOutside={(e) => e.preventDefault()}
+          onEscapeKeyDown={(e) => e.preventDefault()}
+        >
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-gradient-to-br from-primary-500 to-primary-600 rounded-lg flex items-center justify-center text-white text-sm font-bold">
+                G
+              </div>
+              Gerando Peca Juridica
+            </DialogTitle>
+            <DialogDescription className="sr-only">Progresso da geracao da peca juridica</DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            <p className="text-sm text-gray-600">{progressMessage || 'Iniciando...'}</p>
+
+            <div className="space-y-3">
+              <AgentProgressItem numero={1} nome="Agente 1: Coletor" descricao="Coleta documentos do TJ-MS" status={agentStatuses[1]} />
+              <AgentProgressItem numero={2} nome="Agente 2: Ativador" descricao="Detecta argumentos relevantes" status={agentStatuses[2]} />
+              <AgentProgressItem numero={3} nome="Agente 3: Gerador" descricao="Gera a peca juridica" status={agentStatuses[3]} />
+            </div>
+
+            {/* Preview de streaming em tempo real */}
+            {streamingContent && (
+              <>
+                <Separator />
+                <div className="bg-gray-50 rounded-lg border p-4 max-h-48 overflow-y-auto">
+                  <div className="flex items-center gap-2 text-blue-600 mb-2">
+                    <span className="animate-pulse text-xs font-medium">Gerando peca em tempo real...</span>
+                  </div>
+                  <div
+                    className="prose prose-sm max-w-none"
+                    dangerouslySetInnerHTML={{ __html: minutaHtml }}
+                  />
+                </div>
+              </>
+            )}
+
+            <Separator />
+
+            <Button
+              onClick={voltarParaInicio}
+              variant="destructive"
+              className="w-full"
+            >
+              Cancelar Geracao
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {/* ============================================================ */}
       {/* PARECER NATJUS DIALOG */}
@@ -1708,6 +1733,7 @@ export function GeradorPecasPage() {
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Parecer NATJus nao encontrado</DialogTitle>
+            <DialogDescription className="sr-only">Opcoes para anexar parecer NATJus</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <p className="text-sm text-gray-600">
@@ -1755,6 +1781,7 @@ export function GeradorPecasPage() {
         <DialogContent className="max-w-md">
           <DialogHeader>
             <DialogTitle>Como foi a experiencia?</DialogTitle>
+            <DialogDescription className="sr-only">Avalie a qualidade da geracao</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="flex justify-center gap-2">
@@ -1797,6 +1824,7 @@ export function GeradorPecasPage() {
         <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>Historico de Versoes</DialogTitle>
+            <DialogDescription className="sr-only">Lista de versoes anteriores da peca</DialogDescription>
           </DialogHeader>
           <ScrollArea className="max-h-[60vh]">
             {versionList.length === 0 ? (
@@ -1824,6 +1852,6 @@ export function GeradorPecasPage() {
           </ScrollArea>
         </DialogContent>
       </Dialog>
-    </div>
+    </PageContainer>
   )
 }

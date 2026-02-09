@@ -2,23 +2,36 @@ import { Outlet, useRouterState } from '@tanstack/react-router'
 import { Header } from './Header'
 import { Sidebar } from './Sidebar'
 
-const LEGACY_FRAME_ROUTE_PREFIXES = [
-  '/admin/',
-  '/assistencia',
-  '/matriculas',
-  '/gerador-pecas',
-  '/pedido-calculo',
-  '/prestacao-contas',
-  '/relatorio-cumprimento',
-  '/classificador',
-  '/bert-training',
+const ALWAYS_LEGACY_FRAME_PREFIXES = ['/admin/']
+
+const CONDITIONAL_LEGACY_SYSTEM_PREFIXES: Array<{ prefix: string; nativeFlag: string | undefined }> = [
+  { prefix: '/assistencia', nativeFlag: import.meta.env.VITE_PORTAL_NATIVE_ASSISTENCIA },
+  { prefix: '/matriculas', nativeFlag: import.meta.env.VITE_PORTAL_NATIVE_MATRICULAS },
+  { prefix: '/gerador-pecas', nativeFlag: import.meta.env.VITE_PORTAL_NATIVE_GERADOR_PECAS },
+  { prefix: '/pedido-calculo', nativeFlag: import.meta.env.VITE_PORTAL_NATIVE_PEDIDO_CALCULO },
+  { prefix: '/prestacao-contas', nativeFlag: import.meta.env.VITE_PORTAL_NATIVE_PRESTACAO_CONTAS },
+  { prefix: '/relatorio-cumprimento', nativeFlag: import.meta.env.VITE_PORTAL_NATIVE_RELATORIO_CUMPRIMENTO },
+  { prefix: '/classificador', nativeFlag: import.meta.env.VITE_PORTAL_NATIVE_CLASSIFICADOR },
+  { prefix: '/bert-training', nativeFlag: import.meta.env.VITE_PORTAL_NATIVE_BERT_TRAINING },
 ]
 
+function pathMatchesPrefix(pathname: string, prefix: string): boolean {
+  const normalizedPrefix = prefix.endsWith('/') ? prefix.slice(0, -1) : prefix
+  return pathname === normalizedPrefix || pathname.startsWith(`${normalizedPrefix}/`)
+}
+
 function shouldRenderWithoutReactShell(pathname: string): boolean {
-  return LEGACY_FRAME_ROUTE_PREFIXES.some((prefix) => {
-    const normalizedPrefix = prefix.endsWith('/') ? prefix.slice(0, -1) : prefix
-    return pathname === normalizedPrefix || pathname.startsWith(`${normalizedPrefix}/`)
-  })
+  const isAlwaysLegacy = ALWAYS_LEGACY_FRAME_PREFIXES.some((prefix) =>
+    pathMatchesPrefix(pathname, prefix)
+  )
+
+  if (isAlwaysLegacy) return true
+
+  // Em sistemas do portal, só removemos o shell quando houver rollback explícito
+  // para legado (VITE_PORTAL_NATIVE_*=0).
+  return CONDITIONAL_LEGACY_SYSTEM_PREFIXES.some(
+    ({ prefix, nativeFlag }) => nativeFlag === '0' && pathMatchesPrefix(pathname, prefix)
+  )
 }
 
 /**
@@ -45,7 +58,7 @@ export function AppLayout() {
         <Header />
 
         {/* Área de conteúdo (renderiza as páginas) */}
-        <main className="flex-1 overflow-y-auto">
+        <main className="flex-1 overflow-y-auto bg-gray-50">
           <Outlet />
         </main>
       </div>

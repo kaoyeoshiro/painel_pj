@@ -142,6 +142,13 @@ Regra de migracao por sistema:
 8. Validacao com novo default (sem flags):
    - `portal.visual` -> `16 passed`
    - `portal.smoke` -> `8 passed`
+9. Ajustes de UX solicitados na rodada atual:
+   - Shell do dashboard restaurado nos sistemas nativos (header com logo centralizado + fundo cinza da aplicacao).
+   - Botao de voltar no `PageHeader` alterado para versao iconica, melhor posicionada ao lado do titulo.
+   - Texto duplicado no Gerador de Pecas removido (card inicial renomeado para "Dados da Geracao").
+10. Validacao apos ajustes de UX:
+   - `npm run build` -> OK
+   - `npm run test:portal-smoke` -> `8 passed`
 
 Proximo item imediato:
 1. Planejar remocao progressiva do fallback legado por sistema (apos janela de observacao em homolog/prod).
