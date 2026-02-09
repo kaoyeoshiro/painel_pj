@@ -201,18 +201,43 @@ Evidencia de execucao:
 
 ---
 
+### Passo 7 - Calibracao de tolerancia visual (aperto de paridade)
+Status: EM ANDAMENTO
+
+Rodada executada (etapa `0.18 -> 0.12`):
+1. Execucao inicial em paralelo gerou falso negativo por indisponibilidade de webserver (`ERR_CONNECTION_REFUSED`), confirmando novamente necessidade de execucao sequencial.
+2. Reexecucao correta em sequencia:
+   - `E2E_MAX_DIFF_RATIO=0.12 npm run test:admin-visual` -> `32 passed`
+   - `E2E_MAX_DIFF_RATIO=0.12 npm run test:portal-visual` -> `15 passed / 1 failed`
+3. Gap residual identificado:
+   - rota: `matriculas` (mobile)
+   - diff: `0.13` (43741 pixels), acima do limite `0.12`.
+
+Leitura do resultado:
+1. Admin esta apto para tolerancia mais estrita (`0.12`).
+2. Portal ainda depende de ajuste visual pontual em `matriculas` mobile para fechar a etapa.
+
+Acao imediata do proximo ciclo:
+1. Ajustar `matriculas` mobile para reduzir diff visual residual.
+2. Revalidar `portal.visual` em `0.12`.
+3. Somente apos fechar `0.12` avancar para `0.08`.
+
+---
+
 ## Proximos passos (sequencia pratica)
-1. Monitorar por 7 dias os logs/feedbacks de carregamento para confirmar reducao de casos de tela vazia em admin/sistemas com fallback.
-2. Reduzir gradualmente tolerancia visual (`E2E_MAX_DIFF_RATIO`) para apertar paridade:
+1. Ajustar `matriculas` mobile para fechar o gap residual de `0.13 -> <= 0.12`.
+2. Reexecutar `portal.visual` com `E2E_MAX_DIFF_RATIO=0.12`.
+3. Monitorar por 7 dias os logs/feedbacks de carregamento para confirmar reducao de casos de tela vazia em admin/sistemas com fallback.
+4. Reduzir gradualmente tolerancia visual (`E2E_MAX_DIFF_RATIO`) para apertar paridade:
    - etapa 1: `0.18 -> 0.12`
    - etapa 2: `0.12 -> 0.08`
    - etapa 3: `0.08 -> 0.05`
-3. Para cada reducao de tolerancia:
+5. Para cada reducao de tolerancia:
    - rodar `admin.visual`
    - rodar `portal.visual`
    - corrigir pagina divergente ate ficar verde.
-4. Encerrar rollback por sistema (remocao progressiva de `VITE_PORTAL_NATIVE_*=0`) somente apos janela sem incidentes.
-5. Reavaliar remocao da pasta legada apenas quando Passos 4/5 estiverem 100% fechados.
+6. Encerrar rollback por sistema (remocao progressiva de `VITE_PORTAL_NATIVE_*=0`) somente apos janela sem incidentes.
+7. Reavaliar remocao da pasta legada apenas quando Passos 4/5 estiverem 100% fechados.
 
 ## Arquivos criados/alterados nesta rodada
 1. `frontend-react/e2e/portal.visual.spec.ts` (novo)
