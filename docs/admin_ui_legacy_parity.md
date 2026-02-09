@@ -148,6 +148,11 @@ Se `target` vier fora dessa lista, o bridge aplica fallback para `/admin/users`.
 | `VITE_PORTAL_NATIVE_MATRICULAS` | Frontend React (Vite) | `0`/ausente | Canary de migração progressiva. `1` ativa rota nativa React em `/matriculas`; ausente mantém espelhamento legado via iframe. |
 | `VITE_PORTAL_NATIVE_ASSISTENCIA` | Frontend React (Vite) | `0`/ausente | Canary de migração progressiva. `1` ativa rota nativa React em `/assistencia`; ausente mantém espelhamento legado via iframe. |
 | `VITE_PORTAL_NATIVE_CLASSIFICADOR` | Frontend React (Vite) | `0`/ausente | Canary de migração progressiva. `1` ativa rota nativa React em `/classificador`; ausente mantém espelhamento legado via iframe. |
+| `VITE_PORTAL_NATIVE_PEDIDO_CALCULO` | Frontend React (Vite) | `0`/ausente | Canary de migração progressiva. `1` ativa rota nativa React em `/pedido-calculo`; ausente mantém espelhamento legado via iframe. |
+| `VITE_PORTAL_NATIVE_PRESTACAO_CONTAS` | Frontend React (Vite) | `0`/ausente | Canary de migração progressiva. `1` ativa rota nativa React em `/prestacao-contas`; ausente mantém espelhamento legado via iframe. |
+| `VITE_PORTAL_NATIVE_RELATORIO_CUMPRIMENTO` | Frontend React (Vite) | `0`/ausente | Canary de migração progressiva. `1` ativa rota nativa React em `/relatorio-cumprimento`; ausente mantém espelhamento legado via iframe. |
+| `VITE_PORTAL_NATIVE_GERADOR_PECAS` | Frontend React (Vite) | `0`/ausente | Canary de migração progressiva. `1` ativa rota nativa React em `/gerador-pecas`; ausente mantém espelhamento legado via iframe. |
+| `VITE_PORTAL_NATIVE_BERT_TRAINING` | Frontend React (Vite) | `0`/ausente | Canary de migração progressiva. `1` ativa rota nativa React em `/bert-training`; ausente mantém espelhamento legado via iframe. |
 | `E2E_BASE_URL` | Playwright | `http://127.0.0.1:5178` | Base URL dos testes no frontend React. |
 | `E2E_LEGACY_BASE_URL` | Playwright | `http://127.0.0.1:8000` | Base URL do legado para baseline visual. |
 
@@ -176,6 +181,7 @@ Arquivo de referência:
    - `npm run test:admin-visual`
    - `npm run test:portal-visual`
    - `npm run test:portal-smoke`
+6. Em CI/local, rode `portal-visual` e `portal-smoke` em sequencia (nao em paralelo) para evitar disputa da porta `8000`.
 
 ### Resultado operacional atual
 1. Bridge ativo e validado para admin + 8 sistemas.

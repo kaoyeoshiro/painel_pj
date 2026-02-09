@@ -18,6 +18,11 @@ import { LegacyAdminFramePage } from '@/pages/admin/legacy/LegacyAdminFramePage'
 import MatriculasPage from '@/pages/matriculas/MatriculasPage'
 import { AssistenciaPage } from '@/pages/assistencia/AssistenciaPage'
 import { ClassificadorPage } from '@/pages/classificador/ClassificadorPage'
+import { PedidoCalculoPage } from '@/pages/pedido-calculo/PedidoCalculoPage'
+import { PrestacaoContasPage } from '@/pages/prestacao-contas/PrestacaoContasPage'
+import { RelatorioCumprimentoPage } from '@/pages/relatorio-cumprimento/RelatorioCumprimentoPage'
+import { GeradorPecasPage } from '@/pages/gerador-pecas/GeradorPecasPage'
+import { BertTrainingPage } from '@/pages/bert-training/BertTrainingPage'
 
 
 // ---------------------------------------------------------------------------
@@ -72,7 +77,7 @@ const dashboardRoute = createRoute({
 const geradorPecasRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: '/gerador-pecas',
-  component: GeradorPecasLegacyPage,
+  component: GeradorPecasRoutePage,
 })
 
 const extratorAutosRoute = createRoute({
@@ -90,19 +95,19 @@ const classificadorRoute = createRoute({
 const pedidoCalculoRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: '/pedido-calculo',
-  component: PedidoCalculoLegacyPage,
+  component: PedidoCalculoRoutePage,
 })
 
 const prestacaoContasRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: '/prestacao-contas',
-  component: PrestacaoContasLegacyPage,
+  component: PrestacaoContasRoutePage,
 })
 
 const relatorioCumprimentoRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: '/relatorio-cumprimento',
-  component: RelatorioCumprimentoLegacyPage,
+  component: RelatorioCumprimentoRoutePage,
 })
 
 const cumprimentoBetaRoute = createRoute({
@@ -126,7 +131,7 @@ const matriculasRoute = createRoute({
 const bertTrainingRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: '/bert-training',
-  component: BertTrainingLegacyPage,
+  component: BertTrainingRoutePage,
 })
 
 const changePasswordRoute = createRoute({
@@ -193,6 +198,51 @@ function shouldUseNativeClassificador(): boolean {
 function ClassificadorRoutePage() {
   if (shouldUseNativeClassificador()) return <ClassificadorPage />
   return <ClassificadorLegacyPage />
+}
+
+function shouldUseNativePedidoCalculo(): boolean {
+  return import.meta.env.VITE_PORTAL_NATIVE_PEDIDO_CALCULO === '1'
+}
+
+function PedidoCalculoRoutePage() {
+  if (shouldUseNativePedidoCalculo()) return <PedidoCalculoPage />
+  return <PedidoCalculoLegacyPage />
+}
+
+function shouldUseNativePrestacaoContas(): boolean {
+  return import.meta.env.VITE_PORTAL_NATIVE_PRESTACAO_CONTAS === '1'
+}
+
+function PrestacaoContasRoutePage() {
+  if (shouldUseNativePrestacaoContas()) return <PrestacaoContasPage />
+  return <PrestacaoContasLegacyPage />
+}
+
+function shouldUseNativeRelatorioCumprimento(): boolean {
+  return import.meta.env.VITE_PORTAL_NATIVE_RELATORIO_CUMPRIMENTO === '1'
+}
+
+function RelatorioCumprimentoRoutePage() {
+  if (shouldUseNativeRelatorioCumprimento()) return <RelatorioCumprimentoPage />
+  return <RelatorioCumprimentoLegacyPage />
+}
+
+function shouldUseNativeGeradorPecas(): boolean {
+  return import.meta.env.VITE_PORTAL_NATIVE_GERADOR_PECAS === '1'
+}
+
+function GeradorPecasRoutePage() {
+  if (shouldUseNativeGeradorPecas()) return <GeradorPecasPage />
+  return <GeradorPecasLegacyPage />
+}
+
+function shouldUseNativeBertTraining(): boolean {
+  return import.meta.env.VITE_PORTAL_NATIVE_BERT_TRAINING === '1'
+}
+
+function BertTrainingRoutePage() {
+  if (shouldUseNativeBertTraining()) return <BertTrainingPage />
+  return <BertTrainingLegacyPage />
 }
 
 // ---------------------------------------------------------------------------

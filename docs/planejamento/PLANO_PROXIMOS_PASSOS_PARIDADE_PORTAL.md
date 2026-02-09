@@ -82,14 +82,24 @@ Evidencia de execucao/estabilidade:
 Status: EM ANDAMENTO
 
 Implementacao inicial concluida:
-1. Canary de migracao criado para os tres primeiros sistemas da fila:
+1. Canary de migracao criado para os 8 sistemas do portal:
    - `/matriculas`
    - `/assistencia`
    - `/classificador`
+   - `/pedido-calculo`
+   - `/prestacao-contas`
+   - `/relatorio-cumprimento`
+   - `/gerador-pecas`
+   - `/bert-training`
 2. Rotas no `frontend-react/src/router.tsx` agora suportam:
    - `VITE_PORTAL_NATIVE_MATRICULAS=1` -> `MatriculasPage`
    - `VITE_PORTAL_NATIVE_ASSISTENCIA=1` -> `AssistenciaPage`
    - `VITE_PORTAL_NATIVE_CLASSIFICADOR=1` -> `ClassificadorPage`
+   - `VITE_PORTAL_NATIVE_PEDIDO_CALCULO=1` -> `PedidoCalculoPage`
+   - `VITE_PORTAL_NATIVE_PRESTACAO_CONTAS=1` -> `PrestacaoContasPage`
+   - `VITE_PORTAL_NATIVE_RELATORIO_CUMPRIMENTO=1` -> `RelatorioCumprimentoPage`
+   - `VITE_PORTAL_NATIVE_GERADOR_PECAS=1` -> `GeradorPecasPage`
+   - `VITE_PORTAL_NATIVE_BERT_TRAINING=1` -> `BertTrainingPage`
    - default/ausente -> espelho legado via `LegacyAdminFramePage`
 3. Ajuste de suporte nos testes para modo nativo sem iframe:
    - `frontend-react/e2e/portal.visual.spec.ts` aceita fluxo com ou sem iframe
@@ -99,8 +109,23 @@ Implementacao inicial concluida:
    - `CI=1 VITE_PORTAL_NATIVE_MATRICULAS=1 ... portal.visual --grep matriculas` -> `2 passed`
    - `CI=1 VITE_PORTAL_NATIVE_ASSISTENCIA=1 ... portal.visual --grep assistencia` -> `2 passed`
    - `CI=1 VITE_PORTAL_NATIVE_CLASSIFICADOR=1 ... portal.visual --grep classificador` -> `2 passed`
+   - `CI=1 VITE_PORTAL_NATIVE_PEDIDO_CALCULO=1 ... portal.visual --grep pedido-calculo` -> `2 passed`
+   - `CI=1 VITE_PORTAL_NATIVE_PRESTACAO_CONTAS=1 ... portal.visual --grep prestacao-contas` -> `2 passed`
+   - `CI=1 VITE_PORTAL_NATIVE_RELATORIO_CUMPRIMENTO=1 ... portal.visual --grep relatorio-cumprimento` -> `2 passed`
+   - `CI=1 VITE_PORTAL_NATIVE_GERADOR_PECAS=1 ... portal.visual --grep gerador-pecas` -> `2 passed`
+   - `CI=1 VITE_PORTAL_NATIVE_BERT_TRAINING=1 ... portal.visual --grep bert-training` -> `2 passed`
    - `CI=1 VITE_PORTAL_NATIVE_MATRICULAS=1 VITE_PORTAL_NATIVE_ASSISTENCIA=1 ... portal.smoke --grep "assistencia|matriculas"` -> `2 passed`
    - `CI=1 VITE_PORTAL_NATIVE_CLASSIFICADOR=1 ... portal.smoke --grep classificador` -> `1 passed`
+   - `CI=1 VITE_PORTAL_NATIVE_PEDIDO_CALCULO=1 ... portal.smoke --grep pedido-calculo` -> `1 passed`
+   - `CI=1 VITE_PORTAL_NATIVE_PRESTACAO_CONTAS=1 ... portal.smoke --grep prestacao-contas` -> `1 passed`
+   - `CI=1 VITE_PORTAL_NATIVE_RELATORIO_CUMPRIMENTO=1 ... portal.smoke --grep relatorio-cumprimento` -> `1 passed`
+   - `CI=1 VITE_PORTAL_NATIVE_GERADOR_PECAS=1 ... portal.smoke --grep gerador-pecas` -> `1 passed`
+   - `CI=1 VITE_PORTAL_NATIVE_BERT_TRAINING=1 ... portal.smoke --grep bert-training` -> `1 passed`
+5. Bateria consolidada (todos os canaries nativos ativos simultaneamente):
+   - `CI=1 ... (todas as VITE_PORTAL_NATIVE_*=1) portal.visual` -> `16 passed`
+   - `CI=1 ... (todas as VITE_PORTAL_NATIVE_*=1) portal.smoke` -> `8 passed`
+6. Nota operacional:
+   - Executar visual e smoke em sequencia (nao em paralelo), para evitar conflito de porta `8000` entre webservers de Playwright.
 
 Ordem proposta:
 1. Matriculas
@@ -119,7 +144,7 @@ Regra de migracao por sistema:
 4. Trocar rota de iframe para componente React apenas se ambos verdes.
 
 Proximo item imediato:
-1. Repetir o mesmo padrao canary para `pedido-calculo` e validar visual/smoke.
+1. Definir estrategia de rollout (ativacao gradual em ambiente de homologacao/producao) e remover fallback iframe por sistema migrado.
 
 ---
 
