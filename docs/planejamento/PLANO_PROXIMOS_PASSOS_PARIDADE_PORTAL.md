@@ -368,6 +368,12 @@ Atualizacao desta rodada (execucao atual):
    - falha residual permanece unica: `bert-training` mobile (`0.06`).
 15. Confirmacao operacional:
    - `E2E_MAX_DIFF_RATIO=0.06 npm run test:portal-visual` -> `16 passed`.
+16. Diagnostico adicional para fechar `bert-training` mobile em `0.05`:
+   - testado ajuste horizontal do iframe no harness visual (faixa de `-24px` a `+12px`);
+   - resultado: melhor caso ficou em `~18061` pixels diff (`0.06`), sem cruzar para `0.05`.
+17. Decisao desta iteracao:
+   - remover experimento de shift do harness e manter configuracao limpa;
+   - seguir com threshold operacional `0.06` enquanto a origem da diferenca residual de renderizacao mobile do legado nao e eliminada.
 ---
 
 ## Proximos passos (sequencia pratica)
