@@ -192,7 +192,7 @@ function AssistenciaRoutePage() {
 }
 
 function shouldUseNativeClassificador(): boolean {
-  return import.meta.env.VITE_PORTAL_NATIVE_CLASSIFICADOR !== '0'
+  return import.meta.env.VITE_PORTAL_NATIVE_CLASSIFICADOR === '1'
 }
 
 function ClassificadorRoutePage() {
@@ -201,7 +201,7 @@ function ClassificadorRoutePage() {
 }
 
 function shouldUseNativePedidoCalculo(): boolean {
-  return import.meta.env.VITE_PORTAL_NATIVE_PEDIDO_CALCULO !== '0'
+  return import.meta.env.VITE_PORTAL_NATIVE_PEDIDO_CALCULO === '1'
 }
 
 function PedidoCalculoRoutePage() {
@@ -228,7 +228,7 @@ function RelatorioCumprimentoRoutePage() {
 }
 
 function shouldUseNativeGeradorPecas(): boolean {
-  return import.meta.env.VITE_PORTAL_NATIVE_GERADOR_PECAS !== '0'
+  return import.meta.env.VITE_PORTAL_NATIVE_GERADOR_PECAS === '1'
 }
 
 function GeradorPecasRoutePage() {

@@ -11,11 +11,11 @@ interface PortalSmokeRoute {
 const PORTAL_ROUTES: PortalSmokeRoute[] = [
   { id: 'assistencia', label: 'Assistencia Judiciaria', reactPath: '/assistencia', expectedUrlContains: '/assistencia', preferLegacyFrame: true },
   { id: 'matriculas', label: 'Matriculas Confrontantes', reactPath: '/matriculas', expectedUrlContains: '/matriculas', preferLegacyFrame: true },
-  { id: 'gerador-pecas', label: 'Gerador de Pecas', reactPath: '/gerador-pecas', expectedUrlContains: '/gerador-pecas' },
-  { id: 'pedido-calculo', label: 'Pedido de Calculo', reactPath: '/pedido-calculo', expectedUrlContains: '/pedido-calculo' },
+  { id: 'gerador-pecas', label: 'Gerador de Pecas', reactPath: '/gerador-pecas', expectedUrlContains: '/gerador-pecas', preferLegacyFrame: true },
+  { id: 'pedido-calculo', label: 'Pedido de Calculo', reactPath: '/pedido-calculo', expectedUrlContains: '/pedido-calculo', preferLegacyFrame: true },
   { id: 'prestacao-contas', label: 'Prestacao de Contas', reactPath: '/prestacao-contas', expectedUrlContains: '/prestacao-contas', preferLegacyFrame: true },
   { id: 'relatorio-cumprimento', label: 'Relatorio de Cumprimento', reactPath: '/relatorio-cumprimento', expectedUrlContains: '/relatorio-cumprimento', preferLegacyFrame: true },
-  { id: 'classificador', label: 'Classificador de Documentos', reactPath: '/classificador', expectedUrlContains: '/classificador' },
+  { id: 'classificador', label: 'Classificador de Documentos', reactPath: '/classificador', expectedUrlContains: '/classificador', preferLegacyFrame: true },
   { id: 'bert-training', label: 'BERT Training', reactPath: '/bert-training', expectedUrlContains: '/bert-training', preferLegacyFrame: true },
 ]
 

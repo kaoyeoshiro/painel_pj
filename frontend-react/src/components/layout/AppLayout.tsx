@@ -11,8 +11,11 @@ const ALWAYS_NATIVE_NO_SHELL_PREFIXES = [
 const LEGACY_BY_DEFAULT_PREFIXES = [
   '/assistencia',
   '/matriculas',
+  '/gerador-pecas',
+  '/pedido-calculo',
   '/prestacao-contas',
   '/relatorio-cumprimento',
+  '/classificador',
   '/bert-training',
 ]
 

@@ -338,7 +338,7 @@ Atualizacao desta rodada (execucao atual):
 7. Decisao de rollout aplicada no codigo (paridade primeiro):
    - `assistencia`, `matriculas`, `prestacao-contas`, `relatorio-cumprimento` e `bert-training` ficam em legado por padrao.
    - Opt-in para React nativo nessas rotas agora e explicito via env (`VITE_PORTAL_NATIVE_*=1`).
-   - `pedido-calculo`, `gerador-pecas` e `classificador` permanecem nativos por padrao.
+   - `pedido-calculo`, `gerador-pecas` e `classificador` estavam nativos por padrao nesta etapa inicial.
 8. Ajuste tecnico do smoke para o novo modo misto (nativo + legado):
    - `portal.smoke.spec.ts` agora marca rotas que preferem iframe legado (`preferLegacyFrame`).
    - Espera ativa por `contentFrame` para evitar falso negativo preso no overlay `Carregando tela legada...`.
@@ -374,28 +374,32 @@ Atualizacao desta rodada (execucao atual):
 17. Decisao desta iteracao:
    - remover experimento de shift do harness e manter configuracao limpa;
    - seguir com threshold operacional `0.06` enquanto a origem da diferenca residual de renderizacao mobile do legado nao e eliminada.
+18. Rollout de paridade reforcado nesta rodada:
+   - `pedido-calculo`, `gerador-pecas` e `classificador` passaram para legado por padrao.
+   - Resultado: os 8 sistemas do portal ficam em legado por padrao; React nativo fica somente por opt-in explicito (`VITE_PORTAL_NATIVE_*=1`).
+19. Ajuste de smoke para refletir o novo default:
+   - `portal.smoke.spec.ts` marcou `gerador-pecas`, `pedido-calculo` e `classificador` com `preferLegacyFrame: true`.
+20. Revalidacao apos rollout reforcado:
+   - `npm run test:portal-smoke` -> `8 passed`;
+   - `npm run test:portal-visual` -> `16 passed`;
+   - `E2E_MAX_DIFF_RATIO=0.05 npm run test:portal-visual` -> `15 passed / 1 failed` (residual `bert-training` mobile `0.06`);
+   - `E2E_MAX_DIFF_RATIO=0.06 npm run test:portal-visual` -> `16 passed`;
+   - `npm run test:admin-visual` -> `32 passed`;
+   - `npm run build` -> OK.
 ---
 
 ## Proximos passos (sequencia pratica)
-1. Continuar etapa `0.05` no portal com estrategia incremental por rota.
-2. Proxima bateria imediata:
-   - `E2E_MAX_DIFF_RATIO=0.05 npx playwright test -c playwright.portal-visual.config.ts --grep "classificador|prestacao-contas"`
-   - aplicar ajustes locais
-   - repetir ate verde nessas duas rotas.
-3. Em seguida, atacar `assistencia`, `matriculas` e `relatorio-cumprimento` (mobile), mantendo validação por grupo pequeno.
-4. Por ultimo, fechar `bert-training` (desktop+mobile), que concentra diff estrutural maior.
-5. Manter execucao sequencial dos testes para evitar conflito de webserver.
-6. Monitorar por 7 dias os logs/feedbacks de carregamento para confirmar reducao de casos de tela vazia em admin/sistemas com fallback.
-7. Reduzir gradualmente tolerancia visual (`E2E_MAX_DIFF_RATIO`) para apertar paridade:
-   - etapa 1: `0.18 -> 0.12`
-   - etapa 2: `0.12 -> 0.08`
-   - etapa 3: `0.08 -> 0.05`
-8. Para cada reducao de tolerancia:
-   - rodar `admin.visual`
-   - rodar `portal.visual`
-   - corrigir pagina divergente ate ficar verde.
-9. Encerrar rollback por sistema (remocao progressiva de `VITE_PORTAL_NATIVE_*=0`) somente apos janela sem incidentes.
-10. Reavaliar remocao da pasta legada apenas quando Passos 4/5 estiverem 100% fechados.
+1. Manter execucao sequencial dos testes para evitar conflito de webserver.
+2. Operar gate visual com `E2E_MAX_DIFF_RATIO=0.06` enquanto o residual `bert-training` mobile (`0.06`) existir.
+3. Isolar e corrigir a diferenca residual do `bert-training` mobile em `0.05` (header/topbar no contexto iframe mobile).
+4. Apos fechar `0.05`, validar novamente:
+   - `E2E_MAX_DIFF_RATIO=0.05 npm run test:portal-visual`
+   - `E2E_MAX_DIFF_RATIO=0.05 npm run test:admin-visual`
+   - `npm run test:portal-smoke`
+5. Reabrir migracao nativa por sistema apenas via opt-in (`VITE_PORTAL_NATIVE_*=1`), um sistema por vez, com criterio:
+   - visual + smoke verdes
+   - sem regressao funcional reportada na janela de observacao.
+6. Reavaliar remocao da pasta legada apenas quando Passos 4/5 estiverem 100% fechados.
 
 ## Arquivos criados/alterados nesta rodada
 1. `frontend-react/e2e/portal.visual.spec.ts` (novo)
@@ -411,4 +415,7 @@ Atualizacao desta rodada (execucao atual):
 11. `frontend-react/src/pages/pedido-calculo/PedidoCalculoPage.tsx` (ajuste de header)
 12. `frontend-react/src/pages/prestacao-contas/PrestacaoContasPage.tsx` (ajuste de header)
 13. `frontend-react/src/pages/relatorio-cumprimento/RelatorioCumprimentoPage.tsx` (ajuste de header)
+14. `frontend-react/src/router.tsx` (rollout: 8 sistemas em legado por padrao, nativo apenas por opt-in)
+15. `frontend-react/src/components/layout/AppLayout.tsx` (prefixos de paridade por default legado)
+16. `frontend-react/e2e/portal.smoke.spec.ts` (preferencia explicita por iframe legado nas 8 rotas)
 
