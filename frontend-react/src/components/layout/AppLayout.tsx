@@ -3,6 +3,11 @@ import { Header } from './Header'
 import { Sidebar } from './Sidebar'
 
 const ALWAYS_LEGACY_FRAME_PREFIXES = ['/admin/']
+const ALWAYS_NATIVE_NO_SHELL_PREFIXES = [
+  '/pedido-calculo',
+  '/prestacao-contas',
+  '/bert-training',
+]
 
 const MOBILE_INLINE_TOPBAR_PREFIXES = [
   '/assistencia',
@@ -10,6 +15,7 @@ const MOBILE_INLINE_TOPBAR_PREFIXES = [
   '/pedido-calculo',
   '/prestacao-contas',
   '/relatorio-cumprimento',
+  '/classificador',
 ]
 
 const CONDITIONAL_LEGACY_SYSTEM_PREFIXES: Array<{ prefix: string; nativeFlag: string | undefined }> = [
@@ -34,6 +40,12 @@ function shouldRenderWithoutReactShell(pathname: string): boolean {
   )
 
   if (isAlwaysLegacy) return true
+
+  const isAlwaysNativeNoShell = ALWAYS_NATIVE_NO_SHELL_PREFIXES.some((prefix) =>
+    pathMatchesPrefix(pathname, prefix)
+  )
+
+  if (isAlwaysNativeNoShell) return true
 
   // Em sistemas do portal, só removemos o shell quando houver rollback explícito
   // para legado (VITE_PORTAL_NATIVE_*=0).

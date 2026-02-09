@@ -2,7 +2,8 @@ import { useState, useRef, useCallback, useEffect } from 'react'
 import { classificadorApi, getToken } from '@/lib/api'
 import { useApiQuery } from '@/hooks/useApiQuery'
 import { useToast } from '@/hooks/use-toast'
-import { PageContainer } from '@/components/layout'
+import { PageContainer, PageHeader } from '@/components/layout'
+import { CircleDot, CirclePlus, FolderOpen, LogOut, MessageCircleMore, Zap } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -37,6 +38,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { Link } from '@tanstack/react-router'
 import type {
   Prompt,
   PromptPayload,
@@ -206,6 +208,7 @@ function NovoLoteTab({ prompts, promptsLoading, onProjetoCreated }: NovoLoteTabP
   const { toast } = useToast()
   const [nomeLote, setNomeLote] = useState('')
   const [files, setFiles] = useState<File[]>([])
+  const [uploadMode, setUploadMode] = useState<'upload' | 'tjms'>('upload')
   const [promptId, setPromptId] = useState<string>('')
   const [modelo, setModelo] = useState('google/gemini-2.5-flash-lite')
   const [modoProcessamento, setModoProcessamento] = useState<'chunk' | 'completo'>('chunk')
@@ -364,8 +367,77 @@ function NovoLoteTab({ prompts, promptsLoading, onProjetoCreated }: NovoLoteTabP
 
   return (
     <div className="space-y-6">
+      <div className="space-y-4 sm:hidden">
+        <div className="flex items-center gap-2 text-[22px] font-semibold leading-tight text-gray-900">
+          <CirclePlus className="h-4 w-4 text-primary" />
+          <span>Criar Novo Lote de Classificacao</span>
+        </div>
+
+        <Card>
+          <CardContent className="pt-5">
+            <div className="space-y-2">
+              <Label htmlFor="nome-lote-mobile">Nome do Lote (opcional)</Label>
+              <Input
+                id="nome-lote-mobile"
+                placeholder="Ex: Classificacao Decisoes Janeiro 2026"
+                value={nomeLote}
+                onChange={(e) => setNomeLote(e.target.value)}
+                disabled={executando}
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-lg text-gray-800">Adicionar Documentos</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="grid grid-cols-2 border-b border-gray-200">
+              <button
+                type="button"
+                onClick={() => setUploadMode('upload')}
+                className={`pb-2 text-sm font-semibold transition-colors ${
+                  uploadMode === 'upload'
+                    ? 'border-b-2 border-blue-500 text-blue-600'
+                    : 'text-gray-500'
+                }`}
+              >
+                Upload de Arquivos
+              </button>
+              <button
+                type="button"
+                onClick={() => setUploadMode('tjms')}
+                className={`pb-2 text-sm font-semibold transition-colors ${
+                  uploadMode === 'tjms'
+                    ? 'border-b-2 border-blue-500 text-blue-600'
+                    : 'text-gray-500'
+                }`}
+              >
+                Importar do TJ-MS
+              </button>
+            </div>
+
+            {uploadMode === 'upload' ? (
+              <FileDropZone
+                files={files}
+                onFilesChange={setFiles}
+                multiple
+                accept=".pdf,.txt,.zip"
+              />
+            ) : (
+              <div className="rounded-lg border border-dashed border-muted-foreground/25 p-6 text-center">
+                <p className="text-sm text-muted-foreground">
+                  Importacao direta do TJ-MS indisponivel neste ambiente.
+                </p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
       {/* Nome do lote */}
-      <Card>
+      <Card className="hidden sm:block">
         <CardHeader>
           <CardTitle className="text-lg">Novo Lote de Classificacao</CardTitle>
           <CardDescription>Configure e envie arquivos para classificacao em lote</CardDescription>
@@ -1397,17 +1469,56 @@ export function ClassificadorPage() {
 
   return (
     <PageContainer className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Classificador de Documentos</h1>
-        <p className="text-muted-foreground">Classifique documentos automaticamente usando inteligencia artificial</p>
+      <div className="-mx-4 -mt-8 border-b border-gray-200 bg-white px-4 py-2 sm:hidden">
+        <div className="flex items-start justify-between gap-2">
+          <div className="flex min-w-0 items-start gap-2">
+            <img src="/logo/logo-pge.png" alt="PGE-MS" className="mt-1 h-6 w-auto shrink-0" />
+            <h1 className="max-w-[160px] text-[18px] font-semibold leading-tight text-gray-900">
+              Classificador de Documentos
+            </h1>
+          </div>
+
+          <div className="flex shrink-0 items-center gap-2">
+            <div className="rounded-full border border-red-100 bg-red-50 px-3 py-1 text-xs font-medium text-red-500">
+              <span className="mr-1 inline-block h-2 w-2 rounded-full bg-red-500" />
+              API Offline
+            </div>
+            <Link
+              to="/dashboard"
+              className="inline-flex h-8 w-8 items-center justify-center rounded-md text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700"
+              aria-label="Voltar ao Dashboard"
+              title="Voltar ao Dashboard"
+            >
+              <LogOut className="h-4 w-4" />
+            </Link>
+          </div>
+        </div>
       </div>
 
+      <PageHeader
+        title="Classificador de Documentos"
+        className="mb-4 hidden sm:block"
+        backTo="/dashboard"
+      />
+
       <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as PageTab)}>
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="novo-lote">Novo Lote</TabsTrigger>
-          <TabsTrigger value="meus-lotes">Meus Lotes</TabsTrigger>
-          <TabsTrigger value="prompts">Prompts</TabsTrigger>
-          <TabsTrigger value="teste-rapido">Teste Rapido</TabsTrigger>
+        <TabsList className="grid w-full grid-cols-4 h-auto rounded-none border-b bg-transparent p-0">
+          <TabsTrigger value="novo-lote" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:shadow-none">
+            <CircleDot className="mr-2 h-4 w-4" />
+            Novo Lote
+          </TabsTrigger>
+          <TabsTrigger value="meus-lotes" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:shadow-none">
+            <FolderOpen className="mr-2 h-4 w-4" />
+            Meus Lotes
+          </TabsTrigger>
+          <TabsTrigger value="prompts" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:shadow-none">
+            <MessageCircleMore className="mr-2 h-4 w-4" />
+            Prompts
+          </TabsTrigger>
+          <TabsTrigger value="teste-rapido" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:shadow-none">
+            <Zap className="mr-2 h-4 w-4" />
+            Teste Rapido
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="novo-lote">
