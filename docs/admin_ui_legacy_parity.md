@@ -145,14 +145,14 @@ Se `target` vier fora dessa lista, o bridge aplica fallback para `/admin/users`.
 |---|---|---|---|
 | `FRONTEND_MODE` | Backend FastAPI | `react` | Define se o backend serve SPA React (`react`) ou frontend Jinja legado (`legacy`). |
 | `VITE_LEGACY_ADMIN_ORIGIN` | Frontend React (Vite) | vazio | Origem do backend legado para o iframe. Em dev, se vazio, `LegacyAdminFramePage` usa `http://127.0.0.1:8000`. |
-| `VITE_PORTAL_NATIVE_MATRICULAS` | Frontend React (Vite) | `0`/ausente | Canary de migração progressiva. `1` ativa rota nativa React em `/matriculas`; ausente mantém espelhamento legado via iframe. |
-| `VITE_PORTAL_NATIVE_ASSISTENCIA` | Frontend React (Vite) | `0`/ausente | Canary de migração progressiva. `1` ativa rota nativa React em `/assistencia`; ausente mantém espelhamento legado via iframe. |
-| `VITE_PORTAL_NATIVE_CLASSIFICADOR` | Frontend React (Vite) | `0`/ausente | Canary de migração progressiva. `1` ativa rota nativa React em `/classificador`; ausente mantém espelhamento legado via iframe. |
-| `VITE_PORTAL_NATIVE_PEDIDO_CALCULO` | Frontend React (Vite) | `0`/ausente | Canary de migração progressiva. `1` ativa rota nativa React em `/pedido-calculo`; ausente mantém espelhamento legado via iframe. |
-| `VITE_PORTAL_NATIVE_PRESTACAO_CONTAS` | Frontend React (Vite) | `0`/ausente | Canary de migração progressiva. `1` ativa rota nativa React em `/prestacao-contas`; ausente mantém espelhamento legado via iframe. |
-| `VITE_PORTAL_NATIVE_RELATORIO_CUMPRIMENTO` | Frontend React (Vite) | `0`/ausente | Canary de migração progressiva. `1` ativa rota nativa React em `/relatorio-cumprimento`; ausente mantém espelhamento legado via iframe. |
-| `VITE_PORTAL_NATIVE_GERADOR_PECAS` | Frontend React (Vite) | `0`/ausente | Canary de migração progressiva. `1` ativa rota nativa React em `/gerador-pecas`; ausente mantém espelhamento legado via iframe. |
-| `VITE_PORTAL_NATIVE_BERT_TRAINING` | Frontend React (Vite) | `0`/ausente | Canary de migração progressiva. `1` ativa rota nativa React em `/bert-training`; ausente mantém espelhamento legado via iframe. |
+| `VITE_PORTAL_NATIVE_MATRICULAS` | Frontend React (Vite) | ausente (`nativo`) | Rollback pontual. Defina `0` para forçar fallback legado em `/matriculas`. |
+| `VITE_PORTAL_NATIVE_ASSISTENCIA` | Frontend React (Vite) | ausente (`nativo`) | Rollback pontual. Defina `0` para forçar fallback legado em `/assistencia`. |
+| `VITE_PORTAL_NATIVE_CLASSIFICADOR` | Frontend React (Vite) | ausente (`nativo`) | Rollback pontual. Defina `0` para forçar fallback legado em `/classificador`. |
+| `VITE_PORTAL_NATIVE_PEDIDO_CALCULO` | Frontend React (Vite) | ausente (`nativo`) | Rollback pontual. Defina `0` para forçar fallback legado em `/pedido-calculo`. |
+| `VITE_PORTAL_NATIVE_PRESTACAO_CONTAS` | Frontend React (Vite) | ausente (`nativo`) | Rollback pontual. Defina `0` para forçar fallback legado em `/prestacao-contas`. |
+| `VITE_PORTAL_NATIVE_RELATORIO_CUMPRIMENTO` | Frontend React (Vite) | ausente (`nativo`) | Rollback pontual. Defina `0` para forçar fallback legado em `/relatorio-cumprimento`. |
+| `VITE_PORTAL_NATIVE_GERADOR_PECAS` | Frontend React (Vite) | ausente (`nativo`) | Rollback pontual. Defina `0` para forçar fallback legado em `/gerador-pecas`. |
+| `VITE_PORTAL_NATIVE_BERT_TRAINING` | Frontend React (Vite) | ausente (`nativo`) | Rollback pontual. Defina `0` para forçar fallback legado em `/bert-training`. |
 | `E2E_BASE_URL` | Playwright | `http://127.0.0.1:5178` | Base URL dos testes no frontend React. |
 | `E2E_LEGACY_BASE_URL` | Playwright | `http://127.0.0.1:8000` | Base URL do legado para baseline visual. |
 

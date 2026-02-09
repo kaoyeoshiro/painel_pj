@@ -174,7 +174,7 @@ function AdminTjmsDocsPlanoLegacyPage() { return <LegacyAdminFramePage legacyPat
 function AdminRestaurarSlugsLegacyPage() { return <LegacyAdminFramePage legacyPath="/admin/restaurar-slugs" /> }
 
 function shouldUseNativeMatriculas(): boolean {
-  return import.meta.env.VITE_PORTAL_NATIVE_MATRICULAS === '1'
+  return import.meta.env.VITE_PORTAL_NATIVE_MATRICULAS !== '0'
 }
 
 function MatriculasRoutePage() {
@@ -183,7 +183,7 @@ function MatriculasRoutePage() {
 }
 
 function shouldUseNativeAssistencia(): boolean {
-  return import.meta.env.VITE_PORTAL_NATIVE_ASSISTENCIA === '1'
+  return import.meta.env.VITE_PORTAL_NATIVE_ASSISTENCIA !== '0'
 }
 
 function AssistenciaRoutePage() {
@@ -192,7 +192,7 @@ function AssistenciaRoutePage() {
 }
 
 function shouldUseNativeClassificador(): boolean {
-  return import.meta.env.VITE_PORTAL_NATIVE_CLASSIFICADOR === '1'
+  return import.meta.env.VITE_PORTAL_NATIVE_CLASSIFICADOR !== '0'
 }
 
 function ClassificadorRoutePage() {
@@ -201,7 +201,7 @@ function ClassificadorRoutePage() {
 }
 
 function shouldUseNativePedidoCalculo(): boolean {
-  return import.meta.env.VITE_PORTAL_NATIVE_PEDIDO_CALCULO === '1'
+  return import.meta.env.VITE_PORTAL_NATIVE_PEDIDO_CALCULO !== '0'
 }
 
 function PedidoCalculoRoutePage() {
@@ -210,7 +210,7 @@ function PedidoCalculoRoutePage() {
 }
 
 function shouldUseNativePrestacaoContas(): boolean {
-  return import.meta.env.VITE_PORTAL_NATIVE_PRESTACAO_CONTAS === '1'
+  return import.meta.env.VITE_PORTAL_NATIVE_PRESTACAO_CONTAS !== '0'
 }
 
 function PrestacaoContasRoutePage() {
@@ -219,7 +219,7 @@ function PrestacaoContasRoutePage() {
 }
 
 function shouldUseNativeRelatorioCumprimento(): boolean {
-  return import.meta.env.VITE_PORTAL_NATIVE_RELATORIO_CUMPRIMENTO === '1'
+  return import.meta.env.VITE_PORTAL_NATIVE_RELATORIO_CUMPRIMENTO !== '0'
 }
 
 function RelatorioCumprimentoRoutePage() {
@@ -228,7 +228,7 @@ function RelatorioCumprimentoRoutePage() {
 }
 
 function shouldUseNativeGeradorPecas(): boolean {
-  return import.meta.env.VITE_PORTAL_NATIVE_GERADOR_PECAS === '1'
+  return import.meta.env.VITE_PORTAL_NATIVE_GERADOR_PECAS !== '0'
 }
 
 function GeradorPecasRoutePage() {
@@ -237,7 +237,7 @@ function GeradorPecasRoutePage() {
 }
 
 function shouldUseNativeBertTraining(): boolean {
-  return import.meta.env.VITE_PORTAL_NATIVE_BERT_TRAINING === '1'
+  return import.meta.env.VITE_PORTAL_NATIVE_BERT_TRAINING !== '0'
 }
 
 function BertTrainingRoutePage() {

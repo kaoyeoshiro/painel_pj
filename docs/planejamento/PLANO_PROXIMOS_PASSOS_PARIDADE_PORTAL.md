@@ -50,7 +50,7 @@ Entregas implementadas:
 1. Criado `frontend-react/e2e/portal.smoke.spec.ts`.
 2. Criado `frontend-react/playwright.portal-smoke.config.ts`.
 3. Adicionado script `test:portal-smoke` em `frontend-react/package.json`.
-4. Para cada sistema: abertura da rota React, validacao do iframe legado carregado, validacao de conteudo nao vazio e interacao basica em elemento interativo.
+4. Para cada sistema: abertura da rota React, validacao de carregamento (iframe legado ou pagina nativa), validacao de conteudo nao vazio e interacao basica em elemento interativo.
 
 Evidencia de execucao:
 1. Comando: `npm run test:portal-smoke`
@@ -92,15 +92,8 @@ Implementacao inicial concluida:
    - `/gerador-pecas`
    - `/bert-training`
 2. Rotas no `frontend-react/src/router.tsx` agora suportam:
-   - `VITE_PORTAL_NATIVE_MATRICULAS=1` -> `MatriculasPage`
-   - `VITE_PORTAL_NATIVE_ASSISTENCIA=1` -> `AssistenciaPage`
-   - `VITE_PORTAL_NATIVE_CLASSIFICADOR=1` -> `ClassificadorPage`
-   - `VITE_PORTAL_NATIVE_PEDIDO_CALCULO=1` -> `PedidoCalculoPage`
-   - `VITE_PORTAL_NATIVE_PRESTACAO_CONTAS=1` -> `PrestacaoContasPage`
-   - `VITE_PORTAL_NATIVE_RELATORIO_CUMPRIMENTO=1` -> `RelatorioCumprimentoPage`
-   - `VITE_PORTAL_NATIVE_GERADOR_PECAS=1` -> `GeradorPecasPage`
-   - `VITE_PORTAL_NATIVE_BERT_TRAINING=1` -> `BertTrainingPage`
-   - default/ausente -> espelho legado via `LegacyAdminFramePage`
+   - ausente/default -> pagina React nativa
+   - `VITE_PORTAL_NATIVE_*=0` -> fallback legado via `LegacyAdminFramePage` (rollback por sistema)
 3. Ajuste de suporte nos testes para modo nativo sem iframe:
    - `frontend-react/e2e/portal.visual.spec.ts` aceita fluxo com ou sem iframe
    - `frontend-react/e2e/portal.smoke.spec.ts` aceita fluxo com ou sem iframe
@@ -143,8 +136,15 @@ Regra de migracao por sistema:
 3. Rodar `portal.smoke`.
 4. Trocar rota de iframe para componente React apenas se ambos verdes.
 
+7. Rollout implementado:
+   - Sistemas do portal agora usam React nativo por padrao.
+   - Fallback legado passou a ser rollback explicito por variavel (`VITE_PORTAL_NATIVE_* = 0`).
+8. Validacao com novo default (sem flags):
+   - `portal.visual` -> `16 passed`
+   - `portal.smoke` -> `8 passed`
+
 Proximo item imediato:
-1. Definir estrategia de rollout (ativacao gradual em ambiente de homologacao/producao) e remover fallback iframe por sistema migrado.
+1. Planejar remocao progressiva do fallback legado por sistema (apos janela de observacao em homolog/prod).
 
 ---
 
