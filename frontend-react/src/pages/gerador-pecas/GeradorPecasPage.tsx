@@ -1,15 +1,39 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { FileText } from 'lucide-react'
-import { PageContainer } from '@/components/layout/PageContainer'
-import { PageHeader } from '@/components/layout/PageHeader'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
+import {
+  FileText,
+  Upload,
+  Download,
+  Copy,
+  History,
+  Send,
+  X,
+  Check,
+  Loader2,
+  Star,
+  Eye,
+  MessageSquare,
+  RotateCcw,
+  AlertTriangle,
+  Trash2,
+  ArrowLeft,
+  ChevronRight,
+  Zap,
+  Search,
+  Clock,
+  Layers,
+  Pen,
+  Scale,
+  Bot,
+  Sparkles,
+} from 'lucide-react'
+import { Link } from '@tanstack/react-router'
+import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Textarea } from '@/components/ui/textarea'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -20,6 +44,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { useToast } from '@/components/ui/toast'
 import { useApiQuery } from '@/hooks/useApiQuery'
 import { useMarkdown } from '@/hooks/useMarkdown'
@@ -40,7 +65,6 @@ import type {
 // Helpers
 // ============================================================
 
-/** Aplica mascara CNJ: NNNNNNN-NN.NNNN.N.NN.NNNN */
 function formatCNJ(value: string): string {
   const digits = value.replace(/\D/g, '').slice(0, 20)
   let result = ''
@@ -55,7 +79,6 @@ function formatCNJ(value: string): string {
   return result
 }
 
-/** Formata data ISO para pt-BR */
 function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString('pt-BR')
 }
@@ -66,76 +89,14 @@ function formatDateTime(iso: string): string {
 }
 
 // ============================================================
-// Sub-components
+// Agent progress step info
 // ============================================================
 
-/** Indicador de progresso de um agente */
-function AgentProgressItem(props: {
-  numero: number
-  nome: string
-  descricao: string
-  status: AgentStatus
-}) {
-  const { nome, descricao, status } = props
-
-  const bgClass =
-    status === 'ativo'
-      ? 'bg-blue-50 border-blue-200'
-      : status === 'concluido'
-        ? 'bg-green-50 border-green-200'
-        : status === 'erro'
-          ? 'bg-red-50 border-red-200'
-          : 'bg-gray-50 border-gray-100'
-
-  const iconBgClass =
-    status === 'ativo'
-      ? 'bg-blue-500'
-      : status === 'concluido'
-        ? 'bg-green-500'
-        : status === 'erro'
-          ? 'bg-red-500'
-          : 'bg-gray-200'
-
-  const iconContent =
-    status === 'ativo'
-      ? '\u23F3' // hourglass
-      : status === 'concluido'
-        ? '\u2713' // check
-        : status === 'erro'
-          ? '\u2717' // cross
-          : '\u2022' // bullet
-
-  const badgeText =
-    status === 'ativo'
-      ? 'Processando'
-      : status === 'concluido'
-        ? 'Concluido'
-        : status === 'erro'
-          ? 'Erro'
-          : 'Aguardando'
-
-  const badgeVariant =
-    status === 'erro' ? 'destructive' as const : status === 'ativo' || status === 'concluido' ? 'default' as const : 'secondary' as const
-
-  return (
-    <div className={`flex items-center gap-3 p-3 rounded-xl border transition-colors ${bgClass}`}>
-      <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-sm ${iconBgClass}`}>
-        {status === 'ativo' ? (
-          <span className="animate-spin inline-block">{iconContent}</span>
-        ) : (
-          <span>{iconContent}</span>
-        )}
-      </div>
-      <div className="flex-1">
-        <p className="text-sm font-medium text-gray-700">{nome}</p>
-        <p className="text-xs text-gray-500">{descricao}</p>
-      </div>
-      <Badge variant={badgeVariant} className="text-xs">
-        {badgeText}
-      </Badge>
-    </div>
-  )
-}
+const AGENT_META = [
+  { numero: 1, nome: 'Coletor', descricao: 'Busca documentos no TJ-MS', icon: Search },
+  { numero: 2, nome: 'Analisador', descricao: 'Identifica argumentos', icon: Layers },
+  { numero: 3, nome: 'Redator', descricao: 'Gera a peca juridica', icon: Pen },
+] as const
 
 // ============================================================
 // Main Page Component
@@ -211,6 +172,9 @@ export function GeradorPecasPage() {
   const parecerResolveRef = useRef<((choice: 'uploaded' | 'continue_without') => void) | null>(null)
   const [parecerUploadId, setParecerUploadId] = useState<string | null>(null)
   const parecerUserChoiceRef = useRef<string | null>(null)
+
+  // --- Sidebar ---
+  const [showSidebar, setShowSidebar] = useState(false)
 
   // --- Data loading ---
   const {
@@ -454,7 +418,6 @@ export function GeradorPecasPage() {
         },
         controller.signal
       )
-      // Stream terminou sem evento sucesso/erro (ex: parecer_natjus_ausente)
       setPageState((prev) => prev === 'streaming' ? 'idle' : prev)
     } catch (error) {
       if ((error as Error).name === 'AbortError') return
@@ -533,7 +496,6 @@ export function GeradorPecasPage() {
         },
         controller.signal
       )
-      // Stream terminou sem evento sucesso/erro
       setPageState((prev) => prev === 'streaming' ? 'idle' : prev)
     } catch (error) {
       if ((error as Error).name === 'AbortError') return
@@ -583,7 +545,6 @@ export function GeradorPecasPage() {
       setPageState('curadoria_preview')
     } catch (error) {
       const err = error as Error
-      // Check for 409 - parecer ausente
       if (err.message.includes('PARECER_NATJUS_MISSING') || err.message.includes('Parecer NATJus')) {
         setShowParecerDialog(true)
         setPageState('idle')
@@ -617,7 +578,6 @@ export function GeradorPecasPage() {
     const controller = new AbortController()
     abortControllerRef.current = controller
 
-    // Separate preview IDs from manually added
     const previewIds = curadoriaModulos.map((m) => m.id)
     const manuaisIds = selectedIds.filter((id) => !previewIds.includes(id))
 
@@ -714,7 +674,6 @@ export function GeradorPecasPage() {
     setShowParecerDialog(false)
     setParecerFile(null)
     parecerUserChoiceRef.current = 'continue_without'
-    // Re-dispara a geracao automatica com o flag continue_without
     if (inputMode === 'cnj') {
       iniciarGeracaoAutomatica()
     } else {
@@ -737,7 +696,6 @@ export function GeradorPecasPage() {
     setChatMessages(novoHistorico)
 
     try {
-      // Use streaming editor endpoint via fetch
       const response = await fetch('/gerador-pecas/api/editar-minuta-stream', {
         method: 'POST',
         headers: {
@@ -795,7 +753,6 @@ export function GeradorPecasPage() {
         setMinutaMarkdown(updatedContent)
         setChatMessages([...novoHistorico, { role: 'assistant', content: 'Pronto! Atualizei a minuta conforme solicitado.' }])
 
-        // Auto-save
         if (geracaoId) {
           try {
             await geradorApi.put(`/historico/${geracaoId}`, {
@@ -909,6 +866,7 @@ export function GeradorPecasPage() {
       }
 
       setPageState('resultado')
+      setShowSidebar(false)
     } catch (error) {
       toast({ title: 'Erro', description: (error as Error).message, variant: 'destructive' })
     }
@@ -994,870 +952,1119 @@ export function GeradorPecasPage() {
   const isStreaming = pageState === 'streaming' || pageState === 'curadoria_gerando'
 
   return (
-    <PageContainer>
-      <PageHeader
-        title="Gerador de Pecas Juridicas"
-        subtitle="Gere pecas com inteligencia artificial"
-        icon={<FileText className="h-5 w-5" />}
-        backTo="/dashboard"
-        actions={
-          <Sheet>
-            <SheetTrigger asChild>
-              <Button variant="ghost" size="sm" aria-label="Historico">
-                Historico
-              </Button>
-            </SheetTrigger>
-            <SheetContent>
-              <SheetHeader>
-                <SheetTitle>Historico de Geracoes</SheetTitle>
-              </SheetHeader>
-              <ScrollArea className="h-[calc(100vh-80px)] mt-4">
-                {isLoadingHistorico ? (
-                  <div className="space-y-3 p-2">
-                    <Skeleton className="h-16 w-full" />
-                    <Skeleton className="h-16 w-full" />
-                    <Skeleton className="h-16 w-full" />
-                  </div>
-                ) : !historico || historico.length === 0 ? (
-                  <div className="text-center py-8 text-gray-400">
-                    <p className="text-sm">Nenhuma geracao encontrada</p>
-                  </div>
-                ) : (
-                  <div className="space-y-2 pr-2">
-                    {historico.map((item) => (
-                      <div
-                        key={item.id}
-                        onClick={() => carregarDoHistorico(item.id)}
-                        className="p-3 bg-gray-50 hover:bg-gray-100 rounded-lg cursor-pointer transition-colors"
-                        role="button"
-                        tabIndex={0}
-                        onKeyDown={(e) => { if (e.key === 'Enter') carregarDoHistorico(item.id) }}
-                      >
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-sm font-medium text-gray-800 truncate">{item.cnj}</span>
-                          <div className="flex items-center gap-2 flex-shrink-0">
-                            <span className="text-xs text-gray-400">{formatDate(item.data)}</span>
-                            <button
-                              type="button"
-                              onClick={(e) => excluirDoHistorico(item.id, e)}
-                              className="text-gray-300 hover:text-red-500 transition-colors text-xs leading-none"
-                              aria-label="Excluir geracao"
-                            >
-                              {'\u2715'}
-                            </button>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline" className="text-xs">{item.tipo_peca || 'Peca'}</Badge>
-                        </div>
+    <TooltipProvider delayDuration={300}>
+      <div className="flex h-screen flex-col bg-stone-50">
+
+        {/* ============================================================ */}
+        {/* TOP BAR                                                      */}
+        {/* ============================================================ */}
+        <header className="flex h-14 flex-shrink-0 items-center justify-between border-b border-stone-200/80 bg-white px-4 sm:px-6">
+          <div className="flex items-center gap-3">
+            <Link
+              to="/dashboard"
+              className="flex h-8 w-8 items-center justify-center rounded-lg text-stone-400 transition-colors hover:bg-stone-100 hover:text-stone-600"
+              aria-label="Voltar ao Dashboard"
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </Link>
+            <div className="h-5 w-px bg-stone-200" />
+            <div className="flex items-center gap-2.5">
+              <div className="flex h-7 w-7 items-center justify-center rounded-md bg-stone-900 shadow-sm">
+                <Scale className="h-3.5 w-3.5 text-white" />
+              </div>
+              <div>
+                <h1 className="text-sm font-semibold leading-none text-stone-900 tracking-tight">Gerador de Pecas</h1>
+                <p className="mt-0.5 text-[11px] leading-none text-stone-400">Assistente de redacao juridica</p>
+              </div>
+            </div>
+          </div>
+          <div className="flex items-center gap-1.5">
+            {pageState === 'resultado' && (
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <button
+                    onClick={voltarParaInicio}
+                    className="flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-700"
+                  >
+                    <Zap className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">Nova</span>
+                  </button>
+                </TooltipTrigger>
+                <TooltipContent>Nova geracao</TooltipContent>
+              </Tooltip>
+            )}
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <button
+                  onClick={() => setShowSidebar(!showSidebar)}
+                  className={cn(
+                    'flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium transition-colors',
+                    showSidebar
+                      ? 'bg-stone-900 text-white'
+                      : 'text-stone-500 hover:bg-stone-100 hover:text-stone-700',
+                  )}
+                >
+                  <Clock className="h-3.5 w-3.5" />
+                  <span className="hidden sm:inline">Historico</span>
+                </button>
+              </TooltipTrigger>
+              <TooltipContent>Historico de geracoes</TooltipContent>
+            </Tooltip>
+          </div>
+        </header>
+
+        {/* ============================================================ */}
+        {/* MAIN CONTENT AREA                                            */}
+        {/* ============================================================ */}
+        <div className="flex flex-1 overflow-hidden">
+
+          {/* MAIN PANEL */}
+          <main className="flex-1 overflow-y-auto">
+            <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
+
+              {/* ============================================================ */}
+              {/* IDLE + FORM STATE                                            */}
+              {/* ============================================================ */}
+              {(pageState === 'idle' || isFormDisabled) && pageState !== 'curadoria_preview' && pageState !== 'resultado' && pageState !== 'editando' && (
+                <>
+                  {/* Error banner */}
+                  {pageState === 'erro' && (
+                    <div className="mb-6 flex items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-4">
+                      <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-red-100">
+                        <AlertTriangle className="h-4 w-4 text-red-600" />
                       </div>
-                    ))}
-                  </div>
-                )}
-              </ScrollArea>
-            </SheetContent>
-          </Sheet>
-        }
-      />
-
-        {/* ============================================================ */}
-        {/* IDLE STATE - Form */}
-        {/* ============================================================ */}
-        {(pageState === 'idle' || isFormDisabled) && pageState !== 'curadoria_preview' && pageState !== 'resultado' && pageState !== 'editando' && (
-          <>
-            <Card className="mb-6">
-              <CardHeader>
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-gradient-to-br from-primary-500 to-primary-600 rounded-xl flex items-center justify-center text-white font-bold text-lg">
-                    G
-                  </div>
-                  <div>
-                    <CardTitle>Dados da Geracao</CardTitle>
-                    <CardDescription>Preencha os parametros do processo para iniciar</CardDescription>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {/* Input mode toggle */}
-                  <div className="flex gap-2">
-                    <Button
-                      type="button"
-                      variant={inputMode === 'cnj' ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => setInputMode('cnj')}
-                      disabled={isFormDisabled}
-                    >
-                      Por Processo (CNJ)
-                    </Button>
-                    <Button
-                      type="button"
-                      variant={inputMode === 'pdf' ? 'default' : 'outline'}
-                      size="sm"
-                      onClick={() => setInputMode('pdf')}
-                      disabled={isFormDisabled}
-                    >
-                      Por Upload de PDF
-                    </Button>
-                  </div>
-
-                  {/* CNJ Input (modo CNJ) */}
-                  {inputMode === 'cnj' && (
-                    <div>
-                      <Label htmlFor="numero-cnj">Numero do Processo (CNJ)</Label>
-                      <Input
-                        id="numero-cnj"
-                        value={numeroCNJ}
-                        onChange={(e) => setNumeroCNJ(formatCNJ(e.target.value))}
-                        placeholder="0000000-00.0000.0.00.0000"
-                        className="mt-2"
-                        disabled={isFormDisabled}
-                      />
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-red-800">Erro na geracao</p>
+                        <p className="mt-0.5 text-sm text-red-600">{errorMessage}</p>
+                      </div>
+                      <button
+                        onClick={voltarParaInicio}
+                        className="flex-shrink-0 rounded-lg px-3 py-1.5 text-xs font-medium text-red-700 transition-colors hover:bg-red-100"
+                      >
+                        Tentar novamente
+                      </button>
                     </div>
                   )}
 
-                  {/* PDF Upload (modo PDF) */}
-                  {inputMode === 'pdf' && (
-                    <div>
-                      <Label>Arquivos PDF</Label>
-                      <div className="mt-2 border-2 border-dashed border-gray-300 rounded-lg p-4 text-center">
-                        <input
-                          ref={pdfInputRef}
-                          type="file"
-                          accept=".pdf"
-                          multiple
-                          className="hidden"
-                          onChange={(e) => {
-                            const files = Array.from(e.target.files || [])
-                            setPdfFiles(prev => [...prev, ...files])
-                            e.target.value = ''
-                          }}
-                          disabled={isFormDisabled}
-                        />
-                        <Button
-                          type="button"
-                          variant="outline"
-                          size="sm"
-                          onClick={() => pdfInputRef.current?.click()}
-                          disabled={isFormDisabled}
-                        >
-                          Selecionar PDFs
-                        </Button>
-                        <p className="text-xs text-gray-500 mt-2">
-                          Envie os documentos do processo em PDF
-                        </p>
-                        {pdfFiles.length > 0 && (
-                          <div className="mt-3 space-y-1 text-left">
-                            {pdfFiles.map((file, idx) => (
-                              <div key={idx} className="flex items-center justify-between text-sm bg-gray-50 rounded px-3 py-1.5">
-                                <span className="truncate flex-1">{file.name}</span>
-                                <button
-                                  type="button"
-                                  onClick={() => setPdfFiles(prev => prev.filter((_, i) => i !== idx))}
-                                  className="text-red-500 hover:text-red-700 ml-2 text-xs"
-                                >
-                                  remover
-                                </button>
-                              </div>
-                            ))}
+                  {/* Form card */}
+                  <div className="rounded-2xl border border-stone-200/80 bg-white shadow-sm">
+                    {/* Input mode tabs */}
+                    <div className="flex border-b border-stone-100">
+                      <button
+                        type="button"
+                        className={cn(
+                          'relative flex-1 px-5 py-3.5 text-sm font-medium transition-colors',
+                          inputMode === 'cnj'
+                            ? 'text-stone-900'
+                            : 'text-stone-400 hover:text-stone-600',
+                        )}
+                        onClick={() => setInputMode('cnj')}
+                        disabled={isFormDisabled}
+                      >
+                        <span className="flex items-center justify-center gap-2">
+                          <Search className="h-3.5 w-3.5" />
+                          Por Processo (CNJ)
+                        </span>
+                        {inputMode === 'cnj' && (
+                          <span className="absolute inset-x-0 bottom-0 h-0.5 bg-stone-900" />
+                        )}
+                      </button>
+                      <button
+                        type="button"
+                        className={cn(
+                          'relative flex-1 px-5 py-3.5 text-sm font-medium transition-colors',
+                          inputMode === 'pdf'
+                            ? 'text-stone-900'
+                            : 'text-stone-400 hover:text-stone-600',
+                        )}
+                        onClick={() => setInputMode('pdf')}
+                        disabled={isFormDisabled}
+                      >
+                        <span className="flex items-center justify-center gap-2">
+                          <Upload className="h-3.5 w-3.5" />
+                          Upload de PDF
+                        </span>
+                        {inputMode === 'pdf' && (
+                          <span className="absolute inset-x-0 bottom-0 h-0.5 bg-stone-900" />
+                        )}
+                      </button>
+                    </div>
+
+                    <div className="p-5 sm:p-6">
+                      <div className="space-y-5">
+                        {/* CNJ Input */}
+                        {inputMode === 'cnj' && (
+                          <div>
+                            <Label htmlFor="numero-cnj" className="text-xs font-medium uppercase tracking-wider text-stone-500">
+                              Numero do Processo
+                            </Label>
+                            <Input
+                              id="numero-cnj"
+                              value={numeroCNJ}
+                              onChange={(e) => setNumeroCNJ(formatCNJ(e.target.value))}
+                              placeholder="0000000-00.0000.0.00.0000"
+                              className="mt-2 h-11 rounded-xl border-stone-200 bg-stone-50/50 font-mono text-base tracking-wide placeholder:text-stone-300 focus:border-stone-400 focus:bg-white focus:ring-stone-400/20"
+                              disabled={isFormDisabled}
+                            />
                           </div>
+                        )}
+
+                        {/* PDF Upload */}
+                        {inputMode === 'pdf' && (
+                          <div>
+                            <Label className="text-xs font-medium uppercase tracking-wider text-stone-500">
+                              Arquivos PDF
+                            </Label>
+                            <div
+                              className="mt-2 cursor-pointer rounded-xl border-2 border-dashed border-stone-200 bg-stone-50/30 p-8 text-center transition-all hover:border-stone-300 hover:bg-stone-50"
+                              onClick={() => pdfInputRef.current?.click()}
+                              role="button"
+                              tabIndex={0}
+                              onKeyDown={(e) => { if (e.key === 'Enter') pdfInputRef.current?.click() }}
+                            >
+                              <input
+                                ref={pdfInputRef}
+                                type="file"
+                                accept=".pdf"
+                                multiple
+                                className="hidden"
+                                onChange={(e) => {
+                                  const files = Array.from(e.target.files || [])
+                                  setPdfFiles(prev => [...prev, ...files])
+                                  e.target.value = ''
+                                }}
+                                disabled={isFormDisabled}
+                              />
+                              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-stone-100">
+                                <Upload className="h-5 w-5 text-stone-400" />
+                              </div>
+                              <p className="mt-3 text-sm font-medium text-stone-600">
+                                Arraste PDFs aqui ou clique para selecionar
+                              </p>
+                              <p className="mt-1 text-xs text-stone-400">
+                                Documentos do processo em formato PDF
+                              </p>
+                            </div>
+                            {pdfFiles.length > 0 && (
+                              <div className="mt-3 space-y-1.5">
+                                {pdfFiles.map((file, idx) => (
+                                  <div key={idx} className="flex items-center justify-between rounded-lg border border-stone-150 bg-white px-3 py-2.5">
+                                    <div className="flex items-center gap-2.5 truncate">
+                                      <FileText className="h-4 w-4 flex-shrink-0 text-red-500" />
+                                      <span className="truncate text-sm text-stone-700">{file.name}</span>
+                                    </div>
+                                    <button
+                                      type="button"
+                                      onClick={() => setPdfFiles(prev => prev.filter((_, i) => i !== idx))}
+                                      className="ml-2 flex-shrink-0 rounded p-0.5 text-stone-300 transition-colors hover:bg-red-50 hover:text-red-500"
+                                      aria-label={`Remover ${file.name}`}
+                                    >
+                                      <X className="h-3.5 w-3.5" />
+                                    </button>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )}
+
+                        {/* Tipo de Peca */}
+                        <div>
+                          <Label htmlFor="tipo-peca" className="text-xs font-medium uppercase tracking-wider text-stone-500">
+                            Tipo de Peca
+                          </Label>
+                          {isLoadingTipos ? (
+                            <Skeleton className="mt-2 h-11 w-full rounded-xl" />
+                          ) : (
+                            <Select
+                              value={tipoPeca || (tiposPecaData?.permite_auto ? '__auto__' : '')}
+                              onValueChange={(v) => setTipoPeca(v === '__auto__' ? '' : v)}
+                              disabled={isFormDisabled}
+                            >
+                              <SelectTrigger className="mt-2 h-11 rounded-xl border-stone-200 bg-stone-50/50 focus:border-stone-400 focus:ring-stone-400/20" id="tipo-peca">
+                                <SelectValue placeholder="Selecione o tipo de peca" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {tiposPecaData?.permite_auto && (
+                                  <SelectItem value="__auto__">Deteccao automatica (IA decide)</SelectItem>
+                                )}
+                                {tiposPecaData?.tipos.map((tipo) => (
+                                  <SelectItem key={tipo.valor} value={tipo.valor}>
+                                    {tipo.label}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          )}
+                          {tiposPecaData && !tiposPecaData.permite_auto && (
+                            <p className="mt-1.5 text-xs text-stone-400">Selecao obrigatoria &mdash; deteccao automatica desabilitada</p>
+                          )}
+                        </div>
+
+                        {/* Grupo (opcional) */}
+                        {gruposData && gruposData.grupos.length > 0 && (
+                          <div>
+                            <Label htmlFor="grupo" className="text-xs font-medium uppercase tracking-wider text-stone-500">
+                              Grupo de Argumentos
+                            </Label>
+                            <Select
+                              value={selectedGroupId ? String(selectedGroupId) : '__all__'}
+                              onValueChange={(v) => setSelectedGroupId(v === '__all__' ? null : Number(v))}
+                              disabled={isFormDisabled}
+                            >
+                              <SelectTrigger className="mt-2 h-11 rounded-xl border-stone-200 bg-stone-50/50 focus:border-stone-400 focus:ring-stone-400/20" id="grupo">
+                                <SelectValue placeholder="Todos os grupos" />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="__all__">Todos os grupos</SelectItem>
+                                {gruposData.grupos.map((g) => (
+                                  <SelectItem key={g.id} value={String(g.id)}>{g.nome}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                        )}
+
+                        {/* Subcategorias */}
+                        {subcategorias.length > 0 && (
+                          <div>
+                            <Label className="text-xs font-medium uppercase tracking-wider text-stone-500">Subcategorias</Label>
+                            <div className="mt-2.5 flex flex-wrap gap-2">
+                              {subcategorias.map((sub) => {
+                                const isSelected = selectedSubcategorias.includes(sub.id)
+                                return (
+                                  <button
+                                    key={sub.id}
+                                    type="button"
+                                    onClick={() => setSelectedSubcategorias(prev =>
+                                      isSelected ? prev.filter(id => id !== sub.id) : [...prev, sub.id]
+                                    )}
+                                    className={cn(
+                                      'rounded-full border px-3 py-1.5 text-xs font-medium transition-all',
+                                      isSelected
+                                        ? 'border-stone-900 bg-stone-900 text-white'
+                                        : 'border-stone-200 bg-white text-stone-600 hover:border-stone-300',
+                                    )}
+                                    disabled={isFormDisabled}
+                                  >
+                                    {isSelected && <Check className="mr-1 inline h-3 w-3" />}
+                                    {sub.nome}
+                                  </button>
+                                )
+                              })}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Observacao */}
+                        <div>
+                          <Label htmlFor="observacao" className="text-xs font-medium uppercase tracking-wider text-stone-500">
+                            Observacoes
+                            <span className="ml-1 font-normal normal-case tracking-normal text-stone-400">(opcional)</span>
+                          </Label>
+                          <Textarea
+                            id="observacao"
+                            value={observacao}
+                            onChange={(e) => setObservacao(e.target.value)}
+                            placeholder="Instrucoes adicionais para a geracao..."
+                            rows={3}
+                            className="mt-2 rounded-xl border-stone-200 bg-stone-50/50 placeholder:text-stone-300 focus:border-stone-400 focus:ring-stone-400/20"
+                            disabled={isFormDisabled}
+                          />
+                        </div>
+                      </div>
+
+                      {/* Action Buttons */}
+                      <div className="mt-6 flex gap-3">
+                        <Button
+                          onClick={inputMode === 'cnj' ? iniciarGeracaoAutomatica : iniciarGeracaoPdf}
+                          className="h-11 flex-1 gap-2 rounded-xl bg-stone-900 text-sm font-medium text-white shadow-sm transition-all hover:bg-stone-800 active:scale-[0.98]"
+                          disabled={isFormDisabled || (inputMode === 'cnj' ? !numeroCNJ.trim() : pdfFiles.length === 0) || (!tipoPeca && !tiposPecaData?.permite_auto)}
+                        >
+                          <Zap className="h-4 w-4" />
+                          {isStreaming ? 'Gerando...' : 'Gerar Automatico'}
+                        </Button>
+                        {inputMode === 'cnj' && (
+                          <Button
+                            onClick={iniciarCuradoria}
+                            variant="outline"
+                            className="h-11 flex-1 gap-2 rounded-xl border-stone-200 text-sm font-medium text-stone-700 transition-all hover:bg-stone-50 active:scale-[0.98]"
+                            disabled={isFormDisabled || !numeroCNJ.trim() || !tipoPeca || isCuradoriaLoading}
+                          >
+                            <Eye className="h-4 w-4" />
+                            {isCuradoriaLoading ? 'Carregando...' : 'Semi-Automatico'}
+                          </Button>
                         )}
                       </div>
                     </div>
-                  )}
-
-                  {/* Tipo de Peca */}
-                  <div>
-                    <Label htmlFor="tipo-peca">Tipo de Peca</Label>
-                    {isLoadingTipos ? (
-                      <Skeleton className="h-10 w-full mt-2" />
-                    ) : (
-                      <Select
-                        value={tipoPeca || (tiposPecaData?.permite_auto ? '__auto__' : '')}
-                        onValueChange={(v) => setTipoPeca(v === '__auto__' ? '' : v)}
-                        disabled={isFormDisabled}
-                      >
-                        <SelectTrigger className="mt-2" id="tipo-peca">
-                          <SelectValue placeholder="-- Selecione o tipo de peca --" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {tiposPecaData?.permite_auto && (
-                            <SelectItem value="__auto__">Detectar automaticamente (IA decide)</SelectItem>
-                          )}
-                          {tiposPecaData?.tipos.map((tipo) => (
-                            <SelectItem key={tipo.valor} value={tipo.valor}>
-                              {tipo.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    )}
-                    {tiposPecaData && !tiposPecaData.permite_auto && (
-                      <p className="mt-1 text-xs text-gray-500">Selecao obrigatoria — deteccao automatica desabilitada</p>
-                    )}
                   </div>
 
-                  {/* Grupo (opcional) */}
-                  {gruposData && gruposData.grupos.length > 0 && (
-                    <div>
-                      <Label htmlFor="grupo">Grupo de Argumentos (opcional)</Label>
-                      <Select
-                        value={selectedGroupId ? String(selectedGroupId) : '__all__'}
-                        onValueChange={(v) => setSelectedGroupId(v === '__all__' ? null : Number(v))}
-                        disabled={isFormDisabled}
-                      >
-                        <SelectTrigger className="mt-2" id="grupo">
-                          <SelectValue placeholder="Todos os grupos" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="__all__">Todos os grupos</SelectItem>
-                          {gruposData.grupos.map((g) => (
-                            <SelectItem key={g.id} value={String(g.id)}>{g.nome}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                  )}
-
-                  {/* Subcategorias */}
-                  {subcategorias.length > 0 && (
-                    <div>
-                      <Label>Subcategorias</Label>
-                      <div className="mt-2 flex flex-wrap gap-2">
-                        {subcategorias.map((sub) => {
-                          const isSelected = selectedSubcategorias.includes(sub.id)
+                  {/* "Como funciona" — pipeline visual */}
+                  {pageState === 'idle' && (
+                    <div className="mt-8">
+                      <h3 className="mb-4 text-xs font-medium uppercase tracking-wider text-stone-400">Pipeline de geracao</h3>
+                      <div className="flex items-center gap-0">
+                        {AGENT_META.map((agent, i) => {
+                          const Icon = agent.icon
                           return (
-                            <button
-                              key={sub.id}
-                              type="button"
-                              onClick={() => setSelectedSubcategorias(prev =>
-                                isSelected ? prev.filter(id => id !== sub.id) : [...prev, sub.id]
+                            <div key={agent.numero} className="flex flex-1 items-center">
+                              <div className="flex flex-1 flex-col items-center text-center">
+                                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white border border-stone-200 shadow-sm">
+                                  <Icon className="h-4.5 w-4.5 text-stone-500" />
+                                </div>
+                                <p className="mt-2.5 text-xs font-semibold text-stone-700">{agent.nome}</p>
+                                <p className="mt-0.5 text-[11px] leading-tight text-stone-400">{agent.descricao}</p>
+                              </div>
+                              {i < AGENT_META.length - 1 && (
+                                <ChevronRight className="mx-1 h-4 w-4 flex-shrink-0 text-stone-300" />
                               )}
-                              className={`px-3 py-1 text-xs rounded-full border transition-colors ${
-                                isSelected ? 'bg-blue-100 border-blue-300 text-blue-700' : 'bg-gray-50 border-gray-200 text-gray-600 hover:bg-gray-100'
-                              }`}
-                              disabled={isFormDisabled}
-                            >
-                              {sub.nome}
-                            </button>
+                            </div>
                           )
                         })}
                       </div>
                     </div>
                   )}
 
-                  {/* Observacao */}
-                  <div>
-                    <Label htmlFor="observacao">Observacoes (opcional)</Label>
-                    <Textarea
-                      id="observacao"
-                      value={observacao}
-                      onChange={(e) => setObservacao(e.target.value)}
-                      placeholder="Observacoes adicionais para o agente gerador..."
-                      rows={3}
-                      className="mt-2"
-                      disabled={isFormDisabled}
-                    />
+                  {/* Recent history */}
+                  {pageState === 'idle' && historico && historico.length > 0 && (
+                    <div className="mt-8">
+                      <div className="mb-3 flex items-center justify-between">
+                        <h3 className="text-xs font-medium uppercase tracking-wider text-stone-400">Recentes</h3>
+                        <button
+                          onClick={() => setShowSidebar(true)}
+                          className="text-xs font-medium text-stone-400 transition-colors hover:text-stone-600"
+                        >
+                          Ver todos
+                        </button>
+                      </div>
+                      <div className="space-y-1.5">
+                        {historico.slice(0, 4).map((item) => (
+                          <div
+                            key={item.id}
+                            onClick={() => carregarDoHistorico(item.id)}
+                            className="group flex cursor-pointer items-center gap-3 rounded-xl border border-transparent bg-white p-3.5 transition-all hover:border-stone-200 hover:shadow-sm"
+                            role="button"
+                            tabIndex={0}
+                            onKeyDown={(e) => { if (e.key === 'Enter') carregarDoHistorico(item.id) }}
+                          >
+                            <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-stone-100 text-stone-500 transition-colors group-hover:bg-stone-900 group-hover:text-white">
+                              <FileText className="h-4 w-4" />
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-sm font-medium text-stone-700">{item.cnj}</p>
+                              <p className="mt-0.5 text-xs text-stone-400">{item.tipo_peca || 'Peca'} &middot; {formatDate(item.data)}</p>
+                            </div>
+                            <button
+                              type="button"
+                              onClick={(e) => excluirDoHistorico(item.id, e)}
+                              className="flex-shrink-0 rounded p-1 text-stone-300 opacity-0 transition-all hover:bg-red-50 hover:text-red-500 group-hover:opacity-100"
+                              aria-label="Excluir geracao"
+                            >
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </button>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Empty state */}
+                  {pageState === 'idle' && (!historico || historico.length === 0) && !isLoadingHistorico && (
+                    <div className="mt-12 text-center">
+                      <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-stone-100">
+                        <Scale className="h-6 w-6 text-stone-400" />
+                      </div>
+                      <p className="mt-4 text-sm font-medium text-stone-500">Nenhuma geracao ainda</p>
+                      <p className="mt-1 text-xs text-stone-400">Preencha o formulario acima para gerar sua primeira peca</p>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* ============================================================ */}
+              {/* CURADORIA PREVIEW STATE                                      */}
+              {/* ============================================================ */}
+              {pageState === 'curadoria_preview' && (
+                <div>
+                  {/* Header */}
+                  <div className="mb-6 flex items-center justify-between">
+                    <div>
+                      <h2 className="text-lg font-semibold text-stone-900">Curadoria de Modulos</h2>
+                      <p className="mt-0.5 text-sm text-stone-500">
+                        {curadoriaModulos.length} modulo(s) detectado(s) &mdash; selecione os que deseja incluir
+                      </p>
+                    </div>
+                    <button
+                      onClick={voltarParaInicio}
+                      className="flex h-8 items-center gap-1.5 rounded-lg px-3 text-xs font-medium text-stone-500 transition-colors hover:bg-stone-100"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                      Cancelar
+                    </button>
                   </div>
 
-                  {/* Action Buttons */}
-                  <div className="flex gap-3">
-                    <Button
-                      onClick={inputMode === 'cnj' ? iniciarGeracaoAutomatica : iniciarGeracaoPdf}
-                      className="flex-1"
-                      disabled={isFormDisabled || (inputMode === 'cnj' ? !numeroCNJ.trim() : pdfFiles.length === 0) || (!tipoPeca && !tiposPecaData?.permite_auto)}
-                    >
-                      {isStreaming ? 'Gerando...' : 'Gerar Automatico'}
-                    </Button>
-                    {inputMode === 'cnj' && (
+                  {/* Module groups */}
+                  {(() => {
+                    const categorias = new Map<string, ModuloPreview[]>()
+                    for (const modulo of curadoriaModulos) {
+                      const cat = modulo.categoria || 'Geral'
+                      if (!categorias.has(cat)) categorias.set(cat, [])
+                      categorias.get(cat)!.push(modulo)
+                    }
+
+                    return Array.from(categorias.entries()).map(([categoria, modulos]) => (
+                      <div key={categoria} className="mb-6">
+                        <div className="mb-2.5 flex items-center gap-2">
+                          <span className="text-xs font-semibold uppercase tracking-wider text-stone-400">{categoria}</span>
+                          <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-stone-200 px-1.5 text-[10px] font-bold text-stone-600">
+                            {modulos.length}
+                          </span>
+                        </div>
+                        <div className="space-y-2">
+                          {modulos.map((modulo) => {
+                            const isSelected = curadoriaSelected.has(modulo.id)
+                            return (
+                              <div
+                                key={modulo.id}
+                                className={cn(
+                                  'cursor-pointer rounded-xl border p-4 transition-all',
+                                  isSelected
+                                    ? 'border-stone-900 bg-stone-50 ring-1 ring-stone-900/5'
+                                    : 'border-stone-200 bg-white hover:border-stone-300',
+                                )}
+                                onClick={() => toggleModulo(modulo.id)}
+                                role="checkbox"
+                                aria-checked={isSelected}
+                                tabIndex={0}
+                                onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleModulo(modulo.id) } }}
+                              >
+                                <div className="flex items-start gap-3">
+                                  <div
+                                    className={cn(
+                                      'mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-md border-2 transition-all',
+                                      isSelected
+                                        ? 'border-stone-900 bg-stone-900 text-white'
+                                        : 'border-stone-300 bg-white',
+                                    )}
+                                  >
+                                    {isSelected && <Check className="h-3 w-3" />}
+                                  </div>
+                                  <div className="min-w-0 flex-1">
+                                    <div className="flex items-center gap-2">
+                                      <span className="text-sm font-medium text-stone-800">{modulo.titulo}</span>
+                                      {modulo.tag && (
+                                        <span className="rounded border border-stone-200 bg-stone-100 px-1.5 py-0.5 text-[10px] font-medium text-stone-500">
+                                          {modulo.tag}
+                                        </span>
+                                      )}
+                                    </div>
+                                    <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-stone-500">{modulo.conteudo}</p>
+                                  </div>
+                                </div>
+                              </div>
+                            )
+                          })}
+                        </div>
+                      </div>
+                    ))
+                  })()}
+
+                  {/* Footer actions */}
+                  <div className="sticky bottom-0 -mx-4 mt-4 border-t border-stone-200 bg-stone-50 px-4 py-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm text-stone-500">
+                        <span className="font-semibold text-stone-900">{curadoriaSelected.size}</span> de {curadoriaModulos.length} selecionado(s)
+                      </p>
                       <Button
-                        onClick={iniciarCuradoria}
-                        variant="secondary"
-                        className="flex-1"
-                        disabled={isFormDisabled || !numeroCNJ.trim() || !tipoPeca || isCuradoriaLoading}
+                        onClick={gerarComCuradoria}
+                        disabled={curadoriaSelected.size === 0}
+                        className="h-10 gap-2 rounded-xl bg-stone-900 px-5 text-sm font-medium shadow-sm hover:bg-stone-800"
                       >
-                        {isCuradoriaLoading ? 'Carregando...' : 'Modo Semi-Automatico'}
+                        <Zap className="h-3.5 w-3.5" />
+                        Gerar com Selecionados
                       </Button>
-                    )}
+                    </div>
                   </div>
                 </div>
-              </CardContent>
-            </Card>
+              )}
 
-            {/* Progress is now shown in the modal Dialog below */}
-
-            {/* Error state */}
-            {pageState === 'erro' && (
-              <Card className="mb-6 border-red-200">
-                <CardContent className="pt-6">
-                  <div className="text-center">
-                    <p className="text-red-600 font-medium mb-2">Erro na geracao</p>
-                    <p className="text-sm text-gray-600 mb-4">{errorMessage}</p>
-                    <Button onClick={voltarParaInicio} variant="secondary">
-                      Tentar novamente
-                    </Button>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-
-            {/* Como funciona info card */}
-            {pageState === 'idle' && (
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg">Como funciona?</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="grid gap-4 md:grid-cols-3">
-                    <div className="text-center p-4">
-                      <div className="w-12 h-12 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-3 text-blue-600 font-bold">
-                        1
+              {/* ============================================================ */}
+              {/* RESULTADO STATE                                              */}
+              {/* ============================================================ */}
+              {pageState === 'resultado' && (
+                <>
+                  {/* Result toolbar */}
+                  <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100">
+                        <Check className="h-4 w-4 text-emerald-600" />
                       </div>
-                      <h3 className="font-medium text-gray-800 mb-1">Coleta</h3>
-                      <p className="text-xs text-gray-500">O Agente 1 busca os documentos do processo no TJ-MS</p>
-                    </div>
-                    <div className="text-center p-4">
-                      <div className="w-12 h-12 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-3 text-green-600 font-bold">
-                        2
+                      <div>
+                        <h2 className="text-sm font-semibold text-stone-900">Peca Gerada</h2>
+                        <div className="flex items-center gap-1.5">
+                          {tipoPecaResultado && (
+                            <span className="text-xs text-stone-400">{tipoPecaResultado}</span>
+                          )}
+                          {tipoPecaResultado && numeroCNJ && <span className="text-xs text-stone-300">&middot;</span>}
+                          {numeroCNJ && <span className="text-xs font-mono text-stone-400">{numeroCNJ}</span>}
+                        </div>
                       </div>
-                      <h3 className="font-medium text-gray-800 mb-1">Analise</h3>
-                      <p className="text-xs text-gray-500">O Agente 2 identifica argumentos e teses aplicaveis</p>
                     </div>
-                    <div className="text-center p-4">
-                      <div className="w-12 h-12 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-3 text-purple-600 font-bold">
-                        3
-                      </div>
-                      <h3 className="font-medium text-gray-800 mb-1">Geracao</h3>
-                      <p className="text-xs text-gray-500">O Agente 3 gera a peca juridica completa</p>
+                    <div className="flex items-center gap-1.5">
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            onClick={exportarDocx}
+                            className="flex h-8 items-center gap-1.5 rounded-lg border border-stone-200 bg-white px-3 text-xs font-medium text-stone-600 transition-colors hover:bg-stone-50"
+                          >
+                            <Download className="h-3.5 w-3.5" />
+                            <span className="hidden sm:inline">DOCX</span>
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent>Exportar como Word</TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            onClick={copiarMinuta}
+                            className="flex h-8 items-center gap-1.5 rounded-lg border border-stone-200 bg-white px-3 text-xs font-medium text-stone-600 transition-colors hover:bg-stone-50"
+                          >
+                            <Copy className="h-3.5 w-3.5" />
+                            <span className="hidden sm:inline">Copiar</span>
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent>Copiar texto</TooltipContent>
+                      </Tooltip>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <button
+                            onClick={abrirHistoricoVersoes}
+                            className="flex h-8 items-center gap-1.5 rounded-lg border border-stone-200 bg-white px-3 text-xs font-medium text-stone-600 transition-colors hover:bg-stone-50"
+                          >
+                            <RotateCcw className="h-3.5 w-3.5" />
+                            <span className="hidden sm:inline">Versoes</span>
+                          </button>
+                        </TooltipTrigger>
+                        <TooltipContent>Historico de versoes</TooltipContent>
+                      </Tooltip>
+                      <button
+                        onClick={() => setPageState('editando')}
+                        className="flex h-8 items-center gap-1.5 rounded-lg bg-stone-900 px-3.5 text-xs font-medium text-white shadow-sm transition-colors hover:bg-stone-800"
+                      >
+                        <MessageSquare className="h-3.5 w-3.5" />
+                        Editar com IA
+                      </button>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
-            )}
 
-            {/* Historico recente inline */}
-            {pageState === 'idle' && (
-              <Card className="mt-6">
-                <CardHeader>
-                  <div className="flex items-center gap-2">
-                    <CardTitle className="text-lg">Geracoes Recentes</CardTitle>
+                  {/* Document content */}
+                  <div className="rounded-2xl border border-stone-200/80 bg-white shadow-sm">
+                    <ScrollArea className="h-[65vh]">
+                      <article className="px-8 py-10 sm:px-12">
+                        <div
+                          className="prose max-w-none"
+                          dangerouslySetInnerHTML={{ __html: minutaHtml }}
+                        />
+                      </article>
+                    </ScrollArea>
                   </div>
-                </CardHeader>
-                <CardContent>
+
+                  {/* Feedback inline */}
+                  {!showFeedback && geracaoId && (
+                    <div className="mt-6 flex items-center justify-center gap-4 rounded-xl bg-white border border-stone-200/80 p-4">
+                      <span className="text-xs text-stone-400">Avaliar geracao</span>
+                      <div className="flex gap-0.5">
+                        {[1, 2, 3, 4, 5].map((nota) => (
+                          <button
+                            key={nota}
+                            onClick={() => { setFeedbackNota(nota); setShowFeedback(true) }}
+                            className="rounded-md p-1 transition-transform hover:scale-110"
+                            aria-label={`Nota ${nota}`}
+                          >
+                            <Star
+                              className={cn(
+                                'h-5 w-5 transition-colors',
+                                feedbackNota && nota <= feedbackNota
+                                  ? 'fill-amber-400 text-amber-400'
+                                  : 'text-stone-300 hover:text-amber-300',
+                              )}
+                            />
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* ============================================================ */}
+              {/* EDITANDO STATE — Split view                                  */}
+              {/* ============================================================ */}
+              {pageState === 'editando' && (
+                <div className="-mx-4 -mt-8 sm:-mx-6 lg:-mx-8">
+                  <div className="flex h-[calc(100vh-3.5rem)]">
+                    {/* Preview column */}
+                    <div className="flex flex-1 flex-col border-r border-stone-200">
+                      <div className="flex h-11 flex-shrink-0 items-center justify-between border-b border-stone-100 bg-white px-4">
+                        <span className="text-xs font-medium text-stone-500">Visualizacao</span>
+                        <div className="flex items-center gap-1">
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button onClick={exportarDocx} className="rounded-md p-1.5 text-stone-400 hover:bg-stone-100 hover:text-stone-600">
+                                <Download className="h-3.5 w-3.5" />
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent>Exportar DOCX</TooltipContent>
+                          </Tooltip>
+                          <Tooltip>
+                            <TooltipTrigger asChild>
+                              <button onClick={copiarMinuta} className="rounded-md p-1.5 text-stone-400 hover:bg-stone-100 hover:text-stone-600">
+                                <Copy className="h-3.5 w-3.5" />
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent>Copiar texto</TooltipContent>
+                          </Tooltip>
+                          <button
+                            onClick={() => setPageState('resultado')}
+                            className="ml-1 rounded-md p-1.5 text-stone-400 hover:bg-stone-100 hover:text-stone-600"
+                          >
+                            <X className="h-3.5 w-3.5" />
+                          </button>
+                        </div>
+                      </div>
+                      <ScrollArea className="flex-1">
+                        <article className="px-8 py-8">
+                          <div
+                            className="prose prose-sm max-w-none"
+                            dangerouslySetInnerHTML={{ __html: minutaHtml }}
+                          />
+                        </article>
+                      </ScrollArea>
+                    </div>
+
+                    {/* Chat column */}
+                    <div className="flex w-full max-w-md flex-col bg-white">
+                      <div className="flex h-11 flex-shrink-0 items-center gap-2 border-b border-stone-100 px-4">
+                        <Bot className="h-4 w-4 text-stone-400" />
+                        <span className="text-xs font-medium text-stone-700">Assistente de Edicao</span>
+                      </div>
+
+                      <ScrollArea className="flex-1 px-4 py-4" ref={chatScrollRef}>
+                        <div className="space-y-4">
+                          {chatMessages.length === 0 && (
+                            <div className="rounded-xl bg-stone-50 p-4">
+                              <p className="text-sm text-stone-600">
+                                Peca alteracoes na minuta. Por exemplo:
+                              </p>
+                              <div className="mt-3 space-y-2">
+                                {[
+                                  'Adicione um argumento sobre prescricao',
+                                  'Reescreva o topico sobre competencia',
+                                  'Remova a secao de preliminares',
+                                ].map((sugestao) => (
+                                  <button
+                                    key={sugestao}
+                                    onClick={() => { setChatInput(sugestao) }}
+                                    className="block w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-left text-xs text-stone-600 transition-colors hover:bg-stone-50"
+                                  >
+                                    &ldquo;{sugestao}&rdquo;
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {chatMessages.map((msg, idx) => (
+                            <div key={idx} className={cn('flex gap-2.5', msg.role === 'user' && 'justify-end')}>
+                              {msg.role === 'assistant' && (
+                                <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-md bg-stone-100">
+                                  <Bot className="h-3 w-3 text-stone-500" />
+                                </div>
+                              )}
+                              <div
+                                className={cn(
+                                  'max-w-[85%] rounded-2xl px-3.5 py-2.5',
+                                  msg.role === 'user'
+                                    ? 'rounded-br-md bg-stone-900 text-white'
+                                    : 'rounded-bl-md bg-stone-100 text-stone-700',
+                                )}
+                              >
+                                <p className="text-sm leading-relaxed">{msg.content}</p>
+                              </div>
+                            </div>
+                          ))}
+
+                          {isSendingChat && (
+                            <div className="flex gap-2.5">
+                              <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-md bg-stone-100">
+                                <Bot className="h-3 w-3 text-stone-500" />
+                              </div>
+                              <div className="rounded-2xl rounded-bl-md bg-stone-100 px-4 py-3">
+                                <div className="flex gap-1">
+                                  <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-stone-400" />
+                                  <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-stone-400 [animation-delay:0.15s]" />
+                                  <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-stone-400 [animation-delay:0.3s]" />
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      </ScrollArea>
+
+                      {/* Chat input */}
+                      <div className="flex items-center gap-2 border-t border-stone-100 px-3 py-2.5">
+                        <Input
+                          value={chatInput}
+                          onChange={(e) => setChatInput(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && !e.shiftKey) {
+                              e.preventDefault()
+                              enviarMensagemChat()
+                            }
+                          }}
+                          placeholder="Peca uma alteracao..."
+                          disabled={isSendingChat}
+                          className="h-9 flex-1 rounded-lg border-stone-200 bg-stone-50/50 text-sm placeholder:text-stone-300"
+                        />
+                        <button
+                          onClick={enviarMensagemChat}
+                          disabled={isSendingChat || !chatInput.trim()}
+                          className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-stone-900 text-white shadow-sm transition-colors hover:bg-stone-800 disabled:opacity-40"
+                        >
+                          <Send className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+            </div>
+          </main>
+
+          {/* ============================================================ */}
+          {/* HISTORY SIDEBAR                                              */}
+          {/* ============================================================ */}
+          {showSidebar && (
+            <>
+              {/* Overlay on mobile */}
+              <div
+                className="fixed inset-0 z-40 bg-black/20 backdrop-blur-sm lg:hidden"
+                onClick={() => setShowSidebar(false)}
+              />
+              <aside className="fixed right-0 top-14 z-50 flex h-[calc(100vh-3.5rem)] w-80 flex-col border-l border-stone-200 bg-white lg:static lg:z-auto">
+                <div className="flex h-11 flex-shrink-0 items-center justify-between border-b border-stone-100 px-4">
+                  <span className="text-xs font-semibold uppercase tracking-wider text-stone-400">Historico</span>
+                  <button
+                    onClick={() => setShowSidebar(false)}
+                    className="rounded-md p-1 text-stone-400 transition-colors hover:bg-stone-100 hover:text-stone-600 lg:hidden"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+                <ScrollArea className="flex-1">
                   {isLoadingHistorico ? (
-                    <div className="space-y-3">
-                      <Skeleton className="h-14 w-full" />
-                      <Skeleton className="h-14 w-full" />
+                    <div className="space-y-2 p-3">
+                      <Skeleton className="h-14 w-full rounded-lg" />
+                      <Skeleton className="h-14 w-full rounded-lg" />
+                      <Skeleton className="h-14 w-full rounded-lg" />
                     </div>
                   ) : !historico || historico.length === 0 ? (
-                    <div className="text-center py-8 text-gray-400">
-                      <p className="text-sm">Nenhuma geracao encontrada</p>
-                      <p className="text-xs mt-1">Use o formulario acima para gerar sua primeira peca</p>
+                    <div className="py-16 text-center">
+                      <History className="mx-auto h-8 w-8 text-stone-300" />
+                      <p className="mt-3 text-xs text-stone-400">Nenhuma geracao</p>
                     </div>
                   ) : (
-                    <div className="grid gap-3">
-                      {historico.slice(0, 5).map((item) => (
+                    <div className="space-y-0.5 p-2">
+                      {historico.map((item) => (
                         <div
                           key={item.id}
                           onClick={() => carregarDoHistorico(item.id)}
-                          className="flex items-center gap-4 p-4 border rounded-xl hover:bg-sky-50 hover:border-sky-300 transition-all cursor-pointer group"
+                          className="group flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 transition-colors hover:bg-stone-50"
                           role="button"
                           tabIndex={0}
                           onKeyDown={(e) => { if (e.key === 'Enter') carregarDoHistorico(item.id) }}
                         >
-                          <div className="w-12 h-12 bg-gradient-to-br from-sky-100 to-blue-100 rounded-xl flex items-center justify-center group-hover:from-sky-200 group-hover:to-blue-200 transition-colors text-sky-600 font-bold">
-                            P
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-medium text-stone-700">{item.cnj}</p>
+                            <p className="mt-0.5 text-[11px] text-stone-400">
+                              {item.tipo_peca || 'Peca'} &middot; {formatDate(item.data)}
+                            </p>
                           </div>
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium text-gray-800 truncate group-hover:text-sky-700">{item.cnj}</p>
-                            <Badge variant="outline" className="text-xs">{item.tipo_peca || 'Peca'}</Badge>
-                          </div>
-                          <div className="text-right flex-shrink-0 flex items-center gap-2">
-                            <p className="text-xs text-gray-400">{formatDate(item.data)}</p>
-                            <button
-                              type="button"
-                              onClick={(e) => excluirDoHistorico(item.id, e)}
-                              className="text-gray-300 hover:text-red-500 transition-colors text-xs leading-none opacity-0 group-hover:opacity-100"
-                              aria-label="Excluir geracao"
-                            >
-                              {'\u2715'}
-                            </button>
-                          </div>
+                          <button
+                            type="button"
+                            onClick={(e) => excluirDoHistorico(item.id, e)}
+                            className="flex-shrink-0 rounded p-1 text-stone-300 opacity-0 transition-all hover:text-red-500 group-hover:opacity-100"
+                            aria-label="Excluir"
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </button>
                         </div>
                       ))}
                     </div>
                   )}
-                </CardContent>
-              </Card>
-            )}
-          </>
-        )}
+                </ScrollArea>
+              </aside>
+            </>
+          )}
+        </div>
 
         {/* ============================================================ */}
-        {/* CURADORIA PREVIEW STATE */}
+        {/* PROGRESS MODAL                                               */}
         {/* ============================================================ */}
-        {pageState === 'curadoria_preview' && (
-          <Card className="mb-6">
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle>Curadoria de Modulos</CardTitle>
-                  <CardDescription>
-                    Revise e selecione os modulos que serao incluidos na peca. {curadoriaModulos.length} modulo(s) detectado(s).
-                  </CardDescription>
-                </div>
-                <Button variant="ghost" onClick={voltarParaInicio}>
-                  Cancelar
-                </Button>
-              </div>
-            </CardHeader>
-            <CardContent>
-              {/* Group modules by category */}
-              {(() => {
-                const categorias = new Map<string, ModuloPreview[]>()
-                for (const modulo of curadoriaModulos) {
-                  const cat = modulo.categoria || 'Geral'
-                  if (!categorias.has(cat)) categorias.set(cat, [])
-                  categorias.get(cat)!.push(modulo)
-                }
+        <Dialog open={isStreaming} onOpenChange={(open) => { if (!open) voltarParaInicio() }}>
+          <DialogContent
+            className="max-w-md rounded-2xl border-stone-200 p-0 shadow-xl"
+            onInteractOutside={(e) => e.preventDefault()}
+            onEscapeKeyDown={(e) => e.preventDefault()}
+          >
+            <div className="px-6 pt-6">
+              <DialogHeader>
+                <DialogTitle className="flex items-center gap-2.5 text-base">
+                  <Loader2 className="h-4 w-4 animate-spin text-stone-500" />
+                  Gerando Peca
+                </DialogTitle>
+                <DialogDescription className="sr-only">Progresso da geracao da peca juridica</DialogDescription>
+              </DialogHeader>
+            </div>
 
-                return Array.from(categorias.entries()).map(([categoria, modulos]) => (
-                  <div key={categoria} className="mb-6">
-                    <h3 className="text-sm font-semibold text-gray-700 mb-3 uppercase tracking-wider">{categoria}</h3>
-                    <div className="space-y-2">
-                      {modulos.map((modulo) => {
-                        const isSelected = curadoriaSelected.has(modulo.id)
-                        return (
-                          <div
-                            key={modulo.id}
-                            className={`p-4 border rounded-lg cursor-pointer transition-all ${
-                              isSelected
-                                ? 'border-blue-300 bg-blue-50'
-                                : 'border-gray-200 bg-white hover:border-gray-300'
-                            }`}
-                            onClick={() => toggleModulo(modulo.id)}
-                            role="checkbox"
-                            aria-checked={isSelected}
-                            tabIndex={0}
-                            onKeyDown={(e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); toggleModulo(modulo.id) } }}
-                          >
-                            <div className="flex items-start gap-3">
-                              <div className={`w-5 h-5 mt-0.5 rounded border-2 flex items-center justify-center flex-shrink-0 ${
-                                isSelected ? 'bg-blue-500 border-blue-500 text-white' : 'border-gray-300'
-                              }`}>
-                                {isSelected && <span className="text-xs">{'\u2713'}</span>}
-                              </div>
-                              <div className="flex-1 min-w-0">
-                                <div className="flex items-center gap-2 mb-1">
-                                  <span className="font-medium text-sm text-gray-800">{modulo.titulo}</span>
-                                  {modulo.tag && <Badge variant="outline" className="text-xs">{modulo.tag}</Badge>}
-                                </div>
-                                <p className="text-xs text-gray-500 line-clamp-2">{modulo.conteudo}</p>
-                              </div>
-                            </div>
-                          </div>
-                        )
-                      })}
+            <div className="px-6 pb-6">
+              <p className="mt-3 text-sm text-stone-500">{progressMessage || 'Iniciando...'}</p>
+
+              {/* Agent pipeline */}
+              <div className="mt-5 space-y-2">
+                {AGENT_META.map((agent) => {
+                  const status = agentStatuses[agent.numero]
+                  const Icon = agent.icon
+                  return (
+                    <div
+                      key={agent.numero}
+                      className={cn(
+                        'flex items-center gap-3 rounded-xl border p-3 transition-all',
+                        status === 'ativo' && 'border-stone-300 bg-stone-50',
+                        status === 'concluido' && 'border-emerald-200 bg-emerald-50/50',
+                        status === 'erro' && 'border-red-200 bg-red-50/50',
+                        status === 'aguardando' && 'border-stone-100 bg-stone-50/50',
+                      )}
+                    >
+                      <div
+                        className={cn(
+                          'flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg transition-all',
+                          status === 'ativo' && 'bg-stone-900 text-white',
+                          status === 'concluido' && 'bg-emerald-500 text-white',
+                          status === 'erro' && 'bg-red-500 text-white',
+                          status === 'aguardando' && 'bg-stone-200 text-stone-400',
+                        )}
+                      >
+                        {status === 'ativo' ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : status === 'concluido' ? (
+                          <Check className="h-3.5 w-3.5" />
+                        ) : status === 'erro' ? (
+                          <X className="h-3.5 w-3.5" />
+                        ) : (
+                          <Icon className="h-3.5 w-3.5" />
+                        )}
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium text-stone-700">{agent.nome}</p>
+                        <p className="text-[11px] text-stone-400">{agent.descricao}</p>
+                      </div>
+                      {status === 'ativo' && (
+                        <span className="flex-shrink-0 text-[11px] font-medium text-stone-500">Ativo</span>
+                      )}
+                      {status === 'concluido' && (
+                        <span className="flex-shrink-0 text-[11px] font-medium text-emerald-600">OK</span>
+                      )}
                     </div>
+                  )
+                })}
+              </div>
+
+              {/* Streaming preview */}
+              {streamingContent && (
+                <div className="mt-4 rounded-xl border border-stone-100 bg-stone-50/80 p-4">
+                  <div className="mb-2 flex items-center gap-2">
+                    <Sparkles className="h-3 w-3 text-stone-400" />
+                    <span className="text-[11px] font-medium text-stone-500">Preview em tempo real</span>
                   </div>
-                ))
-              })()}
+                  <div className="max-h-40 overflow-y-auto">
+                    <div
+                      className="prose prose-sm max-w-none"
+                      dangerouslySetInnerHTML={{ __html: minutaHtml }}
+                    />
+                  </div>
+                </div>
+              )}
 
               <Separator className="my-4" />
 
-              <div className="flex items-center justify-between">
-                <p className="text-sm text-gray-600">
-                  {curadoriaSelected.size} de {curadoriaModulos.length} modulo(s) selecionado(s)
-                </p>
-                <Button
-                  onClick={gerarComCuradoria}
-                  disabled={curadoriaSelected.size === 0}
-                >
-                  Gerar com Selecionados
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-        )}
-
-        {/* ============================================================ */}
-        {/* RESULTADO STATE */}
-        {/* ============================================================ */}
-        {pageState === 'resultado' && (
-          <>
-            <Card className="mb-6">
-              <CardHeader>
-                <div className="flex items-center justify-between">
-                  <div>
-                    <CardTitle>Peca Gerada</CardTitle>
-                    <CardDescription>
-                      {tipoPecaResultado && <Badge variant="outline" className="mr-2">{tipoPecaResultado}</Badge>}
-                      Processo {numeroCNJ}
-                    </CardDescription>
-                  </div>
-                  <div className="flex items-center gap-2">
-                    <Button onClick={exportarDocx} variant="secondary" size="sm">
-                      Baixar DOCX
-                    </Button>
-                    <Button onClick={copiarMinuta} variant="secondary" size="sm">
-                      Copiar
-                    </Button>
-                    <Button onClick={abrirHistoricoVersoes} variant="secondary" size="sm">
-                      Versoes
-                    </Button>
-                    <Button onClick={() => setPageState('editando')} size="sm">
-                      Editar com Chat
-                    </Button>
-                    <Button onClick={voltarParaInicio} variant="ghost" size="sm">
-                      Nova Geracao
-                    </Button>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <ScrollArea className="h-[60vh]">
-                  <div className="bg-white rounded-lg border p-8">
-                    <div
-                      className="prose prose-sm max-w-none"
-                      dangerouslySetInnerHTML={{ __html: minutaHtml }}
-                    />
-                  </div>
-                </ScrollArea>
-              </CardContent>
-            </Card>
-
-            {/* Feedback section */}
-            {!showFeedback && geracaoId && (
-              <Card>
-                <CardContent className="pt-6">
-                  <div className="text-center">
-                    <p className="text-sm text-gray-600 mb-3">Como voce avalia esta geracao?</p>
-                    <div className="flex justify-center gap-2 mb-3">
-                      {[1, 2, 3, 4, 5].map((nota) => (
-                        <button
-                          key={nota}
-                          onClick={() => { setFeedbackNota(nota); setShowFeedback(true) }}
-                          className={`w-10 h-10 rounded-full border-2 transition-colors text-sm font-medium ${
-                            feedbackNota && nota <= feedbackNota
-                              ? 'bg-yellow-400 border-yellow-400 text-white'
-                              : 'border-gray-200 text-gray-400 hover:border-yellow-300'
-                          }`}
-                        >
-                          {nota}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
-          </>
-        )}
-
-        {/* ============================================================ */}
-        {/* EDITANDO STATE - Chat + Preview */}
-        {/* ============================================================ */}
-        {pageState === 'editando' && (
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-            {/* Preview column */}
-            <Card className="lg:h-[80vh] flex flex-col">
-              <CardHeader className="flex-shrink-0">
-                <div className="flex items-center justify-between">
-                  <CardTitle className="text-lg">Visualizacao</CardTitle>
-                  <div className="flex gap-2">
-                    <Button onClick={exportarDocx} variant="secondary" size="sm">DOCX</Button>
-                    <Button onClick={copiarMinuta} variant="secondary" size="sm">Copiar</Button>
-                    <Button onClick={() => setPageState('resultado')} variant="ghost" size="sm">Fechar Editor</Button>
-                  </div>
-                </div>
-              </CardHeader>
-              <CardContent className="flex-1 overflow-hidden">
-                <ScrollArea className="h-full">
-                  <div className="bg-white rounded-lg border p-6">
-                    <div
-                      className="prose prose-sm max-w-none"
-                      dangerouslySetInnerHTML={{ __html: minutaHtml }}
-                    />
-                  </div>
-                </ScrollArea>
-              </CardContent>
-            </Card>
-
-            {/* Chat column */}
-            <Card className="lg:h-[80vh] flex flex-col">
-              <CardHeader className="flex-shrink-0">
-                <CardTitle className="text-lg">Assistente de Edicao</CardTitle>
-                <CardDescription>Peca alteracoes na minuta</CardDescription>
-              </CardHeader>
-
-              <CardContent className="flex-1 overflow-hidden flex flex-col">
-                <ScrollArea className="flex-1 mb-4" ref={chatScrollRef}>
-                  <div className="space-y-4 pr-2">
-                    {/* Initial assistant message */}
-                    {chatMessages.length === 0 && (
-                      <div className="flex gap-3">
-                        <div className="w-8 h-8 bg-gradient-to-br from-primary-500 to-primary-600 rounded-full flex items-center justify-center flex-shrink-0 text-white text-xs font-bold">
-                          IA
-                        </div>
-                        <div className="bg-gray-100 px-4 py-3 rounded-lg max-w-[85%]">
-                          <p className="text-sm text-gray-700">
-                            Ola! Sou o assistente de edicao. Voce pode me pedir alteracoes como:
-                          </p>
-                          <ul className="text-xs text-gray-500 mt-2 space-y-1 list-disc list-inside">
-                            <li>&quot;Adicione um argumento sobre prescrição&quot;</li>
-                            <li>&quot;Reescreva o topico sobre competência&quot;</li>
-                            <li>&quot;Remova a secao de preliminares&quot;</li>
-                          </ul>
-                        </div>
-                      </div>
-                    )}
-
-                    {chatMessages.map((msg, idx) => (
-                      <div key={idx} className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : ''}`}>
-                        {msg.role === 'assistant' && (
-                          <div className="w-8 h-8 bg-gradient-to-br from-primary-500 to-primary-600 rounded-full flex items-center justify-center flex-shrink-0 text-white text-xs font-bold">
-                            IA
-                          </div>
-                        )}
-                        <div className={`px-4 py-3 rounded-lg max-w-[85%] ${
-                          msg.role === 'user'
-                            ? 'bg-primary-600 text-white'
-                            : 'bg-gray-100 text-gray-700'
-                        }`}>
-                          <p className="text-sm">{msg.content}</p>
-                        </div>
-                        {msg.role === 'user' && (
-                          <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center flex-shrink-0">
-                            <span className="text-xs text-gray-500">U</span>
-                          </div>
-                        )}
-                      </div>
-                    ))}
-
-                    {/* Typing indicator */}
-                    {isSendingChat && (
-                      <div className="flex gap-3">
-                        <div className="w-8 h-8 bg-gradient-to-br from-primary-500 to-primary-600 rounded-full flex items-center justify-center flex-shrink-0 text-white text-xs font-bold">
-                          IA
-                        </div>
-                        <div className="bg-gray-100 px-4 py-3 rounded-lg">
-                          <div className="flex gap-1">
-                            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" />
-                            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:0.2s]" />
-                            <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:0.4s]" />
-                          </div>
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </ScrollArea>
-
-                {/* Chat input */}
-                <div className="flex gap-2 pt-2 border-t">
-                  <Input
-                    value={chatInput}
-                    onChange={(e) => setChatInput(e.target.value)}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' && !e.shiftKey) {
-                        e.preventDefault()
-                        enviarMensagemChat()
-                      }
-                    }}
-                    placeholder="Peca uma alteracao..."
-                    disabled={isSendingChat}
-                    className="flex-1"
-                  />
-                  <Button onClick={enviarMensagemChat} disabled={isSendingChat || !chatInput.trim()} size="sm">
-                    Enviar
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          </div>
-        )}
-      {/* ============================================================ */}
-      {/* PROGRESS MODAL (igual ao sistema legado) */}
-      {/* ============================================================ */}
-      <Dialog open={isStreaming} onOpenChange={(open) => { if (!open) voltarParaInicio() }}>
-        <DialogContent
-          className="max-w-lg"
-          onInteractOutside={(e) => e.preventDefault()}
-          onEscapeKeyDown={(e) => e.preventDefault()}
-        >
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-gradient-to-br from-primary-500 to-primary-600 rounded-lg flex items-center justify-center text-white text-sm font-bold">
-                G
-              </div>
-              Gerando Peca Juridica
-            </DialogTitle>
-            <DialogDescription className="sr-only">Progresso da geracao da peca juridica</DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-4">
-            <p className="text-sm text-gray-600">{progressMessage || 'Iniciando...'}</p>
-
-            <div className="space-y-3">
-              <AgentProgressItem numero={1} nome="Agente 1: Coletor" descricao="Coleta documentos do TJ-MS" status={agentStatuses[1]} />
-              <AgentProgressItem numero={2} nome="Agente 2: Ativador" descricao="Detecta argumentos relevantes" status={agentStatuses[2]} />
-              <AgentProgressItem numero={3} nome="Agente 3: Gerador" descricao="Gera a peca juridica" status={agentStatuses[3]} />
-            </div>
-
-            {/* Preview de streaming em tempo real */}
-            {streamingContent && (
-              <>
-                <Separator />
-                <div className="bg-gray-50 rounded-lg border p-4 max-h-48 overflow-y-auto">
-                  <div className="flex items-center gap-2 text-blue-600 mb-2">
-                    <span className="animate-pulse text-xs font-medium">Gerando peca em tempo real...</span>
-                  </div>
-                  <div
-                    className="prose prose-sm max-w-none"
-                    dangerouslySetInnerHTML={{ __html: minutaHtml }}
-                  />
-                </div>
-              </>
-            )}
-
-            <Separator />
-
-            <Button
-              onClick={voltarParaInicio}
-              variant="destructive"
-              className="w-full"
-            >
-              Cancelar Geracao
-            </Button>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* ============================================================ */}
-      {/* PARECER NATJUS DIALOG */}
-      {/* ============================================================ */}
-      <Dialog open={showParecerDialog} onOpenChange={setShowParecerDialog}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Parecer NATJus nao encontrado</DialogTitle>
-            <DialogDescription className="sr-only">Opcoes para anexar parecer NATJus</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <p className="text-sm text-gray-600">
-              Nao foi encontrado parecer NATJus no processo. Ele e essencial para a geracao adequada desta peca.
-            </p>
-
-            <div className="space-y-3">
-              <div>
-                <Label htmlFor="parecer-file">Anexar Parecer (PDF)</Label>
-                <Input
-                  id="parecer-file"
-                  type="file"
-                  accept=".pdf"
-                  onChange={(e) => setParecerFile(e.target.files?.[0] || null)}
-                  className="mt-2"
-                />
-              </div>
-
-              <Button
-                onClick={handleParecerUpload}
-                disabled={!parecerFile || isUploadingParecer}
-                className="w-full"
+              <button
+                onClick={voltarParaInicio}
+                className="flex w-full items-center justify-center gap-2 rounded-xl border border-stone-200 py-2.5 text-sm font-medium text-stone-500 transition-colors hover:bg-stone-50 hover:text-stone-700"
               >
-                {isUploadingParecer ? 'Enviando...' : 'Upload Parecer PDF'}
-              </Button>
-
-              <Separator />
-
-              <Button
-                onClick={handleContinuarSemParecer}
-                variant="ghost"
-                className="w-full"
-              >
-                Continuar sem Parecer
-              </Button>
+                <X className="h-3.5 w-3.5" />
+                Cancelar
+              </button>
             </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+          </DialogContent>
+        </Dialog>
 
-      {/* ============================================================ */}
-      {/* FEEDBACK DIALOG */}
-      {/* ============================================================ */}
-      <Dialog open={showFeedback} onOpenChange={setShowFeedback}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Como foi a experiencia?</DialogTitle>
-            <DialogDescription className="sr-only">Avalie a qualidade da geracao</DialogDescription>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="flex justify-center gap-2">
-              {[1, 2, 3, 4, 5].map((nota) => (
-                <button
-                  key={nota}
-                  onClick={() => setFeedbackNota(nota)}
-                  className={`w-10 h-10 rounded-full border-2 transition-colors text-sm font-medium ${
-                    feedbackNota && nota <= feedbackNota
-                      ? 'bg-yellow-400 border-yellow-400 text-white'
-                      : 'border-gray-200 text-gray-400 hover:border-yellow-300'
-                  }`}
-                >
-                  {nota}
-                </button>
-              ))}
-            </div>
-
-            <Textarea
-              value={feedbackComentario}
-              onChange={(e) => setFeedbackComentario(e.target.value)}
-              placeholder="Comentarios adicionais (opcional)"
-              rows={3}
-            />
-
-            <div className="flex justify-end gap-3">
-              <Button variant="ghost" onClick={() => setShowFeedback(false)}>
-                Pular
-              </Button>
-              <Button onClick={enviarFeedback} disabled={!feedbackNota}>
-                Enviar Feedback
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
-      {/* VERSION HISTORY DIALOG */}
-      <Dialog open={showVersionHistory} onOpenChange={setShowVersionHistory}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <DialogTitle>Historico de Versoes</DialogTitle>
-            <DialogDescription className="sr-only">Lista de versoes anteriores da peca</DialogDescription>
-          </DialogHeader>
-          <ScrollArea className="max-h-[60vh]">
-            {versionList.length === 0 ? (
-              <p className="text-sm text-gray-500 text-center py-4">Nenhuma versao anterior encontrada</p>
-            ) : (
+        {/* ============================================================ */}
+        {/* PARECER NATJUS DIALOG                                        */}
+        {/* ============================================================ */}
+        <Dialog open={showParecerDialog} onOpenChange={setShowParecerDialog}>
+          <DialogContent className="max-w-md rounded-2xl border-stone-200">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2">
+                <AlertTriangle className="h-4 w-4 text-amber-500" />
+                Parecer NATJus ausente
+              </DialogTitle>
+              <DialogDescription className="sr-only">Opcoes para anexar parecer NATJus</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <p className="text-sm text-stone-500">
+                Nao foi encontrado parecer NATJus no processo. Ele e essencial para a geracao adequada desta peca.
+              </p>
               <div className="space-y-3">
-                {versionList.map((v) => (
-                  <div key={v.versao_id} className="p-3 border rounded-lg">
-                    <div className="flex items-center justify-between mb-1">
-                      <span className="text-sm font-medium">Versao {v.numero_versao}</span>
-                      <span className="text-xs text-gray-400">{formatDateTime(v.created_at)}</span>
-                    </div>
-                    <p className="text-xs text-gray-600 mb-2">{v.descricao_alteracao || 'Sem descricao'}</p>
-                    <div className="flex items-center gap-3">
-                      <span className="text-xs text-green-600">+{v.linhas_adicionadas}</span>
-                      <span className="text-xs text-red-600">-{v.linhas_removidas}</span>
-                      <Button onClick={() => restaurarVersao(v.versao_id)} size="sm" variant="outline" className="ml-auto text-xs">
-                        Restaurar
-                      </Button>
-                    </div>
-                  </div>
+                <div>
+                  <Label htmlFor="parecer-file" className="text-xs font-medium uppercase tracking-wider text-stone-500">
+                    Anexar Parecer (PDF)
+                  </Label>
+                  <Input
+                    id="parecer-file"
+                    type="file"
+                    accept=".pdf"
+                    onChange={(e) => setParecerFile(e.target.files?.[0] || null)}
+                    className="mt-2"
+                  />
+                </div>
+                <Button
+                  onClick={handleParecerUpload}
+                  disabled={!parecerFile || isUploadingParecer}
+                  className="w-full gap-2 rounded-xl bg-stone-900 hover:bg-stone-800"
+                >
+                  <Upload className="h-4 w-4" />
+                  {isUploadingParecer ? 'Enviando...' : 'Enviar Parecer'}
+                </Button>
+                <Separator />
+                <button
+                  onClick={handleContinuarSemParecer}
+                  className="w-full rounded-xl py-2.5 text-sm text-stone-400 transition-colors hover:text-stone-600"
+                >
+                  Continuar sem Parecer
+                </button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* ============================================================ */}
+        {/* FEEDBACK DIALOG                                              */}
+        {/* ============================================================ */}
+        <Dialog open={showFeedback} onOpenChange={setShowFeedback}>
+          <DialogContent className="max-w-sm rounded-2xl border-stone-200">
+            <DialogHeader>
+              <DialogTitle className="text-center text-base">Como foi a experiencia?</DialogTitle>
+              <DialogDescription className="sr-only">Avalie a qualidade da geracao</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-4">
+              <div className="flex justify-center gap-1">
+                {[1, 2, 3, 4, 5].map((nota) => (
+                  <button
+                    key={nota}
+                    onClick={() => setFeedbackNota(nota)}
+                    className="rounded-lg p-1.5 transition-transform hover:scale-110"
+                    aria-label={`Nota ${nota}`}
+                  >
+                    <Star
+                      className={cn(
+                        'h-7 w-7 transition-colors',
+                        feedbackNota && nota <= feedbackNota
+                          ? 'fill-amber-400 text-amber-400'
+                          : 'text-stone-300 hover:text-amber-300',
+                      )}
+                    />
+                  </button>
                 ))}
               </div>
-            )}
-          </ScrollArea>
-        </DialogContent>
-      </Dialog>
-    </PageContainer>
+              <Textarea
+                value={feedbackComentario}
+                onChange={(e) => setFeedbackComentario(e.target.value)}
+                placeholder="Comentarios (opcional)"
+                rows={3}
+                className="rounded-xl border-stone-200"
+              />
+              <div className="flex justify-end gap-2">
+                <button
+                  onClick={() => setShowFeedback(false)}
+                  className="rounded-lg px-4 py-2 text-sm text-stone-400 transition-colors hover:text-stone-600"
+                >
+                  Pular
+                </button>
+                <Button
+                  onClick={enviarFeedback}
+                  disabled={!feedbackNota}
+                  className="gap-1.5 rounded-xl bg-stone-900 px-4 hover:bg-stone-800"
+                >
+                  <Send className="h-3.5 w-3.5" />
+                  Enviar
+                </Button>
+              </div>
+            </div>
+          </DialogContent>
+        </Dialog>
+
+        {/* ============================================================ */}
+        {/* VERSION HISTORY DIALOG                                       */}
+        {/* ============================================================ */}
+        <Dialog open={showVersionHistory} onOpenChange={setShowVersionHistory}>
+          <DialogContent className="max-w-lg rounded-2xl border-stone-200">
+            <DialogHeader>
+              <DialogTitle className="flex items-center gap-2 text-base">
+                <RotateCcw className="h-4 w-4 text-stone-400" />
+                Historico de Versoes
+              </DialogTitle>
+              <DialogDescription className="sr-only">Lista de versoes anteriores da peca</DialogDescription>
+            </DialogHeader>
+            <ScrollArea className="max-h-[60vh]">
+              {versionList.length === 0 ? (
+                <div className="py-12 text-center">
+                  <History className="mx-auto h-8 w-8 text-stone-300" />
+                  <p className="mt-3 text-sm text-stone-400">Nenhuma versao anterior</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {versionList.map((v) => (
+                    <div key={v.versao_id} className="rounded-xl border border-stone-100 p-4 transition-colors hover:bg-stone-50/50">
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm font-semibold text-stone-700">v{v.numero_versao}</span>
+                        <span className="text-[11px] text-stone-400">{formatDateTime(v.created_at)}</span>
+                      </div>
+                      <p className="mt-1 text-xs text-stone-500">{v.descricao_alteracao || 'Sem descricao'}</p>
+                      <div className="mt-3 flex items-center gap-2">
+                        <span className="rounded border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700">
+                          +{v.linhas_adicionadas}
+                        </span>
+                        <span className="rounded border border-red-200 bg-red-50 px-1.5 py-0.5 text-[10px] font-medium text-red-700">
+                          -{v.linhas_removidas}
+                        </span>
+                        <button
+                          onClick={() => restaurarVersao(v.versao_id)}
+                          className="ml-auto flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-medium text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-700"
+                        >
+                          <RotateCcw className="h-3 w-3" />
+                          Restaurar
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </ScrollArea>
+          </DialogContent>
+        </Dialog>
+
+      </div>
+    </TooltipProvider>
   )
 }

@@ -9,12 +9,28 @@ import { createRouter, createRootRoute, createRoute, redirect, Outlet } from '@t
 import { AppLayout } from '@/components/layout/AppLayout'
 import { AuthGuard } from '@/components/layout/AuthGuard'
 import { LoginPage } from '@/pages/login/LoginPage'
-import { DashboardPage } from '@/pages/dashboard/DashboardPage'
+import { DashboardPageV2 } from '@/pages/dashboard/DashboardPageV2'
 import { ChangePasswordPage } from '@/pages/change-password/ChangePasswordPage'
 import { DesignSystemPage } from '@/pages/dev/DesignSystemPage'
 import { CumprimentoBetaPage } from '@/pages/cumprimento-beta/CumprimentoBetaPage'
 import { ExtratorAutosPage } from '@/pages/extrator-autos/ExtratorAutosPage'
 import { LegacyAdminFramePage } from '@/pages/admin/legacy/LegacyAdminFramePage'
+import { UsersPage } from '@/pages/admin/users/UsersPage'
+import { PromptsPage } from '@/pages/admin/prompts/PromptsPage'
+import { PromptsModulosPage } from '@/pages/admin/prompts-modulos/PromptsModulosPage'
+import { FeedbacksPage } from '@/pages/admin/feedbacks/FeedbacksPage'
+import { PerformancePage } from '@/pages/admin/performance/PerformancePage'
+import { VariaveisPage } from '@/pages/admin/variaveis/VariaveisPage'
+import { CategoriasJsonPage } from '@/pages/admin/categorias-json/CategoriasJsonPage'
+import { HistoricoGeradorPage } from '@/pages/admin/historico-gerador/HistoricoGeradorPage'
+import { HistoricoPedidoCalculoPage } from '@/pages/admin/historico-pedido-calculo/HistoricoPedidoCalculoPage'
+import { HistoricoPrestacaoContasPage } from '@/pages/admin/historico-prestacao-contas/HistoricoPrestacaoContasPage'
+import { ModulosTipoPecaPage } from '@/pages/admin/modulos-tipo-peca/ModulosTipoPecaPage'
+import { ConfigPecasPage } from '@/pages/admin/config-pecas/ConfigPecasPage'
+import { TesteAtivacaoPage } from '@/pages/admin/teste-ativacao/TesteAtivacaoPage'
+import { TesteCategoriasPage } from '@/pages/admin/teste-categorias/TesteCategoriasPage'
+import { TjmsDocsPage } from '@/pages/admin/tjms-docs/TjmsDocsPage'
+import { RestaurarSlugsPage } from '@/pages/admin/restaurar-slugs/RestaurarSlugsPage'
 import MatriculasPage from '@/pages/matriculas/MatriculasPage'
 import { AssistenciaPage } from '@/pages/assistencia/AssistenciaPage'
 import { ClassificadorPage } from '@/pages/classificador/ClassificadorPage'
@@ -71,7 +87,7 @@ const loginRoute = createRoute({
 const dashboardRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: '/dashboard',
-  component: DashboardPage,
+  component: DashboardPageV2,
 })
 
 const geradorPecasRoute = createRoute({
@@ -255,145 +271,145 @@ function BertTrainingRoutePage() {
 const adminUsersRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: '/admin/users',
-  component: AdminUsersLegacyPage,
+  component: UsersPage,
 })
 
 const adminPromptsRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: '/admin/prompts',
-  component: AdminPromptsLegacyPage,
+  component: PromptsPage,
 })
 
 const adminPromptsConfigAliasRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: '/admin/prompts-config',
-  component: AdminPromptsLegacyPage,
+  component: PromptsPage,
 })
 
 const adminPromptsModulosRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: '/admin/prompts-modulos',
-  component: AdminPromptsModulosLegacyPage,
+  component: PromptsModulosPage,
 })
 
 const adminFeedbacksRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: '/admin/feedbacks',
-  component: AdminFeedbacksLegacyPage,
+  component: FeedbacksPage,
 })
 
 const adminPerformanceRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: '/admin/performance',
-  component: AdminPerformanceLegacyPage,
+  component: PerformancePage,
 })
 
 const adminVariaveisRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: '/admin/variaveis',
-  component: AdminVariaveisLegacyPage,
+  component: VariaveisPage,
 })
 
 const adminCategoriasJsonRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: '/admin/categorias-json',
-  component: AdminCategoriasJsonLegacyPage,
+  component: CategoriasJsonPage,
 })
 
 const adminCategoriasResumoJsonAliasRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: '/admin/categorias-resumo-json',
-  component: AdminCategoriasJsonLegacyPage,
+  component: CategoriasJsonPage,
 })
 
 const adminHistoricoGeradorRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: '/admin/historico-gerador',
-  component: AdminHistoricoGeradorLegacyPage,
+  component: HistoricoGeradorPage,
 })
 
 const adminHistoricoGeradorAliasRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: '/admin/gerador-pecas/historico',
-  component: AdminHistoricoGeradorLegacyPage,
+  component: HistoricoGeradorPage,
 })
 
 const adminHistoricoPedidoCalculoRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: '/admin/historico-pedido-calculo',
-  component: AdminHistoricoPedidoCalculoLegacyPage,
+  component: HistoricoPedidoCalculoPage,
 })
 
 const adminHistoricoPedidoCalculoAliasRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: '/admin/pedido-calculo/debug',
-  component: AdminHistoricoPedidoCalculoLegacyPage,
+  component: HistoricoPedidoCalculoPage,
 })
 
 const adminHistoricoPrestacaoContasRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: '/admin/historico-prestacao-contas',
-  component: AdminHistoricoPrestacaoContasLegacyPage,
+  component: HistoricoPrestacaoContasPage,
 })
 
 const adminHistoricoPrestacaoContasAliasRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: '/admin/prestacao-contas/debug',
-  component: AdminHistoricoPrestacaoContasLegacyPage,
+  component: HistoricoPrestacaoContasPage,
 })
 
 const adminModulosTipoPecaRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: '/admin/modulos-tipo-peca',
-  component: AdminModulosTipoPecaLegacyPage,
+  component: ModulosTipoPecaPage,
 })
 
 const adminConfigPecasRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: '/admin/config-pecas',
-  component: AdminConfigPecasLegacyPage,
+  component: ConfigPecasPage,
 })
 
 const adminTesteAtivacaoRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: '/admin/teste-ativacao',
-  component: AdminTesteAtivacaoLegacyPage,
+  component: TesteAtivacaoPage,
 })
 
 const adminTesteAtivacaoAliasRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: '/admin/prompts-modulos/teste',
-  component: AdminTesteAtivacaoLegacyPage,
+  component: TesteAtivacaoPage,
 })
 
 const adminTesteCategoriasRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: '/admin/teste-categorias',
-  component: AdminTesteCategoriasLegacyPage,
+  component: TesteCategoriasPage,
 })
 
 const adminTesteCategoriasAliasRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: '/admin/categorias-resumo-json/teste',
-  component: AdminTesteCategoriasLegacyPage,
+  component: TesteCategoriasPage,
 })
 
 const adminTjmsDocsRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: '/admin/tjms-docs',
-  component: AdminTjmsDocsLegacyPage,
+  component: TjmsDocsPage,
 })
 
 const adminTjmsDocsPlanoRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: '/admin/tjms-docs/plano',
-  component: AdminTjmsDocsPlanoLegacyPage,
+  component: TjmsDocsPage,
 })
 
 const adminRestaurarSlugsRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: '/admin/restaurar-slugs',
-  component: AdminRestaurarSlugsLegacyPage,
+  component: RestaurarSlugsPage,
 })
 
 // ---------------------------------------------------------------------------
