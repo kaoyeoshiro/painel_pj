@@ -1173,14 +1173,17 @@ export function GeradorPecasPage() {
                       <Skeleton className="h-10 w-full mt-2" />
                     ) : (
                       <Select
-                        value={tipoPeca}
-                        onValueChange={setTipoPeca}
+                        value={tipoPeca || (tiposPecaData?.permite_auto ? '__auto__' : '')}
+                        onValueChange={(v) => setTipoPeca(v === '__auto__' ? '' : v)}
                         disabled={isFormDisabled}
                       >
                         <SelectTrigger className="mt-2" id="tipo-peca">
-                          <SelectValue placeholder="Selecione o tipo de peca" />
+                          <SelectValue placeholder="-- Selecione o tipo de peca --" />
                         </SelectTrigger>
                         <SelectContent>
+                          {tiposPecaData?.permite_auto && (
+                            <SelectItem value="__auto__">Detectar automaticamente (IA decide)</SelectItem>
+                          )}
                           {tiposPecaData?.tipos.map((tipo) => (
                             <SelectItem key={tipo.valor} value={tipo.valor}>
                               {tipo.label}
@@ -1188,6 +1191,9 @@ export function GeradorPecasPage() {
                           ))}
                         </SelectContent>
                       </Select>
+                    )}
+                    {tiposPecaData && !tiposPecaData.permite_auto && (
+                      <p className="mt-1 text-xs text-gray-500">Selecao obrigatoria — deteccao automatica desabilitada</p>
                     )}
                   </div>
 
@@ -1259,7 +1265,7 @@ export function GeradorPecasPage() {
                     <Button
                       onClick={inputMode === 'cnj' ? iniciarGeracaoAutomatica : iniciarGeracaoPdf}
                       className="flex-1"
-                      disabled={isFormDisabled || (inputMode === 'cnj' ? !numeroCNJ.trim() : pdfFiles.length === 0)}
+                      disabled={isFormDisabled || (inputMode === 'cnj' ? !numeroCNJ.trim() : pdfFiles.length === 0) || (!tipoPeca && !tiposPecaData?.permite_auto)}
                     >
                       {isStreaming ? 'Gerando...' : 'Gerar Automatico'}
                     </Button>

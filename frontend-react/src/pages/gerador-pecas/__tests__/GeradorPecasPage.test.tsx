@@ -66,7 +66,7 @@ describe('GeradorPecasPage', () => {
 
     // O Select placeholder aparece apos o loading dos tipos
     await waitFor(() => {
-      expect(screen.getByText('Selecione o tipo de peca')).toBeInTheDocument()
+      expect(screen.getByText('-- Selecione o tipo de peca --')).toBeInTheDocument()
     })
   })
 
@@ -76,7 +76,7 @@ describe('GeradorPecasPage', () => {
     await waitFor(() => {
       // O Select do shadcn/ui renderiza as opcoes na tela
       // Verificamos que as opcoes de tipos estao disponiveis via botao do trigger
-      expect(screen.getByText('Selecione o tipo de peca')).toBeInTheDocument()
+      expect(screen.getByText('-- Selecione o tipo de peca --')).toBeInTheDocument()
     })
 
     // Verifica que a API foi chamada para buscar tipos
