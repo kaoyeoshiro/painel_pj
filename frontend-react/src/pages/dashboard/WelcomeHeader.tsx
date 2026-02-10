@@ -7,46 +7,26 @@ function getGreeting(): string {
   return 'Boa noite'
 }
 
-function getInitials(name: string): string {
-  return name
-    .split(' ')
-    .filter(Boolean)
-    .slice(0, 2)
-    .map((w) => w[0].toUpperCase())
-    .join('')
-}
-
 function formatDate(): string {
   return new Intl.DateTimeFormat('pt-BR', {
+    weekday: 'long',
     day: 'numeric',
     month: 'long',
-    year: 'numeric',
   }).format(new Date())
 }
 
 export function WelcomeHeader() {
   const { user } = useAuthStore()
-  const firstName = user?.full_name?.split(' ')[0] ?? user?.username ?? 'Usuário'
-  const initials = getInitials(user?.full_name || user?.username || 'U')
+  const firstName = user?.full_name?.split(' ')[0] ?? user?.username ?? 'Usuario'
 
   return (
-    <div className="flex items-center justify-between">
-      <div className="flex items-center gap-4">
-        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-gradient-to-br from-primary-500 to-primary-700 text-sm font-semibold text-white shadow-md">
-          {initials}
-        </div>
-        <div>
-          <h2 className="text-xl font-bold text-gray-800 sm:text-2xl">
-            {getGreeting()}, {firstName}!
-          </h2>
-          <p className="text-sm text-gray-500">
-            Portal PGE &mdash; Selecione um sistema para começar
-          </p>
-        </div>
-      </div>
-      <span className="hidden text-sm text-gray-400 sm:block">
+    <div className="pb-1">
+      <p className="text-xs font-medium uppercase tracking-wider text-stone-400">
         {formatDate()}
-      </span>
+      </p>
+      <h1 className="mt-1 text-2xl font-semibold tracking-tight text-stone-900">
+        {getGreeting()}, {firstName}
+      </h1>
     </div>
   )
 }
