@@ -173,8 +173,12 @@ function AdminTjmsDocsLegacyPage() { return <LegacyAdminFramePage legacyPath="/a
 function AdminTjmsDocsPlanoLegacyPage() { return <LegacyAdminFramePage legacyPath="/admin/tjms-docs/plano" /> }
 function AdminRestaurarSlugsLegacyPage() { return <LegacyAdminFramePage legacyPath="/admin/restaurar-slugs" /> }
 
+function shouldUseNativeByDefault(nativeFlag: string | undefined): boolean {
+  return nativeFlag !== '0'
+}
+
 function shouldUseNativeMatriculas(): boolean {
-  return import.meta.env.VITE_PORTAL_NATIVE_MATRICULAS === '1'
+  return shouldUseNativeByDefault(import.meta.env.VITE_PORTAL_NATIVE_MATRICULAS)
 }
 
 function MatriculasRoutePage() {
@@ -183,7 +187,7 @@ function MatriculasRoutePage() {
 }
 
 function shouldUseNativeAssistencia(): boolean {
-  return import.meta.env.VITE_PORTAL_NATIVE_ASSISTENCIA === '1'
+  return shouldUseNativeByDefault(import.meta.env.VITE_PORTAL_NATIVE_ASSISTENCIA)
 }
 
 function AssistenciaRoutePage() {
@@ -192,7 +196,7 @@ function AssistenciaRoutePage() {
 }
 
 function shouldUseNativeClassificador(): boolean {
-  return import.meta.env.VITE_PORTAL_NATIVE_CLASSIFICADOR === '1'
+  return shouldUseNativeByDefault(import.meta.env.VITE_PORTAL_NATIVE_CLASSIFICADOR)
 }
 
 function ClassificadorRoutePage() {
@@ -201,7 +205,7 @@ function ClassificadorRoutePage() {
 }
 
 function shouldUseNativePedidoCalculo(): boolean {
-  return import.meta.env.VITE_PORTAL_NATIVE_PEDIDO_CALCULO === '1'
+  return shouldUseNativeByDefault(import.meta.env.VITE_PORTAL_NATIVE_PEDIDO_CALCULO)
 }
 
 function PedidoCalculoRoutePage() {
@@ -210,7 +214,7 @@ function PedidoCalculoRoutePage() {
 }
 
 function shouldUseNativePrestacaoContas(): boolean {
-  return import.meta.env.VITE_PORTAL_NATIVE_PRESTACAO_CONTAS === '1'
+  return shouldUseNativeByDefault(import.meta.env.VITE_PORTAL_NATIVE_PRESTACAO_CONTAS)
 }
 
 function PrestacaoContasRoutePage() {
@@ -219,7 +223,7 @@ function PrestacaoContasRoutePage() {
 }
 
 function shouldUseNativeRelatorioCumprimento(): boolean {
-  return import.meta.env.VITE_PORTAL_NATIVE_RELATORIO_CUMPRIMENTO === '1'
+  return shouldUseNativeByDefault(import.meta.env.VITE_PORTAL_NATIVE_RELATORIO_CUMPRIMENTO)
 }
 
 function RelatorioCumprimentoRoutePage() {
@@ -228,7 +232,7 @@ function RelatorioCumprimentoRoutePage() {
 }
 
 function shouldUseNativeGeradorPecas(): boolean {
-  return import.meta.env.VITE_PORTAL_NATIVE_GERADOR_PECAS === '1'
+  return shouldUseNativeByDefault(import.meta.env.VITE_PORTAL_NATIVE_GERADOR_PECAS)
 }
 
 function GeradorPecasRoutePage() {
@@ -237,7 +241,7 @@ function GeradorPecasRoutePage() {
 }
 
 function shouldUseNativeBertTraining(): boolean {
-  return import.meta.env.VITE_PORTAL_NATIVE_BERT_TRAINING === '1'
+  return shouldUseNativeByDefault(import.meta.env.VITE_PORTAL_NATIVE_BERT_TRAINING)
 }
 
 function BertTrainingRoutePage() {

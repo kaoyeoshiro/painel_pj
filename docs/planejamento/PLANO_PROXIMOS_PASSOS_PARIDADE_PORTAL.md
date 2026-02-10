@@ -386,17 +386,35 @@ Atualizacao desta rodada (execucao atual):
    - `E2E_MAX_DIFF_RATIO=0.06 npm run test:portal-visual` -> `16 passed`;
    - `npm run test:admin-visual` -> `32 passed`;
    - `npm run build` -> OK.
+21. Ajuste de estrategia (objetivo de migracao React nativa):
+   - sistemas do portal voltam para React nativo por padrao;
+   - fallback legado fica apenas como rollback explicito por sistema (`VITE_PORTAL_NATIVE_*=0`);
+   - `AppLayout` remove a regra de "legado por padrao" e mantem skip de shell somente para:
+     - rotas admin (`/admin/*`) e
+     - rollback explicito para legado;
+   - `portal.smoke.spec.ts` remove preferencia forcada por iframe legado nas 8 rotas.
+22. Revalidacao apos inverter para nativo por padrao:
+   - `npm run test:portal-smoke` -> `8 passed`;
+   - `npm run build` -> OK;
+   - `npm run test:portal-visual` -> `16 passed`;
+   - `E2E_MAX_DIFF_RATIO=0.05 npm run test:portal-visual` -> `10 passed / 6 failed`.
+23. Falhas estritas atuais em `0.05` com nativo por padrao:
+   - `bert-training` (desktop e mobile);
+   - `assistencia` (mobile);
+   - `matriculas` (mobile);
+   - `prestacao-contas` (mobile);
+   - `relatorio-cumprimento` (mobile).
 ---
 
 ## Proximos passos (sequencia pratica)
 1. Manter execucao sequencial dos testes para evitar conflito de webserver.
-2. Operar gate visual com `E2E_MAX_DIFF_RATIO=0.06` enquanto o residual `bert-training` mobile (`0.06`) existir.
-3. Isolar e corrigir a diferenca residual do `bert-training` mobile em `0.05` (header/topbar no contexto iframe mobile).
+2. Manter nativo por padrao em todos os 8 sistemas e usar rollback legado somente em incidente (`VITE_PORTAL_NATIVE_*=0`).
+3. Corrigir as 6 falhas estritas atuais em `0.05` (foco: header/topbar mobile + bert-training desktop/mobile).
 4. Apos fechar `0.05`, validar novamente:
    - `E2E_MAX_DIFF_RATIO=0.05 npm run test:portal-visual`
    - `E2E_MAX_DIFF_RATIO=0.05 npm run test:admin-visual`
    - `npm run test:portal-smoke`
-5. Reabrir migracao nativa por sistema apenas via opt-in (`VITE_PORTAL_NATIVE_*=1`), um sistema por vez, com criterio:
+5. Manter migracao nativa como padrao e usar fallback legado apenas em incidente (rollback por `VITE_PORTAL_NATIVE_*=0`), com criterio:
    - visual + smoke verdes
    - sem regressao funcional reportada na janela de observacao.
 6. Reavaliar remocao da pasta legada apenas quando Passos 4/5 estiverem 100% fechados.
@@ -415,7 +433,7 @@ Atualizacao desta rodada (execucao atual):
 11. `frontend-react/src/pages/pedido-calculo/PedidoCalculoPage.tsx` (ajuste de header)
 12. `frontend-react/src/pages/prestacao-contas/PrestacaoContasPage.tsx` (ajuste de header)
 13. `frontend-react/src/pages/relatorio-cumprimento/RelatorioCumprimentoPage.tsx` (ajuste de header)
-14. `frontend-react/src/router.tsx` (rollout: 8 sistemas em legado por padrao, nativo apenas por opt-in)
-15. `frontend-react/src/components/layout/AppLayout.tsx` (prefixos de paridade por default legado)
-16. `frontend-react/e2e/portal.smoke.spec.ts` (preferencia explicita por iframe legado nas 8 rotas)
+14. `frontend-react/src/router.tsx` (nativo por padrao; legado apenas por rollback explicito)
+15. `frontend-react/src/components/layout/AppLayout.tsx` (remove regra de legado por padrao)
+16. `frontend-react/e2e/portal.smoke.spec.ts` (remove preferencia forcada por iframe legado)
 
