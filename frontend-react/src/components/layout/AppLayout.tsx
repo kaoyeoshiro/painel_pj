@@ -4,9 +4,14 @@ import { Sidebar } from './Sidebar'
 
 const ALWAYS_LEGACY_FRAME_PREFIXES = ['/admin/']
 const ALWAYS_NATIVE_NO_SHELL_PREFIXES = [
+  '/gerador-pecas',
   '/pedido-calculo',
   '/prestacao-contas',
   '/bert-training',
+  '/assistencia',
+  '/cumprimento-beta',
+  '/relatorio-cumprimento',
+  '/matriculas',
 ]
 
 const MOBILE_INLINE_TOPBAR_PREFIXES = [

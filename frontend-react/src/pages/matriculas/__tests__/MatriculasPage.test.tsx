@@ -3,9 +3,17 @@ import { render, screen, waitFor } from '@testing-library/react'
 import MatriculasPage from '../MatriculasPage'
 import { matriculasApi } from '@/lib/api'
 
-// Mock do router
+// Mock do router (SystemTopbar uses Link + useNavigate)
 vi.mock('@tanstack/react-router', () => ({
   useNavigate: () => vi.fn(),
+  Link: ({ children, ...props }: { children: React.ReactNode; to?: string }) => <a href={props.to}>{children}</a>,
+}))
+
+// Mock do auth store (SystemTopbar uses logout)
+vi.mock('@/stores/auth-store', () => ({
+  useAuthStore: () => ({
+    logout: vi.fn(),
+  }),
 }))
 
 // Mock da API
@@ -51,13 +59,13 @@ describe('MatriculasPage', () => {
 
     render(<MatriculasPage />)
 
-    // Verifica se o titulo principal esta presente
+    // Verifica se o titulo principal esta presente (SystemTopbar)
     await waitFor(() => {
-      expect(screen.getByText('Matriculas Confrontantes')).toBeInTheDocument()
+      expect(screen.getByText('Matrículas Confrontantes')).toBeInTheDocument()
     })
 
     // Verifica se o subtitulo esta presente
-    expect(screen.getByText('Sistema de Analise Documental')).toBeInTheDocument()
+    expect(screen.getByText('Sistema de Análise Documental')).toBeInTheDocument()
 
     // Verifica se o campo de matricula principal esta presente
     expect(screen.getByPlaceholderText('Ex: 12345')).toBeInTheDocument()
@@ -65,38 +73,6 @@ describe('MatriculasPage', () => {
     // Verifica se os botoes principais estao presentes
     expect(screen.getByRole('button', { name: /analisar/i })).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /importar/i })).toBeInTheDocument()
-  })
-
-  it('deve mostrar estado de loading enquanto busca dados', async () => {
-    // Mock que simula demora na resposta
-    let resolveFiles: (value: unknown) => void
-    const filesPromise = new Promise((resolve) => {
-      resolveFiles = resolve
-    })
-
-    vi.mocked(matriculasApi.get).mockImplementation(async (path: string) => {
-      if (path === '/files') return filesPromise
-      if (path === '/config')
-        return {
-          version: '1.0.0',
-          model: 'test-model',
-          hasApiKey: true,
-          has_api_key: true,
-          analysis_available: true,
-        }
-      if (path === '/logs') return []
-      return []
-    })
-
-    render(<MatriculasPage />)
-
-    // Verifica se a mensagem de nenhum arquivo aparece durante o loading
-    await waitFor(() => {
-      expect(screen.getByText('Nenhum arquivo importado')).toBeInTheDocument()
-    })
-
-    // Resolve o promise para completar o loading
-    resolveFiles!([])
   })
 
   it('deve exibir dados quando a API retorna sucesso', async () => {
@@ -153,7 +129,7 @@ describe('MatriculasPage', () => {
     expect(screen.getByText('800 KB - 2024-02-06')).toBeInTheDocument()
   })
 
-  it('deve exibir mensagem quando nao ha arquivos', async () => {
+  it('deve exibir lista vazia quando nao ha arquivos', async () => {
     vi.mocked(matriculasApi.get).mockImplementation(async (path: string) => {
       if (path === '/files') return []
       if (path === '/config')
@@ -170,11 +146,10 @@ describe('MatriculasPage', () => {
 
     render(<MatriculasPage />)
 
+    // No legado, lista vazia permanece em branco (sem texto especial)
     await waitFor(() => {
-      expect(screen.getByText('Nenhum arquivo importado')).toBeInTheDocument()
+      expect(screen.getByLabelText('lista-vazia-matriculas')).toBeInTheDocument()
     })
-
-    expect(screen.getByText('Clique em "Importar"')).toBeInTheDocument()
   })
 
   it('deve exibir relatorio vazio inicialmente', async () => {

@@ -13,8 +13,7 @@ import type {
   BatchStatusResponse,
   FeedbackRequest,
 } from '@/types/matriculas'
-import { PageContainer } from '@/components/layout/PageContainer'
-import { PageHeader } from '@/components/layout/PageHeader'
+import { SystemTopbar } from '@/components/layout/SystemTopbar'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -25,6 +24,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { useToast } from '@/components/ui/toast'
 import {
   FileText,
+  FileSignature,
   Upload,
   Brain,
   RefreshCw,
@@ -35,11 +35,14 @@ import {
   FileDown,
   Trash2,
   FileUp,
+  FolderOpen,
   CheckCircle,
   AlertCircle,
   Loader2,
   Info,
   HelpCircle,
+  ZoomIn,
+  ZoomOut,
 } from 'lucide-react'
 
 export default function MatriculasPage() {
@@ -469,21 +472,19 @@ export default function MatriculasPage() {
   // renderMarkdown removido — usar componente MarkdownContent com sanitização
 
   return (
-    <PageContainer noPadding fluid className="flex flex-col h-full">
-      <div className="px-4 sm:px-6 lg:px-8 pt-6">
-        <PageHeader
-          title="Matrículas Confrontantes"
-          subtitle="Sistema de Análise Documental"
-          backTo="/dashboard"
-        />
-      </div>
+    <div className="flex h-screen flex-col bg-gray-50">
+      <SystemTopbar
+        title="Matrículas Confrontantes"
+        subtitle="Sistema de Análise Documental"
+        icon={<FileSignature className="h-5 w-5" />}
+      />
 
       {/* Main Content */}
       <div className="flex flex-1 overflow-hidden">
         {/* Left Sidebar - File Manager */}
         <aside className="flex w-64 flex-shrink-0 flex-col border-r bg-white">
           {/* AI Actions */}
-          <div className="border-b bg-gradient-to-r from-primary/10 to-green-50 p-3">
+          <div className="border-b bg-gradient-to-r from-sky-50 to-green-50 p-3">
             <div className="mb-3">
               <label className="mb-1 block text-xs font-medium text-gray-700">
                 Matricula Principal <span className="text-red-500">*</span>
@@ -497,35 +498,40 @@ export default function MatriculasPage() {
             </div>
 
             <div className="mb-2 flex gap-2">
-              <Button onClick={() => handleAnalyze()} disabled={isAnalyzing} className="flex-1" size="sm">
-                <Brain className="mr-2 h-4 w-4" />
+              <button
+                onClick={() => handleAnalyze()}
+                disabled={isAnalyzing}
+                className="flex-1 rounded-lg bg-green-500 px-3 py-2 text-sm font-medium text-white shadow-md transition-colors hover:bg-green-600 disabled:cursor-not-allowed disabled:opacity-50 flex items-center justify-center gap-2"
+              >
+                <Brain className="h-4 w-4" />
                 Analisar
-              </Button>
-              <Button
+              </button>
+              <button
                 onClick={() => handleAnalyze(true)}
                 disabled={isAnalyzing}
-                variant="outline"
-                size="sm"
+                className="rounded-lg border border-orange-300 bg-orange-50 px-3 py-2 text-sm text-orange-600 transition-colors hover:bg-orange-100 disabled:cursor-not-allowed disabled:opacity-50 flex items-center justify-center gap-1"
                 title="Forcar nova analise"
               >
                 <RefreshCw className="h-4 w-4" />
-              </Button>
+              </button>
             </div>
 
             <div className="mb-2 flex items-center gap-2">
-              <Button
+              <button
                 onClick={handleBatchAnalyze}
                 disabled={isBatchAnalyzing || selectedFileIds.length < 2}
-                className="flex-1"
-                variant="secondary"
-                size="sm"
+                className="flex-1 rounded-lg bg-purple-500 px-3 py-2 text-sm font-medium text-white shadow-md transition-colors hover:bg-purple-600 disabled:cursor-not-allowed disabled:opacity-50 flex items-center justify-center gap-2"
               >
-                <Layers className="mr-2 h-4 w-4" />
+                <Layers className="h-4 w-4" />
                 Analise em Lote
-              </Button>
-              <Button onClick={() => setShowBatchHelp(true)} variant="ghost" size="icon">
+              </button>
+              <button
+                onClick={() => setShowBatchHelp(true)}
+                className="rounded-full p-2 text-gray-400 transition-colors hover:bg-purple-50 hover:text-purple-500"
+                title="Ajuda"
+              >
                 <HelpCircle className="h-4 w-4" />
-              </Button>
+              </button>
             </div>
 
             <div className="text-center text-xs text-gray-600">
@@ -552,15 +558,18 @@ export default function MatriculasPage() {
           <div className="border-b p-3">
             <div className="mb-2 flex items-center justify-between">
               <h2 className="flex items-center gap-2 text-sm font-semibold text-gray-700">
-                <FileUp className="h-4 w-4 text-primary" />
+                <FolderOpen className="h-4 w-4 text-sky-500" />
                 Matriculas
               </h2>
             </div>
 
-            <Button onClick={() => fileInputRef.current?.click()} className="w-full" size="sm">
-              <Upload className="mr-2 h-4 w-4" />
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="flex w-full items-center justify-center gap-2 rounded-lg bg-sky-600 px-3 py-2 text-sm text-white transition-colors hover:bg-sky-700"
+            >
+              <Upload className="h-4 w-4" />
               Importar
-            </Button>
+            </button>
             <input
               ref={fileInputRef}
               type="file"
@@ -656,22 +665,35 @@ export default function MatriculasPage() {
               </h2>
               {reportText && (
                 <div className="flex gap-2">
-                  <Button variant="outline" size="sm" onClick={handleDownloadDocx}>
-                    <Download className="mr-2 h-4 w-4" />
+                  <button
+                    onClick={handleDownloadDocx}
+                    className="flex items-center gap-1 rounded bg-blue-50 px-3 py-1.5 text-xs text-blue-600 transition-colors hover:bg-blue-100"
+                  >
+                    <Download className="h-3.5 w-3.5" />
                     Word
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={() => window.print()}>
-                    <Printer className="mr-2 h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={() => window.print()}
+                    className="flex items-center gap-1 rounded bg-red-50 px-3 py-1.5 text-xs text-red-600 transition-colors hover:bg-red-100"
+                  >
+                    <Printer className="h-3.5 w-3.5" />
                     PDF
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={handleCopyReport}>
-                    <Copy className="mr-2 h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={handleCopyReport}
+                    className="flex items-center gap-1 rounded bg-gray-50 px-3 py-1.5 text-xs text-gray-600 transition-colors hover:bg-gray-100"
+                  >
+                    <Copy className="h-3.5 w-3.5" />
                     Copiar
-                  </Button>
-                  <Button variant="outline" size="sm" onClick={handleExportJSON} disabled={!documentDetails}>
-                    <FileDown className="mr-2 h-4 w-4" />
+                  </button>
+                  <button
+                    onClick={handleExportJSON}
+                    disabled={!documentDetails}
+                    className="flex items-center gap-1 rounded bg-green-50 px-3 py-1.5 text-xs text-green-600 transition-colors hover:bg-green-100 disabled:opacity-50"
+                  >
+                    <FileDown className="h-3.5 w-3.5" />
                     JSON
-                  </Button>
+                  </button>
                 </div>
               )}
             </div>
@@ -744,110 +766,147 @@ export default function MatriculasPage() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {/* Resumo */}
+                  {/* Resumo compacto */}
                   <div className="flex items-center gap-4 text-xs">
-                    <div>
-                      <span className="text-gray-500">Matricula: </span>
-                      <span className="font-semibold text-primary">
+                    <div className="flex items-center gap-2">
+                      <span className="text-gray-500">Matricula:</span>
+                      <span className="font-semibold text-sky-700">
                         {documentDetails.matricula_principal || 'N/A'}
                       </span>
                     </div>
-                    <div>
-                      <span className="text-gray-500">Confianca: </span>
-                      <Badge variant="outline">
-                        {documentDetails.confidence
-                          ? Math.round(
-                              documentDetails.confidence <= 1 ? documentDetails.confidence * 100 : documentDetails.confidence
-                            )
-                          : 0}
-                        %
-                      </Badge>
+                    <div className="flex items-center gap-2">
+                      <span className="text-gray-500">Confianca:</span>
+                      <div className="flex items-center gap-1">
+                        <div className="h-1.5 w-12 overflow-hidden rounded-full bg-gray-200">
+                          <div
+                            className={`h-full rounded-full ${
+                              (documentDetails.confidence ?? 0) >= 0.8 || (documentDetails.confidence ?? 0) >= 80
+                                ? 'bg-green-500'
+                                : (documentDetails.confidence ?? 0) >= 0.6 || (documentDetails.confidence ?? 0) >= 60
+                                  ? 'bg-yellow-500'
+                                  : 'bg-red-500'
+                            }`}
+                            style={{
+                              width: `${documentDetails.confidence
+                                ? Math.round(documentDetails.confidence <= 1 ? documentDetails.confidence * 100 : documentDetails.confidence)
+                                : 0}%`,
+                            }}
+                          />
+                        </div>
+                        <span
+                          className={`font-medium ${
+                            (documentDetails.confidence ?? 0) >= 0.8 || (documentDetails.confidence ?? 0) >= 80
+                              ? 'text-green-600'
+                              : (documentDetails.confidence ?? 0) >= 0.6 || (documentDetails.confidence ?? 0) >= 60
+                                ? 'text-yellow-600'
+                                : 'text-red-600'
+                          }`}
+                        >
+                          {documentDetails.confidence
+                            ? Math.round(documentDetails.confidence <= 1 ? documentDetails.confidence * 100 : documentDetails.confidence)
+                            : 0}%
+                        </span>
+                      </div>
                     </div>
-                    <div>
-                      <span className="text-gray-500">Confrontacao: </span>
-                      <Badge
-                        variant={
+                    <div className="flex items-center gap-2">
+                      <span className="text-gray-500">Confrontacao:</span>
+                      <span
+                        className={`font-medium ${
                           documentDetails.confrontacao_completa === true
-                            ? 'default'
+                            ? 'text-green-600'
                             : documentDetails.confrontacao_completa === false
-                              ? 'destructive'
-                              : 'secondary'
-                        }
+                              ? 'text-red-600'
+                              : 'text-gray-400'
+                        }`}
                       >
                         {documentDetails.confrontacao_completa === true
-                          ? 'Completa'
+                          ? '\u2713 Completa'
                           : documentDetails.confrontacao_completa === false
-                            ? 'Incompleta'
+                            ? '\u2717 Incompleta'
                             : 'N/A'}
-                      </Badge>
+                      </span>
                     </div>
                   </div>
 
-                  {/* Tabelas */}
+                  {/* Tabelas lado a lado */}
                   <div className="grid grid-cols-2 gap-3">
                     {/* Matriculas */}
-                    <Card>
-                      <CardHeader className="p-2">
-                        <CardTitle className="text-xs">
+                    <div className="overflow-hidden rounded-lg bg-gray-50">
+                      <div className="border-b border-gray-200 bg-gray-100 px-2 py-1.5">
+                        <h4 className="flex items-center gap-1 text-xs font-medium text-gray-700">
+                          <FileText className="h-3 w-3 text-sky-500" />
                           Matriculas ({documentDetails.matriculas_encontradas?.length || 0})
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="max-h-32 overflow-auto p-0">
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead className="text-xs">N</TableHead>
-                              <TableHead className="text-xs">Lote</TableHead>
-                              <TableHead className="text-xs">Proprietarios</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {documentDetails.matriculas_encontradas?.map((mat, idx) => (
-                              <TableRow key={idx}>
-                                <TableCell className="text-xs font-medium text-primary">
-                                  {mat.numero || 'N/A'}
-                                </TableCell>
-                                <TableCell className="text-xs">{mat.lote || '-'}</TableCell>
-                                <TableCell className="max-w-[150px] truncate text-xs">
-                                  {mat.proprietarios?.join(', ') || 'N/A'}
-                                </TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      </CardContent>
-                    </Card>
+                        </h4>
+                      </div>
+                      <div className="max-h-32 overflow-auto">
+                        <table className="w-full">
+                          <thead className="sticky top-0 bg-gray-100 text-xs text-gray-600">
+                            <tr>
+                              <th className="px-2 py-1 text-left font-medium">N</th>
+                              <th className="px-2 py-1 text-left font-medium">Lote</th>
+                              <th className="px-2 py-1 text-left font-medium">Quadra</th>
+                              <th className="px-2 py-1 text-left font-medium">Proprietarios</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {documentDetails.matriculas_encontradas?.length ? (
+                              documentDetails.matriculas_encontradas.map((mat, idx) => (
+                                <tr key={idx} className="border-b border-gray-100 text-xs hover:bg-gray-50">
+                                  <td className="px-2 py-1.5 font-medium text-sky-600">{mat.numero || 'N/A'}</td>
+                                  <td className="px-2 py-1.5">{mat.lote || '-'}</td>
+                                  <td className="px-2 py-1.5">{mat.quadra || '-'}</td>
+                                  <td className="max-w-[150px] truncate px-2 py-1.5" title={mat.proprietarios?.join(', ') || ''}>
+                                    {mat.proprietarios?.join(', ') || 'N/A'}
+                                  </td>
+                                </tr>
+                              ))
+                            ) : (
+                              <tr>
+                                <td colSpan={4} className="px-2 py-3 text-center text-xs text-gray-400">Nenhuma matricula</td>
+                              </tr>
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
 
                     {/* Confrontantes */}
-                    <Card>
-                      <CardHeader className="p-2">
-                        <CardTitle className="text-xs">
+                    <div className="overflow-hidden rounded-lg bg-gray-50">
+                      <div className="border-b border-gray-200 bg-gray-100 px-2 py-1.5">
+                        <h4 className="flex items-center gap-1 text-xs font-medium text-gray-700">
+                          <FileText className="h-3 w-3 text-green-500" />
                           Confrontantes ({documentDetails.lotes_confrontantes?.length || 0})
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent className="max-h-32 overflow-auto p-0">
-                        <Table>
-                          <TableHeader>
-                            <TableRow>
-                              <TableHead className="text-xs">Identificador</TableHead>
-                              <TableHead className="text-xs">Direcao</TableHead>
-                              <TableHead className="text-xs">Matricula</TableHead>
-                            </TableRow>
-                          </TableHeader>
-                          <TableBody>
-                            {documentDetails.lotes_confrontantes?.map((lote, idx) => (
-                              <TableRow key={idx}>
-                                <TableCell className="text-xs">{lote.identificador || 'N/A'}</TableCell>
-                                <TableCell className="text-xs">
-                                  {lote.direcao?.toUpperCase() || '-'}
-                                </TableCell>
-                                <TableCell className="text-xs">{lote.matricula_anexada || '-'}</TableCell>
-                              </TableRow>
-                            ))}
-                          </TableBody>
-                        </Table>
-                      </CardContent>
-                    </Card>
+                        </h4>
+                      </div>
+                      <div className="max-h-32 overflow-auto">
+                        <table className="w-full">
+                          <thead className="sticky top-0 bg-gray-100 text-xs text-gray-600">
+                            <tr>
+                              <th className="px-2 py-1 text-left font-medium">Identificador</th>
+                              <th className="px-2 py-1 text-left font-medium">Direcao</th>
+                              <th className="px-2 py-1 text-left font-medium">Tipo</th>
+                              <th className="px-2 py-1 text-left font-medium">Matricula</th>
+                            </tr>
+                          </thead>
+                          <tbody>
+                            {documentDetails.lotes_confrontantes?.length ? (
+                              documentDetails.lotes_confrontantes.map((lote, idx) => (
+                                <tr key={idx} className="border-b border-gray-100 text-xs hover:bg-gray-50">
+                                  <td className="px-2 py-1.5">{lote.identificador || 'N/A'}</td>
+                                  <td className="px-2 py-1.5">{lote.direcao?.toUpperCase() || '-'}</td>
+                                  <td className="px-2 py-1.5">{lote.tipo || '-'}</td>
+                                  <td className="px-2 py-1.5">{lote.matricula_anexada || '-'}</td>
+                                </tr>
+                              ))
+                            ) : (
+                              <tr>
+                                <td colSpan={4} className="px-2 py-3 text-center text-xs text-gray-400">Nenhum confrontante</td>
+                              </tr>
+                            )}
+                          </tbody>
+                        </table>
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}
@@ -858,10 +917,24 @@ export default function MatriculasPage() {
         {/* Right Sidebar - PDF Viewer */}
         <aside className="flex flex-shrink-0 flex-col border-l bg-gray-100" style={{ width: '40%' }}>
           <div className="flex items-center justify-between border-b bg-white px-4 py-2">
-            <span className="flex items-center gap-2 text-sm font-medium text-gray-700">
-              <FileText className="h-4 w-4 text-red-500" />
-              Visualizador
-            </span>
+            <div className="flex items-center gap-3">
+              <span className="flex items-center gap-2 text-sm font-medium text-gray-700">
+                <FileText className="h-4 w-4 text-red-500" />
+                Visualizador
+              </span>
+              <span className="max-w-[200px] truncate text-xs text-gray-500">
+                {selectedFileId && files?.find(f => f.id === selectedFileId)?.name || 'Nenhum documento'}
+              </span>
+            </div>
+            <div className="flex items-center gap-1">
+              <button className="rounded p-1.5 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700" title="Diminuir Zoom">
+                <ZoomOut className="h-4 w-4" />
+              </button>
+              <span className="px-2 text-xs text-gray-600">100%</span>
+              <button className="rounded p-1.5 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700" title="Aumentar Zoom">
+                <ZoomIn className="h-4 w-4" />
+              </button>
+            </div>
           </div>
           <div className="flex flex-1 items-center justify-center overflow-auto p-4">
             {pdfViewerUrl ? (
@@ -963,7 +1036,7 @@ export default function MatriculasPage() {
           </div>
         </DialogContent>
       </Dialog>
-    </PageContainer>
+    </div>
   )
 }
 

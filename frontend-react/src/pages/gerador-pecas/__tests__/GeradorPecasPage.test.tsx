@@ -6,6 +6,8 @@ import * as api from '@/lib/api'
 // Mock do router (Link e useNavigate precisam de contexto)
 vi.mock('@tanstack/react-router', () => ({
   useNavigate: () => vi.fn(),
+  useRouterState: (opts?: { select?: (s: unknown) => unknown }) =>
+    opts?.select ? opts.select({ location: { pathname: '/gerador-pecas' } }) : { location: { pathname: '/gerador-pecas' } },
   Link: ({ children, ...props }: { children: React.ReactNode; to?: string }) => <a href={props.to}>{children}</a>,
 }))
 
