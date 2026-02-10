@@ -1,7 +1,7 @@
 import { useAuthStore } from '@/stores/auth-store'
 import { useUiStore } from '@/stores/ui-store'
 import { useNavigate } from '@tanstack/react-router'
-import { Menu, ChevronDown, KeyRound, LogOut, User } from 'lucide-react'
+import { Menu, ChevronDown, KeyRound, LogOut } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -12,8 +12,8 @@ import {
 } from '@/components/ui/dropdown-menu'
 
 /**
- * Header da aplicação - exibido em todas as páginas autenticadas
- * Contém: botão do menu lateral (mobile), logo PGE, menu do usuário
+ * Header da aplicacao — PGE Design System
+ * Fundo azul escuro, logo PGE grande a esquerda, avatar laranja a direita
  */
 export function Header() {
   const { user, logout } = useAuthStore()
@@ -25,39 +25,87 @@ export function Header() {
     navigate({ to: '/login' })
   }
 
+  const initials = user?.full_name
+    ? user.full_name.split(' ').map((n) => n[0]).slice(0, 2).join('').toUpperCase()
+    : 'U'
+
   return (
-    <header className="sticky top-0 z-50 bg-white border-b border-gray-200 shadow-sm">
-      <div className="flex items-center justify-between h-16 px-4 sm:px-6">
-        {/* Esquerda: hamburger (mobile) + logo */}
-        <div className="flex items-center gap-3">
+    <header style={{ background: '#294964', fontFamily: "var(--font-ui, 'Plus Jakarta Sans', system-ui, sans-serif)" }}>
+      <div className="flex items-center justify-between px-5 sm:px-7" style={{ height: 80 }}>
+        {/* Esquerda: hamburger (mobile) + logo PGE */}
+        <div className="flex items-center gap-4">
           <Button
             variant="ghost"
             size="icon"
-            className="lg:hidden"
+            className="lg:hidden text-white/70 hover:text-white hover:bg-white/10"
             onClick={toggleSidebar}
           >
             <Menu className="h-5 w-5" />
           </Button>
-          <img
-            src="/logo/logo-pge.png"
-            alt="PGE-MS"
-            className="h-10 w-auto"
-          />
+
+          <div className="flex items-center gap-1">
+            {/* Logo PGE em container branco — grande para presenca institucional */}
+            <div
+              className="flex items-center justify-center overflow-hidden"
+              style={{
+                width: 180,
+                height: 64,
+                background: '#fff',
+                borderRadius: 12,
+                boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
+                padding: '3px 5px',
+              }}
+            >
+              <img
+                src="/logo/logo-pge.png"
+                alt="PGE-MS"
+                style={{ width: '100%', height: '100%', objectFit: 'contain' }}
+              />
+            </div>
+            {/* Divider + org name */}
+            <div
+              className="hidden sm:block"
+              style={{ width: 1, height: 40, background: 'rgba(255,255,255,0.18)', margin: '0 16px' }}
+            />
+            <div className="hidden sm:block">
+              <p
+                className="font-semibold"
+                style={{ color: 'rgba(255,255,255,0.95)', fontSize: 17, lineHeight: 1.25 }}
+              >
+                Procuradoria-Geral do Estado
+              </p>
+              <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13 }}>
+                Mato Grosso do Sul
+              </p>
+            </div>
+          </div>
         </div>
 
-        {/* Direita: menu do usuário */}
-        <div className="flex items-center gap-4">
-          <span className="hidden sm:block text-sm font-medium text-gray-700">
+        {/* Direita: nome + avatar/dropdown */}
+        <div className="flex items-center gap-3">
+          <span
+            className="hidden sm:block font-medium"
+            style={{ color: 'rgba(255,255,255,0.7)', fontSize: 14 }}
+          >
             {user?.full_name}
           </span>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
-              <Button variant="ghost" size="sm" className="gap-2">
-                <div className="w-8 h-8 bg-primary-100 rounded-full flex items-center justify-center">
-                  <User className="h-4 w-4 text-primary-600" />
+              <button className="flex items-center gap-2 rounded-lg px-1 py-1 transition-colors hover:bg-white/10">
+                <div
+                  className="flex items-center justify-center rounded-full font-bold"
+                  style={{
+                    width: 40,
+                    height: 40,
+                    background: '#F58634',
+                    color: '#fff',
+                    fontSize: 14,
+                  }}
+                >
+                  {initials}
                 </div>
-                <ChevronDown className="h-4 w-4 text-gray-400" />
-              </Button>
+                <ChevronDown className="h-4 w-4" style={{ color: 'rgba(255,255,255,0.5)' }} />
+              </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
               <DropdownMenuItem onClick={() => navigate({ to: '/change-password' })}>
@@ -73,6 +121,9 @@ export function Header() {
           </DropdownMenu>
         </div>
       </div>
+
+      {/* Curved transition to content area */}
+      <div className="rounded-t-3xl" style={{ height: 20, background: '#f9fafb' }} />
     </header>
   )
 }
