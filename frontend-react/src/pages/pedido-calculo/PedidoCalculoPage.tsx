@@ -1,6 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link } from '@tanstack/react-router'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -14,8 +13,6 @@ import { useToast } from '@/components/ui/toast'
 import { useApiQuery } from '@/hooks/useApiQuery'
 import { pedidoCalculoApi, getToken } from '@/lib/api'
 import { useMarkdown } from '@/hooks/useMarkdown'
-import { PageContainer } from '@/components/layout/PageContainer'
-import { PageHeader } from '@/components/layout/PageHeader'
 import {
   Calculator,
   History,
@@ -32,7 +29,11 @@ import {
   Search,
   Brain,
   Sparkles,
-  LayoutGrid,
+  ArrowLeft,
+  ChevronRight,
+  Clock,
+  MessageSquare,
+  Bot,
 } from 'lucide-react'
 import type {
   HistoricoItem,
@@ -46,6 +47,30 @@ import type {
   ExportarDocxResponse,
   DocumentoResponse,
 } from '@/types/pedido-calculo'
+
+// ============================================================
+// PGE Design System — Color Tokens
+// ============================================================
+
+const C = {
+  navy950: '#22314B',
+  navy900: '#253D52',
+  navy700: '#2B5376',
+  navy600: '#356A8E',
+  navy500: '#4A98A0',
+  navy100: '#D5ECEF',
+  navy50: '#EFF8F9',
+  orange500: '#F58634',
+  orange400: '#F79A54',
+  gray200: '#E2E3E5',
+  gray100: '#F0F1F2',
+  gray50: '#F7F8F9',
+  gray500: '#8D8F92',
+  text900: '#1A2332',
+  text700: '#2D3B4E',
+  text500: '#5A6578',
+  text400: '#8D95A0',
+}
 
 export function PedidoCalculoPage() {
   const { toast } = useToast()
@@ -589,119 +614,127 @@ export function PedidoCalculoPage() {
 
     return (
       <div
-        className={`flex items-center gap-3 p-3 rounded-xl border transition-colors ${
-          status === 'ativo'
-            ? 'bg-blue-50 border-blue-200'
-            : status === 'concluido'
-              ? 'bg-green-50 border-green-200'
-              : status === 'erro'
-                ? 'bg-red-50 border-red-200'
-                : 'bg-gray-50 border-gray-100'
-        }`}
+        className="flex items-center gap-3 rounded-xl border p-3 transition-colors"
+        style={{
+          background: status === 'ativo' ? C.navy50
+            : status === 'concluido' ? '#f0fdf4'
+            : status === 'erro' ? '#fef2f2'
+            : C.gray50,
+          borderColor: status === 'ativo' ? C.navy100
+            : status === 'concluido' ? '#bbf7d0'
+            : status === 'erro' ? '#fecaca'
+            : C.gray100,
+        }}
       >
         <div
-          className={`w-8 h-8 rounded-full flex items-center justify-center ${
-            status === 'ativo'
-              ? 'bg-blue-500'
-              : status === 'concluido'
-                ? 'bg-green-500'
-                : status === 'erro'
-                  ? 'bg-red-500'
-                  : 'bg-gray-200'
-          }`}
+          className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg text-white"
+          style={{
+            background: status === 'ativo' ? C.navy950
+              : status === 'concluido' ? '#22c55e'
+              : status === 'erro' ? '#ef4444'
+              : C.gray200,
+            color: status === 'aguardando' ? C.text400 : '#fff',
+          }}
         >
           {status === 'ativo' ? (
-            <Loader2 className="h-4 w-4 text-white animate-spin" />
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
           ) : status === 'concluido' ? (
-            <Check className="h-4 w-4 text-white" />
+            <Check className="h-3.5 w-3.5" />
           ) : status === 'erro' ? (
-            <X className="h-4 w-4 text-white" />
+            <X className="h-3.5 w-3.5" />
           ) : (
-            <Icon className="h-4 w-4 text-gray-400" />
+            <Icon className="h-3.5 w-3.5" />
           )}
         </div>
-        <div className="flex-1">
-          <p className="text-sm font-medium text-gray-700">{nome}</p>
-          <p className="text-xs text-gray-500">{descricao}</p>
+        <div className="min-w-0 flex-1">
+          <p className="text-sm font-medium" style={{ color: C.text700 }}>{nome}</p>
+          <p style={{ fontSize: 11, color: C.text400 }}>{descricao}</p>
         </div>
-        <Badge
-          variant={
-            status === 'ativo'
-              ? 'default'
-              : status === 'concluido'
-                ? 'default'
-                : status === 'erro'
-                  ? 'destructive'
-                  : 'secondary'
-          }
-          className="text-xs"
-        >
-          {status === 'ativo'
-            ? 'Processando'
-            : status === 'concluido'
-              ? 'Concluído'
-              : status === 'erro'
-                ? 'Erro'
-                : 'Aguardando'}
-        </Badge>
+        {status === 'ativo' && (
+          <span className="flex-shrink-0 text-[11px] font-medium" style={{ color: C.navy600 }}>Ativo</span>
+        )}
+        {status === 'concluido' && (
+          <span className="flex-shrink-0 text-[11px] font-medium text-emerald-600">OK</span>
+        )}
       </div>
     )
   }
 
   return (
-    <PageContainer noPadding className="px-4 sm:px-6 lg:px-8 pt-4 pb-0">
-      <PageHeader
-        title="Cálculo Judicial"
-        subtitle="Cumprimento de Sentença contra a Fazenda Pública"
-        backTo="/dashboard"
-        showMobileBrand
-        compactMobile
-        mobileInlineActions
-        className="border-b border-gray-200 pb-3 sm:border-0 sm:pb-0"
-        actions={
+    <div style={{ fontFamily: "var(--font-ui, 'Plus Jakarta Sans', system-ui, sans-serif)" }}>
+      {/* ============================================================ */}
+      {/* BREADCRUMB BAR — leve, subordinada ao header global          */}
+      {/* ============================================================ */}
+      <div className="border-b" style={{ borderColor: C.gray200 }}>
+        <div className="mx-auto flex max-w-[1350px] items-center justify-between" style={{ height: 48, padding: '0 40px' }}>
+          <div className="flex items-center gap-2">
+            <Link
+              to="/dashboard"
+              className="flex h-7 w-7 items-center justify-center rounded-lg transition-colors"
+              style={{ color: C.text400 }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = C.gray100; e.currentTarget.style.color = C.text700 }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = C.text400 }}
+              aria-label="Voltar ao Dashboard"
+            >
+              <ArrowLeft style={{ width: 16, height: 16 }} />
+            </Link>
+            <ChevronRight style={{ width: 14, height: 14, color: C.text400, margin: '0 4px' }} />
+            <div className="flex items-center justify-center rounded-lg" style={{ width: 28, height: 28, background: C.navy100, color: C.navy700 }}>
+              <Calculator style={{ width: 14, height: 14 }} />
+            </div>
+            <span className="font-semibold" style={{ fontSize: 15, color: C.text900, marginLeft: 4 }}>Pedido de Calculo</span>
+          </div>
+
           <div className="flex items-center gap-2">
             <Sheet>
               <SheetTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8 text-gray-500">
-                  <History className="h-5 w-5" />
-                </Button>
+                <button
+                  className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-medium transition-colors"
+                  style={{ color: C.text500, fontSize: 13 }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = C.gray100 }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
+                >
+                  <Clock style={{ width: 14, height: 14 }} />
+                  <span className="hidden sm:inline">Historico</span>
+                </button>
               </SheetTrigger>
               <SheetContent>
                 <SheetHeader>
-                  <SheetTitle>Histórico</SheetTitle>
+                  <SheetTitle>Historico</SheetTitle>
                 </SheetHeader>
-                <ScrollArea className="h-[calc(100vh-80px)] mt-4">
-                  {isLoadingHistorico || !historico || historico.length === 0 ? (
+                <ScrollArea className="mt-4 h-[calc(100vh-80px)]">
+                  {isLoadingHistorico ? (
                     <div className="py-8 text-center">
-                      <p className="text-sm text-gray-500">Carregando histórico...</p>
+                      <p className="text-sm" style={{ color: C.text400 }}>Carregando historico...</p>
+                    </div>
+                  ) : !historico || historico.length === 0 ? (
+                    <div className="py-8 text-center">
+                      <p className="text-sm" style={{ color: C.text400 }}>Nenhum pedido gerado ainda</p>
                     </div>
                   ) : (
-                    <div className="space-y-2">
+                    <div className="space-y-1">
                       {historico.map((item) => {
                         const numero = item.numero_cnj_formatado || item.numero_cnj || 'Processo'
                         const autor =
                           item.dados_processo?.autor ||
                           item.dados_agente1?.dados_basicos?.autor ||
-                          'Pedido de Cálculo'
+                          'Pedido de Calculo'
                         const data = item.criado_em ? new Date(item.criado_em) : null
 
                         return (
                           <div
                             key={item.id}
                             onClick={() => carregarDoHistorico(item.id)}
-                            className="p-3 bg-gray-50 hover:bg-gray-100 rounded-lg cursor-pointer transition-colors"
+                            className="group flex cursor-pointer items-center gap-3 rounded-xl px-3 py-3 transition-colors hover:bg-slate-50"
                           >
-                            <div className="flex items-center justify-between mb-1">
-                              <span className="text-sm font-medium text-gray-800 truncate">{numero}</span>
-                              <span className="text-xs text-gray-400">
-                                {data ? data.toLocaleDateString('pt-BR') : '-'}
-                              </span>
+                            <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg" style={{ background: C.navy100, color: C.navy700 }}>
+                              <FileText className="h-3.5 w-3.5" />
                             </div>
-                            <div className="flex items-center justify-between">
-                              <span className="text-xs text-gray-500 truncate">{autor}</span>
-                              <span className="text-xs text-gray-400">
-                                {data ? data.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '-'}
-                              </span>
+                            <div className="min-w-0 flex-1">
+                              <p className="truncate text-sm font-medium" style={{ color: C.text700 }}>{numero}</p>
+                              <p className="mt-0.5 truncate text-xs" style={{ color: C.text400 }}>
+                                {autor} &middot; {data ? data.toLocaleDateString('pt-BR') : '-'}
+                              </p>
                             </div>
                           </div>
                         )
@@ -711,145 +744,159 @@ export function PedidoCalculoPage() {
                 </ScrollArea>
               </SheetContent>
             </Sheet>
-            <Link
-              to="/dashboard"
-              className="flex flex-col items-center justify-center text-[11px] leading-none text-gray-500 transition-colors hover:text-gray-700 sm:hidden"
-            >
-              <LayoutGrid className="mb-0.5 h-3.5 w-3.5" />
-              <span>Dashboard</span>
-            </Link>
           </div>
-        }
-      />
+        </div>
+      </div>
 
-      {/* Formulario Principal */}
-        <Card className="mb-6">
-          <CardHeader>
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-primary-500 to-primary-600 rounded-xl flex items-center justify-center">
-                <Calculator className="h-5 w-5 text-white" />
-              </div>
-              <div>
-                <CardTitle>Gerar Pedido de Cálculo</CardTitle>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <form
-              onSubmit={(e) => {
-                e.preventDefault()
-                iniciarProcessamento()
-              }}
-              className="space-y-4"
-            >
-              <div>
-                <Label htmlFor="numero-cnj">Número do Processo (CNJ)</Label>
-                <Input
-                  id="numero-cnj"
-                  value={numeroCNJ}
-                  onChange={(e) => setNumeroCNJ(e.target.value)}
-                  placeholder="0000000-00.2024.8.12.0001"
-                  className="mt-2"
-                />
-                <p className="text-xs text-gray-500 mt-1">Digite o número completo do processo no formato CNJ</p>
-              </div>
-
-              <Button type="submit" className="w-full" disabled={isProcessing}>
-                {isProcessing ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Processando...
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="mr-2 h-4 w-4" />
-                    Gerar Pedido de Cálculo
-                  </>
-                )}
-              </Button>
-            </form>
-          </CardContent>
-        </Card>
-
-        {/* Historico Recente */}
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2">
-                <div className="w-8 h-8 bg-gradient-to-br from-primary-500 to-primary-600 rounded-lg flex items-center justify-center">
-                  <History className="h-4 w-4 text-white" />
+      <div>
+        <div className="mx-auto max-w-[1350px] px-4 py-8 sm:px-6 lg:px-8">
+          {/* Formulario Principal */}
+          <div className="mb-6 overflow-hidden rounded-2xl border bg-white shadow-sm" style={{ borderColor: C.gray200 }}>
+            {/* Navy accent bar */}
+            <div className="h-1" style={{ background: `linear-gradient(90deg, ${C.navy950}, ${C.navy500})` }} />
+            <div className="p-6">
+              <div className="mb-5 flex items-center gap-3">
+                <div className="flex h-10 w-10 items-center justify-center rounded-xl" style={{ background: C.navy100, color: C.navy700 }}>
+                  <Calculator style={{ width: 20, height: 20 }} />
                 </div>
-                <CardTitle className="text-lg">Pedidos Recentes</CardTitle>
+                <div>
+                  <h2 className="font-bold" style={{ color: C.text900, fontSize: 17 }}>Gerar Pedido de Calculo</h2>
+                </div>
               </div>
-              <span className="text-sm font-semibold text-primary">Ver todos -&gt;</span>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {isLoadingHistorico || !historico || historico.length === 0 ? (
-              <div className="py-6 text-center">
-                <p className="text-lg text-gray-500">Carregando histórico...</p>
-              </div>
-            ) : (
-              <div className="grid gap-3">
-                {historico.slice(0, 5).map((item) => {
-                  const numero = item.numero_cnj_formatado || item.numero_cnj || 'Processo'
-                  const autor =
-                    item.dados_processo?.autor || item.dados_agente1?.dados_basicos?.autor || 'Pedido de Cálculo'
-                  const data = item.criado_em ? new Date(item.criado_em) : null
 
-                  return (
-                    <div
-                      key={item.id}
-                      onClick={() => carregarDoHistorico(item.id)}
-                      className="flex items-center gap-4 p-4 border rounded-xl hover:bg-amber-50 hover:border-amber-300 transition-all cursor-pointer group"
-                    >
-                      <div className="w-12 h-12 bg-gradient-to-br from-amber-100 to-orange-100 rounded-xl flex items-center justify-center group-hover:from-amber-200 group-hover:to-orange-200 transition-colors">
-                        <Calculator className="h-6 w-6 text-amber-600" />
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="font-medium text-gray-800 truncate group-hover:text-amber-700">{numero}</p>
-                        <p className="text-sm text-amber-600 font-medium">{autor}</p>
-                      </div>
-                      <div className="text-right flex-shrink-0">
-                        <p className="text-xs text-gray-400">{data ? data.toLocaleDateString('pt-BR') : '-'}</p>
-                        <p className="text-xs text-gray-300">
-                          {data ? data.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '-'}
-                        </p>
-                      </div>
-                    </div>
-                  )
-                })}
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault()
+                  iniciarProcessamento()
+                }}
+                className="space-y-4"
+              >
+                <div>
+                  <Label htmlFor="numero-cnj" className="font-medium" style={{ color: C.text500, fontSize: 15 }}>
+                    Numero do Processo (CNJ)
+                  </Label>
+                  <Input
+                    id="numero-cnj"
+                    value={numeroCNJ}
+                    onChange={(e) => setNumeroCNJ(e.target.value)}
+                    placeholder="0000000-00.2024.8.12.0001"
+                    className="mt-2 h-11 rounded-xl border-slate-200 bg-slate-50/50 font-mono text-base tracking-wide placeholder:text-slate-300 focus:border-slate-400 focus:bg-white focus:ring-slate-400/20"
+                  />
+                  <p className="mt-1 text-xs" style={{ color: C.text400 }}>Digite o numero completo do processo no formato CNJ</p>
+                </div>
+
+                <Button
+                  type="submit"
+                  className="h-11 w-full gap-2 rounded-xl text-sm font-medium text-white shadow-sm transition-all hover:opacity-90 active:scale-[0.98]"
+                  style={{ background: C.navy950 }}
+                  disabled={isProcessing}
+                >
+                  {isProcessing ? (
+                    <>
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Processando...
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles className="h-4 w-4" />
+                      Gerar Pedido de Calculo
+                    </>
+                  )}
+                </Button>
+              </form>
+            </div>
+          </div>
+
+          {/* Historico Recente */}
+          <div className="overflow-hidden rounded-2xl border bg-white shadow-sm" style={{ borderColor: C.gray200 }}>
+            <div className="p-6">
+              <div className="mb-4 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-9 w-9 items-center justify-center rounded-lg" style={{ background: C.navy100, color: C.navy700 }}>
+                    <History style={{ width: 18, height: 18 }} />
+                  </div>
+                  <h3 className="font-semibold" style={{ color: C.text700, fontSize: 15 }}>Pedidos Recentes</h3>
+                </div>
               </div>
-            )}
-          </CardContent>
-        </Card>
+
+              {isLoadingHistorico ? (
+                <div className="py-6 text-center">
+                  <p className="text-sm" style={{ color: C.text400 }}>Carregando historico...</p>
+                </div>
+              ) : !historico || historico.length === 0 ? (
+                <div className="py-8 text-center">
+                  <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl" style={{ background: C.navy100, color: C.navy600 }}>
+                    <Calculator className="h-6 w-6" />
+                  </div>
+                  <p className="mt-4 font-medium" style={{ fontSize: 15, color: C.text500 }}>Nenhum pedido gerado ainda</p>
+                  <p className="mt-1" style={{ fontSize: 13, color: C.text400 }}>Use o formulario acima para gerar seu primeiro pedido</p>
+                </div>
+              ) : (
+                <div className="space-y-1.5">
+                  {historico.slice(0, 5).map((item) => {
+                    const numero = item.numero_cnj_formatado || item.numero_cnj || 'Processo'
+                    const autor =
+                      item.dados_processo?.autor || item.dados_agente1?.dados_basicos?.autor || 'Pedido de Calculo'
+                    const data = item.criado_em ? new Date(item.criado_em) : null
+
+                    return (
+                      <div
+                        key={item.id}
+                        onClick={() => carregarDoHistorico(item.id)}
+                        className="group flex cursor-pointer items-center gap-3 rounded-xl border border-transparent bg-white p-3.5 transition-all hover:shadow-sm"
+                        style={{ ['--hover-border' as string]: C.gray200 }}
+                        onMouseEnter={(e) => (e.currentTarget.style.borderColor = C.gray200)}
+                        onMouseLeave={(e) => (e.currentTarget.style.borderColor = 'transparent')}
+                      >
+                        <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl" style={{ background: C.navy100, color: C.navy700 }}>
+                          <Calculator style={{ width: 20, height: 20 }} />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate font-medium" style={{ color: C.text900, fontSize: 14 }}>{numero}</p>
+                          <p className="mt-0.5 truncate text-xs" style={{ color: C.text400 }}>{autor}</p>
+                        </div>
+                        <div className="flex-shrink-0 text-right">
+                          <p className="text-xs" style={{ color: C.text400 }}>{data ? data.toLocaleDateString('pt-BR') : '-'}</p>
+                          <p className="text-xs" style={{ color: C.gray500 }}>
+                            {data ? data.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '-'}
+                          </p>
+                        </div>
+                      </div>
+                    )
+                  })}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
 
       {/* Modal de Progresso */}
       <Dialog open={isProcessing} onOpenChange={setIsProcessing}>
-        <DialogContent className="max-w-lg">
-          <DialogHeader>
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-primary-500 to-primary-600 rounded-xl flex items-center justify-center">
-                <Loader2 className="h-5 w-5 text-white animate-spin" />
-              </div>
-              <DialogTitle>Gerando Pedido de Cálculo</DialogTitle>
+        <DialogContent className="max-w-lg overflow-hidden p-0">
+          <div className="flex items-center gap-3 rounded-t-lg px-6 py-4" style={{ background: C.navy950 }}>
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl" style={{ background: C.orange500 }}>
+              <Loader2 className="h-5 w-5 animate-spin text-white" />
             </div>
-          </DialogHeader>
+            <DialogHeader className="flex-1 space-y-0 p-0">
+              <DialogTitle style={{ color: 'rgba(255,255,255,0.95)', fontSize: 16 }}>Gerando Pedido de Calculo</DialogTitle>
+            </DialogHeader>
+          </div>
 
-          <div className="space-y-4">
-            <p className="text-sm text-gray-600">{progressMessage}</p>
+          <div className="space-y-4 p-6">
+            <p className="text-sm" style={{ color: C.text500 }}>{progressMessage}</p>
 
             <div className="space-y-3">
-              {renderAgentStatus(1, 'Agente 1: Análise XML', 'Extraindo dados do processo')}
-              {renderAgentStatus(2, 'Agente 2: Download de Documentos', 'Baixando sentenças e certidões')}
-              {renderAgentStatus(3, 'Agente 3: Extração de Informações', 'Analisando sentenças e critérios')}
-              {renderAgentStatus(4, 'Agente 4: Geração do Pedido', 'Montando pedido de cálculo')}
+              {renderAgentStatus(1, 'Agente 1: Analise XML', 'Extraindo dados do processo')}
+              {renderAgentStatus(2, 'Agente 2: Download de Documentos', 'Baixando sentencas e certidoes')}
+              {renderAgentStatus(3, 'Agente 3: Extracao de Informacoes', 'Analisando sentencas e criterios')}
+              {renderAgentStatus(4, 'Agente 4: Geracao do Pedido', 'Montando pedido de calculo')}
             </div>
 
-            <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+            <div className="h-2 overflow-hidden rounded-full" style={{ background: C.gray200 }}>
               <div
-                className="h-full bg-gradient-to-r from-primary-500 to-primary-600 transition-all duration-500"
-                style={{ width: `${progressPercent}%` }}
+                className="h-full transition-all duration-500"
+                style={{ width: `${progressPercent}%`, background: `linear-gradient(90deg, ${C.navy950}, ${C.navy500})` }}
               />
             </div>
           </div>
@@ -858,28 +905,28 @@ export function PedidoCalculoPage() {
 
       {/* Modal de Editor */}
       <Dialog open={showEditor} onOpenChange={fecharEditor}>
-        <DialogContent className="max-w-7xl h-[90vh] p-0 gap-0 flex flex-col">
-          {/* Header do Editor */}
-          <div className="flex items-center justify-between px-6 py-4 border-b bg-gradient-to-r from-primary-50 to-sky-50">
+        <DialogContent className="flex h-[90vh] max-w-7xl flex-col gap-0 p-0">
+          {/* Header do Editor — Navy */}
+          <div className="flex items-center justify-between rounded-t-lg px-6 py-4" style={{ background: C.navy950 }}>
             <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-primary-500 to-primary-600 rounded-xl flex items-center justify-center">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl" style={{ background: C.orange500 }}>
                 <Calculator className="h-5 w-5 text-white" />
               </div>
               <div>
-                <h2 className="text-lg font-bold text-gray-800">Pedido de Cálculo</h2>
-                <p className="text-xs text-gray-500">{dadosBasicos.numero_processo || numeroCNJ}</p>
+                <h2 className="font-bold leading-tight" style={{ color: 'rgba(255,255,255,0.95)', fontSize: 17 }}>Pedido de Calculo</h2>
+                <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13 }}>{dadosBasicos.numero_processo || numeroCNJ}</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <Button onClick={abrirVisualizadorDocumentos} size="sm" className="gap-2">
+              <Button onClick={abrirVisualizadorDocumentos} size="sm" className="gap-2 text-white hover:bg-white/10" style={{ background: 'rgba(255,255,255,0.12)', border: 'none' }}>
                 <FolderOpen className="h-4 w-4" />
                 Acessar Autos
               </Button>
-              <Button onClick={baixarDocx} size="sm" variant="secondary" className="gap-2">
+              <Button onClick={baixarDocx} size="sm" className="gap-2 text-white/70 hover:bg-white/10 hover:text-white" style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.15)' }}>
                 <Download className="h-4 w-4" />
                 Baixar DOCX
               </Button>
-              <Button onClick={copiarPedido} size="sm" variant="secondary" className="gap-2">
+              <Button onClick={copiarPedido} size="sm" className="gap-2 text-white/70 hover:bg-white/10 hover:text-white" style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.15)' }}>
                 <Copy className="h-4 w-4" />
                 Copiar
               </Button>
@@ -889,15 +936,15 @@ export function PedidoCalculoPage() {
           {/* Conteudo Principal */}
           <div className="flex flex-1 overflow-hidden">
             {/* Painel de Visualizacao */}
-            <div className="flex-1 flex flex-col bg-gray-50 border-r">
-              <div className="px-4 py-2 border-b bg-white flex items-center justify-between">
-                <span className="text-xs font-medium text-gray-500 uppercase tracking-wider">Visualização</span>
+            <div className="flex flex-1 flex-col border-r" style={{ background: C.gray50, borderColor: C.gray200 }}>
+              <div className="flex items-center justify-between border-b bg-white px-4 py-2" style={{ borderColor: C.gray200 }}>
+                <span className="text-xs font-bold uppercase tracking-wider" style={{ color: C.text400, letterSpacing: '0.08em' }}>Visualizacao</span>
               </div>
               <ScrollArea className="flex-1 p-6">
-                <div className="bg-white rounded-xl shadow-sm border p-8 min-h-full">
+                <div className="min-h-full rounded-xl border bg-white p-8 shadow-sm" style={{ borderColor: C.gray200 }}>
                   {isStreaming ? (
                     <div>
-                      <div className="flex items-center gap-2 text-primary-600 mb-4">
+                      <div className="mb-4 flex items-center gap-2" style={{ color: C.navy600 }}>
                         <Loader2 className="h-4 w-4 animate-spin" />
                         <span className="text-sm font-medium">Gerando pedido em tempo real...</span>
                       </div>
@@ -910,16 +957,16 @@ export function PedidoCalculoPage() {
               </ScrollArea>
             </div>
 
-            {/* Painel de Chat */}
-            <div className="w-96 flex flex-col bg-white">
-              <div className="px-4 py-3 border-b bg-gradient-to-r from-primary-50 to-sky-50">
+            {/* Painel de Chat — Navy header */}
+            <div className="flex w-96 flex-col bg-white">
+              <div className="border-b px-4 py-3" style={{ background: C.navy950, borderColor: 'rgba(255,255,255,0.1)' }}>
                 <div className="flex items-center gap-2">
-                  <div className="w-8 h-8 bg-gradient-to-br from-primary-500 to-primary-600 rounded-lg flex items-center justify-center">
+                  <div className="flex h-8 w-8 items-center justify-center rounded-lg" style={{ background: C.orange500 }}>
                     <Sparkles className="h-4 w-4 text-white" />
                   </div>
                   <div>
-                    <p className="text-sm font-semibold text-gray-800">Assistente de Edição</p>
-                    <p className="text-xs text-gray-500">Peça alterações no pedido</p>
+                    <p className="text-sm font-semibold" style={{ color: 'rgba(255,255,255,0.95)' }}>Assistente de Edicao</p>
+                    <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12 }}>Peca alteracoes no pedido</p>
                   </div>
                 </div>
               </div>
@@ -929,18 +976,18 @@ export function PedidoCalculoPage() {
                   {/* Mensagem inicial */}
                   {historicoChat.length === 0 && (
                     <div className="flex gap-3">
-                      <div className="w-8 h-8 bg-gradient-to-br from-primary-500 to-primary-600 rounded-full flex items-center justify-center flex-shrink-0">
-                        <Sparkles className="h-4 w-4 text-white" />
+                      <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full" style={{ background: C.navy950 }}>
+                        <Bot className="h-4 w-4 text-white" />
                       </div>
-                      <div className="bg-gray-100 px-4 py-3 rounded-lg max-w-[85%]">
-                        <p className="text-sm text-gray-700">
-                          Olá! Sou o assistente de edição. Você pode me pedir para fazer alterações no pedido de
-                          cálculo, como:
+                      <div className="max-w-[85%] rounded-lg px-4 py-3" style={{ background: C.gray100 }}>
+                        <p className="text-sm" style={{ color: C.text700 }}>
+                          Ola! Sou o assistente de edicao. Voce pode me pedir para fazer alteracoes no pedido de
+                          calculo, como:
                         </p>
-                        <ul className="text-xs text-gray-500 mt-2 space-y-1 list-disc list-inside">
-                          <li>"Corrija o período da condenação"</li>
-                          <li>"Adicione observação sobre EC 113/2021"</li>
-                          <li>"Altere o índice de correção monetária"</li>
+                        <ul className="mt-2 list-inside list-disc space-y-1 text-xs" style={{ color: C.text400 }}>
+                          <li>"Corrija o periodo da condenacao"</li>
+                          <li>"Adicione observacao sobre EC 113/2021"</li>
+                          <li>"Altere o indice de correcao monetaria"</li>
                         </ul>
                       </div>
                     </div>
@@ -950,20 +997,22 @@ export function PedidoCalculoPage() {
                   {historicoChat.map((msg, idx) => (
                     <div key={idx} className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : ''}`}>
                       {msg.role === 'assistant' && (
-                        <div className="w-8 h-8 bg-gradient-to-br from-primary-500 to-primary-600 rounded-full flex items-center justify-center flex-shrink-0">
-                          <Sparkles className="h-4 w-4 text-white" />
+                        <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full" style={{ background: C.navy950 }}>
+                          <Bot className="h-4 w-4 text-white" />
                         </div>
                       )}
                       <div
-                        className={`px-4 py-3 rounded-lg max-w-[85%] ${
-                          msg.role === 'user' ? 'bg-primary-600 text-white' : 'bg-gray-100 text-gray-700'
-                        }`}
+                        className="max-w-[85%] rounded-lg px-4 py-3"
+                        style={{
+                          background: msg.role === 'user' ? C.navy950 : C.gray100,
+                          color: msg.role === 'user' ? '#fff' : C.text700,
+                        }}
                       >
                         <p className="text-sm">{msg.content}</p>
                       </div>
                       {msg.role === 'user' && (
-                        <div className="w-8 h-8 bg-gray-200 rounded-full flex items-center justify-center flex-shrink-0">
-                          <span className="text-xs text-gray-500">U</span>
+                        <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full" style={{ background: C.orange500 }}>
+                          <span className="text-xs font-bold text-white">U</span>
                         </div>
                       )}
                     </div>
@@ -972,14 +1021,14 @@ export function PedidoCalculoPage() {
                   {/* Indicador de digitacao */}
                   {isSendingChat && (
                     <div className="flex gap-3">
-                      <div className="w-8 h-8 bg-gradient-to-br from-primary-500 to-primary-600 rounded-full flex items-center justify-center flex-shrink-0">
-                        <Sparkles className="h-4 w-4 text-white" />
+                      <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full" style={{ background: C.navy950 }}>
+                        <Bot className="h-4 w-4 text-white" />
                       </div>
-                      <div className="bg-gray-100 px-4 py-3 rounded-lg">
+                      <div className="rounded-lg px-4 py-3" style={{ background: C.gray100 }}>
                         <div className="flex gap-1">
-                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" />
-                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:0.2s]" />
-                          <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce [animation-delay:0.4s]" />
+                          <div className="h-2 w-2 animate-bounce rounded-full" style={{ background: C.gray500 }} />
+                          <div className="h-2 w-2 animate-bounce rounded-full [animation-delay:0.2s]" style={{ background: C.gray500 }} />
+                          <div className="h-2 w-2 animate-bounce rounded-full [animation-delay:0.4s]" style={{ background: C.gray500 }} />
                         </div>
                       </div>
                     </div>
@@ -987,7 +1036,7 @@ export function PedidoCalculoPage() {
                 </div>
               </ScrollArea>
 
-              <div className="p-4 border-t bg-gray-50">
+              <div className="border-t p-4" style={{ background: C.gray50, borderColor: C.gray200 }}>
                 <div className="flex gap-2">
                   <Input
                     value={chatInput}
@@ -998,15 +1047,15 @@ export function PedidoCalculoPage() {
                         enviarMensagemChat()
                       }
                     }}
-                    placeholder="Peça uma alteração..."
+                    placeholder="Peca uma alteracao..."
                     disabled={isSendingChat || isStreaming}
                     className="flex-1"
                   />
-                  <Button onClick={enviarMensagemChat} disabled={isSendingChat || isStreaming} size="icon">
+                  <Button onClick={enviarMensagemChat} disabled={isSendingChat || isStreaming} size="icon" className="text-white" style={{ background: C.navy950 }}>
                     <Send className="h-4 w-4" />
                   </Button>
                 </div>
-                <p className="text-xs text-gray-400 mt-2 text-center">Enter para enviar</p>
+                <p className="mt-2 text-center text-xs" style={{ color: C.text400 }}>Enter para enviar</p>
               </div>
             </div>
           </div>
@@ -1015,34 +1064,42 @@ export function PedidoCalculoPage() {
 
       {/* Modal de Visualizador de Documentos */}
       <Dialog open={showDocumentViewer} onOpenChange={setShowDocumentViewer}>
-        <DialogContent className="max-w-7xl h-[90vh] p-0 gap-0 flex flex-col">
-          <DialogHeader className="px-6 py-4 border-b">
-            <div>
-              <DialogTitle>Documentos Analisados</DialogTitle>
-              <p className="text-sm text-gray-500">
+        <DialogContent className="flex h-[90vh] max-w-7xl flex-col gap-0 p-0">
+          <div className="flex items-center gap-3 rounded-t-lg px-6 py-4" style={{ background: C.navy950 }}>
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl" style={{ background: C.orange500 }}>
+              <FolderOpen className="h-5 w-5 text-white" />
+            </div>
+            <DialogHeader className="flex-1 space-y-0 p-0">
+              <DialogTitle style={{ color: 'rgba(255,255,255,0.95)', fontSize: 16 }}>Documentos Analisados</DialogTitle>
+              <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13 }}>
                 {documentosBaixados.length} documento(s) - Processo {numeroCNJ}
               </p>
-            </div>
-          </DialogHeader>
+            </DialogHeader>
+          </div>
 
           <div className="flex flex-1 overflow-hidden">
             {/* Lista de Documentos */}
-            <div className="w-64 border-r bg-gray-50 overflow-y-auto">
+            <div className="w-64 overflow-y-auto border-r" style={{ background: C.gray50, borderColor: C.gray200 }}>
               {documentosBaixados.map((doc, idx) => {
                 const isOrigem = doc.processo === 'origem'
+                const isSelected = selectedDocument?.id === doc.id
                 return (
                   <button
                     key={idx}
                     onClick={() => visualizarDocumento(doc)}
-                    className={`w-full text-left px-4 py-3 hover:bg-white border-b transition-colors ${
-                      selectedDocument?.id === doc.id ? 'bg-white border-l-4 border-primary-500' : ''
-                    }`}
+                    className="w-full border-b px-4 py-3 text-left transition-colors hover:bg-white"
+                    style={{
+                      borderColor: C.gray200,
+                      background: isSelected ? '#fff' : 'transparent',
+                      borderLeftWidth: isSelected ? 4 : 0,
+                      borderLeftColor: isSelected ? C.navy950 : 'transparent',
+                    }}
                   >
                     <div className="flex items-center gap-2">
-                      <FileText className="h-4 w-4 text-red-500 flex-shrink-0" />
+                      <FileText className="h-4 w-4 flex-shrink-0" style={{ color: C.navy600 }} />
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium text-gray-800 truncate">{doc.tipo || 'Documento'}</p>
-                        <p className="text-xs text-gray-500 truncate">{doc.id}</p>
+                        <p className="truncate text-sm font-medium" style={{ color: C.text900 }}>{doc.tipo || 'Documento'}</p>
+                        <p className="truncate text-xs" style={{ color: C.text400 }}>{doc.id}</p>
                       </div>
                       {isOrigem && <Badge variant="secondary">Origem</Badge>}
                     </div>
@@ -1054,19 +1111,21 @@ export function PedidoCalculoPage() {
             {/* Visualizador */}
             <div className="flex-1 overflow-hidden">
               {isLoadingDocument ? (
-                <div className="h-full flex items-center justify-center text-gray-400">
+                <div className="flex h-full items-center justify-center" style={{ color: C.text400 }}>
                   <div className="text-center">
-                    <Loader2 className="h-8 w-8 mx-auto mb-3 animate-spin" />
+                    <Loader2 className="mx-auto mb-3 h-8 w-8 animate-spin" />
                     <p>Carregando documento...</p>
                   </div>
                 </div>
               ) : documentContent ? (
-                <iframe src={`data:application/pdf;base64,${documentContent}`} className="w-full h-full border-0" />
+                <iframe src={`data:application/pdf;base64,${documentContent}`} className="h-full w-full border-0" />
               ) : (
-                <div className="h-full flex items-center justify-center text-gray-400">
+                <div className="flex h-full items-center justify-center" style={{ color: C.text400 }}>
                   <div className="text-center">
-                    <FileText className="h-12 w-12 mx-auto mb-3 opacity-50" />
-                    <p>Selecione um documento para visualizar</p>
+                    <div className="mx-auto mb-3 flex h-14 w-14 items-center justify-center rounded-2xl" style={{ background: C.navy100, color: C.navy600 }}>
+                      <FileText className="h-6 w-6" />
+                    </div>
+                    <p style={{ fontSize: 15 }}>Selecione um documento para visualizar</p>
                   </div>
                 </div>
               )}
@@ -1077,20 +1136,18 @@ export function PedidoCalculoPage() {
 
       {/* Modal de Feedback */}
       <Dialog open={showFeedback} onOpenChange={setShowFeedback}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 bg-gradient-to-br from-amber-400 to-amber-500 rounded-xl flex items-center justify-center">
-                <Star className="h-5 w-5 text-white" />
-              </div>
-              <div>
-                <DialogTitle>Como foi a experiência?</DialogTitle>
-                <p className="text-sm text-gray-500">Seu feedback nos ajuda a melhorar o sistema</p>
-              </div>
+        <DialogContent className="max-w-md overflow-hidden p-0">
+          <div className="flex items-center gap-3 rounded-t-lg px-6 py-4" style={{ background: C.navy950 }}>
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl" style={{ background: '#f59e0b' }}>
+              <Star className="h-5 w-5 text-white" />
             </div>
-          </DialogHeader>
+            <DialogHeader className="flex-1 space-y-0 p-0">
+              <DialogTitle style={{ color: 'rgba(255,255,255,0.95)', fontSize: 16 }}>Como foi a experiencia?</DialogTitle>
+              <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13 }}>Seu feedback nos ajuda a melhorar o sistema</p>
+            </DialogHeader>
+          </div>
 
-          <div className="space-y-4">
+          <div className="space-y-4 p-6">
             <div className="flex justify-center gap-2">
               {[1, 2, 3, 4, 5].map((nota) => (
                 <button
@@ -1099,7 +1156,8 @@ export function PedidoCalculoPage() {
                   className="transition-colors"
                 >
                   <Star
-                    className={`h-8 w-8 ${notaSelecionada && nota <= notaSelecionada ? 'fill-yellow-400 text-yellow-400' : 'text-gray-300'}`}
+                    className={`h-8 w-8 ${notaSelecionada && nota <= notaSelecionada ? 'fill-yellow-400 text-yellow-400' : ''}`}
+                    style={{ color: notaSelecionada && nota <= notaSelecionada ? '#facc15' : C.gray200 }}
                   />
                 </button>
               ))}
@@ -1108,22 +1166,22 @@ export function PedidoCalculoPage() {
             <Textarea
               value={comentarioFeedback}
               onChange={(e) => setComentarioFeedback(e.target.value)}
-              placeholder="Comentários adicionais (opcional)"
+              placeholder="Comentarios adicionais (opcional)"
               rows={3}
             />
 
             <div className="flex justify-end gap-3">
-              <Button variant="ghost" onClick={() => setShowFeedback(false)}>
+              <Button variant="ghost" onClick={() => setShowFeedback(false)} style={{ color: C.text400 }}>
                 Pular
               </Button>
-              <Button onClick={enviarFeedback} disabled={!notaSelecionada}>
+              <Button onClick={enviarFeedback} disabled={!notaSelecionada} className="text-white" style={{ background: C.navy950 }}>
                 Enviar Feedback
               </Button>
             </div>
           </div>
         </DialogContent>
       </Dialog>
-    </PageContainer>
+    </div>
   )
 }
 

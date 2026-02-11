@@ -2,10 +2,8 @@ import { Outlet, useRouterState } from '@tanstack/react-router'
 import { Header } from './Header'
 import { Sidebar } from './Sidebar'
 
-const ALWAYS_LEGACY_FRAME_PREFIXES = ['/admin/']
+const ALWAYS_LEGACY_FRAME_PREFIXES: string[] = []
 const ALWAYS_NATIVE_NO_SHELL_PREFIXES = [
-  '/gerador-pecas',
-  '/pedido-calculo',
   '/prestacao-contas',
   '/bert-training',
   '/assistencia',
@@ -17,7 +15,6 @@ const ALWAYS_NATIVE_NO_SHELL_PREFIXES = [
 const MOBILE_INLINE_TOPBAR_PREFIXES = [
   '/assistencia',
   '/matriculas',
-  '/pedido-calculo',
   '/prestacao-contas',
   '/relatorio-cumprimento',
   '/classificador',
@@ -78,7 +75,7 @@ export function AppLayout() {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden bg-gray-50">
+    <div className="flex h-screen overflow-hidden" style={{ background: '#F7F8F9' }}>
       {/* Sidebar */}
       <Sidebar />
 
@@ -94,7 +91,7 @@ export function AppLayout() {
         )}
 
         {/* Área de conteúdo (renderiza as páginas) */}
-        <main className="flex-1 overflow-y-auto bg-gray-50">
+        <main className="flex-1 overflow-y-auto" style={{ background: '#F7F8F9' }}>
           <Outlet />
         </main>
       </div>

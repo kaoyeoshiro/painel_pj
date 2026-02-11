@@ -13,7 +13,7 @@ import {
 
 /**
  * Header da aplicacao — PGE Design System
- * Fundo azul escuro, logo PGE grande a esquerda, avatar laranja a direita
+ * Fundo navy.950, logo PGE branco direto sobre fundo escuro, avatar laranja a direita
  */
 export function Header() {
   const { user, logout } = useAuthStore()
@@ -30,7 +30,7 @@ export function Header() {
     : 'U'
 
   return (
-    <header style={{ background: '#294964', fontFamily: "var(--font-ui, 'Plus Jakarta Sans', system-ui, sans-serif)" }}>
+    <header style={{ background: '#22314B', fontFamily: "var(--font-ui, 'Plus Jakarta Sans', system-ui, sans-serif)" }}>
       <div className="flex items-center justify-between px-5 sm:px-7" style={{ height: 80 }}>
         {/* Esquerda: hamburger (mobile) + logo PGE */}
         <div className="flex items-center gap-4">
@@ -44,24 +44,12 @@ export function Header() {
           </Button>
 
           <div className="flex items-center gap-1">
-            {/* Logo PGE em container branco — grande para presenca institucional */}
-            <div
-              className="flex items-center justify-center overflow-hidden"
-              style={{
-                width: 180,
-                height: 64,
-                background: '#fff',
-                borderRadius: 12,
-                boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-                padding: '3px 5px',
-              }}
-            >
-              <img
-                src="/logo/logo-pge.png"
-                alt="PGE-MS"
-                style={{ width: '100%', height: '100%', objectFit: 'contain' }}
-              />
-            </div>
+            {/* Logo PGE branco — direto sobre fundo escuro */}
+            <img
+              src="/logo/logo-pge-branco.png"
+              alt="PGE-MS"
+              style={{ height: 78, width: 'auto', objectFit: 'contain' }}
+            />
             {/* Divider + org name */}
             <div
               className="hidden sm:block"
@@ -74,7 +62,7 @@ export function Header() {
               >
                 Procuradoria-Geral do Estado
               </p>
-              <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13 }}>
+              <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14 }}>
                 Mato Grosso do Sul
               </p>
             </div>
@@ -85,7 +73,7 @@ export function Header() {
         <div className="flex items-center gap-3">
           <span
             className="hidden sm:block font-medium"
-            style={{ color: 'rgba(255,255,255,0.7)', fontSize: 14 }}
+            style={{ color: 'rgba(255,255,255,0.7)', fontSize: 15 }}
           >
             {user?.full_name}
           </span>
@@ -95,8 +83,8 @@ export function Header() {
                 <div
                   className="flex items-center justify-center rounded-full font-bold"
                   style={{
-                    width: 40,
-                    height: 40,
+                    width: 44,
+                    height: 44,
                     background: '#F58634',
                     color: '#fff',
                     fontSize: 14,
@@ -122,8 +110,8 @@ export function Header() {
         </div>
       </div>
 
-      {/* Curved transition to content area */}
-      <div className="rounded-t-3xl" style={{ height: 20, background: '#f9fafb' }} />
+      {/* Transition to content area */}
+      <div style={{ height: 20, background: '#F7F8F9' }} />
     </header>
   )
 }

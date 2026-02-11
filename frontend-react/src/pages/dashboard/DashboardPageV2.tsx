@@ -11,20 +11,21 @@ import type { SystemCardConfig, AdminCardConfig } from './types'
 // ============================================================
 
 const C = {
-  teal900: '#294964',
-  teal700: '#2d5a7b',
-  teal600: '#356a8e',
-  teal500: '#51A8B1',
-  teal100: '#e0f0f2',
-  teal50: '#f2f9fa',
+  navy950: '#22314B',
+  navy900: '#253D52',
+  navy700: '#2B5376',
+  navy600: '#356A8E',
+  navy500: '#4A98A0',
+  navy100: '#D5ECEF',
+  navy50: '#EFF8F9',
   orange500: '#F58634',
-  orange400: '#f79a54',
-  gray200: '#e5e7eb',
-  gray100: '#f3f4f6',
-  gray500: '#9ca3af',
-  text900: '#1a2332',
-  text500: '#64748b',
-  text400: '#94a3b8',
+  orange400: '#F79A54',
+  gray200: '#E2E3E5',
+  gray100: '#F0F1F2',
+  gray500: '#8D8F92',
+  text900: '#1A2332',
+  text500: '#5A6578',
+  text400: '#8D95A0',
 }
 
 // ============================================================
@@ -48,7 +49,7 @@ function formatDate(): string {
 
 // ============================================================
 // Module Card — PGE Design System
-// Teal at rest, orange on hover
+// Navy at rest, orange on hover
 // ============================================================
 
 function ModuleCard({ card }: { card: SystemCardConfig }) {
@@ -70,35 +71,37 @@ function ModuleCard({ card }: { card: SystemCardConfig }) {
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
-      {/* Top accent bar — teal at rest, orange on hover */}
+      {/* Top accent bar — navy at rest, orange on hover */}
       <div
         className="h-1"
         style={{
           background: hovered
             ? `linear-gradient(90deg, ${C.orange500}, ${C.orange400})`
-            : `linear-gradient(90deg, ${C.teal900}, ${C.teal500})`,
+            : `linear-gradient(90deg, ${C.navy950}, ${C.navy500})`,
           opacity: hovered ? 1 : 0.4,
           transition: 'all 0.25s ease',
         }}
       />
 
-      <div className="flex flex-1 flex-col p-4">
+      <div style={{ padding: 20, display: 'flex', flexDirection: 'column', flex: 1 }}>
         {/* Icon + Title */}
-        <div className="mb-3 flex items-center gap-3">
+        <div className="flex items-center" style={{ gap: 16, marginBottom: 16 }}>
           <div
-            className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl"
+            className="flex flex-shrink-0 items-center justify-center rounded-xl"
             style={{
-              background: hovered ? C.orange500 : C.teal100,
-              color: hovered ? '#fff' : C.teal700,
+              width: 52,
+              height: 52,
+              background: hovered ? C.orange500 : C.navy100,
+              color: hovered ? '#fff' : C.navy700,
               transition: 'all 0.25s ease',
               transform: hovered ? 'scale(1.05)' : 'scale(1)',
             }}
           >
-            <Icon className="h-5 w-5" />
+            <Icon style={{ width: 26, height: 26 }} />
           </div>
           <h3
             className="font-bold leading-snug"
-            style={{ color: C.text900, fontSize: 15 }}
+            style={{ color: C.text900, fontSize: 17 }}
           >
             {card.title}
           </h3>
@@ -107,18 +110,18 @@ function ModuleCard({ card }: { card: SystemCardConfig }) {
         {/* Description */}
         <p
           className="flex-1 leading-relaxed"
-          style={{ color: C.text500, fontSize: 13 }}
+          style={{ color: C.text500, fontSize: 15 }}
         >
           {card.description}
         </p>
 
-        {/* CTA — teal at rest, orange on hover */}
-        <div className="mt-3 flex items-center gap-1">
+        {/* CTA — navy at rest, orange on hover */}
+        <div className="flex items-center" style={{ gap: 6, marginTop: 16 }}>
           <span
             className="font-bold"
             style={{
-              fontSize: 13,
-              color: hovered ? C.orange500 : C.teal600,
+              fontSize: 15,
+              color: hovered ? C.orange500 : C.navy600,
               transition: 'color 0.2s',
             }}
           >
@@ -126,12 +129,12 @@ function ModuleCard({ card }: { card: SystemCardConfig }) {
           </span>
           <div
             style={{
-              color: hovered ? C.orange500 : C.teal600,
+              color: hovered ? C.orange500 : C.navy600,
               transition: 'all 0.2s',
               transform: hovered ? 'translateX(4px)' : 'translateX(0)',
             }}
           >
-            <ChevronRight className="h-3.5 w-3.5" />
+            <ChevronRight style={{ width: 16, height: 16 }} />
           </div>
         </div>
       </div>
@@ -141,7 +144,7 @@ function ModuleCard({ card }: { card: SystemCardConfig }) {
 
 // ============================================================
 // Admin Card — PGE Design System
-// Gray at rest, teal on hover
+// Gray at rest, navy on hover
 // ============================================================
 
 function AdminItem({ card }: { card: AdminCardConfig }) {
@@ -151,32 +154,36 @@ function AdminItem({ card }: { card: AdminCardConfig }) {
   return (
     <Link
       to={card.to}
-      className="flex items-center gap-3 rounded-xl px-3.5 py-2.5"
+      className="flex items-center rounded-xl"
       style={{
-        background: hovered ? C.teal50 : 'transparent',
+        gap: 16,
+        padding: '12px 16px',
+        background: hovered ? C.navy50 : 'transparent',
         transition: 'all 0.15s ease',
       }}
       onMouseEnter={() => setHovered(true)}
       onMouseLeave={() => setHovered(false)}
     >
       <div
-        className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg"
+        className="flex flex-shrink-0 items-center justify-center rounded-lg"
         style={{
-          background: hovered ? C.teal100 : C.gray100,
-          color: hovered ? C.teal700 : C.gray500,
+          width: 40,
+          height: 40,
+          background: hovered ? C.navy100 : C.gray100,
+          color: hovered ? C.navy900 : C.gray500,
           transition: 'all 0.15s ease',
         }}
       >
-        <Icon className="h-4 w-4" />
+        <Icon style={{ width: 20, height: 20 }} />
       </div>
       <div className="min-w-0">
         <p
           className="truncate font-semibold"
-          style={{ color: C.text900, fontSize: 13 }}
+          style={{ color: C.text900, fontSize: 16 }}
         >
           {card.title}
         </p>
-        <p className="truncate" style={{ color: C.text400, fontSize: 12 }}>
+        <p className="truncate" style={{ color: C.text400, fontSize: 14 }}>
           {card.subtitle}
         </p>
       </div>
@@ -197,14 +204,14 @@ export function DashboardPageV2() {
   return (
     <div style={{ fontFamily: "var(--font-ui, 'Plus Jakarta Sans', system-ui, sans-serif)" }}>
       <div
-        className="mx-auto px-8 py-8"
-        style={{ maxWidth: 1080 }}
+        className="mx-auto"
+        style={{ maxWidth: 1350, padding: '32px 40px' }}
       >
         {/* Greeting */}
-        <div style={{ paddingBottom: 28 }}>
+        <div style={{ paddingBottom: 32 }}>
           <p
             className="font-medium"
-            style={{ color: C.text400, fontSize: 15, marginBottom: 4 }}
+            style={{ color: C.text400, fontSize: 16, marginBottom: 6 }}
           >
             {formatDate()}
           </p>
@@ -212,7 +219,7 @@ export function DashboardPageV2() {
             className="font-bold"
             style={{
               color: C.text900,
-              fontSize: 28,
+              fontSize: 32,
               letterSpacing: '-0.02em',
             }}
           >
@@ -222,8 +229,8 @@ export function DashboardPageV2() {
 
         {/* Module Grid */}
         <div
-          className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
-          style={{ alignItems: 'stretch' }}
+          className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
+          style={{ gap: 20, alignItems: 'stretch' }}
         >
           {systemCards.map((card, i) => (
             <div
@@ -240,28 +247,28 @@ export function DashboardPageV2() {
         {user?.is_admin && (
           <section
             className="fade-up"
-            style={{ animationDelay: '450ms', marginTop: 48 }}
+            style={{ animationDelay: '450ms', marginTop: 56 }}
           >
             <button
               onClick={() => setAdminOpen(!adminOpen)}
-              className="mb-4 flex cursor-pointer items-center gap-2"
-              style={{ background: 'none', border: 'none', padding: 0 }}
+              className="flex cursor-pointer items-center"
+              style={{ gap: 10, marginBottom: 20, background: 'none', border: 'none', padding: 0 }}
             >
               <div
                 className="flex items-center justify-center rounded-lg"
                 style={{
-                  width: 28,
-                  height: 28,
+                  width: 34,
+                  height: 34,
                   background: C.gray200,
                   color: C.gray500,
                 }}
               >
-                <Settings className="h-3.5 w-3.5" />
+                <Settings style={{ width: 18, height: 18 }} />
               </div>
               <span
                 className="font-bold uppercase"
                 style={{
-                  fontSize: 13,
+                  fontSize: 14,
                   letterSpacing: '0.08em',
                   color: C.text400,
                 }}
@@ -269,8 +276,9 @@ export function DashboardPageV2() {
                 Administracao
               </span>
               <ChevronDown
-                className="h-4 w-4"
                 style={{
+                  width: 18,
+                  height: 18,
                   color: C.text400,
                   transform: adminOpen ? 'rotate(0)' : 'rotate(-90deg)',
                   transition: 'transform 0.2s',
@@ -280,11 +288,12 @@ export function DashboardPageV2() {
 
             {adminOpen && (
               <div
-                className="grid gap-0.5 rounded-2xl border"
+                className="grid rounded-2xl border"
                 style={{
                   background: '#fff',
                   borderColor: C.gray200,
-                  padding: 8,
+                  padding: 10,
+                  gap: 4,
                   gridTemplateColumns: 'repeat(4, 1fr)',
                 }}
               >

@@ -99,6 +99,30 @@ const AGENT_META = [
 ] as const
 
 // ============================================================
+// PGE Design System — Color Tokens
+// ============================================================
+
+const C = {
+  navy950: '#22314B',
+  navy900: '#253D52',
+  navy700: '#2B5376',
+  navy600: '#356A8E',
+  navy500: '#4A98A0',
+  navy100: '#D5ECEF',
+  navy50: '#EFF8F9',
+  orange500: '#F58634',
+  orange400: '#F79A54',
+  gray200: '#E2E3E5',
+  gray100: '#F0F1F2',
+  gray50: '#F7F8F9',
+  gray500: '#8D8F92',
+  text900: '#1A2332',
+  text700: '#2D3B4E',
+  text500: '#5A6578',
+  text400: '#8D95A0',
+}
+
+// ============================================================
 // Main Page Component
 // ============================================================
 
@@ -953,74 +977,67 @@ export function GeradorPecasPage() {
 
   return (
     <TooltipProvider delayDuration={300}>
-      <div className="flex h-screen flex-col bg-stone-50">
+      <div className="flex h-full flex-col overflow-hidden" style={{ fontFamily: "var(--font-ui, 'Plus Jakarta Sans', system-ui, sans-serif)" }}>
 
         {/* ============================================================ */}
-        {/* TOP BAR                                                      */}
+        {/* BREADCRUMB BAR — leve, subordinada ao header global          */}
         {/* ============================================================ */}
-        <header className="flex h-14 flex-shrink-0 items-center justify-between border-b border-stone-200/80 bg-white px-4 sm:px-6">
-          <div className="flex items-center gap-3">
+        <div className="flex-shrink-0 border-b" style={{ borderColor: C.gray200 }}>
+          <div className="mx-auto flex max-w-[1350px] items-center justify-between" style={{ height: 48, padding: '0 40px' }}>
+          <div className="flex items-center gap-2">
             <Link
               to="/dashboard"
-              className="flex h-8 w-8 items-center justify-center rounded-lg text-stone-400 transition-colors hover:bg-stone-100 hover:text-stone-600"
+              className="flex h-7 w-7 items-center justify-center rounded-lg transition-colors"
+              style={{ color: C.text400 }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = C.gray100; e.currentTarget.style.color = C.text700 }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = C.text400 }}
               aria-label="Voltar ao Dashboard"
             >
-              <ArrowLeft className="h-4 w-4" />
+              <ArrowLeft style={{ width: 16, height: 16 }} />
             </Link>
-            <div className="h-5 w-px bg-stone-200" />
-            <div className="flex items-center gap-2.5">
-              <div className="flex h-7 w-7 items-center justify-center rounded-md bg-stone-900 shadow-sm">
-                <Scale className="h-3.5 w-3.5 text-white" />
-              </div>
-              <div>
-                <h1 className="text-sm font-semibold leading-none text-stone-900 tracking-tight">Gerador de Pecas</h1>
-                <p className="mt-0.5 text-[11px] leading-none text-stone-400">Assistente de redacao juridica</p>
-              </div>
+            <ChevronRight style={{ width: 14, height: 14, color: C.text400, margin: '0 4px' }} />
+            <div className="flex items-center justify-center rounded-lg" style={{ width: 28, height: 28, background: C.navy100, color: C.navy700 }}>
+              <Scale style={{ width: 14, height: 14 }} />
             </div>
+            <span className="font-semibold" style={{ fontSize: 15, color: C.text900, marginLeft: 4 }}>Gerador de Pecas</span>
           </div>
-          <div className="flex items-center gap-1.5">
-            {pageState === 'resultado' && (
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <button
-                    onClick={voltarParaInicio}
-                    className="flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-700"
-                  >
-                    <Zap className="h-3.5 w-3.5" />
-                    <span className="hidden sm:inline">Nova</span>
-                  </button>
-                </TooltipTrigger>
-                <TooltipContent>Nova geracao</TooltipContent>
-              </Tooltip>
+
+          <div className="flex items-center gap-2">
+            {(pageState === 'resultado' || pageState === 'editando') && (
+              <button
+                onClick={voltarParaInicio}
+                className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-semibold text-white transition-all hover:opacity-90"
+                style={{ background: C.navy950, fontSize: 13 }}
+              >
+                <Sparkles style={{ width: 14, height: 14 }} />
+                <span className="hidden sm:inline">Nova Geracao</span>
+              </button>
             )}
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <button
-                  onClick={() => setShowSidebar(!showSidebar)}
-                  className={cn(
-                    'flex h-8 items-center gap-1.5 rounded-lg px-2.5 text-xs font-medium transition-colors',
-                    showSidebar
-                      ? 'bg-stone-900 text-white'
-                      : 'text-stone-500 hover:bg-stone-100 hover:text-stone-700',
-                  )}
-                >
-                  <Clock className="h-3.5 w-3.5" />
-                  <span className="hidden sm:inline">Historico</span>
-                </button>
-              </TooltipTrigger>
-              <TooltipContent>Historico de geracoes</TooltipContent>
-            </Tooltip>
+            <button
+              onClick={() => setShowSidebar(!showSidebar)}
+              className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-medium transition-colors"
+              style={{
+                color: showSidebar ? C.text900 : C.text500,
+                background: showSidebar ? C.gray100 : 'transparent',
+                fontSize: 13,
+              }}
+              onMouseEnter={(e) => { if (!showSidebar) e.currentTarget.style.background = C.gray100 }}
+              onMouseLeave={(e) => { if (!showSidebar) e.currentTarget.style.background = 'transparent' }}
+            >
+              <Clock style={{ width: 14, height: 14 }} />
+              <span className="hidden sm:inline">Historico</span>
+            </button>
           </div>
-        </header>
+          </div>
+        </div>
 
         {/* ============================================================ */}
-        {/* MAIN CONTENT AREA                                            */}
+        {/* MAIN CONTENT                                                 */}
         {/* ============================================================ */}
-        <div className="flex flex-1 overflow-hidden">
-
-          {/* MAIN PANEL */}
-          <main className="flex-1 overflow-y-auto">
-            <div className="mx-auto max-w-3xl px-4 py-8 sm:px-6 lg:px-8">
+        <div className={cn(
+          'mx-auto w-full max-w-[1350px] flex-1 px-4 sm:px-6 lg:px-8',
+          (pageState === 'resultado' || pageState === 'editando') ? 'overflow-hidden py-0' : 'overflow-y-auto py-6',
+        )}>
 
               {/* ============================================================ */}
               {/* IDLE + FORM STATE                                            */}
@@ -1047,16 +1064,18 @@ export function GeradorPecasPage() {
                   )}
 
                   {/* Form card */}
-                  <div className="rounded-2xl border border-stone-200/80 bg-white shadow-sm">
+                  <div className="overflow-hidden rounded-2xl border bg-white shadow-sm" style={{ borderColor: C.gray200 }}>
+                    {/* Navy accent bar */}
+                    <div className="h-1" style={{ background: `linear-gradient(90deg, ${C.navy950}, ${C.navy500})` }} />
                     {/* Input mode tabs */}
-                    <div className="flex border-b border-stone-100">
+                    <div className="flex border-b" style={{ borderColor: C.gray100 }}>
                       <button
                         type="button"
                         className={cn(
-                          'relative flex-1 px-5 py-3.5 text-sm font-medium transition-colors',
+                          'relative flex-1 px-5 py-3.5 font-medium transition-colors',
                           inputMode === 'cnj'
-                            ? 'text-stone-900'
-                            : 'text-stone-400 hover:text-stone-600',
+                            ? 'text-slate-800'
+                            : 'text-slate-400 hover:text-slate-600',
                         )}
                         onClick={() => setInputMode('cnj')}
                         disabled={isFormDisabled}
@@ -1066,16 +1085,16 @@ export function GeradorPecasPage() {
                           Por Processo (CNJ)
                         </span>
                         {inputMode === 'cnj' && (
-                          <span className="absolute inset-x-0 bottom-0 h-0.5 bg-stone-900" />
+                          <span className="absolute inset-x-0 bottom-0 h-0.5" style={{ background: `linear-gradient(90deg, ${C.navy950}, ${C.navy500})` }} />
                         )}
                       </button>
                       <button
                         type="button"
                         className={cn(
-                          'relative flex-1 px-5 py-3.5 text-sm font-medium transition-colors',
+                          'relative flex-1 px-5 py-3.5 font-medium transition-colors',
                           inputMode === 'pdf'
-                            ? 'text-stone-900'
-                            : 'text-stone-400 hover:text-stone-600',
+                            ? 'text-slate-800'
+                            : 'text-slate-400 hover:text-slate-600',
                         )}
                         onClick={() => setInputMode('pdf')}
                         disabled={isFormDisabled}
@@ -1085,7 +1104,7 @@ export function GeradorPecasPage() {
                           Upload de PDF
                         </span>
                         {inputMode === 'pdf' && (
-                          <span className="absolute inset-x-0 bottom-0 h-0.5 bg-stone-900" />
+                          <span className="absolute inset-x-0 bottom-0 h-0.5" style={{ background: `linear-gradient(90deg, ${C.navy950}, ${C.navy500})` }} />
                         )}
                       </button>
                     </div>
@@ -1095,7 +1114,7 @@ export function GeradorPecasPage() {
                         {/* CNJ Input */}
                         {inputMode === 'cnj' && (
                           <div>
-                            <Label htmlFor="numero-cnj" className="text-xs font-medium uppercase tracking-wider text-stone-500">
+                            <Label htmlFor="numero-cnj" className="font-medium text-slate-600" style={{ fontSize: 15 }}>
                               Numero do Processo
                             </Label>
                             <Input
@@ -1103,7 +1122,7 @@ export function GeradorPecasPage() {
                               value={numeroCNJ}
                               onChange={(e) => setNumeroCNJ(formatCNJ(e.target.value))}
                               placeholder="0000000-00.0000.0.00.0000"
-                              className="mt-2 h-11 rounded-xl border-stone-200 bg-stone-50/50 font-mono text-base tracking-wide placeholder:text-stone-300 focus:border-stone-400 focus:bg-white focus:ring-stone-400/20"
+                              className="mt-2 h-11 rounded-xl border-slate-200 bg-slate-50/50 font-mono text-base tracking-wide placeholder:text-slate-300 focus:border-slate-400 focus:bg-white focus:ring-slate-400/20"
                               disabled={isFormDisabled}
                             />
                           </div>
@@ -1112,11 +1131,11 @@ export function GeradorPecasPage() {
                         {/* PDF Upload */}
                         {inputMode === 'pdf' && (
                           <div>
-                            <Label className="text-xs font-medium uppercase tracking-wider text-stone-500">
+                            <Label className="font-medium text-slate-600" style={{ fontSize: 15 }}>
                               Arquivos PDF
                             </Label>
                             <div
-                              className="mt-2 cursor-pointer rounded-xl border-2 border-dashed border-stone-200 bg-stone-50/30 p-8 text-center transition-all hover:border-stone-300 hover:bg-stone-50"
+                              className="mt-2 cursor-pointer rounded-xl border-2 border-dashed border-slate-200 bg-slate-50/30 p-8 text-center transition-all hover:border-slate-300 hover:bg-slate-50"
                               onClick={() => pdfInputRef.current?.click()}
                               role="button"
                               tabIndex={0}
@@ -1135,28 +1154,28 @@ export function GeradorPecasPage() {
                                 }}
                                 disabled={isFormDisabled}
                               />
-                              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-stone-100">
-                                <Upload className="h-5 w-5 text-stone-400" />
+                              <div className="mx-auto flex h-12 w-12 items-center justify-center rounded-xl bg-slate-100">
+                                <Upload className="h-5 w-5 text-slate-400" />
                               </div>
-                              <p className="mt-3 text-sm font-medium text-stone-600">
+                              <p className="mt-3 text-sm font-medium text-slate-600">
                                 Arraste PDFs aqui ou clique para selecionar
                               </p>
-                              <p className="mt-1 text-xs text-stone-400">
+                              <p className="mt-1 text-xs text-slate-400">
                                 Documentos do processo em formato PDF
                               </p>
                             </div>
                             {pdfFiles.length > 0 && (
                               <div className="mt-3 space-y-1.5">
                                 {pdfFiles.map((file, idx) => (
-                                  <div key={idx} className="flex items-center justify-between rounded-lg border border-stone-150 bg-white px-3 py-2.5">
+                                  <div key={idx} className="flex items-center justify-between rounded-lg border border-slate-150 bg-white px-3 py-2.5">
                                     <div className="flex items-center gap-2.5 truncate">
                                       <FileText className="h-4 w-4 flex-shrink-0 text-red-500" />
-                                      <span className="truncate text-sm text-stone-700">{file.name}</span>
+                                      <span className="truncate text-sm text-slate-700">{file.name}</span>
                                     </div>
                                     <button
                                       type="button"
                                       onClick={() => setPdfFiles(prev => prev.filter((_, i) => i !== idx))}
-                                      className="ml-2 flex-shrink-0 rounded p-0.5 text-stone-300 transition-colors hover:bg-red-50 hover:text-red-500"
+                                      className="ml-2 flex-shrink-0 rounded p-0.5 text-slate-300 transition-colors hover:bg-red-50 hover:text-red-500"
                                       aria-label={`Remover ${file.name}`}
                                     >
                                       <X className="h-3.5 w-3.5" />
@@ -1170,7 +1189,7 @@ export function GeradorPecasPage() {
 
                         {/* Tipo de Peca */}
                         <div>
-                          <Label htmlFor="tipo-peca" className="text-xs font-medium uppercase tracking-wider text-stone-500">
+                          <Label htmlFor="tipo-peca" className="font-medium text-slate-600" style={{ fontSize: 15 }}>
                             Tipo de Peca
                           </Label>
                           {isLoadingTipos ? (
@@ -1181,7 +1200,7 @@ export function GeradorPecasPage() {
                               onValueChange={(v) => setTipoPeca(v === '__auto__' ? '' : v)}
                               disabled={isFormDisabled}
                             >
-                              <SelectTrigger className="mt-2 h-11 rounded-xl border-stone-200 bg-stone-50/50 focus:border-stone-400 focus:ring-stone-400/20" id="tipo-peca">
+                              <SelectTrigger className="mt-2 h-11 rounded-xl border-slate-200 bg-slate-50/50 focus:border-slate-400 focus:ring-slate-400/20" id="tipo-peca">
                                 <SelectValue placeholder="Selecione o tipo de peca" />
                               </SelectTrigger>
                               <SelectContent>
@@ -1197,14 +1216,14 @@ export function GeradorPecasPage() {
                             </Select>
                           )}
                           {tiposPecaData && !tiposPecaData.permite_auto && (
-                            <p className="mt-1.5 text-xs text-stone-400">Selecao obrigatoria &mdash; deteccao automatica desabilitada</p>
+                            <p className="mt-1.5 text-xs text-slate-400">Selecao obrigatoria &mdash; deteccao automatica desabilitada</p>
                           )}
                         </div>
 
                         {/* Grupo (opcional) */}
                         {gruposData && gruposData.grupos.length > 0 && (
                           <div>
-                            <Label htmlFor="grupo" className="text-xs font-medium uppercase tracking-wider text-stone-500">
+                            <Label htmlFor="grupo" className="font-medium text-slate-600" style={{ fontSize: 15 }}>
                               Grupo de Argumentos
                             </Label>
                             <Select
@@ -1212,7 +1231,7 @@ export function GeradorPecasPage() {
                               onValueChange={(v) => setSelectedGroupId(v === '__all__' ? null : Number(v))}
                               disabled={isFormDisabled}
                             >
-                              <SelectTrigger className="mt-2 h-11 rounded-xl border-stone-200 bg-stone-50/50 focus:border-stone-400 focus:ring-stone-400/20" id="grupo">
+                              <SelectTrigger className="mt-2 h-11 rounded-xl border-slate-200 bg-slate-50/50 focus:border-slate-400 focus:ring-slate-400/20" id="grupo">
                                 <SelectValue placeholder="Todos os grupos" />
                               </SelectTrigger>
                               <SelectContent>
@@ -1228,7 +1247,7 @@ export function GeradorPecasPage() {
                         {/* Subcategorias */}
                         {subcategorias.length > 0 && (
                           <div>
-                            <Label className="text-xs font-medium uppercase tracking-wider text-stone-500">Subcategorias</Label>
+                            <Label className="font-medium text-slate-600" style={{ fontSize: 15 }}>Subcategorias</Label>
                             <div className="mt-2.5 flex flex-wrap gap-2">
                               {subcategorias.map((sub) => {
                                 const isSelected = selectedSubcategorias.includes(sub.id)
@@ -1242,8 +1261,8 @@ export function GeradorPecasPage() {
                                     className={cn(
                                       'rounded-full border px-3 py-1.5 text-xs font-medium transition-all',
                                       isSelected
-                                        ? 'border-stone-900 bg-stone-900 text-white'
-                                        : 'border-stone-200 bg-white text-stone-600 hover:border-stone-300',
+                                        ? 'border-[#253D52] bg-[#253D52] text-white'
+                                        : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300',
                                     )}
                                     disabled={isFormDisabled}
                                   >
@@ -1258,9 +1277,9 @@ export function GeradorPecasPage() {
 
                         {/* Observacao */}
                         <div>
-                          <Label htmlFor="observacao" className="text-xs font-medium uppercase tracking-wider text-stone-500">
+                          <Label htmlFor="observacao" className="font-medium text-slate-600" style={{ fontSize: 15 }}>
                             Observacoes
-                            <span className="ml-1 font-normal normal-case tracking-normal text-stone-400">(opcional)</span>
+                            <span className="ml-1 font-normal normal-case tracking-normal text-slate-400">(opcional)</span>
                           </Label>
                           <Textarea
                             id="observacao"
@@ -1268,7 +1287,7 @@ export function GeradorPecasPage() {
                             onChange={(e) => setObservacao(e.target.value)}
                             placeholder="Instrucoes adicionais para a geracao..."
                             rows={3}
-                            className="mt-2 rounded-xl border-stone-200 bg-stone-50/50 placeholder:text-stone-300 focus:border-stone-400 focus:ring-stone-400/20"
+                            className="mt-2 rounded-xl border-slate-200 bg-slate-50/50 placeholder:text-slate-300 focus:border-slate-400 focus:ring-slate-400/20"
                             disabled={isFormDisabled}
                           />
                         </div>
@@ -1278,7 +1297,8 @@ export function GeradorPecasPage() {
                       <div className="mt-6 flex gap-3">
                         <Button
                           onClick={inputMode === 'cnj' ? iniciarGeracaoAutomatica : iniciarGeracaoPdf}
-                          className="h-11 flex-1 gap-2 rounded-xl bg-stone-900 text-sm font-medium text-white shadow-sm transition-all hover:bg-stone-800 active:scale-[0.98]"
+                          className="h-11 flex-1 gap-2 rounded-xl text-sm font-medium text-white shadow-sm transition-all hover:opacity-90 active:scale-[0.98]"
+                          style={{ background: C.navy950 }}
                           disabled={isFormDisabled || (inputMode === 'cnj' ? !numeroCNJ.trim() : pdfFiles.length === 0) || (!tipoPeca && !tiposPecaData?.permite_auto)}
                         >
                           <Zap className="h-4 w-4" />
@@ -1288,7 +1308,7 @@ export function GeradorPecasPage() {
                           <Button
                             onClick={iniciarCuradoria}
                             variant="outline"
-                            className="h-11 flex-1 gap-2 rounded-xl border-stone-200 text-sm font-medium text-stone-700 transition-all hover:bg-stone-50 active:scale-[0.98]"
+                            className="h-11 flex-1 gap-2 rounded-xl border-slate-200 text-sm font-medium text-slate-800 transition-all hover:bg-slate-50 active:scale-[0.98]"
                             disabled={isFormDisabled || !numeroCNJ.trim() || !tipoPeca || isCuradoriaLoading}
                           >
                             <Eye className="h-4 w-4" />
@@ -1302,21 +1322,21 @@ export function GeradorPecasPage() {
                   {/* "Como funciona" — pipeline visual */}
                   {pageState === 'idle' && (
                     <div className="mt-8">
-                      <h3 className="mb-4 text-xs font-medium uppercase tracking-wider text-stone-400">Pipeline de geracao</h3>
+                      <h3 className="mb-4 font-semibold" style={{ fontSize: 15, color: C.text700 }}>Pipeline de Geracao</h3>
                       <div className="flex items-center gap-0">
                         {AGENT_META.map((agent, i) => {
                           const Icon = agent.icon
                           return (
                             <div key={agent.numero} className="flex flex-1 items-center">
                               <div className="flex flex-1 flex-col items-center text-center">
-                                <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-white border border-stone-200 shadow-sm">
-                                  <Icon className="h-4.5 w-4.5 text-stone-500" />
+                                <div className="flex h-11 w-11 items-center justify-center rounded-xl" style={{ background: C.navy100, color: C.navy700 }}>
+                                  <Icon style={{ width: 18, height: 18 }} />
                                 </div>
-                                <p className="mt-2.5 text-xs font-semibold text-stone-700">{agent.nome}</p>
-                                <p className="mt-0.5 text-[11px] leading-tight text-stone-400">{agent.descricao}</p>
+                                <p className="mt-2.5 font-semibold" style={{ fontSize: 13, color: C.text700 }}>{agent.nome}</p>
+                                <p className="mt-0.5 leading-tight" style={{ fontSize: 12, color: C.text400 }}>{agent.descricao}</p>
                               </div>
                               {i < AGENT_META.length - 1 && (
-                                <ChevronRight className="mx-1 h-4 w-4 flex-shrink-0 text-stone-300" />
+                                <ChevronRight className="mx-1 h-4 w-4 flex-shrink-0" style={{ color: C.gray500 }} />
                               )}
                             </div>
                           )
@@ -1329,10 +1349,11 @@ export function GeradorPecasPage() {
                   {pageState === 'idle' && historico && historico.length > 0 && (
                     <div className="mt-8">
                       <div className="mb-3 flex items-center justify-between">
-                        <h3 className="text-xs font-medium uppercase tracking-wider text-stone-400">Recentes</h3>
+                        <h3 className="font-semibold" style={{ fontSize: 15, color: C.text700 }}>Recentes</h3>
                         <button
                           onClick={() => setShowSidebar(true)}
-                          className="text-xs font-medium text-stone-400 transition-colors hover:text-stone-600"
+                          className="text-xs font-medium transition-colors"
+                          style={{ color: C.navy600 }}
                         >
                           Ver todos
                         </button>
@@ -1342,22 +1363,22 @@ export function GeradorPecasPage() {
                           <div
                             key={item.id}
                             onClick={() => carregarDoHistorico(item.id)}
-                            className="group flex cursor-pointer items-center gap-3 rounded-xl border border-transparent bg-white p-3.5 transition-all hover:border-stone-200 hover:shadow-sm"
+                            className="group flex cursor-pointer items-center gap-3 rounded-xl border border-transparent bg-white p-3.5 transition-all hover:border-slate-200 hover:shadow-sm"
                             role="button"
                             tabIndex={0}
                             onKeyDown={(e) => { if (e.key === 'Enter') carregarDoHistorico(item.id) }}
                           >
-                            <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-stone-100 text-stone-500 transition-colors group-hover:bg-stone-900 group-hover:text-white">
+                            <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg" style={{ background: C.navy100, color: C.navy700 }}>
                               <FileText className="h-4 w-4" />
                             </div>
                             <div className="min-w-0 flex-1">
-                              <p className="truncate text-sm font-medium text-stone-700">{item.cnj}</p>
-                              <p className="mt-0.5 text-xs text-stone-400">{item.tipo_peca || 'Peca'} &middot; {formatDate(item.data)}</p>
+                              <p className="truncate text-sm font-medium" style={{ color: C.text700 }}>{item.cnj}</p>
+                              <p className="mt-0.5 text-xs" style={{ color: C.text400 }}>{item.tipo_peca || 'Peca'} &middot; {formatDate(item.data)}</p>
                             </div>
                             <button
                               type="button"
                               onClick={(e) => excluirDoHistorico(item.id, e)}
-                              className="flex-shrink-0 rounded p-1 text-stone-300 opacity-0 transition-all hover:bg-red-50 hover:text-red-500 group-hover:opacity-100"
+                              className="flex-shrink-0 rounded p-1 text-slate-300 opacity-0 transition-all hover:bg-red-50 hover:text-red-500 group-hover:opacity-100"
                               aria-label="Excluir geracao"
                             >
                               <Trash2 className="h-3.5 w-3.5" />
@@ -1371,11 +1392,11 @@ export function GeradorPecasPage() {
                   {/* Empty state */}
                   {pageState === 'idle' && (!historico || historico.length === 0) && !isLoadingHistorico && (
                     <div className="mt-12 text-center">
-                      <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl bg-stone-100">
-                        <Scale className="h-6 w-6 text-stone-400" />
+                      <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl" style={{ background: C.navy100, color: C.navy600 }}>
+                        <Scale className="h-6 w-6" />
                       </div>
-                      <p className="mt-4 text-sm font-medium text-stone-500">Nenhuma geracao ainda</p>
-                      <p className="mt-1 text-xs text-stone-400">Preencha o formulario acima para gerar sua primeira peca</p>
+                      <p className="mt-4 font-medium" style={{ fontSize: 15, color: C.text500 }}>Nenhuma geracao ainda</p>
+                      <p className="mt-1" style={{ fontSize: 13, color: C.text400 }}>Preencha o formulario acima para gerar sua primeira peca</p>
                     </div>
                   )}
                 </>
@@ -1388,15 +1409,20 @@ export function GeradorPecasPage() {
                 <div>
                   {/* Header */}
                   <div className="mb-6 flex items-center justify-between">
-                    <div>
-                      <h2 className="text-lg font-semibold text-stone-900">Curadoria de Modulos</h2>
-                      <p className="mt-0.5 text-sm text-stone-500">
-                        {curadoriaModulos.length} modulo(s) detectado(s) &mdash; selecione os que deseja incluir
-                      </p>
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg" style={{ background: `linear-gradient(135deg, ${C.navy950}, ${C.navy700})` }}>
+                        <Layers className="h-4 w-4 text-white" />
+                      </div>
+                      <div>
+                        <h2 className="text-lg font-semibold" style={{ color: C.text900 }}>Curadoria de Modulos</h2>
+                        <p className="mt-0.5 text-sm" style={{ color: C.text500 }}>
+                          {curadoriaModulos.length} modulo(s) detectado(s) &mdash; selecione os que deseja incluir
+                        </p>
+                      </div>
                     </div>
                     <button
                       onClick={voltarParaInicio}
-                      className="flex h-8 items-center gap-1.5 rounded-lg px-3 text-xs font-medium text-stone-500 transition-colors hover:bg-stone-100"
+                      className="flex h-8 items-center gap-1.5 rounded-lg px-3 text-xs font-medium text-slate-500 transition-colors hover:bg-slate-100"
                     >
                       <X className="h-3.5 w-3.5" />
                       Cancelar
@@ -1415,8 +1441,8 @@ export function GeradorPecasPage() {
                     return Array.from(categorias.entries()).map(([categoria, modulos]) => (
                       <div key={categoria} className="mb-6">
                         <div className="mb-2.5 flex items-center gap-2">
-                          <span className="text-xs font-semibold uppercase tracking-wider text-stone-400">{categoria}</span>
-                          <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-stone-200 px-1.5 text-[10px] font-bold text-stone-600">
+                          <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">{categoria}</span>
+                          <span className="flex h-5 min-w-5 items-center justify-center rounded-full bg-slate-200 px-1.5 text-[10px] font-bold text-slate-600">
                             {modulos.length}
                           </span>
                         </div>
@@ -1429,8 +1455,8 @@ export function GeradorPecasPage() {
                                 className={cn(
                                   'cursor-pointer rounded-xl border p-4 transition-all',
                                   isSelected
-                                    ? 'border-stone-900 bg-stone-50 ring-1 ring-stone-900/5'
-                                    : 'border-stone-200 bg-white hover:border-stone-300',
+                                    ? 'border-slate-300 bg-slate-50/50 ring-1 ring-slate-200/50'
+                                    : 'border-slate-200 bg-white hover:border-slate-300',
                                 )}
                                 onClick={() => toggleModulo(modulo.id)}
                                 role="checkbox"
@@ -1443,22 +1469,22 @@ export function GeradorPecasPage() {
                                     className={cn(
                                       'mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-md border-2 transition-all',
                                       isSelected
-                                        ? 'border-stone-900 bg-stone-900 text-white'
-                                        : 'border-stone-300 bg-white',
+                                        ? 'border-[#253D52] bg-[#253D52] text-white'
+                                        : 'border-slate-300 bg-white',
                                     )}
                                   >
                                     {isSelected && <Check className="h-3 w-3" />}
                                   </div>
                                   <div className="min-w-0 flex-1">
                                     <div className="flex items-center gap-2">
-                                      <span className="text-sm font-medium text-stone-800">{modulo.titulo}</span>
+                                      <span className="text-sm font-medium text-slate-800">{modulo.titulo}</span>
                                       {modulo.tag && (
-                                        <span className="rounded border border-stone-200 bg-stone-100 px-1.5 py-0.5 text-[10px] font-medium text-stone-500">
+                                        <span className="rounded border border-slate-200 bg-slate-100 px-1.5 py-0.5 text-[10px] font-medium text-slate-500">
                                           {modulo.tag}
                                         </span>
                                       )}
                                     </div>
-                                    <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-stone-500">{modulo.conteudo}</p>
+                                    <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-slate-500">{modulo.conteudo}</p>
                                   </div>
                                 </div>
                               </div>
@@ -1470,15 +1496,16 @@ export function GeradorPecasPage() {
                   })()}
 
                   {/* Footer actions */}
-                  <div className="sticky bottom-0 -mx-4 mt-4 border-t border-stone-200 bg-stone-50 px-4 py-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
+                  <div className="sticky bottom-0 -mx-4 mt-4 border-t px-4 py-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8" style={{ borderColor: C.gray200, background: C.gray50 }}>
                     <div className="flex items-center justify-between">
-                      <p className="text-sm text-stone-500">
-                        <span className="font-semibold text-stone-900">{curadoriaSelected.size}</span> de {curadoriaModulos.length} selecionado(s)
+                      <p className="text-sm" style={{ color: C.text500 }}>
+                        <span className="font-semibold" style={{ color: C.text900 }}>{curadoriaSelected.size}</span> de {curadoriaModulos.length} selecionado(s)
                       </p>
                       <Button
                         onClick={gerarComCuradoria}
                         disabled={curadoriaSelected.size === 0}
-                        className="h-10 gap-2 rounded-xl bg-stone-900 px-5 text-sm font-medium shadow-sm hover:bg-stone-800"
+                        className="h-10 gap-2 rounded-xl px-5 text-sm font-medium text-white shadow-sm hover:opacity-90"
+                        style={{ background: C.navy950 }}
                       >
                         <Zap className="h-3.5 w-3.5" />
                         Gerar com Selecionados
@@ -1489,338 +1516,303 @@ export function GeradorPecasPage() {
               )}
 
               {/* ============================================================ */}
-              {/* RESULTADO STATE                                              */}
+              {/* RESULTADO + EDITANDO — Reference design split view           */}
               {/* ============================================================ */}
-              {pageState === 'resultado' && (
-                <>
-                  {/* Result toolbar */}
-                  <div className="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-                    <div className="flex items-center gap-3">
-                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-emerald-100">
-                        <Check className="h-4 w-4 text-emerald-600" />
-                      </div>
-                      <div>
-                        <h2 className="text-sm font-semibold text-stone-900">Peca Gerada</h2>
-                        <div className="flex items-center gap-1.5">
-                          {tipoPecaResultado && (
-                            <span className="text-xs text-stone-400">{tipoPecaResultado}</span>
-                          )}
-                          {tipoPecaResultado && numeroCNJ && <span className="text-xs text-stone-300">&middot;</span>}
-                          {numeroCNJ && <span className="text-xs font-mono text-stone-400">{numeroCNJ}</span>}
-                        </div>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <button
-                            onClick={exportarDocx}
-                            className="flex h-8 items-center gap-1.5 rounded-lg border border-stone-200 bg-white px-3 text-xs font-medium text-stone-600 transition-colors hover:bg-stone-50"
-                          >
-                            <Download className="h-3.5 w-3.5" />
-                            <span className="hidden sm:inline">DOCX</span>
-                          </button>
-                        </TooltipTrigger>
-                        <TooltipContent>Exportar como Word</TooltipContent>
-                      </Tooltip>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <button
-                            onClick={copiarMinuta}
-                            className="flex h-8 items-center gap-1.5 rounded-lg border border-stone-200 bg-white px-3 text-xs font-medium text-stone-600 transition-colors hover:bg-stone-50"
-                          >
-                            <Copy className="h-3.5 w-3.5" />
-                            <span className="hidden sm:inline">Copiar</span>
-                          </button>
-                        </TooltipTrigger>
-                        <TooltipContent>Copiar texto</TooltipContent>
-                      </Tooltip>
-                      <Tooltip>
-                        <TooltipTrigger asChild>
-                          <button
-                            onClick={abrirHistoricoVersoes}
-                            className="flex h-8 items-center gap-1.5 rounded-lg border border-stone-200 bg-white px-3 text-xs font-medium text-stone-600 transition-colors hover:bg-stone-50"
-                          >
-                            <RotateCcw className="h-3.5 w-3.5" />
-                            <span className="hidden sm:inline">Versoes</span>
-                          </button>
-                        </TooltipTrigger>
-                        <TooltipContent>Historico de versoes</TooltipContent>
-                      </Tooltip>
-                      <button
-                        onClick={() => setPageState('editando')}
-                        className="flex h-8 items-center gap-1.5 rounded-lg bg-stone-900 px-3.5 text-xs font-medium text-white shadow-sm transition-colors hover:bg-stone-800"
-                      >
-                        <MessageSquare className="h-3.5 w-3.5" />
-                        Editar com IA
-                      </button>
-                    </div>
-                  </div>
+              {(pageState === 'resultado' || pageState === 'editando') && (
+                <div className="-mx-4 flex h-full min-h-0 sm:-mx-6 lg:-mx-8">
 
-                  {/* Document content */}
-                  <div className="rounded-2xl border border-stone-200/80 bg-white shadow-sm">
-                    <ScrollArea className="h-[65vh]">
-                      <article className="px-8 py-10 sm:px-12">
-                        <div
-                          className="prose max-w-none"
-                          dangerouslySetInnerHTML={{ __html: minutaHtml }}
-                        />
-                      </article>
-                    </ScrollArea>
-                  </div>
-
-                  {/* Feedback inline */}
-                  {!showFeedback && geracaoId && (
-                    <div className="mt-6 flex items-center justify-center gap-4 rounded-xl bg-white border border-stone-200/80 p-4">
-                      <span className="text-xs text-stone-400">Avaliar geracao</span>
-                      <div className="flex gap-0.5">
-                        {[1, 2, 3, 4, 5].map((nota) => (
-                          <button
-                            key={nota}
-                            onClick={() => { setFeedbackNota(nota); setShowFeedback(true) }}
-                            className="rounded-md p-1 transition-transform hover:scale-110"
-                            aria-label={`Nota ${nota}`}
-                          >
-                            <Star
-                              className={cn(
-                                'h-5 w-5 transition-colors',
-                                feedbackNota && nota <= feedbackNota
-                                  ? 'fill-amber-400 text-amber-400'
-                                  : 'text-stone-300 hover:text-amber-300',
-                              )}
-                            />
-                          </button>
+                  {/* ── Document column ── */}
+                  <main className="flex min-w-0 flex-1 flex-col p-5 pb-3">
+                    {/* Meta bar */}
+                    <div className="mb-3 flex flex-shrink-0 items-center justify-between">
+                      <div className="flex items-center gap-2.5">
+                        <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-200/80 bg-emerald-50 px-2.5 py-1 text-xs font-medium text-emerald-700">
+                          <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+                          Peca gerada
+                        </span>
+                        <span className="text-xs text-slate-400">
+                          {tipoPecaResultado && <>{tipoPecaResultado} &middot; </>}
+                          {numeroCNJ && <>{numeroCNJ} &middot; </>}
+                          {new Date().toLocaleDateString('pt-BR')}
+                        </span>
+                      </div>
+                      <div className="flex items-center">
+                        {[
+                          { icon: Download, label: 'DOCX', action: exportarDocx, tooltip: 'Exportar como Word' },
+                          { icon: Copy, label: 'Copiar', action: copiarMinuta, tooltip: 'Copiar texto' },
+                          { icon: RotateCcw, label: 'Versoes', action: abrirHistoricoVersoes, tooltip: 'Historico de versoes' },
+                        ].map((btn) => (
+                          <Tooltip key={btn.label}>
+                            <TooltipTrigger asChild>
+                              <button
+                                onClick={btn.action}
+                                className="inline-flex items-center gap-1.5 rounded-lg border border-transparent px-3 py-1.5 text-xs font-medium text-slate-400 transition-all hover:border-slate-200 hover:bg-white hover:text-slate-700 hover:shadow-sm"
+                              >
+                                <btn.icon className="h-3.5 w-3.5" />
+                                {btn.label}
+                              </button>
+                            </TooltipTrigger>
+                            <TooltipContent>{btn.tooltip}</TooltipContent>
+                          </Tooltip>
                         ))}
                       </div>
                     </div>
-                  )}
-                </>
-              )}
 
-              {/* ============================================================ */}
-              {/* EDITANDO STATE — Split view                                  */}
-              {/* ============================================================ */}
-              {pageState === 'editando' && (
-                <div className="-mx-4 -mt-8 sm:-mx-6 lg:-mx-8">
-                  <div className="flex h-[calc(100vh-3.5rem)]">
-                    {/* Preview column */}
-                    <div className="flex flex-1 flex-col border-r border-stone-200">
-                      <div className="flex h-11 flex-shrink-0 items-center justify-between border-b border-stone-100 bg-white px-4">
-                        <span className="text-xs font-medium text-stone-500">Visualizacao</span>
-                        <div className="flex items-center gap-1">
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <button onClick={exportarDocx} className="rounded-md p-1.5 text-stone-400 hover:bg-stone-100 hover:text-stone-600">
-                                <Download className="h-3.5 w-3.5" />
-                              </button>
-                            </TooltipTrigger>
-                            <TooltipContent>Exportar DOCX</TooltipContent>
-                          </Tooltip>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <button onClick={copiarMinuta} className="rounded-md p-1.5 text-stone-400 hover:bg-stone-100 hover:text-stone-600">
-                                <Copy className="h-3.5 w-3.5" />
-                              </button>
-                            </TooltipTrigger>
-                            <TooltipContent>Copiar texto</TooltipContent>
-                          </Tooltip>
-                          <button
-                            onClick={() => setPageState('resultado')}
-                            className="ml-1 rounded-md p-1.5 text-stone-400 hover:bg-stone-100 hover:text-stone-600"
-                          >
-                            <X className="h-3.5 w-3.5" />
-                          </button>
-                        </div>
-                      </div>
-                      <ScrollArea className="flex-1">
-                        <article className="px-8 py-8">
-                          <div
-                            className="prose prose-sm max-w-none"
-                            dangerouslySetInnerHTML={{ __html: minutaHtml }}
-                          />
-                        </article>
-                      </ScrollArea>
-                    </div>
+                    {/* Document card */}
+                    <div className="min-h-0 flex-1 overflow-hidden rounded-2xl bg-white shadow-sm" style={{ border: `1px solid ${C.gray200}` }}>
+                      <div className="custom-scroll h-full overflow-y-auto px-10 py-10" style={{ fontFamily: "var(--font-doc, 'Lora', Georgia, serif)" }}>
+                        <div
+                          className="prose-legal max-w-none"
+                          dangerouslySetInnerHTML={{ __html: minutaHtml }}
+                        />
 
-                    {/* Chat column */}
-                    <div className="flex w-full max-w-md flex-col bg-white">
-                      <div className="flex h-11 flex-shrink-0 items-center gap-2 border-b border-stone-100 px-4">
-                        <Bot className="h-4 w-4 text-stone-400" />
-                        <span className="text-xs font-medium text-stone-700">Assistente de Edicao</span>
-                      </div>
-
-                      <ScrollArea className="flex-1 px-4 py-4" ref={chatScrollRef}>
-                        <div className="space-y-4">
-                          {chatMessages.length === 0 && (
-                            <div className="rounded-xl bg-stone-50 p-4">
-                              <p className="text-sm text-stone-600">
-                                Peca alteracoes na minuta. Por exemplo:
-                              </p>
-                              <div className="mt-3 space-y-2">
-                                {[
-                                  'Adicione um argumento sobre prescricao',
-                                  'Reescreva o topico sobre competencia',
-                                  'Remova a secao de preliminares',
-                                ].map((sugestao) => (
+                        {/* Feedback — below document */}
+                        {!showFeedback && geracaoId && (
+                          <div className="mt-12 border-t border-slate-100 pt-8">
+                            <div className="rounded-xl border border-slate-200/60 bg-slate-50/50 p-5 text-center" style={{ fontFamily: "var(--font-ui, 'DM Sans', system-ui, sans-serif)" }}>
+                              <p className="font-medium text-slate-600" style={{ fontSize: 15 }}>Qual a qualidade desta geracao?</p>
+                              <p className="mt-1 text-xs text-slate-400">Sua avaliacao ajuda a melhorar o sistema</p>
+                              <div className="mt-3 flex justify-center gap-1">
+                                {[1, 2, 3, 4, 5].map((nota) => (
                                   <button
-                                    key={sugestao}
-                                    onClick={() => { setChatInput(sugestao) }}
-                                    className="block w-full rounded-lg border border-stone-200 bg-white px-3 py-2 text-left text-xs text-stone-600 transition-colors hover:bg-stone-50"
+                                    key={nota}
+                                    onClick={() => { setFeedbackNota(nota); setShowFeedback(true) }}
+                                    className="rounded-lg p-1.5 transition-transform hover:scale-110"
+                                    aria-label={`Nota ${nota}`}
                                   >
-                                    &ldquo;{sugestao}&rdquo;
+                                    <Star
+                                      className={cn(
+                                        'h-6 w-6 transition-colors',
+                                        feedbackNota && nota <= feedbackNota
+                                          ? 'fill-amber-400 text-amber-400'
+                                          : 'text-slate-300 hover:text-amber-300',
+                                      )}
+                                    />
                                   </button>
                                 ))}
                               </div>
                             </div>
-                          )}
+                          </div>
+                        )}
 
-                          {chatMessages.map((msg, idx) => (
-                            <div key={idx} className={cn('flex gap-2.5', msg.role === 'user' && 'justify-end')}>
-                              {msg.role === 'assistant' && (
-                                <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-md bg-stone-100">
-                                  <Bot className="h-3 w-3 text-stone-500" />
-                                </div>
-                              )}
-                              <div
+                        <div className="h-10" />
+                      </div>
+                    </div>
+                  </main>
+
+                  {/* ── Chat panel — always visible ── */}
+                  <div className="hidden w-80 flex-shrink-0 py-5 pr-5 sm:flex">
+                    <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl bg-white shadow-sm" style={{ border: `1px solid ${C.gray200}` }}>
+
+                      {/* Panel header — navy */}
+                      <div className="flex flex-shrink-0 items-center justify-between rounded-t-2xl px-5 py-4" style={{ background: C.navy950 }}>
+                        <div className="flex items-center gap-2.5">
+                          <div className="flex h-8 w-8 items-center justify-center rounded-lg" style={{ background: C.orange500 }}>
+                            <MessageSquare className="h-4 w-4 text-white" />
+                          </div>
+                          <div>
+                            <h2 className="text-sm font-semibold text-white">Assistente</h2>
+                            <p className="text-xs" style={{ color: 'rgba(255,255,255,0.5)' }}>Edicao da peca</p>
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Chat content */}
+                      <div className="custom-scroll flex-1 overflow-y-auto px-4 py-4" ref={chatScrollRef}>
+                        {chatMessages.length === 0 ? (
+                          <div className="space-y-2">
+                            <p className="mb-3 text-[11px] font-medium uppercase tracking-wider text-slate-400">
+                              Sugestoes de edicao
+                            </p>
+                            {[
+                              { text: 'Adicionar argumento sobre prescricao', color: 'hover:border-amber-300 hover:bg-amber-50/60', iconColor: 'text-amber-500' },
+                              { text: 'Reescrever topico sobre competencia', color: 'hover:border-sky-300 hover:bg-sky-50/60', iconColor: 'text-sky-500' },
+                              { text: 'Remover secao de preliminares', color: 'hover:border-rose-300 hover:bg-rose-50/60', iconColor: 'text-rose-400' },
+                              { text: 'Reforcar fundamentacao juridica', color: 'hover:border-teal-300 hover:bg-teal-50/60', iconColor: 'text-teal-500' },
+                            ].map((sugestao) => (
+                              <button
+                                key={sugestao.text}
+                                onClick={() => setChatInput(sugestao.text)}
                                 className={cn(
-                                  'max-w-[85%] rounded-2xl px-3.5 py-2.5',
-                                  msg.role === 'user'
-                                    ? 'rounded-br-md bg-stone-900 text-white'
-                                    : 'rounded-bl-md bg-stone-100 text-stone-700',
+                                  'group w-full rounded-xl border border-slate-200 bg-white/80 px-4 py-3.5 text-left transition-all duration-200',
+                                  sugestao.color,
                                 )}
                               >
-                                <p className="text-sm leading-relaxed">{msg.content}</p>
-                              </div>
-                            </div>
-                          ))}
-
-                          {isSendingChat && (
-                            <div className="flex gap-2.5">
-                              <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-md bg-stone-100">
-                                <Bot className="h-3 w-3 text-stone-500" />
-                              </div>
-                              <div className="rounded-2xl rounded-bl-md bg-stone-100 px-4 py-3">
-                                <div className="flex gap-1">
-                                  <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-stone-400" />
-                                  <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-stone-400 [animation-delay:0.15s]" />
-                                  <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-stone-400 [animation-delay:0.3s]" />
+                                <div className="flex items-center gap-3">
+                                  <Sparkles className={cn('h-4 w-4 flex-shrink-0 transition-transform duration-200 group-hover:scale-110', sugestao.iconColor)} />
+                                  <span className="text-sm leading-snug text-slate-600 transition-colors group-hover:text-slate-800">
+                                    {sugestao.text}
+                                  </span>
+                                </div>
+                              </button>
+                            ))}
+                          </div>
+                        ) : (
+                          <div className="space-y-4">
+                            {chatMessages.map((msg, idx) => (
+                              <div key={idx} className={cn('flex gap-2.5', msg.role === 'user' && 'justify-end')}>
+                                {msg.role === 'assistant' && (
+                                  <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-md bg-slate-100">
+                                    <Bot className="h-3 w-3 text-slate-500" />
+                                  </div>
+                                )}
+                                <div
+                                  className={cn(
+                                    'max-w-[85%] rounded-2xl px-3.5 py-2.5',
+                                    msg.role === 'user'
+                                      ? 'rounded-br-md text-white'
+                                      : 'rounded-bl-md bg-slate-100 text-slate-700',
+                                  )}
+                                  style={msg.role === 'user' ? { background: C.navy950 } : undefined}
+                                >
+                                  <p className="text-sm leading-relaxed">{msg.content}</p>
                                 </div>
                               </div>
-                            </div>
-                          )}
-                        </div>
-                      </ScrollArea>
+                            ))}
+
+                            {isSendingChat && (
+                              <div className="flex gap-2.5">
+                                <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-md bg-slate-100">
+                                  <Bot className="h-3 w-3 text-slate-500" />
+                                </div>
+                                <div className="rounded-2xl rounded-bl-md bg-slate-100 px-4 py-3">
+                                  <div className="flex gap-1">
+                                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-slate-400" />
+                                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-slate-400 [animation-delay:0.15s]" />
+                                    <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-slate-400 [animation-delay:0.3s]" />
+                                  </div>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        )}
+                      </div>
 
                       {/* Chat input */}
-                      <div className="flex items-center gap-2 border-t border-stone-100 px-3 py-2.5">
-                        <Input
-                          value={chatInput}
-                          onChange={(e) => setChatInput(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' && !e.shiftKey) {
-                              e.preventDefault()
-                              enviarMensagemChat()
-                            }
-                          }}
-                          placeholder="Peca uma alteracao..."
-                          disabled={isSendingChat}
-                          className="h-9 flex-1 rounded-lg border-stone-200 bg-stone-50/50 text-sm placeholder:text-stone-300"
-                        />
-                        <button
-                          onClick={enviarMensagemChat}
-                          disabled={isSendingChat || !chatInput.trim()}
-                          className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-lg bg-stone-900 text-white shadow-sm transition-colors hover:bg-stone-800 disabled:opacity-40"
-                        >
-                          <Send className="h-3.5 w-3.5" />
-                        </button>
+                      <div className="flex-shrink-0 border-t border-slate-100 bg-slate-50/50 p-4">
+                        <div className="relative">
+                          <textarea
+                            value={chatInput}
+                            onChange={(e) => setChatInput(e.target.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' && !e.shiftKey) {
+                                e.preventDefault()
+                                enviarMensagemChat()
+                              }
+                            }}
+                            onInput={(e) => {
+                              const el = e.target as HTMLTextAreaElement
+                              el.style.height = 'auto'
+                              el.style.height = Math.min(el.scrollHeight, 140) + 'px'
+                            }}
+                            placeholder="Descreva a alteracao desejada..."
+                            disabled={isSendingChat}
+                            rows={1}
+                            className="w-full resize-none rounded-xl border border-slate-200 bg-white py-3.5 pl-4 pr-12 text-sm leading-relaxed text-slate-700 placeholder:text-slate-400 transition-all focus:border-slate-300 focus:outline-none focus:ring-2 focus:ring-[#253D52]/10"
+                          />
+                          <button
+                            onClick={enviarMensagemChat}
+                            disabled={isSendingChat || !chatInput.trim()}
+                            className={cn(
+                              'absolute bottom-2.5 right-2.5 rounded-lg p-2 transition-all duration-200',
+                              chatInput.trim()
+                                ? 'text-white shadow-sm hover:opacity-90'
+                                : 'cursor-not-allowed bg-slate-100 text-slate-300',
+                            )}
+                            style={chatInput.trim() ? { background: C.navy950 } : undefined}
+                          >
+                            <Send className="h-4 w-4" />
+                          </button>
+                        </div>
                       </div>
                     </div>
                   </div>
                 </div>
               )}
-            </div>
-          </main>
-
-          {/* ============================================================ */}
-          {/* HISTORY SIDEBAR                                              */}
-          {/* ============================================================ */}
-          {showSidebar && (
-            <>
-              {/* Overlay on mobile */}
-              <div
-                className="fixed inset-0 z-40 bg-black/20 backdrop-blur-sm lg:hidden"
-                onClick={() => setShowSidebar(false)}
-              />
-              <aside className="fixed right-0 top-14 z-50 flex h-[calc(100vh-3.5rem)] w-80 flex-col border-l border-stone-200 bg-white lg:static lg:z-auto">
-                <div className="flex h-11 flex-shrink-0 items-center justify-between border-b border-stone-100 px-4">
-                  <span className="text-xs font-semibold uppercase tracking-wider text-stone-400">Historico</span>
-                  <button
-                    onClick={() => setShowSidebar(false)}
-                    className="rounded-md p-1 text-stone-400 transition-colors hover:bg-stone-100 hover:text-stone-600 lg:hidden"
-                  >
-                    <X className="h-4 w-4" />
-                  </button>
-                </div>
-                <ScrollArea className="flex-1">
-                  {isLoadingHistorico ? (
-                    <div className="space-y-2 p-3">
-                      <Skeleton className="h-14 w-full rounded-lg" />
-                      <Skeleton className="h-14 w-full rounded-lg" />
-                      <Skeleton className="h-14 w-full rounded-lg" />
-                    </div>
-                  ) : !historico || historico.length === 0 ? (
-                    <div className="py-16 text-center">
-                      <History className="mx-auto h-8 w-8 text-stone-300" />
-                      <p className="mt-3 text-xs text-stone-400">Nenhuma geracao</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-0.5 p-2">
-                      {historico.map((item) => (
-                        <div
-                          key={item.id}
-                          onClick={() => carregarDoHistorico(item.id)}
-                          className="group flex cursor-pointer items-center gap-3 rounded-lg px-3 py-2.5 transition-colors hover:bg-stone-50"
-                          role="button"
-                          tabIndex={0}
-                          onKeyDown={(e) => { if (e.key === 'Enter') carregarDoHistorico(item.id) }}
-                        >
-                          <div className="min-w-0 flex-1">
-                            <p className="truncate text-sm font-medium text-stone-700">{item.cnj}</p>
-                            <p className="mt-0.5 text-[11px] text-stone-400">
-                              {item.tipo_peca || 'Peca'} &middot; {formatDate(item.data)}
-                            </p>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={(e) => excluirDoHistorico(item.id, e)}
-                            className="flex-shrink-0 rounded p-1 text-stone-300 opacity-0 transition-all hover:text-red-500 group-hover:opacity-100"
-                            aria-label="Excluir"
-                          >
-                            <Trash2 className="h-3.5 w-3.5" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </ScrollArea>
-              </aside>
-            </>
-          )}
         </div>
+
+        {/* ============================================================ */}
+        {/* HISTORY SIDEBAR (fixed overlay)                              */}
+        {/* ============================================================ */}
+        {showSidebar && (
+          <>
+            <div
+              className="fixed inset-0 z-40 bg-black/20 backdrop-blur-sm"
+              onClick={() => setShowSidebar(false)}
+            />
+            <aside className="fixed right-0 top-16 z-50 flex h-[calc(100vh-4rem)] w-80 flex-col bg-white shadow-xl" style={{ borderLeft: `1px solid ${C.gray200}` }}>
+              <div className="flex h-12 flex-shrink-0 items-center justify-between px-4" style={{ background: C.navy950 }}>
+                <span className="text-sm font-semibold text-white">Historico</span>
+                <button
+                  onClick={() => setShowSidebar(false)}
+                  className="rounded-md p-1 transition-colors hover:bg-white/10"
+                  style={{ color: 'rgba(255,255,255,0.6)' }}
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+              <ScrollArea className="flex-1">
+                {isLoadingHistorico ? (
+                  <div className="space-y-2 p-3">
+                    <Skeleton className="h-14 w-full rounded-lg" />
+                    <Skeleton className="h-14 w-full rounded-lg" />
+                    <Skeleton className="h-14 w-full rounded-lg" />
+                  </div>
+                ) : !historico || historico.length === 0 ? (
+                  <div className="py-16 text-center">
+                    <History className="mx-auto h-8 w-8 text-slate-300" />
+                    <p className="mt-3 text-sm text-slate-400">Nenhuma geracao</p>
+                  </div>
+                ) : (
+                  <div className="space-y-0.5 p-2">
+                    {historico.map((item) => (
+                      <div
+                        key={item.id}
+                        onClick={() => carregarDoHistorico(item.id)}
+                        className="group flex cursor-pointer items-center gap-3 rounded-xl px-3 py-3 transition-colors hover:bg-slate-50"
+                        role="button"
+                        tabIndex={0}
+                        onKeyDown={(e) => { if (e.key === 'Enter') carregarDoHistorico(item.id) }}
+                      >
+                        <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg" style={{ background: C.navy100, color: C.navy700 }}>
+                          <FileText className="h-3.5 w-3.5" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-medium" style={{ color: C.text700 }}>{item.cnj}</p>
+                          <p className="mt-0.5 text-xs" style={{ color: C.text400 }}>
+                            {item.tipo_peca || 'Peca'} &middot; {formatDate(item.data)}
+                          </p>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={(e) => excluirDoHistorico(item.id, e)}
+                          className="flex-shrink-0 rounded p-1 text-slate-300 opacity-0 transition-all hover:text-red-500 group-hover:opacity-100"
+                          aria-label="Excluir"
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </ScrollArea>
+            </aside>
+          </>
+        )}
 
         {/* ============================================================ */}
         {/* PROGRESS MODAL                                               */}
         {/* ============================================================ */}
         <Dialog open={isStreaming} onOpenChange={(open) => { if (!open) voltarParaInicio() }}>
           <DialogContent
-            className="max-w-md rounded-2xl border-stone-200 p-0 shadow-xl"
+            className="max-w-md rounded-2xl border-slate-200 p-0 shadow-xl"
             onInteractOutside={(e) => e.preventDefault()}
             onEscapeKeyDown={(e) => e.preventDefault()}
           >
-            <div className="px-6 pt-6">
+            <div className="rounded-t-2xl px-6 py-5" style={{ background: C.navy950 }}>
               <DialogHeader>
-                <DialogTitle className="flex items-center gap-2.5 text-base">
-                  <Loader2 className="h-4 w-4 animate-spin text-stone-500" />
+                <DialogTitle className="flex items-center gap-2.5 text-base text-white">
+                  <Loader2 className="h-4 w-4 animate-spin text-white/70" />
                   Gerando Peca
                 </DialogTitle>
                 <DialogDescription className="sr-only">Progresso da geracao da peca juridica</DialogDescription>
@@ -1828,7 +1820,7 @@ export function GeradorPecasPage() {
             </div>
 
             <div className="px-6 pb-6">
-              <p className="mt-3 text-sm text-stone-500">{progressMessage || 'Iniciando...'}</p>
+              <p className="mt-4 text-sm" style={{ color: C.text500 }}>{progressMessage || 'Iniciando...'}</p>
 
               {/* Agent pipeline */}
               <div className="mt-5 space-y-2">
@@ -1840,20 +1832,25 @@ export function GeradorPecasPage() {
                       key={agent.numero}
                       className={cn(
                         'flex items-center gap-3 rounded-xl border p-3 transition-all',
-                        status === 'ativo' && 'border-stone-300 bg-stone-50',
+                        status === 'ativo' && 'border-slate-300 bg-slate-50',
                         status === 'concluido' && 'border-emerald-200 bg-emerald-50/50',
                         status === 'erro' && 'border-red-200 bg-red-50/50',
-                        status === 'aguardando' && 'border-stone-100 bg-stone-50/50',
+                        status === 'aguardando' && 'border-slate-100 bg-slate-50/50',
                       )}
                     >
                       <div
                         className={cn(
                           'flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg transition-all',
-                          status === 'ativo' && 'bg-stone-900 text-white',
                           status === 'concluido' && 'bg-emerald-500 text-white',
                           status === 'erro' && 'bg-red-500 text-white',
-                          status === 'aguardando' && 'bg-stone-200 text-stone-400',
+                          status === 'aguardando' && 'text-white',
                         )}
+                        style={{
+                          background: status === 'ativo' ? C.navy950
+                            : status === 'aguardando' ? C.gray200
+                            : undefined,
+                          color: status === 'aguardando' ? C.text400 : undefined,
+                        }}
                       >
                         {status === 'ativo' ? (
                           <Loader2 className="h-3.5 w-3.5 animate-spin" />
@@ -1866,11 +1863,11 @@ export function GeradorPecasPage() {
                         )}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium text-stone-700">{agent.nome}</p>
-                        <p className="text-[11px] text-stone-400">{agent.descricao}</p>
+                        <p className="text-sm font-medium text-slate-700">{agent.nome}</p>
+                        <p className="text-[11px] text-slate-400">{agent.descricao}</p>
                       </div>
                       {status === 'ativo' && (
-                        <span className="flex-shrink-0 text-[11px] font-medium text-stone-500">Ativo</span>
+                        <span className="flex-shrink-0 text-[11px] font-medium text-slate-500">Ativo</span>
                       )}
                       {status === 'concluido' && (
                         <span className="flex-shrink-0 text-[11px] font-medium text-emerald-600">OK</span>
@@ -1882,10 +1879,10 @@ export function GeradorPecasPage() {
 
               {/* Streaming preview */}
               {streamingContent && (
-                <div className="mt-4 rounded-xl border border-stone-100 bg-stone-50/80 p-4">
+                <div className="mt-4 rounded-xl border border-slate-100 bg-slate-50/80 p-4">
                   <div className="mb-2 flex items-center gap-2">
-                    <Sparkles className="h-3 w-3 text-stone-400" />
-                    <span className="text-[11px] font-medium text-stone-500">Preview em tempo real</span>
+                    <Sparkles className="h-3 w-3 text-slate-400" />
+                    <span className="text-[11px] font-medium text-slate-500">Preview em tempo real</span>
                   </div>
                   <div className="max-h-40 overflow-y-auto">
                     <div
@@ -1900,7 +1897,7 @@ export function GeradorPecasPage() {
 
               <button
                 onClick={voltarParaInicio}
-                className="flex w-full items-center justify-center gap-2 rounded-xl border border-stone-200 py-2.5 text-sm font-medium text-stone-500 transition-colors hover:bg-stone-50 hover:text-stone-700"
+                className="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 py-2.5 text-sm font-medium text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-700"
               >
                 <X className="h-3.5 w-3.5" />
                 Cancelar
@@ -1913,7 +1910,7 @@ export function GeradorPecasPage() {
         {/* PARECER NATJUS DIALOG                                        */}
         {/* ============================================================ */}
         <Dialog open={showParecerDialog} onOpenChange={setShowParecerDialog}>
-          <DialogContent className="max-w-md rounded-2xl border-stone-200">
+          <DialogContent className="max-w-md rounded-2xl border-slate-200">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2">
                 <AlertTriangle className="h-4 w-4 text-amber-500" />
@@ -1922,12 +1919,12 @@ export function GeradorPecasPage() {
               <DialogDescription className="sr-only">Opcoes para anexar parecer NATJus</DialogDescription>
             </DialogHeader>
             <div className="space-y-4">
-              <p className="text-sm text-stone-500">
+              <p className="text-sm text-slate-500">
                 Nao foi encontrado parecer NATJus no processo. Ele e essencial para a geracao adequada desta peca.
               </p>
               <div className="space-y-3">
                 <div>
-                  <Label htmlFor="parecer-file" className="text-xs font-medium uppercase tracking-wider text-stone-500">
+                  <Label htmlFor="parecer-file" className="font-medium text-slate-600" style={{ fontSize: 15 }}>
                     Anexar Parecer (PDF)
                   </Label>
                   <Input
@@ -1941,7 +1938,8 @@ export function GeradorPecasPage() {
                 <Button
                   onClick={handleParecerUpload}
                   disabled={!parecerFile || isUploadingParecer}
-                  className="w-full gap-2 rounded-xl bg-stone-900 hover:bg-stone-800"
+                  className="w-full gap-2 rounded-xl text-white hover:opacity-90"
+                  style={{ background: C.navy950 }}
                 >
                   <Upload className="h-4 w-4" />
                   {isUploadingParecer ? 'Enviando...' : 'Enviar Parecer'}
@@ -1949,7 +1947,7 @@ export function GeradorPecasPage() {
                 <Separator />
                 <button
                   onClick={handleContinuarSemParecer}
-                  className="w-full rounded-xl py-2.5 text-sm text-stone-400 transition-colors hover:text-stone-600"
+                  className="w-full rounded-xl py-2.5 text-sm text-slate-400 transition-colors hover:text-slate-600"
                 >
                   Continuar sem Parecer
                 </button>
@@ -1962,7 +1960,7 @@ export function GeradorPecasPage() {
         {/* FEEDBACK DIALOG                                              */}
         {/* ============================================================ */}
         <Dialog open={showFeedback} onOpenChange={setShowFeedback}>
-          <DialogContent className="max-w-sm rounded-2xl border-stone-200">
+          <DialogContent className="max-w-sm rounded-2xl border-slate-200">
             <DialogHeader>
               <DialogTitle className="text-center text-base">Como foi a experiencia?</DialogTitle>
               <DialogDescription className="sr-only">Avalie a qualidade da geracao</DialogDescription>
@@ -1981,7 +1979,7 @@ export function GeradorPecasPage() {
                         'h-7 w-7 transition-colors',
                         feedbackNota && nota <= feedbackNota
                           ? 'fill-amber-400 text-amber-400'
-                          : 'text-stone-300 hover:text-amber-300',
+                          : 'text-slate-300 hover:text-amber-300',
                       )}
                     />
                   </button>
@@ -1992,19 +1990,20 @@ export function GeradorPecasPage() {
                 onChange={(e) => setFeedbackComentario(e.target.value)}
                 placeholder="Comentarios (opcional)"
                 rows={3}
-                className="rounded-xl border-stone-200"
+                className="rounded-xl border-slate-200"
               />
               <div className="flex justify-end gap-2">
                 <button
                   onClick={() => setShowFeedback(false)}
-                  className="rounded-lg px-4 py-2 text-sm text-stone-400 transition-colors hover:text-stone-600"
+                  className="rounded-lg px-4 py-2 text-sm text-slate-400 transition-colors hover:text-slate-600"
                 >
                   Pular
                 </button>
                 <Button
                   onClick={enviarFeedback}
                   disabled={!feedbackNota}
-                  className="gap-1.5 rounded-xl bg-stone-900 px-4 hover:bg-stone-800"
+                  className="gap-1.5 rounded-xl px-4 text-white hover:opacity-90"
+                  style={{ background: C.navy950 }}
                 >
                   <Send className="h-3.5 w-3.5" />
                   Enviar
@@ -2018,10 +2017,10 @@ export function GeradorPecasPage() {
         {/* VERSION HISTORY DIALOG                                       */}
         {/* ============================================================ */}
         <Dialog open={showVersionHistory} onOpenChange={setShowVersionHistory}>
-          <DialogContent className="max-w-lg rounded-2xl border-stone-200">
+          <DialogContent className="max-w-lg rounded-2xl border-slate-200">
             <DialogHeader>
               <DialogTitle className="flex items-center gap-2 text-base">
-                <RotateCcw className="h-4 w-4 text-stone-400" />
+                <RotateCcw className="h-4 w-4 text-slate-400" />
                 Historico de Versoes
               </DialogTitle>
               <DialogDescription className="sr-only">Lista de versoes anteriores da peca</DialogDescription>
@@ -2029,18 +2028,18 @@ export function GeradorPecasPage() {
             <ScrollArea className="max-h-[60vh]">
               {versionList.length === 0 ? (
                 <div className="py-12 text-center">
-                  <History className="mx-auto h-8 w-8 text-stone-300" />
-                  <p className="mt-3 text-sm text-stone-400">Nenhuma versao anterior</p>
+                  <History className="mx-auto h-8 w-8 text-slate-300" />
+                  <p className="mt-3 text-sm text-slate-400">Nenhuma versao anterior</p>
                 </div>
               ) : (
                 <div className="space-y-2">
                   {versionList.map((v) => (
-                    <div key={v.versao_id} className="rounded-xl border border-stone-100 p-4 transition-colors hover:bg-stone-50/50">
+                    <div key={v.versao_id} className="rounded-xl border border-slate-100 p-4 transition-colors hover:bg-slate-50/50">
                       <div className="flex items-center justify-between">
-                        <span className="text-sm font-semibold text-stone-700">v{v.numero_versao}</span>
-                        <span className="text-[11px] text-stone-400">{formatDateTime(v.created_at)}</span>
+                        <span className="text-sm font-semibold text-slate-700">v{v.numero_versao}</span>
+                        <span className="text-[11px] text-slate-400">{formatDateTime(v.created_at)}</span>
                       </div>
-                      <p className="mt-1 text-xs text-stone-500">{v.descricao_alteracao || 'Sem descricao'}</p>
+                      <p className="mt-1 text-xs text-slate-500">{v.descricao_alteracao || 'Sem descricao'}</p>
                       <div className="mt-3 flex items-center gap-2">
                         <span className="rounded border border-emerald-200 bg-emerald-50 px-1.5 py-0.5 text-[10px] font-medium text-emerald-700">
                           +{v.linhas_adicionadas}
@@ -2050,7 +2049,7 @@ export function GeradorPecasPage() {
                         </span>
                         <button
                           onClick={() => restaurarVersao(v.versao_id)}
-                          className="ml-auto flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-medium text-stone-500 transition-colors hover:bg-stone-100 hover:text-stone-700"
+                          className="ml-auto flex items-center gap-1 rounded-lg px-2.5 py-1 text-xs font-medium text-slate-500 transition-colors hover:bg-slate-100 hover:text-slate-700"
                         >
                           <RotateCcw className="h-3 w-3" />
                           Restaurar
