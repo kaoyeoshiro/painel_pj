@@ -21,357 +21,400 @@ vi.mock('@/hooks/use-toast', () => ({
   useToast: () => ({ toast: mockToast })
 }))
 
-describe('CategoriasJsonPage', () => {
-  const mockCategorias = [
-    {
-      id: 1,
-      nome: 'Categoria Teste 1',
-      descricao: 'Descrição da categoria 1',
-      codigos_documento: ['10', '20'],
-      formato_json: { campo1: 'string', campo2: 'number' },
-      ativo: true,
-      json_gerado_por_ia: true,
-      criado_em: '2024-01-01T00:00:00',
-      atualizado_em: '2024-01-01T00:00:00'
-    },
-    {
-      id: 2,
-      nome: 'Categoria Teste 2',
-      descricao: 'Descrição da categoria 2',
-      codigos_documento: ['30'],
-      formato_json: { campo3: 'boolean' },
-      ativo: false,
-      json_gerado_por_ia: false,
-      criado_em: '2024-01-02T00:00:00',
-      atualizado_em: '2024-01-02T00:00:00'
-    }
-  ]
+/** Dados de teste alinhados com os tipos corretos do backend */
+const mockCategorias = [
+  {
+    id: 1,
+    nome: 'peticoes',
+    titulo: 'Peticoes Iniciais',
+    descricao: 'Extracao de dados de peticoes',
+    codigos_documento: [500, 9500],
+    formato_json: '{"campo1": {"type": "string"}}',
+    instrucoes_extracao: null,
+    is_residual: false,
+    ativo: true,
+    ordem: 1,
+    source_type: 'code' as const,
+    source_special_type: null,
+    usa_fonte_especial: false,
+    json_gerado_por_ia: true,
+    json_gerado_em: '2024-06-01T00:00:00',
+    criado_em: '2024-01-01T00:00:00',
+    atualizado_em: '2024-01-01T00:00:00',
+  },
+  {
+    id: 2,
+    nome: 'residual',
+    titulo: 'Categoria Residual',
+    descricao: 'Fallback para documentos sem categoria',
+    codigos_documento: [],
+    formato_json: '{"generico": {"type": "string"}}',
+    instrucoes_extracao: null,
+    is_residual: true,
+    ativo: true,
+    ordem: 99,
+    source_type: 'code' as const,
+    source_special_type: null,
+    usa_fonte_especial: false,
+    json_gerado_por_ia: false,
+    json_gerado_em: null,
+    criado_em: '2024-01-02T00:00:00',
+    atualizado_em: '2024-01-02T00:00:00',
+  },
+  {
+    id: 3,
+    nome: 'inativos_teste',
+    titulo: 'Categoria Inativa',
+    descricao: null,
+    codigos_documento: [60],
+    formato_json: '{}',
+    instrucoes_extracao: null,
+    is_residual: false,
+    ativo: false,
+    ordem: 50,
+    source_type: 'code' as const,
+    source_special_type: null,
+    usa_fonte_especial: false,
+    json_gerado_por_ia: false,
+    json_gerado_em: null,
+    criado_em: '2024-01-03T00:00:00',
+    atualizado_em: null,
+  },
+]
 
+const mockBlacklist = { codigos: [9508, 61], descricao: 'Codigos ignorados' }
+
+/** Configura mocks padrao para GET de categorias + blacklist */
+function setupDefaultMocks() {
+  vi.mocked(adminApi.get).mockImplementation((url: string) => {
+    if (url.includes('config/codigos-ignorados')) return Promise.resolve(mockBlacklist)
+    if (url.includes('apenas_ativos')) return Promise.resolve(mockCategorias)
+    if (url.includes('codigos-disponiveis')) return Promise.resolve([])
+    if (url.includes('fontes-especiais')) return Promise.resolve([])
+    // GET por ID
+    const idMatch = url.match(/categorias-resumo-json\/(\d+)$/)
+    if (idMatch) {
+      const id = parseInt(idMatch[1])
+      const cat = mockCategorias.find(c => c.id === id)
+      return cat ? Promise.resolve(cat) : Promise.reject(new Error('Not found'))
+    }
+    return Promise.resolve(mockCategorias)
+  })
+}
+
+describe('CategoriasJsonPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
-  it('deve carregar e exibir categorias ao montar o componente', async () => {
-    vi.mocked(adminApi.get).mockResolvedValueOnce(mockCategorias)
+  it('deve renderizar lista com badges corretos (titulo, IA, RESIDUAL, INATIVO)', async () => {
+    setupDefaultMocks()
 
     render(<CategoriasJsonPage />)
 
-    // Deve mostrar loading inicialmente
-    expect(screen.getByText(/carregando categorias/i)).toBeInTheDocument()
-
-    // Aguardar carregar categorias
     await waitFor(() => {
-      expect(screen.getByText('Categoria Teste 1')).toBeInTheDocument()
+      expect(screen.getByText('Peticoes Iniciais')).toBeInTheDocument()
     })
 
-    // Verificar se chamou API correta
-    expect(adminApi.get).toHaveBeenCalledWith('/admin/api/categorias-resumo-json')
+    // Titulos como headings (nao nome tecnico)
+    expect(screen.getByText('Peticoes Iniciais')).toBeInTheDocument()
+    expect(screen.getByText('Categoria Residual')).toBeInTheDocument()
+    expect(screen.getByText('Categoria Inativa')).toBeInTheDocument()
 
-    // Verificar se exibe as duas categorias
-    expect(screen.getByText('Categoria Teste 1')).toBeInTheDocument()
-    expect(screen.getByText('Descrição da categoria 1')).toBeInTheDocument()
-    expect(screen.getByText('Categoria Teste 2')).toBeInTheDocument()
-    expect(screen.getByText('Descrição da categoria 2')).toBeInTheDocument()
+    // Nomes tecnicos
+    expect(screen.getByText('peticoes')).toBeInTheDocument()
+    expect(screen.getByText('residual')).toBeInTheDocument()
 
-    // Verificar badges
-    expect(screen.getAllByText('Ativo')).toHaveLength(1)
-    expect(screen.getAllByText('Inativo')).toHaveLength(1)
-    expect(screen.getAllByText('IA')).toHaveLength(1)
-
-    // Verificar códigos de documentos
-    expect(screen.getByText('10')).toBeInTheDocument()
-    expect(screen.getByText('20')).toBeInTheDocument()
-    expect(screen.getByText('30')).toBeInTheDocument()
+    // Badges
+    expect(screen.getByText('GERADO POR IA')).toBeInTheDocument()
+    expect(screen.getByText('RESIDUAL')).toBeInTheDocument()
+    expect(screen.getByText('INATIVO')).toBeInTheDocument()
   })
 
-  it('deve abrir dialog de criação ao clicar em "Nova Categoria"', async () => {
-    vi.mocked(adminApi.get).mockResolvedValueOnce(mockCategorias)
+  it('deve carregar com apenas_ativos=false (inclui inativos)', async () => {
+    setupDefaultMocks()
+
+    render(<CategoriasJsonPage />)
+
+    await waitFor(() => {
+      expect(screen.getByText('Peticoes Iniciais')).toBeInTheDocument()
+    })
+
+    // Verifica que chamou com apenas_ativos=false
+    expect(adminApi.get).toHaveBeenCalledWith(
+      expect.stringContaining('apenas_ativos=false')
+    )
+  })
+
+  it('deve exibir code pills com overflow (+X mais)', async () => {
+    // Categoria com muitos codigos
+    const catMuitosCodigos = {
+      ...mockCategorias[0],
+      codigos_documento: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12],
+    }
+
+    vi.mocked(adminApi.get).mockImplementation((url: string) => {
+      if (url.includes('config/codigos-ignorados')) return Promise.resolve(mockBlacklist)
+      return Promise.resolve([catMuitosCodigos])
+    })
+
+    render(<CategoriasJsonPage />)
+
+    await waitFor(() => {
+      expect(screen.getByText('Peticoes Iniciais')).toBeInTheDocument()
+    })
+
+    // Deve exibir overflow
+    expect(screen.getByText('+2 mais')).toBeInTheDocument()
+  })
+
+  it('deve abrir editor para criar (campos vazios, sem motivo)', async () => {
+    setupDefaultMocks()
 
     const user = userEvent.setup()
     render(<CategoriasJsonPage />)
 
-    // Aguardar carregar
     await waitFor(() => {
-      expect(screen.getByText('Categoria Teste 1')).toBeInTheDocument()
+      expect(screen.getByText('Peticoes Iniciais')).toBeInTheDocument()
     })
 
-    // Clicar em Nova Categoria (botão no header)
-    const buttons = screen.getAllByRole('button', { name: /nova categoria/i })
-    const headerButton = buttons.find(btn => !btn.closest('[role="dialog"]'))
-    expect(headerButton).toBeDefined()
-    await user.click(headerButton!)
+    // Clicar em Nova Categoria
+    await user.click(screen.getByTestId('btn-nova-categoria'))
 
-    // Verificar se dialog abriu
+    // Dialog aberto
     await waitFor(() => {
-      expect(screen.getByRole('dialog')).toBeInTheDocument()
+      expect(screen.getByTestId('editor-dialog')).toBeInTheDocument()
     })
 
-    // Verificar campos do formulário
-    expect(screen.getByLabelText(/^nome$/i)).toBeInTheDocument()
-    expect(screen.getByLabelText(/descrição/i)).toBeInTheDocument()
-    expect(screen.getByLabelText(/códigos de documentos/i)).toBeInTheDocument()
-    expect(screen.getByLabelText(/formato json/i)).toBeInTheDocument()
-    expect(screen.getByLabelText(/ativo/i)).toBeInTheDocument()
+    // Titulo do dialog (aparece no botao e no h2 do dialog)
+    expect(screen.getAllByText('Nova Categoria').length).toBeGreaterThanOrEqual(2)
+
+    // Campo motivo NAO deve aparecer (somente edicao)
+    expect(screen.queryByTestId('input-motivo')).not.toBeInTheDocument()
   })
 
-  it('deve criar nova categoria com sucesso', async () => {
-    vi.mocked(adminApi.get).mockResolvedValueOnce(mockCategorias)
-    vi.mocked(adminApi.post).mockResolvedValueOnce({ id: 3 })
-    vi.mocked(adminApi.get).mockResolvedValueOnce([...mockCategorias]) // Reload após criar
+  it('deve abrir editor para editar (campos populados, motivo visivel)', async () => {
+    setupDefaultMocks()
 
     const user = userEvent.setup()
     render(<CategoriasJsonPage />)
 
-    // Aguardar carregar
     await waitFor(() => {
-      expect(screen.getByText('Categoria Teste 1')).toBeInTheDocument()
+      expect(screen.getByText('Peticoes Iniciais')).toBeInTheDocument()
     })
 
-    // Abrir dialog de criação
-    const buttons = screen.getAllByRole('button', { name: /nova categoria/i })
-    const headerButton = buttons.find(btn => !btn.closest('[role="dialog"]'))
-    await user.click(headerButton!)
+    // Clicar em Editar da primeira categoria
+    await user.click(screen.getByTestId('btn-editar-1'))
 
+    // Dialog aberto com titulo de edicao
     await waitFor(() => {
-      expect(screen.getByRole('dialog')).toBeInTheDocument()
+      expect(screen.getByText('Editar Categoria')).toBeInTheDocument()
     })
 
-    // Preencher formulário
-    const nomeInput = screen.getByLabelText(/^nome$/i)
-    const descricaoInput = screen.getByLabelText(/descrição/i)
-    const codigosInput = screen.getByLabelText(/códigos de documentos/i)
-    const formatoInput = screen.getByLabelText(/formato json/i)
+    // Campos populados
+    await waitFor(() => {
+      const nomeInput = screen.getByTestId('input-nome') as HTMLInputElement
+      expect(nomeInput.value).toBe('peticoes')
+      expect(nomeInput.disabled).toBe(true) // Nome e readonly em edicao
+    })
 
-    await user.clear(nomeInput)
-    await user.type(nomeInput, 'Nova Categoria')
-    await user.clear(descricaoInput)
-    await user.type(descricaoInput, 'Descrição da nova categoria')
-    await user.clear(codigosInput)
-    await user.type(codigosInput, '40, 50')
+    // Campo motivo deve aparecer
+    expect(screen.getByTestId('input-motivo')).toBeInTheDocument()
+  })
+
+  it('deve validar campos obrigatorios (nome + titulo)', async () => {
+    setupDefaultMocks()
+
+    const user = userEvent.setup()
+    render(<CategoriasJsonPage />)
+
+    await waitFor(() => {
+      expect(screen.getByText('Peticoes Iniciais')).toBeInTheDocument()
+    })
+
+    // Abrir dialog de criacao
+    await user.click(screen.getByTestId('btn-nova-categoria'))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('editor-dialog')).toBeInTheDocument()
+    })
+
+    // Tentar salvar sem preencher
+    await user.click(screen.getByTestId('btn-save'))
+
+    // Deve mostrar erro inline
+    await waitFor(() => {
+      expect(screen.getByTestId('save-error')).toBeInTheDocument()
+    })
+
+    // API nao deve ter sido chamada
+    expect(adminApi.post).not.toHaveBeenCalled()
+  })
+
+  it('deve salvar criacao com payload correto (number[], string)', async () => {
+    setupDefaultMocks()
+    vi.mocked(adminApi.post).mockResolvedValueOnce({
+      id: 10,
+      nome: 'nova_cat',
+      titulo: 'Nova Cat',
+    })
+
+    const user = userEvent.setup()
+    render(<CategoriasJsonPage />)
+
+    await waitFor(() => {
+      expect(screen.getByText('Peticoes Iniciais')).toBeInTheDocument()
+    })
+
+    // Abrir dialog de criacao
+    await user.click(screen.getByTestId('btn-nova-categoria'))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('editor-dialog')).toBeInTheDocument()
+    })
+
+    // Preencher campos
+    await user.type(screen.getByTestId('input-nome'), 'nova_cat')
+    await user.type(screen.getByTestId('input-titulo'), 'Nova Cat')
+
+    // Preencher JSON
+    const formatoInput = screen.getByTestId('textarea-formato')
     await user.clear(formatoInput)
-    await user.paste('{"campo": "string"}')
+    await user.paste('{"campo": "valor"}')
 
-    // Clicar em Criar
-    const criarButton = screen.getByRole('button', { name: /criar/i })
-    await user.click(criarButton)
+    // Salvar
+    await user.click(screen.getByTestId('btn-save'))
 
-    // Verificar se chamou API de criação
+    // Verificar payload
     await waitFor(() => {
       expect(adminApi.post).toHaveBeenCalledWith(
         '/admin/api/categorias-resumo-json',
         expect.objectContaining({
-          nome: 'Nova Categoria',
-          descricao: 'Descrição da nova categoria',
-          codigos_documento: ['40', '50'],
-          formato_json: { campo: 'string' },
-          ativo: true
+          nome: 'nova_cat',
+          titulo: 'Nova Cat',
+          codigos_documento: [],
+          formato_json: '{"campo": "valor"}',
+          ativo: true,
+          source_type: 'code',
         })
       )
     })
 
-    // Verificar se mostrou toast de sucesso
+    // Toast de sucesso
     expect(mockToast).toHaveBeenCalledWith(
-      expect.objectContaining({
-        title: 'Sucesso',
-        description: 'Categoria criada com sucesso'
-      })
+      expect.objectContaining({ title: 'Sucesso' })
     )
-
-    // Verificar se recarregou categorias
-    expect(adminApi.get).toHaveBeenCalledTimes(2)
   })
 
-  it('deve editar categoria existente', async () => {
-    const categoriaCompleta = {
-      ...mockCategorias[0],
-      codigos_documento: ['10', '20']
-    }
-
-    vi.mocked(adminApi.get)
-      .mockResolvedValueOnce(mockCategorias) // Lista inicial
-      .mockResolvedValueOnce(categoriaCompleta) // Detalhes da categoria
-      .mockResolvedValueOnce(mockCategorias) // Reload após editar
-
-    vi.mocked(adminApi.put).mockResolvedValueOnce({ id: 1 })
+  it('deve desativar (nao excluir) e ocultar botao para residual', async () => {
+    setupDefaultMocks()
+    vi.mocked(adminApi.delete).mockResolvedValueOnce({ message: 'ok' })
 
     const user = userEvent.setup()
     render(<CategoriasJsonPage />)
 
-    // Aguardar carregar
     await waitFor(() => {
-      expect(screen.getByText('Categoria Teste 1')).toBeInTheDocument()
+      expect(screen.getByText('Peticoes Iniciais')).toBeInTheDocument()
     })
 
-    // Clicar em Editar na primeira categoria
-    const editButtons = screen.getAllByRole('button', { name: /editar/i })
-    await user.click(editButtons[0])
+    // Botao Desativar presente para categoria normal
+    expect(screen.getByTestId('btn-desativar-1')).toBeInTheDocument()
 
-    // Aguardar dialog abrir
+    // Botao Desativar AUSENTE para residual
+    expect(screen.queryByTestId('btn-desativar-2')).not.toBeInTheDocument()
+
+    // Clicar em Desativar
+    await user.click(screen.getByTestId('btn-desativar-1'))
+
+    // Dialog de confirmacao com texto "desativar"
     await waitFor(() => {
-      expect(screen.getByRole('dialog')).toBeInTheDocument()
-      expect(screen.getByText(/editar categoria/i)).toBeInTheDocument()
+      expect(screen.getByText(/deseja desativar/i)).toBeInTheDocument()
     })
 
-    // Verificar se carregou dados da categoria
-    expect(adminApi.get).toHaveBeenCalledWith('/admin/api/categorias-resumo-json/1')
+    // Confirmar
+    await user.click(screen.getByTestId('btn-confirm-deactivate'))
 
-    // Aguardar campos serem populados
-    await waitFor(() => {
-      const nomeInput = screen.getByLabelText(/^nome$/i) as HTMLInputElement
-      expect(nomeInput.value).toBe('Categoria Teste 1')
-    }, { timeout: 3000 })
-
-    // Modificar nome
-    const nomeInput = screen.getByLabelText(/^nome$/i)
-    await user.clear(nomeInput)
-    await user.type(nomeInput, 'Categoria Editada')
-
-    // Clicar em Atualizar
-    const atualizarButton = screen.getByRole('button', { name: /atualizar/i })
-    await user.click(atualizarButton)
-
-    // Verificar se chamou API de atualização
-    await waitFor(() => {
-      expect(adminApi.put).toHaveBeenCalledWith(
-        '/admin/api/categorias-resumo-json/1',
-        expect.objectContaining({
-          nome: 'Categoria Editada'
-        })
-      )
-    })
-
-    // Verificar toast de sucesso
-    expect(mockToast).toHaveBeenCalledWith(
-      expect.objectContaining({
-        title: 'Sucesso',
-        description: 'Categoria atualizada com sucesso'
-      })
-    )
-  })
-
-  it('deve excluir categoria após confirmação', async () => {
-    vi.mocked(adminApi.get)
-      .mockResolvedValueOnce(mockCategorias) // Lista inicial
-      .mockResolvedValueOnce([mockCategorias[1]]) // Reload após excluir
-
-    vi.mocked(adminApi.delete).mockResolvedValueOnce(undefined)
-
-    const user = userEvent.setup()
-    render(<CategoriasJsonPage />)
-
-    // Aguardar carregar
-    await waitFor(() => {
-      expect(screen.getByText('Categoria Teste 1')).toBeInTheDocument()
-    })
-
-    // Clicar em Excluir na primeira categoria
-    const deleteButtons = screen.getAllByRole('button', { name: /excluir/i })
-    await user.click(deleteButtons[0])
-
-    // Aguardar dialog de confirmação
-    await waitFor(() => {
-      expect(screen.getByText(/confirmar exclusão/i)).toBeInTheDocument()
-    }, { timeout: 3000 })
-
-    // Confirmar exclusão - pegar botão dentro do dialog de confirmação
-    const dialogs = screen.getAllByRole('dialog')
-    const deleteDialog = dialogs.find(d => d.textContent?.includes('Confirmar Exclusão'))
-    expect(deleteDialog).toBeDefined()
-
-    const confirmarButtons = screen.getAllByRole('button', { name: /excluir/i })
-    const confirmarButton = confirmarButtons.find(btn => btn.closest('[role="dialog"]') === deleteDialog)
-    expect(confirmarButton).toBeDefined()
-    await user.click(confirmarButton!)
-
-    // Verificar se chamou API de exclusão
+    // Chamou DELETE (soft delete)
     await waitFor(() => {
       expect(adminApi.delete).toHaveBeenCalledWith('/admin/api/categorias-resumo-json/1')
     })
 
-    // Verificar toast de sucesso
+    // Toast correto
     expect(mockToast).toHaveBeenCalledWith(
-      expect.objectContaining({
-        title: 'Sucesso',
-        description: 'Categoria excluída com sucesso'
-      })
+      expect.objectContaining({ description: 'Categoria desativada com sucesso' })
     )
-
-    // Verificar se recarregou categorias
-    expect(adminApi.get).toHaveBeenCalledTimes(2)
   })
 
-  it('deve validar JSON inválido no formulário', async () => {
-    vi.mocked(adminApi.get).mockResolvedValueOnce(mockCategorias)
-
-    const user = userEvent.setup()
-    render(<CategoriasJsonPage />)
-
-    // Aguardar carregar
-    await waitFor(() => {
-      expect(screen.getByText('Categoria Teste 1')).toBeInTheDocument()
-    })
-
-    // Abrir dialog de criação
-    const buttons = screen.getAllByRole('button', { name: /nova categoria/i })
-    const headerButton = buttons.find(btn => !btn.closest('[role="dialog"]'))
-    await user.click(headerButton!)
-
-    await waitFor(() => {
-      expect(screen.getByRole('dialog')).toBeInTheDocument()
-    })
-
-    // Preencher com JSON inválido
-    const formatoInput = screen.getByLabelText(/formato json/i)
-    await user.clear(formatoInput)
-    await user.paste('{invalid json}')
-
-    // Tentar criar
-    const criarButton = screen.getByRole('button', { name: /criar/i })
-    await user.click(criarButton)
-
-    // Verificar mensagem de erro
-    await waitFor(() => {
-      expect(screen.getByText(/json inválido/i)).toBeInTheDocument()
-    })
-
-    // Verificar toast de erro
-    expect(mockToast).toHaveBeenCalledWith(
-      expect.objectContaining({
-        title: 'Erro',
-        description: 'Corrija os erros de JSON antes de salvar',
-        variant: 'destructive'
-      })
-    )
-
-    // Não deve ter chamado API de criação
-    expect(adminApi.post).not.toHaveBeenCalled()
-  })
-
-  it('deve exibir mensagem quando não há categorias', async () => {
-    vi.mocked(adminApi.get).mockResolvedValueOnce([])
+  it('deve exibir blacklist separada no topo com codigos numericos', async () => {
+    setupDefaultMocks()
 
     render(<CategoriasJsonPage />)
 
-    // Aguardar carregar
+    await waitFor(() => {
+      expect(screen.getByTestId('blacklist-card')).toBeInTheDocument()
+    })
+
+    // Codigos da blacklist
+    await waitFor(() => {
+      expect(screen.getByText('9508')).toBeInTheDocument()
+      expect(screen.getByText('61')).toBeInTheDocument()
+    })
+  })
+
+  it('deve exibir mensagem quando nao ha categorias', async () => {
+    vi.mocked(adminApi.get).mockImplementation((url: string) => {
+      if (url.includes('config/codigos-ignorados')) return Promise.resolve({ codigos: [] })
+      return Promise.resolve([])
+    })
+
+    render(<CategoriasJsonPage />)
+
     await waitFor(() => {
       expect(screen.getByText(/nenhuma categoria cadastrada/i)).toBeInTheDocument()
-    }, { timeout: 3000 })
+    })
   })
 
   it('deve exibir erro ao falhar no carregamento', async () => {
-    vi.mocked(adminApi.get).mockRejectedValueOnce(new Error('Erro de rede'))
+    vi.mocked(adminApi.get).mockRejectedValue(new Error('Erro de rede'))
 
     render(<CategoriasJsonPage />)
 
-    // Aguardar erro
     await waitFor(() => {
       expect(mockToast).toHaveBeenCalledWith(
         expect.objectContaining({
           title: 'Erro',
-          description: 'Erro ao carregar categorias',
           variant: 'destructive'
         })
       )
-    }, { timeout: 3000 })
+    })
+  })
+
+  it('deve alternar source_type entre codigos e fonte especial', async () => {
+    setupDefaultMocks()
+
+    const user = userEvent.setup()
+    render(<CategoriasJsonPage />)
+
+    await waitFor(() => {
+      expect(screen.getByText('Peticoes Iniciais')).toBeInTheDocument()
+    })
+
+    // Abrir editor
+    await user.click(screen.getByTestId('btn-nova-categoria'))
+
+    await waitFor(() => {
+      expect(screen.getByTestId('editor-dialog')).toBeInTheDocument()
+    })
+
+    // Por padrao, source_type = code
+    expect(screen.getByTestId('radio-source-code')).toBeChecked()
+    expect(screen.getByTestId('secao-codigos-documento')).toBeInTheDocument()
+
+    // Mudar para special
+    await user.click(screen.getByTestId('radio-source-special'))
+
+    // Secao de codigos some, fonte especial aparece
+    expect(screen.queryByTestId('secao-codigos-documento')).not.toBeInTheDocument()
+    expect(screen.getByTestId('secao-fonte-especial')).toBeInTheDocument()
   })
 })
