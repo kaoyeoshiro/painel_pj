@@ -24,7 +24,8 @@ import {
 import { HelpCircle, X } from 'lucide-react'
 
 import { useToast } from '@/hooks/use-toast'
-import { PageContainer } from '@/components/layout'
+import { PageContainer, PageHeader, AdminSubNav } from '@/components/layout'
+import { Tags } from 'lucide-react'
 
 // Estrutura de dados da categoria JSON
 interface CategoriaJSON {
@@ -317,25 +318,30 @@ export function CategoriasJsonPage() {
   }
 
   return (
-    <PageContainer>
-      {/* Header com botão de ajuda */}
-      <div className="flex items-center justify-between mb-6">
-        <div className="flex items-center gap-2">
-          <h1 className="text-2xl font-bold">Categorias JSON</h1>
-          {/* 22.5 - Botão Help (?) */}
-          <Button
-            variant="outline"
-            size="icon"
-            className="h-8 w-8 rounded-full"
-            onClick={() => setHelpDialogOpen(true)}
-            data-testid="help-button"
-            aria-label="Ajuda"
-          >
-            <HelpCircle className="h-4 w-4" />
-          </Button>
-        </div>
-        <Button onClick={handleCreate}>Nova Categoria</Button>
-      </div>
+    <PageContainer wide>
+      <PageHeader
+        title="Categorias JSON"
+        description="Categorias de resumo JSON para extração de dados"
+        icon={<Tags className="h-5 w-5" />}
+        backTo="/dashboard"
+        actions={
+          <div className="flex items-center gap-2">
+            <Button
+              variant="outline"
+              size="icon"
+              className="h-8 w-8 rounded-full"
+              onClick={() => setHelpDialogOpen(true)}
+              data-testid="help-button"
+              aria-label="Ajuda"
+            >
+              <HelpCircle className="h-4 w-4" />
+            </Button>
+            <Button onClick={handleCreate}>Nova Categoria</Button>
+          </div>
+        }
+      />
+
+      <AdminSubNav />
 
       {/* Loading */}
       {loading && (

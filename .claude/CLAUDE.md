@@ -3,6 +3,34 @@
 > Este arquivo contem as regras que o Claude deve seguir SEMPRE ao trabalhar neste repositorio.
 > **LEIA ESTE ARQUIVO ANTES DE QUALQUER ACAO.**
 
+## Memoria Persistente (mem0)
+
+Este repositorio usa **mem0** como memoria persistente entre sessoes. O mem0 armazena decisoes arquiteturais, pitfalls, regras de seguranca e contexto acumulado do projeto.
+
+### Regras de uso do mem0
+
+1. **SEMPRE consultar no inicio**: Ao comecar qualquer tarefa, usar `search-memories` com query relevante (ex: "seguranca", "extrator autos", "gerador pecas", "pitfalls") para recuperar contexto.
+2. **Atualizar ao aprender algo novo**: Quando descobrir um bug, pitfall, decisao arquitetural ou padrao importante, salvar no mem0 via `add-memory`.
+3. **Corrigir memorias desatualizadas**: Se uma memoria no mem0 estiver errada ou obsoleta, adicionar uma nova com a informacao correta (o mem0 atualiza automaticamente).
+4. **Prefixar com "Portal PGE -"**: Todas as memorias devem comecar com `Portal PGE -` para facilitar busca.
+5. **Granularidade**: Uma memoria por topico (nao misturar assuntos diferentes na mesma entrada).
+
+### Quando consultar
+
+- Antes de modificar qualquer sistema (`search-memories` com nome do sistema)
+- Antes de criar endpoints de IA (`search-memories` com "seguranca" ou "rate limiting")
+- Ao encontrar um erro estranho (`search-memories` com "pitfalls")
+- Ao trabalhar com banco de dados (`search-memories` com "database")
+- Ao lidar com TJ-MS, BERT, uploads (`search-memories` com o topico)
+
+### Quando salvar
+
+- Descobriu um bug e a causa raiz
+- Implementou uma decisao arquitetural relevante
+- Encontrou um pitfall que pode se repetir
+- Criou um padrao novo que deve ser seguido
+- Alterou limites, constantes ou contratos entre modulos
+
 ## Como Trabalhar Neste Repositorio
 
 ### Checklist Obrigatorio
@@ -10,6 +38,7 @@
 Antes de fazer qualquer alteracao:
 
 - [ ] Leu este arquivo (CLAUDE.md)
+- [ ] Consultou o mem0 (`search-memories`) para contexto relevante
 - [ ] Identificou qual sistema sera afetado
 - [ ] Consultou a documentacao do sistema em `docs/sistemas/<sistema>.md`
 - [ ] Verificou se ha regras de negocio que podem ser afetadas
@@ -222,6 +251,20 @@ from .models import MeuModelo
 5. **NAO** ignorar erros (sempre logar)
 6. **NAO** criar arquivos temporarios sem limpeza
 7. **NAO** usar `print()` (usar `logger`)
+
+## Frontend React SPA (frontend-react/)
+
+> Convencoes estabelecidas na revisao da branch `feat/react-spa`. Ver ADR-0013 para detalhes.
+
+| Regra | Detalhes |
+|-------|----------|
+| Markdown | Sempre usar `useMarkdown` hook (retorna `{ html }`) — NAO usar `marked()` direto |
+| Dialog | Sempre usar `<DialogContent>` dentro de `<Dialog>` — divs custom nao funcionam |
+| Select | Para `<option>` nativo: usar `<select>` HTML — Radix Select requer `SelectItem` |
+| API paths | `createApiClient('/auth')` ja prepende — NAO duplicar prefix nas chamadas |
+| Zustand | Destruturar apenas propriedades que existem na interface do store |
+| Effects | Separar cleanup de intervals (`[]`) e recursos visuais (`[dep]`) em effects distintos |
+| console.log | Remover antes de merge — `console.warn`/`console.error` para erros sao OK |
 
 ## Resolucao de Problemas Comuns
 

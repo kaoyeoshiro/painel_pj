@@ -46,13 +46,15 @@ MODELO_AGENTE3_PADRAO: str = "gemini-3-pro-preview"
 # CÓDIGOS DE DOCUMENTO TJ-MS
 # =============================================================================
 
-# Códigos de documentos que devem pegar apenas o primeiro (petição inicial)
-CODIGOS_PRIMEIRO_DOC: FrozenSet[int] = frozenset({500, 510, 9500})
+# NOTA: Códigos de Petição Inicial são config-driven (vêm do banco de dados
+# via CategoriaDocumento com is_primeiro_documento=True). Não hardcodar aqui.
+# Ver: services_source_resolver.py (SourceResolver) e models_config_pecas.py
 
 # Códigos de documentos NAT (Parecer Técnico)
 CODIGOS_NAT: FrozenSet[int] = frozenset({60, 61, 62, 63, 64, 65, 9060})
 
-# Códigos ignorados (não processar)
+# Códigos ignorados (não processar) - valor de referência/documentação.
+# O valor real vem do banco via codigos_ignorar_extracao_json.
 CODIGOS_IGNORADOS: FrozenSet[int] = frozenset({10})  # Código 10 = Documento anexo genérico
 
 

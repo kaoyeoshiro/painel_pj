@@ -1,7 +1,5 @@
 import { useState, useEffect, useCallback, useRef, useMemo } from 'react'
-import { useNavigate } from '@tanstack/react-router'
 import {
-  ArrowLeft,
   Brain,
   Play,
   Square,
@@ -30,6 +28,9 @@ import {
   Info,
   X,
 } from 'lucide-react'
+import { SystemTopbar } from '@/components/layout/SystemTopbar'
+import { LayoutGrid } from 'lucide-react'
+import { Link } from '@tanstack/react-router'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -305,7 +306,6 @@ function logLevelColor(level: LogEntry['level']): string {
 // ============================================================================
 
 export function BertTrainingPage() {
-  const navigate = useNavigate()
   const { toast } = useToast()
 
   // --- Estado global ---
@@ -894,54 +894,35 @@ export function BertTrainingPage() {
   // ========================================================================
 
   return (
-    <div className="flex min-h-screen flex-col bg-gray-50">
-      {/* ================================================================ */}
-      {/* Header com botao de ajuda (12.11)                                */}
-      {/* ================================================================ */}
-      <header className="flex items-center justify-between border-b bg-white px-6 py-3 shadow-sm">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate({ to: '/dashboard' })} data-testid="btn-voltar-dashboard">
-            <ArrowLeft className="h-5 w-5" />
-          </Button>
-          <div className="flex items-center gap-2 border-l border-gray-300 pl-4">
-            <Brain className="h-6 w-6 text-primary" />
-            <div>
-              <h1 className="text-lg font-semibold">Treinamento BERT</h1>
-              <span className="text-xs text-gray-500">Classificador de Documentos por ML</span>
-            </div>
-          </div>
-        </div>
+    <div className="flex flex-col h-screen bg-gray-50">
+      <SystemTopbar
+        title="Treinamento de IA"
+        subtitle="Ensine o computador a classificar documentos"
+        actions={
+          <>
+            <button
+              className="p-2 text-gray-400 hover:text-gray-600 transition-colors rounded-md hover:bg-gray-50"
+              onClick={() => setShowHelpDialog(true)}
+              title="Ajuda"
+              data-testid="btn-ajuda-onboarding"
+            >
+              <HelpCircle className="h-5 w-5" />
+            </button>
+            <Link
+              to="/dashboard"
+              className="p-2 text-gray-400 hover:text-gray-600 transition-colors rounded-md hover:bg-gray-50"
+              title="Dashboard"
+            >
+              <LayoutGrid className="h-5 w-5" />
+            </Link>
+          </>
+        }
+      />
 
-        <div className="flex items-center gap-2">
-          {/* 12.10 - Debug Conexao Worker */}
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => {
-              setShowDebugModal(true)
-              fetchWorkerStatus()
-            }}
-            data-testid="btn-debug-conexao"
-          >
-            <Wifi className="mr-2 h-4 w-4" />
-            Debug Conexao
-          </Button>
+      <main className="flex-1 overflow-y-auto">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-0">
 
-          {/* 12.11 - Botao de Ajuda/Onboarding */}
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setShowHelpDialog(true)}
-            data-testid="btn-ajuda-onboarding"
-          >
-            <HelpCircle className="h-5 w-5" />
-          </Button>
-        </div>
-      </header>
-
-      {/* Conteudo principal */}
-      <main className="flex-1 p-6">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
           <TabsList className="grid w-full grid-cols-4">
             <TabsTrigger value="novo-treino" className="gap-2" data-testid="tab-novo-treino">
               <Play className="h-4 w-4" />
@@ -1161,17 +1142,17 @@ export function BertTrainingPage() {
                   <Button
                     onClick={iniciarTreinamento}
                     disabled={startingTraining || !selectedDataset}
-                    className="w-full"
+                    className="w-full h-12 text-base bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white"
                     data-testid="btn-iniciar-treinamento"
                   >
                     {startingTraining ? (
                       <>
-                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        <Loader2 className="mr-2 h-5 w-5 animate-spin" />
                         Iniciando...
                       </>
                     ) : (
                       <>
-                        <Play className="mr-2 h-4 w-4" />
+                        <Play className="mr-2 h-5 w-5" />
                         Iniciar Treinamento
                       </>
                     )}
@@ -2050,8 +2031,6 @@ export function BertTrainingPage() {
             </Card>
           </TabsContent>
         </Tabs>
-      </main>
-
       {/* ================================================================ */}
       {/* MODAIS GLOBAIS                                                   */}
       {/* ================================================================ */}
@@ -2678,6 +2657,8 @@ export function BertTrainingPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+        </div>
+      </main>
     </div>
   )
 }

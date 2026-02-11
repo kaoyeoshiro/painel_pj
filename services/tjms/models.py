@@ -38,8 +38,8 @@ class ConsultaOptions:
 @dataclass
 class DownloadOptions:
     """Opcoes de download customizaveis por sistema."""
-    batch_size: int = 5
-    max_paralelo: int = 4
+    batch_size: int = 20          # Docs por request SOAP (era 5, aumentado para reduzir round-trips)
+    max_paralelo: int = 4         # Batches SOAP simultaneos
     timeout: Optional[float] = None  # None = usar padrao da config
     extrair_texto: bool = False
     converter_rtf: bool = True
@@ -97,6 +97,7 @@ class DocumentoMetadata:
     data_juntada: Optional[datetime] = None
     mimetype: Optional[str] = None
     nivel_sigilo: int = 0
+    ordem: int = 0  # Ordem de insercao no processo (do XML ou indice)
 
     def to_dict(self) -> Dict[str, Any]:
         return {
@@ -107,6 +108,7 @@ class DocumentoMetadata:
             "data_juntada": self.data_juntada.isoformat() if self.data_juntada else None,
             "mimetype": self.mimetype,
             "nivel_sigilo": self.nivel_sigilo,
+            "ordem": self.ordem,
         }
 
 

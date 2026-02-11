@@ -16,6 +16,7 @@ import {
   AlertTriangle,
   CheckCircle2,
   Circle,
+  Sparkles,
 } from 'lucide-react'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -27,9 +28,9 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { Textarea } from '@/components/ui/textarea'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
-import { PageContainer } from '@/components/layout/PageContainer'
-import { PageHeader } from '@/components/layout/PageHeader'
-import { useAuthStore } from '@/stores/auth-store'
+import { SystemTopbar } from '@/components/layout/SystemTopbar'
+import { LayoutGrid } from 'lucide-react'
+import { Link } from '@tanstack/react-router'
 import { useApiQuery } from '@/hooks/useApiQuery'
 import { useMarkdown } from '@/hooks/useMarkdown'
 import { relatorioCumprimentoApi, getToken } from '@/lib/api'
@@ -62,8 +63,6 @@ const ETAPAS_INICIAIS: EtapaPipeline[] = [
 ]
 
 export function RelatorioCumprimentoPage() {
-  const user = useAuthStore((state) => state.user)
-
   // Estado principal da pagina (maquina de estados)
   const [pageState, setPageState] = useState<PageState>('idle')
 
@@ -491,21 +490,17 @@ export function RelatorioCumprimentoPage() {
   )
 
   return (
-    <PageContainer>
-      <PageHeader
+    <div className="flex flex-col h-screen bg-gray-50">
+      <SystemTopbar
         title="Relatorio de Cumprimento"
-        subtitle="Cumprimento de Sentenca"
-        backTo="/dashboard"
+        subtitle="Relatorio Inicial para Cumprimento de Sentenca"
         actions={
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-muted-foreground">{user?.full_name}</span>
-            {/* Drawer de historico */}
+          <>
             <Sheet>
               <SheetTrigger asChild>
-                <Button variant="outline" size="sm">
-                  <History className="mr-2 h-4 w-4" />
-                  Historico
-                </Button>
+                <button className="p-2 text-gray-400 hover:text-gray-600 transition-colors rounded-md hover:bg-gray-50" title="Histórico">
+                  <History className="h-5 w-5" />
+                </button>
               </SheetTrigger>
               <SheetContent>
                 <SheetHeader>
@@ -559,65 +554,72 @@ export function RelatorioCumprimentoPage() {
                 </ScrollArea>
               </SheetContent>
             </Sheet>
-          </div>
+            <Link
+              to="/dashboard"
+              className="p-2 text-gray-400 hover:text-gray-600 transition-colors rounded-md hover:bg-gray-50"
+              title="Dashboard"
+            >
+              <LayoutGrid className="h-5 w-5" />
+            </Link>
+          </>
         }
       />
 
-      <div className="space-y-6">
+      <main className="flex-1 overflow-y-auto">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
         {/* Card de Entrada - Numero do Processo */}
         <Card>
           <CardHeader>
-            <CardTitle>Numero do Processo (CNJ)</CardTitle>
-            <CardDescription>
-              Informe o numero do processo de cumprimento de sentenca no formato CNJ
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex gap-4">
-              <div className="flex-1">
-                <Label htmlFor="numero-cnj">Numero do Processo</Label>
-                <Input
-                  id="numero-cnj"
-                  value={numeroCnj}
-                  onChange={(e) => setNumeroCnj(e.target.value)}
-                  placeholder="0000000-00.0000.0.00.0000"
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && pageState !== 'streaming') {
-                      handleIniciarGeracao()
-                    }
-                  }}
-                  disabled={pageState === 'streaming'}
-                />
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-emerald-500 to-green-600">
+                <FileText className="h-5 w-5 text-white" />
               </div>
-              <div className="flex items-end gap-2">
-                {pageState === 'completed' && (
-                  <Button variant="outline" onClick={handleReiniciar}>
-                    <RotateCw className="mr-2 h-4 w-4" />
-                    Novo
-                  </Button>
-                )}
-                <Button
-                  onClick={handleIniciarGeracao}
-                  disabled={
-                    pageState === 'streaming' ||
-                    !numeroCnj.trim() ||
-                    (processoExistente?.existe === true && !sobrescrever)
-                  }
-                >
-                  {pageState === 'streaming' ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Processando
-                    </>
-                  ) : (
-                    <>
-                      <Play className="mr-2 h-4 w-4" />
-                      Gerar Relatorio
-                    </>
-                  )}
-                </Button>
+              <div>
+                <CardTitle>Gerar Relatorio de Cumprimento</CardTitle>
               </div>
             </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="numero-cnj">Numero do Processo de Cumprimento (CNJ)</Label>
+              <Input
+                id="numero-cnj"
+                value={numeroCnj}
+                onChange={(e) => setNumeroCnj(e.target.value)}
+                placeholder="0000000-00.2024.8.12.0001"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && pageState !== 'streaming') {
+                    handleIniciarGeracao()
+                  }
+                }}
+                disabled={pageState === 'streaming'}
+              />
+              <p className="text-xs text-muted-foreground">
+                Digite o numero do processo de cumprimento de sentenca
+              </p>
+            </div>
+
+            <Button
+              onClick={handleIniciarGeracao}
+              className="w-full h-12 text-base bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white"
+              disabled={
+                pageState === 'streaming' ||
+                !numeroCnj.trim() ||
+                (processoExistente?.existe === true && !sobrescrever)
+              }
+            >
+              {pageState === 'streaming' ? (
+                <>
+                  <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                  Processando...
+                </>
+              ) : (
+                <>
+                  <Sparkles className="mr-2 h-5 w-5" />
+                  Gerar Relatorio
+                </>
+              )}
+            </Button>
 
             {/* Aviso de processo existente */}
             {processoExistente?.existe && pageState === 'idle' && (
@@ -985,8 +987,9 @@ export function RelatorioCumprimentoPage() {
             </Card>
           </>
         )}
-      </div>
-    </PageContainer>
+        </div>
+      </main>
+    </div>
   )
 }
 

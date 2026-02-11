@@ -4,17 +4,24 @@ const API_BASE = ''
 
 /** Busca token do localStorage */
 export function getToken(): string | null {
-  return localStorage.getItem('access_token')
+  return (
+    localStorage.getItem('access_token') ||
+    localStorage.getItem('auth_token') ||
+    sessionStorage.getItem('auth_token')
+  )
 }
 
 /** Salva token no localStorage */
 export function setToken(token: string): void {
   localStorage.setItem('access_token', token)
+  localStorage.setItem('auth_token', token)
 }
 
 /** Remove token do localStorage */
 export function clearToken(): void {
   localStorage.removeItem('access_token')
+  localStorage.removeItem('auth_token')
+  sessionStorage.removeItem('auth_token')
 }
 
 type ResponseType = 'json' | 'blob' | 'text'

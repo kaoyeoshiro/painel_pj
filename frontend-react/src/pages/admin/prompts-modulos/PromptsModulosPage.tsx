@@ -7,26 +7,33 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { PageContainer, PageHeader, SectionCard } from '@/components/layout'
+import { PageContainer, PageHeader, SectionCard, AdminSubNav } from '@/components/layout'
 import {
   ChevronDown, ChevronRight, Edit2, Trash2, ToggleLeft, ToggleRight,
   Plus, Search, Download, Upload, History, Settings, RotateCcw,
+  FileText, Lightbulb, X,
 } from 'lucide-react'
-// Usa native <select> para dropdowns simples com <option>
 
-// Interfaces de dados
+// ---- Interfaces ----
+
 interface PromptModulo {
   id: number
   titulo: string
+  nome: string
   conteudo: string
   categoria: string
+  subcategoria: string | null
+  subcategoria_ids?: number[]
+  subcategorias_nomes?: string[]
   group_id: number | null
   subgroup_id: number | null
   tags: string[]
-  tipo: 'conteudo' | 'instrucao' | 'exemplo'
+  tipo: 'base' | 'peca' | 'conteudo'
   ordem: number
   ativo: boolean
   modo_ativacao: 'llm' | 'deterministic'
+  effective_activation_mode?: string
+  versao: number
   created_at: string
   updated_at: string
   updated_by: string | null
@@ -68,33 +75,211 @@ interface Subcategoria {
   descricao: string | null
 }
 
-type TipoFiltro = 'conteudo' | 'instrucao' | 'exemplo' | null
+type TipoPrompt = 'base' | 'peca' | 'conteudo'
+type TipoFiltro = TipoPrompt | null
 type ModoFiltro = 'llm' | 'deterministic' | null
-type StatusFiltro = 'ativo' | 'inativo' | null
 
-// ---- Helpers de cor (badge) ----
+// ---- Configuração visual por tipo (alinhado ao legado) ----
 
-function getTipoBadgeColor(tipo: string) {
+const TIPO_CONFIG: Record<TipoPrompt, {
+  label: string
+  Icon: typeof Settings
+  bgHeader: string
+  borderHeader: string
+  iconBg: string
+  iconColor: string
+  titleColor: string
+  countBg: string
+  countColor: string
+  badgeBg: string
+  badgeColor: string
+}> = {
+  base: {
+    label: 'Base (Prompt do Sistema)',
+    Icon: Settings,
+    bgHeader: 'bg-indigo-50',
+    borderHeader: 'border-indigo-100',
+    iconBg: 'bg-indigo-100',
+    iconColor: 'text-indigo-600',
+    titleColor: 'text-indigo-900',
+    countBg: 'bg-indigo-200',
+    countColor: 'text-indigo-700',
+    badgeBg: 'bg-indigo-100',
+    badgeColor: 'text-indigo-700',
+  },
+  peca: {
+    label: 'Peças (Estrutura/Template)',
+    Icon: FileText,
+    bgHeader: 'bg-green-50',
+    borderHeader: 'border-green-100',
+    iconBg: 'bg-green-100',
+    iconColor: 'text-green-600',
+    titleColor: 'text-green-900',
+    countBg: 'bg-green-200',
+    countColor: 'text-green-700',
+    badgeBg: 'bg-green-100',
+    badgeColor: 'text-green-700',
+  },
+  conteudo: {
+    label: 'Conteúdo (Teses e Argumentos)',
+    Icon: Lightbulb,
+    bgHeader: 'bg-orange-50',
+    borderHeader: 'border-orange-100',
+    iconBg: 'bg-orange-100',
+    iconColor: 'text-orange-600',
+    titleColor: 'text-orange-900',
+    countBg: 'bg-orange-200',
+    countColor: 'text-orange-700',
+    badgeBg: 'bg-orange-100',
+    badgeColor: 'text-orange-700',
+  },
+}
+
+const TIPO_ORDER: TipoPrompt[] = ['base', 'peca', 'conteudo']
+
+function getTipoLabel(tipo: string) {
   switch (tipo) {
-    case 'conteudo': return 'bg-blue-100 text-blue-700'
-    case 'instrucao': return 'bg-purple-100 text-purple-700'
-    case 'exemplo': return 'bg-green-100 text-green-700'
-    default: return 'bg-gray-100 text-gray-700'
+    case 'base': return 'Base'
+    case 'peca': return 'Peça'
+    case 'conteudo': return 'Conteúdo'
+    default: return tipo
   }
 }
 
-function getModoBadgeColor(modo: string) {
-  switch (modo) {
-    case 'deterministic': return 'bg-emerald-100 text-emerald-700'
-    case 'llm': return 'bg-sky-100 text-sky-700'
-    default: return 'bg-gray-100 text-gray-700'
+function getModoBadge(modo: string) {
+  if (modo === 'deterministic') {
+    return { label: 'Regra', className: 'bg-amber-100 text-amber-700' }
   }
+  return { label: 'LLM', className: 'bg-blue-100 text-blue-700' }
 }
 
-// ---- Componente de Grupo por Categoria (colapsável) ----
+// ---- Componente de item de módulo ----
 
-interface CategoriaGroupProps {
-  categoria: string
+interface ModuloItemProps {
+  modulo: PromptModulo
+  showCategoria?: boolean
+  showSubcategoria?: boolean
+  showModoBadge?: boolean
+  onEdit: (m: PromptModulo) => void
+  onDelete: (m: PromptModulo) => void
+  onToggle: (m: PromptModulo) => void
+  onHistory: (m: PromptModulo) => void
+}
+
+function ModuloItem({ modulo, showCategoria, showSubcategoria = true, showModoBadge = true, onEdit, onDelete, onToggle, onHistory }: ModuloItemProps) {
+  const modoEfetivo = modulo.effective_activation_mode || modulo.modo_ativacao
+  const modo = getModoBadge(modoEfetivo)
+
+  return (
+    <li
+      className={`flex items-start gap-3 px-4 py-3 hover:bg-gray-50 transition-colors ${
+        !modulo.ativo ? 'opacity-50' : ''
+      }`}
+    >
+      {/* Conteúdo principal */}
+      <div className="flex-1 min-w-0">
+        {/* Linha 1: Título + badges */}
+        <div className="flex items-center gap-2 flex-wrap">
+          <span className="font-medium text-gray-800">{modulo.titulo}</span>
+
+          {/* Badge de subcategoria (campo texto) */}
+          {showSubcategoria && modulo.subcategoria && (
+            <span className="px-2 py-0.5 text-xs bg-purple-100 text-purple-700 rounded-full">
+              {modulo.subcategoria}
+            </span>
+          )}
+
+          {/* Badge de status */}
+          {modulo.ativo ? (
+            <span className="px-2 py-0.5 text-xs bg-green-100 text-green-700 rounded-full">Ativo</span>
+          ) : (
+            <span className="px-2 py-0.5 text-xs bg-gray-100 text-gray-500 rounded-full">Inativo</span>
+          )}
+
+          {/* Badge de modo de ativação */}
+          {showModoBadge && (
+            <span className={`px-2 py-0.5 text-xs rounded-full ${modo.className}`}>
+              {modo.label}
+            </span>
+          )}
+
+          {/* Badge de categoria (para base/peca) */}
+          {showCategoria && modulo.categoria && (
+            <span className="px-2 py-0.5 text-xs bg-gray-100 text-gray-600 rounded">
+              {modulo.categoria}
+            </span>
+          )}
+
+          {/* Versão */}
+          <span className="text-xs text-gray-400">v{modulo.versao}</span>
+        </div>
+
+        {/* Linha 2: Código (nome) + subcategorias M2M */}
+        <div className="flex items-center gap-2 mt-0.5 flex-wrap">
+          {modulo.nome && (
+            <code className="text-xs bg-gray-100 px-1.5 py-0.5 rounded font-mono text-gray-600">
+              {modulo.nome}
+            </code>
+          )}
+          {modulo.subcategorias_nomes && modulo.subcategorias_nomes.length > 0 && (
+            <>
+              {modulo.subcategorias_nomes.map((nome, i) => (
+                <span key={i} className="px-1.5 py-0.5 text-[10px] bg-purple-50 text-purple-600 rounded-full">
+                  {nome}
+                </span>
+              ))}
+            </>
+          )}
+        </div>
+      </div>
+
+      {/* Ações */}
+      <div className="flex items-center gap-1 flex-shrink-0 pt-0.5">
+        <button
+          type="button"
+          onClick={() => onToggle(modulo)}
+          title={modulo.ativo ? 'Desativar' : 'Ativar'}
+          className="p-1.5 rounded-md hover:bg-gray-200 transition-colors"
+        >
+          {modulo.ativo ? (
+            <ToggleRight className="h-4 w-4 text-green-600" />
+          ) : (
+            <ToggleLeft className="h-4 w-4 text-gray-400" />
+          )}
+        </button>
+        <button
+          type="button"
+          onClick={() => onHistory(modulo)}
+          title="Histórico"
+          className="p-1.5 rounded-md hover:bg-gray-200 transition-colors"
+        >
+          <History className="h-4 w-4 text-gray-500" />
+        </button>
+        <button
+          type="button"
+          onClick={() => onEdit(modulo)}
+          title="Editar"
+          className="p-1.5 rounded-md hover:bg-gray-200 transition-colors"
+        >
+          <Edit2 className="h-4 w-4 text-blue-600" />
+        </button>
+        <button
+          type="button"
+          onClick={() => onDelete(modulo)}
+          title="Excluir"
+          className="p-1.5 rounded-md hover:bg-red-100 transition-colors"
+        >
+          <Trash2 className="h-4 w-4 text-red-500" />
+        </button>
+      </div>
+    </li>
+  )
+}
+
+// ---- Seção de tipo simples (Base e Peça) ----
+
+interface TipoSectionProps {
+  tipo: TipoPrompt
   modulos: PromptModulo[]
   onEdit: (m: PromptModulo) => void
   onDelete: (m: PromptModulo) => void
@@ -102,11 +287,62 @@ interface CategoriaGroupProps {
   onHistory: (m: PromptModulo) => void
 }
 
-function CategoriaGroup({ categoria, modulos, onEdit, onDelete, onToggle, onHistory }: CategoriaGroupProps) {
-  const [aberto, setAberto] = useState(true)
+function TipoSection({ tipo, modulos, onEdit, onDelete, onToggle, onHistory }: TipoSectionProps) {
+  const config = TIPO_CONFIG[tipo]
+  const { Icon } = config
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+      {/* Header do tipo */}
+      <div className={`flex items-center gap-3 px-4 py-3 ${config.bgHeader} border-b ${config.borderHeader}`}>
+        <div className={`flex items-center justify-center w-8 h-8 ${config.iconBg} rounded-lg`}>
+          <Icon className={`h-4 w-4 ${config.iconColor}`} />
+        </div>
+        <h3 className={`font-semibold ${config.titleColor}`}>{config.label}</h3>
+        <span className={`ml-auto text-xs ${config.countBg} ${config.countColor} px-2 py-0.5 rounded-full font-medium`}>
+          {modulos.length}
+        </span>
+      </div>
+
+      {/* Lista de módulos */}
+      <ul className="divide-y divide-gray-100">
+        {modulos
+          .sort((a, b) => a.ordem - b.ordem)
+          .map((modulo) => (
+            <ModuloItem
+              key={modulo.id}
+              modulo={modulo}
+              showCategoria={true}
+              showSubcategoria={true}
+              showModoBadge={false}
+              onEdit={onEdit}
+              onDelete={onDelete}
+              onToggle={onToggle}
+              onHistory={onHistory}
+            />
+          ))}
+      </ul>
+    </div>
+  )
+}
+
+// ---- Seção de Conteúdo com categorias colapsáveis ----
+
+interface CategoriaGroupProps {
+  categoria: string
+  modulos: PromptModulo[]
+  subcategoriasNomes: string[]
+  onEdit: (m: PromptModulo) => void
+  onDelete: (m: PromptModulo) => void
+  onToggle: (m: PromptModulo) => void
+  onHistory: (m: PromptModulo) => void
+}
+
+function CategoriaGroup({ categoria, modulos, subcategoriasNomes, onEdit, onDelete, onToggle, onHistory }: CategoriaGroupProps) {
+  const [aberto, setAberto] = useState(true)
+
+  return (
+    <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
       {/* Cabeçalho da categoria — clicável para colapsar */}
       <button
         type="button"
@@ -118,10 +354,20 @@ function CategoriaGroup({ categoria, modulos, onEdit, onDelete, onToggle, onHist
         ) : (
           <ChevronRight className="h-4 w-4 text-gray-500 flex-shrink-0" />
         )}
-        <span className="font-semibold text-gray-800">{categoria}</span>
-        <Badge variant="secondary" className="ml-auto text-xs">
-          {modulos.length}
+        <span className="font-semibold text-gray-800">=== {categoria} ===</span>
+        <Badge variant="secondary" className="text-xs">
+          {modulos.length} módulo{modulos.length !== 1 ? 's' : ''}
         </Badge>
+        {/* Subcategorias únicas como tags no cabeçalho */}
+        {subcategoriasNomes.length > 0 && (
+          <div className="flex items-center gap-1 ml-2 flex-wrap">
+            {subcategoriasNomes.map((nome, i) => (
+              <span key={i} className="px-1.5 py-0.5 text-[10px] bg-purple-50 text-purple-600 rounded-full">
+                {nome}
+              </span>
+            ))}
+          </div>
+        )}
       </button>
 
       {/* Lista de módulos */}
@@ -130,77 +376,17 @@ function CategoriaGroup({ categoria, modulos, onEdit, onDelete, onToggle, onHist
           {modulos
             .sort((a, b) => a.ordem - b.ordem)
             .map((modulo) => (
-              <li
+              <ModuloItem
                 key={modulo.id}
-                className={`flex items-center gap-3 px-4 py-3 hover:bg-gray-50 transition-colors ${
-                  !modulo.ativo ? 'opacity-50' : ''
-                }`}
-              >
-                {/* Ordem */}
-                <span className="text-xs text-gray-400 w-6 text-right flex-shrink-0">
-                  #{modulo.ordem}
-                </span>
-
-                {/* Título + tags */}
-                <div className="flex-1 min-w-0">
-                  <span className="font-medium text-gray-900 truncate block">
-                    {modulo.titulo}
-                  </span>
-                  {modulo.tags.length > 0 && (
-                    <span className="text-xs text-gray-400 truncate block mt-0.5">
-                      {modulo.tags.join(', ')}
-                    </span>
-                  )}
-                </div>
-
-                {/* Badges: tipo + modo */}
-                <span className={`text-xs font-medium px-2 py-0.5 rounded-full flex-shrink-0 ${getTipoBadgeColor(modulo.tipo)}`}>
-                  {modulo.tipo}
-                </span>
-                <span className={`text-xs font-medium px-2 py-0.5 rounded-full flex-shrink-0 ${getModoBadgeColor(modulo.modo_ativacao)}`}>
-                  {modulo.modo_ativacao === 'deterministic' ? 'regra' : 'LLM'}
-                </span>
-
-                {/* Ações */}
-                <div className="flex items-center gap-1 flex-shrink-0">
-                  <button
-                    type="button"
-                    onClick={() => onToggle(modulo)}
-                    title={modulo.ativo ? 'Desativar' : 'Ativar'}
-                    className="p-1.5 rounded-md hover:bg-gray-200 transition-colors"
-                  >
-                    {modulo.ativo ? (
-                      <ToggleRight className="h-4 w-4 text-green-600" />
-                    ) : (
-                      <ToggleLeft className="h-4 w-4 text-gray-400" />
-                    )}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => onHistory(modulo)}
-                    title="Histórico"
-                    className="p-1.5 rounded-md hover:bg-gray-200 transition-colors"
-                  >
-                    <History className="h-4 w-4 text-gray-500" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => onEdit(modulo)}
-                    title="Editar"
-                    className="p-1.5 rounded-md hover:bg-gray-200 transition-colors"
-                  >
-                    <Edit2 className="h-4 w-4 text-gray-500" />
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => onDelete(modulo)}
-                    title="Excluir"
-                    className="p-1.5 rounded-md hover:bg-red-100 transition-colors"
-                  >
-                    <Trash2 className="h-4 w-4 text-red-500" />
-                  </button>
-                </div>
-              </li>
+                modulo={modulo}
+                showCategoria={false}
+                showSubcategoria={true}
+                showModoBadge={true}
+                onEdit={onEdit}
+                onDelete={onDelete}
+                onToggle={onToggle}
+                onHistory={onHistory}
+              />
             ))}
         </ul>
       )}
@@ -208,13 +394,120 @@ function CategoriaGroup({ categoria, modulos, onEdit, onDelete, onToggle, onHist
   )
 }
 
+// ---- Multi-select de Assuntos ----
+
+interface AssuntoMultiSelectProps {
+  subcategorias: Subcategoria[]
+  selected: number[]
+  onChange: (ids: number[]) => void
+}
+
+function AssuntoMultiSelect({ subcategorias, selected, onChange }: AssuntoMultiSelectProps) {
+  const [open, setOpen] = useState(false)
+  const [search, setSearch] = useState('')
+  const ref = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    function handler(e: MouseEvent) {
+      if (ref.current && !ref.current.contains(e.target as Node)) {
+        setOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handler)
+    return () => document.removeEventListener('mousedown', handler)
+  }, [])
+
+  const filtered = subcategorias.filter(s =>
+    s.nome.toLowerCase().includes(search.toLowerCase())
+  )
+
+  function toggle(id: number) {
+    if (selected.includes(id)) {
+      onChange(selected.filter(x => x !== id))
+    } else {
+      onChange([...selected, id])
+    }
+  }
+
+  return (
+    <div ref={ref} className="relative flex-shrink-0">
+      <button
+        type="button"
+        onClick={() => setOpen(!open)}
+        className="w-[170px] px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white text-left flex items-center justify-between"
+      >
+        <span className="truncate">
+          {selected.length > 0
+            ? `${selected.length} assunto(s)`
+            : 'Todos os assuntos'}
+        </span>
+        <ChevronDown className="h-3.5 w-3.5 text-gray-400 flex-shrink-0" />
+      </button>
+
+      {open && (
+        <div className="absolute z-50 top-full left-0 mt-1 w-64 bg-white border border-gray-200 rounded-lg shadow-lg max-h-64 overflow-hidden">
+          {/* Busca */}
+          <div className="p-2 border-b">
+            <Input
+              placeholder="Buscar assunto..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="h-8 text-sm"
+            />
+          </div>
+
+          {/* Ações rápidas */}
+          {selected.length > 0 && (
+            <div className="px-2 py-1.5 border-b">
+              <button
+                type="button"
+                onClick={() => onChange([])}
+                className="text-xs text-blue-600 hover:text-blue-800"
+              >
+                Limpar seleção
+              </button>
+            </div>
+          )}
+
+          {/* Lista */}
+          <div className="overflow-y-auto max-h-44">
+            {filtered.length === 0 ? (
+              <div className="px-3 py-2 text-xs text-gray-400">Nenhum assunto encontrado</div>
+            ) : (
+              filtered.map(s => (
+                <label
+                  key={s.id}
+                  className="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-50 cursor-pointer text-sm"
+                >
+                  <input
+                    type="checkbox"
+                    checked={selected.includes(s.id)}
+                    onChange={() => toggle(s.id)}
+                    className="rounded text-blue-600"
+                  />
+                  <span className="truncate">{s.nome}</span>
+                </label>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
+// ============================================================
+// Componente principal
+// ============================================================
+
 export function PromptsModulosPage() {
   const { toast } = useToast()
 
   // Estado de dados
   const [modulos, setModulos] = useState<PromptModulo[]>([])
   const [grupos, setGrupos] = useState<PromptGroup[]>([])
-  const [subgrupos, setSubgrupos] = useState<PromptSubgroup[]>([])
+  const [formSubgrupos, setFormSubgrupos] = useState<PromptSubgroup[]>([])
+  const [filterSubgrupos, setFilterSubgrupos] = useState<PromptSubgroup[]>([])
   const [loading, setLoading] = useState(true)
 
   // Estado de filtros
@@ -222,7 +515,10 @@ export function PromptsModulosPage() {
   const [busca, setBusca] = useState('')
   const [tipoFiltro, setTipoFiltro] = useState<TipoFiltro>(null)
   const [modoFiltro, setModoFiltro] = useState<ModoFiltro>(null)
-  const [statusFiltro, setStatusFiltro] = useState<StatusFiltro>(null)
+  const [apenasAtivos, setApenasAtivos] = useState(true)
+  const [subgrupoFiltro, setSubgrupoFiltro] = useState<number | null>(null)
+  const [categoriaFiltro, setCategoriaFiltro] = useState<string | null>(null)
+  const [assuntosFiltro, setAssuntosFiltro] = useState<number[]>([])
 
   // Estado de dialogs
   const [dialogAberto, setDialogAberto] = useState(false)
@@ -245,7 +541,7 @@ export function PromptsModulosPage() {
   const [novoGrupoNome, setNovoGrupoNome] = useState('')
   const [novoGrupoDescricao, setNovoGrupoDescricao] = useState('')
 
-  // Estado de subcategorias
+  // Estado de subcategorias (assuntos)
   const [subcategorias, setSubcategorias] = useState<Subcategoria[]>([])
 
   // Ref para input de arquivo (importação)
@@ -254,37 +550,51 @@ export function PromptsModulosPage() {
   // Estado do formulário
   const [formData, setFormData] = useState({
     titulo: '',
+    nome: '',
     conteudo: '',
     categoria: '',
     group_id: null as number | null,
     subgroup_id: null as number | null,
     tags: '',
-    tipo: 'conteudo' as 'conteudo' | 'instrucao' | 'exemplo',
+    tipo: 'conteudo' as TipoPrompt,
     ordem: 0,
     ativo: true,
     modo_ativacao: 'llm' as 'llm' | 'deterministic'
   })
+
+  // ========== Effects ==========
 
   // Carregar grupos ao montar
   useEffect(() => {
     carregarGrupos()
   }, [])
 
-  // Carregar módulos quando grupo selecionado muda
+  // Carregar módulos e dados dependentes quando grupo selecionado muda
   useEffect(() => {
+    carregarModulos()
     if (grupoSelecionado !== null) {
-      carregarModulos()
+      carregarFilterSubgrupos(grupoSelecionado)
+      carregarSubcategorias(grupoSelecionado)
+    } else {
+      setFilterSubgrupos([])
+      setSubcategorias([])
     }
+    // Resetar filtros dependentes do grupo
+    setSubgrupoFiltro(null)
+    setCategoriaFiltro(null)
+    setAssuntosFiltro([])
   }, [grupoSelecionado])
 
-  // Carregar subgrupos quando grupo do formulário muda
+  // Carregar subgrupos para o formulário quando grupo do form muda
   useEffect(() => {
     if (formData.group_id) {
-      carregarSubgrupos(formData.group_id)
+      carregarFormSubgrupos(formData.group_id)
     } else {
-      setSubgrupos([])
+      setFormSubgrupos([])
     }
   }, [formData.group_id])
+
+  // ========== API functions ==========
 
   async function carregarGrupos() {
     try {
@@ -303,12 +613,15 @@ export function PromptsModulosPage() {
   }
 
   async function carregarModulos() {
-    if (grupoSelecionado === null) return
-
     setLoading(true)
     try {
+      const params = new URLSearchParams()
+      if (grupoSelecionado !== null) {
+        params.set('group_id', grupoSelecionado.toString())
+      }
+      params.set('apenas_ativos', 'false')
       const data = await adminApi.get<PromptModulo[]>(
-        `/admin/api/prompts-modulos?group_id=${grupoSelecionado}`
+        `/admin/api/prompts-modulos?${params.toString()}`
       )
       setModulos(data)
     } catch (error) {
@@ -322,25 +635,46 @@ export function PromptsModulosPage() {
     }
   }
 
-  async function carregarSubgrupos(groupId: number) {
+  async function carregarFilterSubgrupos(groupId: number) {
     try {
       const data = await adminApi.get<PromptSubgroup[]>(
         `/admin/api/prompts-modulos/grupos/${groupId}/subgrupos`
       )
-      setSubgrupos(data)
-    } catch (error) {
-      toast({
-        title: 'Erro ao carregar subgrupos',
-        description: error instanceof Error ? error.message : 'Erro desconhecido',
-        variant: 'destructive'
-      })
+      setFilterSubgrupos(data)
+    } catch {
+      setFilterSubgrupos([])
     }
   }
+
+  async function carregarFormSubgrupos(groupId: number) {
+    try {
+      const data = await adminApi.get<PromptSubgroup[]>(
+        `/admin/api/prompts-modulos/grupos/${groupId}/subgrupos`
+      )
+      setFormSubgrupos(data)
+    } catch {
+      setFormSubgrupos([])
+    }
+  }
+
+  async function carregarSubcategorias(groupId: number) {
+    try {
+      const data = await adminApi.get<Subcategoria[]>(
+        `/admin/api/prompts-modulos/grupos/${groupId}/subcategorias`
+      )
+      setSubcategorias(data)
+    } catch {
+      setSubcategorias([])
+    }
+  }
+
+  // ========== CRUD ==========
 
   function abrirDialogNovo() {
     setModuloEditando(null)
     setFormData({
       titulo: '',
+      nome: '',
       conteudo: '',
       categoria: '',
       group_id: grupoSelecionado,
@@ -358,6 +692,7 @@ export function PromptsModulosPage() {
     setModuloEditando(modulo)
     setFormData({
       titulo: modulo.titulo,
+      nome: modulo.nome || '',
       conteudo: modulo.conteudo,
       categoria: modulo.categoria,
       group_id: modulo.group_id,
@@ -548,7 +883,6 @@ export function PromptsModulosPage() {
       setDialogImportar(true)
     }
     reader.readAsText(file)
-    // Reset input so the same file can be selected again
     e.target.value = ''
   }
 
@@ -579,32 +913,17 @@ export function PromptsModulosPage() {
     }
   }
 
-  // ========== Subcategorias ==========
+  // ========== Filtragem ==========
 
-  useEffect(() => {
-    if (grupoSelecionado !== null) {
-      carregarSubcategorias(grupoSelecionado)
-    }
-  }, [grupoSelecionado])
-
-  async function carregarSubcategorias(groupId: number) {
-    try {
-      const data = await adminApi.get<Subcategoria[]>(
-        `/admin/api/prompts-modulos/grupos/${groupId}/subcategorias`
-      )
-      setSubcategorias(data)
-    } catch {
-      // Subcategorias são opcionais, ignorar erro silenciosamente
-      setSubcategorias([])
-    }
-  }
-
-  // Aplicar filtros
   const modulosFiltrados = modulos.filter(modulo => {
-    // Filtro de busca
-    if (busca && !modulo.titulo.toLowerCase().includes(busca.toLowerCase()) &&
-        !modulo.conteudo.toLowerCase().includes(busca.toLowerCase())) {
-      return false
+    // Busca por título ou conteúdo
+    if (busca) {
+      const buscaLower = busca.toLowerCase()
+      if (!modulo.titulo.toLowerCase().includes(buscaLower) &&
+          !modulo.conteudo.toLowerCase().includes(buscaLower) &&
+          !(modulo.nome || '').toLowerCase().includes(buscaLower)) {
+        return false
+      }
     }
 
     // Filtro de tipo
@@ -612,41 +931,96 @@ export function PromptsModulosPage() {
       return false
     }
 
-    // Filtro de modo
-    if (modoFiltro && modulo.modo_ativacao !== modoFiltro) {
+    // Filtro de modo de ativação
+    if (modoFiltro) {
+      const modoEfetivo = modulo.effective_activation_mode || modulo.modo_ativacao
+      if (modoEfetivo !== modoFiltro) {
+        return false
+      }
+    }
+
+    // Filtro de status (apenas ativos)
+    if (apenasAtivos && !modulo.ativo) {
       return false
     }
 
-    // Filtro de status
-    if (statusFiltro === 'ativo' && !modulo.ativo) {
+    // Filtro de subgrupo
+    if (subgrupoFiltro !== null && modulo.subgroup_id !== subgrupoFiltro) {
       return false
     }
-    if (statusFiltro === 'inativo' && modulo.ativo) {
+
+    // Filtro de categoria
+    if (categoriaFiltro && modulo.categoria !== categoriaFiltro) {
       return false
+    }
+
+    // Filtro de assuntos (subcategorias M2M)
+    if (assuntosFiltro.length > 0) {
+      const ids = modulo.subcategoria_ids || []
+      if (!ids.some(id => assuntosFiltro.includes(id))) {
+        return false
+      }
     }
 
     return true
   })
 
-  // Agrupar módulos por categoria
-  const modulosPorCategoria = modulosFiltrados.reduce((acc, modulo) => {
-    const cat = modulo.categoria || 'Sem categoria'
-    if (!acc[cat]) {
-      acc[cat] = []
+  // Separar módulos por tipo
+  const modulosPorTipo: Record<TipoPrompt, PromptModulo[]> = {
+    base: [],
+    peca: [],
+    conteudo: [],
+  }
+  for (const m of modulosFiltrados) {
+    if (m.tipo in modulosPorTipo) {
+      modulosPorTipo[m.tipo].push(m)
     }
+  }
+
+  // Para conteúdo: agrupar por categoria
+  const conteudoPorCategoria = modulosPorTipo.conteudo.reduce((acc, modulo) => {
+    const cat = modulo.categoria || 'Sem categoria'
+    if (!acc[cat]) acc[cat] = []
     acc[cat].push(modulo)
     return acc
   }, {} as Record<string, PromptModulo[]>)
+  const categoriasConteudo = Object.keys(conteudoPorCategoria).sort()
 
-  // Ordenar categorias
-  const categorias = Object.keys(modulosPorCategoria).sort()
+  // Extrair subcategorias únicas por categoria (para cabeçalho)
+  function getSubcategoriasUnicas(modulos: PromptModulo[]): string[] {
+    const nomes = new Set<string>()
+    for (const m of modulos) {
+      if (m.subcategorias_nomes) {
+        for (const n of m.subcategorias_nomes) nomes.add(n)
+      }
+    }
+    return Array.from(nomes).sort()
+  }
+
+  // Categorias únicas de todos os módulos (para o filtro de categoria)
+  const categoriasDisponiveis = Array.from(
+    new Set(modulos.map(m => m.categoria).filter(Boolean))
+  ).sort()
+
+  // Contagem total filtrada
+  const totalFiltrados = modulosFiltrados.length
+  const temResultados = totalFiltrados > 0
+
+  // Algum filtro ativo?
+  const filtrosAtivos = !!(busca || tipoFiltro || modoFiltro || subgrupoFiltro !== null || categoriaFiltro || assuntosFiltro.length > 0 || !apenasAtivos)
+
+  const conteudoConfig = TIPO_CONFIG.conteudo
+
+  // ========== Render ==========
 
   return (
-    <PageContainer className="space-y-6">
+    <PageContainer wide className="space-y-6">
       {/* Header */}
       <PageHeader
         title="Módulos de Prompts"
-        description={`${modulosFiltrados.length} módulo(s) encontrado(s)`}
+        description={`${totalFiltrados} módulo(s) encontrado(s)`}
+        backTo="/dashboard"
+        icon={<Lightbulb className="h-5 w-5" />}
         actions={
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" onClick={() => setDialogGrupos(true)} className="gap-1.5">
@@ -676,7 +1050,9 @@ export function PromptsModulosPage() {
         }
       />
 
-      {/* Filtros — card branco inline como no legado */}
+      <AdminSubNav />
+
+      {/* Filtros */}
       <SectionCard>
         <div className="flex flex-wrap gap-3 items-center">
           {/* Busca */}
@@ -690,21 +1066,21 @@ export function PromptsModulosPage() {
             />
           </div>
 
-          {/* Tipo */}
+          {/* Tipo de prompt */}
           <select
-            className="flex-shrink-0 w-[140px] px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white"
+            className="flex-shrink-0 w-[150px] px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white"
             value={tipoFiltro || ''}
             onChange={(e) => setTipoFiltro((e.target.value || null) as TipoFiltro)}
           >
             <option value="">Todos os tipos</option>
+            <option value="base">Base (Sistema)</option>
+            <option value="peca">Peça</option>
             <option value="conteudo">Conteúdo</option>
-            <option value="instrucao">Instrução</option>
-            <option value="exemplo">Exemplo</option>
           </select>
 
           {/* Modo de ativação */}
           <select
-            className="flex-shrink-0 w-[160px] px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white"
+            className="flex-shrink-0 w-[170px] px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white"
             value={modoFiltro || ''}
             onChange={(e) => setModoFiltro((e.target.value || null) as ModoFiltro)}
           >
@@ -715,7 +1091,7 @@ export function PromptsModulosPage() {
 
           {/* Grupo */}
           <select
-            className="flex-shrink-0 w-[150px] px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white"
+            className="flex-shrink-0 w-[160px] px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white"
             value={grupoSelecionado?.toString() || ''}
             onChange={(e) => setGrupoSelecionado(e.target.value ? Number(e.target.value) : null)}
           >
@@ -727,37 +1103,141 @@ export function PromptsModulosPage() {
             ))}
           </select>
 
-          {/* Status */}
+          {/* Subgrupo */}
+          <select
+            className="flex-shrink-0 w-[160px] px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white disabled:opacity-50"
+            value={subgrupoFiltro?.toString() || ''}
+            onChange={(e) => setSubgrupoFiltro(e.target.value ? Number(e.target.value) : null)}
+            disabled={grupoSelecionado === null || filterSubgrupos.length === 0}
+          >
+            <option value="">Todos os subgrupos</option>
+            {filterSubgrupos.map(sg => (
+              <option key={sg.id} value={sg.id}>
+                {sg.nome}
+              </option>
+            ))}
+          </select>
+
+          {/* Categoria */}
+          <select
+            className="flex-shrink-0 w-[160px] px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white disabled:opacity-50"
+            value={categoriaFiltro || ''}
+            onChange={(e) => setCategoriaFiltro(e.target.value || null)}
+            disabled={categoriasDisponiveis.length === 0}
+          >
+            <option value="">Todas as categorias</option>
+            {categoriasDisponiveis.map(cat => (
+              <option key={cat} value={cat}>
+                {cat}
+              </option>
+            ))}
+          </select>
+
+          {/* Assuntos (multi-select) */}
+          {subcategorias.length > 0 && (
+            <AssuntoMultiSelect
+              subcategorias={subcategorias}
+              selected={assuntosFiltro}
+              onChange={setAssuntosFiltro}
+            />
+          )}
+
+          {/* Apenas ativos */}
           <label className="flex-shrink-0 flex items-center gap-2 text-sm text-gray-600 whitespace-nowrap">
             <input
               type="checkbox"
-              checked={statusFiltro === 'ativo'}
-              onChange={(e) => setStatusFiltro(e.target.checked ? 'ativo' : null)}
+              checked={apenasAtivos}
+              onChange={(e) => setApenasAtivos(e.target.checked)}
               className="rounded text-primary-600"
             />
             Apenas ativos
           </label>
+
+          {/* Limpar filtros */}
+          {filtrosAtivos && (
+            <button
+              type="button"
+              onClick={() => {
+                setBusca('')
+                setTipoFiltro(null)
+                setModoFiltro(null)
+                setSubgrupoFiltro(null)
+                setCategoriaFiltro(null)
+                setAssuntosFiltro([])
+                setApenasAtivos(true)
+              }}
+              className="flex-shrink-0 flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 px-2 py-1 rounded hover:bg-gray-100"
+              title="Limpar todos os filtros"
+            >
+              <X className="h-3 w-3" />
+              Limpar
+            </button>
+          )}
         </div>
       </SectionCard>
 
-      {/* Lista de módulos — estilo lista do legado */}
+      {/* Lista de módulos organizada por tipo */}
       {loading ? (
         <div className="text-center py-12 text-gray-400">Carregando módulos...</div>
-      ) : categorias.length === 0 ? (
+      ) : !temResultados ? (
         <div className="text-center py-12 text-gray-400">Nenhum módulo encontrado</div>
       ) : (
-        <div className="space-y-4">
-          {categorias.map(categoria => (
-            <CategoriaGroup
-              key={categoria}
-              categoria={categoria}
-              modulos={modulosPorCategoria[categoria]}
+        <div className="space-y-6">
+          {/* ---- Base (Prompt do Sistema) ---- */}
+          {modulosPorTipo.base.length > 0 && (
+            <TipoSection
+              tipo="base"
+              modulos={modulosPorTipo.base}
               onEdit={abrirDialogEditar}
               onDelete={abrirDialogExcluir}
               onToggle={toggleAtivo}
               onHistory={abrirHistorico}
             />
-          ))}
+          )}
+
+          {/* ---- Peças (Estrutura/Template) ---- */}
+          {modulosPorTipo.peca.length > 0 && (
+            <TipoSection
+              tipo="peca"
+              modulos={modulosPorTipo.peca}
+              onEdit={abrirDialogEditar}
+              onDelete={abrirDialogExcluir}
+              onToggle={toggleAtivo}
+              onHistory={abrirHistorico}
+            />
+          )}
+
+          {/* ---- Conteúdo (Teses e Argumentos) ---- */}
+          {modulosPorTipo.conteudo.length > 0 && (
+            <div>
+              {/* Header do tipo Conteúdo */}
+              <div className={`flex items-center gap-3 px-4 py-3 ${conteudoConfig.bgHeader} rounded-t-xl border border-b-0 ${conteudoConfig.borderHeader}`}>
+                <div className={`flex items-center justify-center w-8 h-8 ${conteudoConfig.iconBg} rounded-lg`}>
+                  <Lightbulb className={`h-4 w-4 ${conteudoConfig.iconColor}`} />
+                </div>
+                <h3 className={`font-semibold ${conteudoConfig.titleColor}`}>{conteudoConfig.label}</h3>
+                <span className={`text-xs ${conteudoConfig.countBg} ${conteudoConfig.countColor} px-2 py-0.5 rounded-full font-medium`}>
+                  {modulosPorTipo.conteudo.length}
+                </span>
+              </div>
+
+              {/* Categorias colapsáveis */}
+              <div className="space-y-3 mt-3">
+                {categoriasConteudo.map(categoria => (
+                  <CategoriaGroup
+                    key={categoria}
+                    categoria={categoria}
+                    modulos={conteudoPorCategoria[categoria]}
+                    subcategoriasNomes={getSubcategoriasUnicas(conteudoPorCategoria[categoria])}
+                    onEdit={abrirDialogEditar}
+                    onDelete={abrirDialogExcluir}
+                    onToggle={toggleAtivo}
+                    onHistory={abrirHistorico}
+                  />
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       )}
 
@@ -781,6 +1261,18 @@ export function PromptsModulosPage() {
                 />
               </div>
 
+              {/* Nome (código) */}
+              <div>
+                <Label htmlFor="nome">Nome (código identificador)</Label>
+                <Input
+                  id="nome"
+                  value={formData.nome}
+                  onChange={(e) => setFormData({ ...formData, nome: e.target.value })}
+                  placeholder="ex: argumento_prescricao"
+                  className="font-mono"
+                />
+              </div>
+
               {/* Conteúdo */}
               <div>
                 <Label htmlFor="conteudo">Conteúdo</Label>
@@ -790,6 +1282,24 @@ export function PromptsModulosPage() {
                   onChange={(e) => setFormData({ ...formData, conteudo: e.target.value })}
                   className="font-mono min-h-[300px]"
                 />
+              </div>
+
+              {/* Tipo */}
+              <div>
+                <Label htmlFor="tipo">Tipo</Label>
+                <select
+                  id="tipo"
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                  value={formData.tipo}
+                  onChange={(e) => setFormData({
+                    ...formData,
+                    tipo: e.target.value as TipoPrompt
+                  })}
+                >
+                  <option value="base">Base (Sistema)</option>
+                  <option value="peca">Peça (Estrutura/Template)</option>
+                  <option value="conteudo">Conteúdo (Teses e Argumentos)</option>
+                </select>
               </div>
 
               {/* Categoria */}
@@ -838,40 +1348,11 @@ export function PromptsModulosPage() {
                   disabled={!formData.group_id}
                 >
                   <option value="">Nenhum</option>
-                  {subgrupos.map(subgrupo => (
+                  {formSubgrupos.map(subgrupo => (
                     <option key={subgrupo.id} value={subgrupo.id}>
                       {subgrupo.nome}
                     </option>
                   ))}
-                </select>
-              </div>
-
-              {/* Tags */}
-              <div>
-                <Label htmlFor="tags">Tags (separadas por vírgula)</Label>
-                <Input
-                  id="tags"
-                  value={formData.tags}
-                  onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
-                  placeholder="tag1, tag2, tag3"
-                />
-              </div>
-
-              {/* Tipo */}
-              <div>
-                <Label htmlFor="tipo">Tipo</Label>
-                <select
-                  id="tipo"
-                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-                  value={formData.tipo}
-                  onChange={(e) => setFormData({
-                    ...formData,
-                    tipo: e.target.value as 'conteudo' | 'instrucao' | 'exemplo'
-                  })}
-                >
-                  <option value="conteudo">Conteúdo</option>
-                  <option value="instrucao">Instrução</option>
-                  <option value="exemplo">Exemplo</option>
                 </select>
               </div>
 
@@ -888,8 +1369,19 @@ export function PromptsModulosPage() {
                   })}
                 >
                   <option value="llm">LLM</option>
-                  <option value="deterministic">Determinístico</option>
+                  <option value="deterministic">Regra Determinística</option>
                 </select>
+              </div>
+
+              {/* Tags */}
+              <div>
+                <Label htmlFor="tags">Tags (separadas por vírgula)</Label>
+                <Input
+                  id="tags"
+                  value={formData.tags}
+                  onChange={(e) => setFormData({ ...formData, tags: e.target.value })}
+                  placeholder="tag1, tag2, tag3"
+                />
               </div>
 
               {/* Ordem */}

@@ -1,33 +1,29 @@
 import { useState } from 'react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { useToast } from '@/components/ui/toast'
 import { adminApi } from '@/lib/api'
-import { PageContainer } from '@/components/layout'
+import { useToast } from '@/components/ui/toast'
+import { AlertTriangle, Wand2 } from 'lucide-react'
+import { PageContainer } from '@/components/layout/PageContainer'
+import { PageHeader } from '@/components/layout'
 
-// Backup simplificado de exemplo - em produção seria carregado de configuração
 const JSON_BACKUP = {
-  "nome_assistido": {
-    "slug": "nome_assistido",
-    "tipo": "texto",
-    "obrigatorio": true,
-    "placeholder": "Nome completo do assistido"
+  nome_assistido: {
+    slug: 'nome_assistido',
+    tipo: 'texto',
+    obrigatorio: true,
+    placeholder: 'Nome completo do assistido',
   },
-  "cpf_assistido": {
-    "slug": "cpf_assistido",
-    "tipo": "texto",
-    "obrigatorio": true,
-    "placeholder": "CPF do assistido"
+  cpf_assistido: {
+    slug: 'cpf_assistido',
+    tipo: 'texto',
+    obrigatorio: true,
+    placeholder: 'CPF do assistido',
   },
-  "numero_processo": {
-    "slug": "numero_processo",
-    "tipo": "texto",
-    "obrigatorio": false,
-    "placeholder": "Número do processo (opcional)"
-  }
+  numero_processo: {
+    slug: 'numero_processo',
+    tipo: 'texto',
+    obrigatorio: false,
+    placeholder: 'Número do processo (opcional)',
+  },
 }
 
 interface RestaurarSlugsResponse {
@@ -53,8 +49,8 @@ export function RestaurarSlugsPage() {
         '/admin/api/extraction/restaurar-slugs',
         {
           categoria_id: categoriaId,
-          json_backup: JSON_BACKUP
-        }
+          json_backup: JSON_BACKUP,
+        },
       )
 
       setResultado(response)
@@ -72,18 +68,14 @@ export function RestaurarSlugsPage() {
         })
       }
     } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Erro desconhecido'
-      toast({
-        title: 'Erro',
-        description: `Falha na requisição: ${errorMessage}`,
-        variant: 'destructive',
-      })
+      const message = error instanceof Error ? error.message : 'Erro desconhecido'
+      toast({ title: 'Erro', description: message, variant: 'destructive' })
       setResultado({
         success: false,
         variaveis_atualizadas: 0,
         variaveis_removidas: 0,
         perguntas_sincronizadas: 0,
-        erro: errorMessage
+        erro: message,
       })
     } finally {
       setIsLoading(false)
@@ -91,53 +83,56 @@ export function RestaurarSlugsPage() {
   }
 
   return (
-    <PageContainer className="max-w-4xl">
-      <Card>
-        <CardHeader>
-          <CardTitle>Restaurar Slugs</CardTitle>
-          <CardDescription>
-            Ferramenta de recuperação para restaurar slugs de variáveis a partir de backup
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6">
-          <Alert>
-            <AlertDescription>
-              ⚠️ Esta é uma ferramenta de recuperação. Use apenas se houver perda de dados
-              ou inconsistências nos slugs das variáveis. A operação irá sobrescrever
-              os slugs existentes com os valores do backup.
-            </AlertDescription>
-          </Alert>
+    <PageContainer>
+      <PageHeader
+        title="Restaurar Slugs"
+        description="Utilitario de restauracao de slugs de variaveis"
+      />
 
-          <div className="space-y-2">
-            <Label htmlFor="categoria-id">ID da Categoria</Label>
-            <Input
-              id="categoria-id"
+      <div className="max-w-4xl mx-auto">
+        <div className="bg-white rounded-lg shadow-md p-6">
+
+          <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">
+            <p className="text-amber-800 flex items-start gap-2">
+              <AlertTriangle className="h-5 w-5 mt-0.5" />
+              <span>
+                <strong>Atenção:</strong> Esta ferramenta restaura os slugs das variáveis da categoria "Pareceres"
+                para os valores originais do JSON de backup.
+              </span>
+            </p>
+          </div>
+
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-gray-700 mb-2">Categoria ID:</label>
+            <input
               type="number"
               value={categoriaId}
               onChange={(e) => setCategoriaId(Number(e.target.value))}
-              min={1}
-              placeholder="ID da categoria"
+              className="w-32 px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500"
             />
           </div>
 
-          <Button
-            onClick={handleRestaurar}
-            disabled={isLoading}
-            className="w-full"
-          >
-            {isLoading ? 'Restaurando...' : 'Restaurar Slugs'}
-          </Button>
+          <div className="flex gap-4 mb-6">
+            <button
+              onClick={handleRestaurar}
+              disabled={isLoading}
+              className="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50 flex items-center gap-2"
+            >
+              <Wand2 className="h-4 w-4" />
+              {isLoading ? 'Processando...' : 'Restaurar Slugs'}
+            </button>
+          </div>
 
           {resultado && (
-            <div className="mt-6 p-4 bg-muted rounded-lg">
-              <h3 className="font-semibold mb-2">Resultado:</h3>
-              <pre className="text-sm overflow-auto">
+            <div className="mt-6">
+              <h3 className="text-lg font-semibold text-gray-700 mb-2">Resultado:</h3>
+              <pre className="bg-gray-900 text-green-400 p-4 rounded-lg overflow-auto max-h-96 text-sm">
                 {JSON.stringify(resultado, null, 2)}
               </pre>
             </div>
           )}
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </PageContainer>
   )
 }

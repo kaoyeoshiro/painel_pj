@@ -9,7 +9,8 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useToast } from '@/hooks/use-toast'
 import { useMarkdown } from '@/hooks/useMarkdown'
-import { PageContainer } from '@/components/layout'
+import { PageContainer, PageHeader } from '@/components/layout'
+import { History } from 'lucide-react'
 
 interface Geracao {
   id: number
@@ -185,16 +186,24 @@ export function HistoricoGeradorPage() {
 
   if (loading) {
     return (
-      <PageContainer className="space-y-4">
-        <h1 className="text-2xl font-bold">Historico - Gerador de Pecas</h1>
+      <PageContainer wide className="space-y-4">
+        <PageHeader
+          title="Historico - Gerador de Pecas"
+          icon={<History className="h-5 w-5" />}
+          backTo="/dashboard"
+        />
         <Skeleton className="h-96 w-full" />
       </PageContainer>
     )
   }
 
   return (
-    <PageContainer className="space-y-4">
-      <h1 className="text-2xl font-bold">Historico - Gerador de Pecas</h1>
+    <PageContainer wide className="space-y-4">
+      <PageHeader
+        title="Historico - Gerador de Pecas"
+        icon={<History className="h-5 w-5" />}
+        backTo="/dashboard"
+      />
 
       <DataTable
         data={geracoes}

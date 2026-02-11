@@ -37,6 +37,8 @@ class TestSourceResolverConfigDriven(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         """Configura banco em memória para todos os testes."""
+        # Importa model ANTES de create_all para registrar na metadata
+        from sistemas.gerador_pecas.models_config_pecas import CategoriaDocumento  # noqa: F811
         cls.engine = create_engine(
             "sqlite:///:memory:",
             connect_args={"check_same_thread": False}
@@ -126,10 +128,13 @@ class TestSourceResolverConfigDriven(unittest.TestCase):
     # TESTE 2: Códigos [500, 9500, 10] configurados
     # ==========================================================================
 
-    def test_codigos_500_9500_10_configurados(self):
+    def test_codigos_500_9500_10_configurados_preparatorio_filtrado(self):
         """
-        TESTE: Ao salvar categoria com códigos [500, 9500, 10], a detecção
-        aceita código 10 sem precisar alterar código.
+        TESTE: Mesmo com código 10 na config do DB, CODIGOS_PREPARATORIOS_PI
+        filtra código 10 na resolução (safety net). A PI real (500) é retornada.
+
+        O código 10 aparece em get_codigos_validos() (vem do DB), mas
+        _resolve_peticao_inicial() o exclui via CODIGOS_PREPARATORIOS_PI.
         """
         from sistemas.gerador_pecas.services_source_resolver import (
             get_source_resolver, DocumentoInfo
@@ -140,13 +145,13 @@ class TestSourceResolverConfigDriven(unittest.TestCase):
 
         resolver = get_source_resolver(self.db)
 
-        # Verifica que códigos válidos incluem 10
+        # Verifica que códigos válidos incluem 10 (DB retorna o que foi salvo)
         codigos = resolver.get_codigos_validos("peticao_inicial")
-        self.assertIn(10, codigos, "Código 10 deve estar nos códigos válidos")
+        self.assertIn(10, codigos, "Código 10 deve estar nos códigos válidos do DB")
         self.assertIn(500, codigos)
         self.assertIn(9500, codigos)
 
-        # Testa resolução - código 10 DEVE ser aceito quando é o primeiro
+        # Testa resolução - código 10 é preparatório, filtrado pelo safety net
         documentos = [
             DocumentoInfo(id="1", codigo=10, data=datetime(2024, 1, 1), ordem=0),
             DocumentoInfo(id="2", codigo=500, data=datetime(2024, 1, 2), ordem=1),
@@ -154,12 +159,11 @@ class TestSourceResolverConfigDriven(unittest.TestCase):
 
         result = resolver.resolve("peticao_inicial", documentos)
 
-        # Deve pegar o 10 (primeiro documento)
+        # Código 10 é preparatório (Termo). PI real = doc 500.
         self.assertTrue(result.sucesso)
-        self.assertEqual(result.documento_id, "1",
-            "Deve retornar documento com código 10 (primeiro)")
-        self.assertEqual(result.documento_info.codigo, 10)
-        self.assertIn(10, result.codigos_usados)
+        self.assertEqual(result.documento_id, "2",
+            "Código 10 é preparatório (safety net). PI = doc 500")
+        self.assertEqual(result.documento_info.codigo, 500)
 
     # ==========================================================================
     # TESTE 3: Remover código para de aceitar imediatamente

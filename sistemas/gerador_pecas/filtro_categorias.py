@@ -87,11 +87,11 @@ class FiltroCategoriasDocumento:
     def get_codigos_primeiro_documento(self, tipo_peca: str) -> Set[int]:
         """
         Retorna códigos que devem considerar apenas o primeiro documento cronológico.
-        Exemplo: Petição Inicial (só o primeiro 9500/500 do processo).
-        
+        Os códigos são config-driven (definidos no admin por categoria com is_primeiro_documento=True).
+
         Args:
             tipo_peca: Nome do tipo de peça
-            
+
         Returns:
             Conjunto de códigos de documentos que devem pegar só o primeiro
         """
@@ -166,7 +166,7 @@ class FiltroCategoriasDocumento:
         Filtra lista de documentos por tipo de peça.
         
         Aplica lógica especial para categorias marcadas como "primeiro documento"
-        (ex: Petição Inicial - pega só o primeiro documento 9500/500 cronologicamente).
+        (is_primeiro_documento=True — códigos config-driven via admin).
         
         Args:
             documentos: Lista de DocumentoTJMS (deve estar ordenada cronologicamente)
@@ -185,27 +185,31 @@ class FiltroCategoriasDocumento:
         # Filtragem inicial por código
         docs_filtrados = []
         codigos_primeiro_doc_usados = set()  # Rastreia quais códigos especiais já foram usados
-        
+        codigos_primeiro_lote = {}  # codigo -> data_key do primeiro lote encontrado
+
         for doc in documentos:
             if not doc.tipo_documento:
                 continue
-                
+
             codigo = int(doc.tipo_documento)
-            
+
             if codigo not in codigos:
                 continue
-            
+
             # Verifica se é código de "primeiro documento"
+            # Permite múltiplas partes do mesmo lote (mesma data/hora = mesma digitalização)
             if codigo in codigos_primeiro_doc:
-                # Se já pegamos um documento de QUALQUER código do grupo PI, pula
-                # Isso garante que só pegamos UM documento de petição inicial,
-                # independente de ser 500, 9500 ou 10
+                data_key = doc.data_juntada.strftime('%Y%m%d%H%M') if doc.data_juntada else 'sem_data'
                 if codigo in codigos_primeiro_doc_usados:
-                    continue
-                # Marca TODOS os códigos do grupo como usados
-                # Assim o primeiro documento PI encontrado (seja 500, 9500 ou 10)
-                # impede que outros documentos de outros códigos PI sejam incluídos
-                codigos_primeiro_doc_usados.update(codigos_primeiro_doc)
+                    # Mesmo lote (mesma data/hora) = mesma digitalização, permite
+                    if codigos_primeiro_lote.get(codigo) != data_key:
+                        continue  # Lote diferente ou código cruzado, bloqueia
+                else:
+                    codigos_primeiro_lote[codigo] = data_key
+                    # Marca TODOS os códigos do grupo como usados
+                    # Assim o primeiro documento PI encontrado (seja 500, 9500 ou 10)
+                    # impede que outros documentos de outros códigos PI sejam incluídos
+                    codigos_primeiro_doc_usados.update(codigos_primeiro_doc)
 
             docs_filtrados.append(doc)
 

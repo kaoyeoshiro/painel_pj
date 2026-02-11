@@ -66,6 +66,8 @@ export interface DataTableProps<T> {
   emptyMessage?: string
   /** Placeholder do campo de busca */
   searchPlaceholder?: string
+  /** Conteudo customizado para estado vazio */
+  emptyState?: React.ReactNode
 }
 
 // ---------------------------------------------------------------------------
@@ -92,6 +94,7 @@ export function DataTable<T extends Record<string, unknown>>({
   onRowClick,
   emptyMessage = 'Nenhum resultado encontrado',
   searchPlaceholder = 'Buscar...',
+  emptyState,
 }: DataTableProps<T>) {
   const [search, setSearch] = useState('')
   const [sort, setSort] = useState<SortState | null>(null)
@@ -174,7 +177,7 @@ export function DataTable<T extends Record<string, unknown>>({
     return (
       <div className="space-y-4">
         {searchable && <Skeleton className="h-10 w-64" />}
-        <div className="rounded-md border">
+        <div className="rounded-xl border border-gray-200 overflow-hidden bg-white">
           <Table>
             <TableHeader>
               <TableRow>
@@ -223,7 +226,7 @@ export function DataTable<T extends Record<string, unknown>>({
       )}
 
       {/* Tabela */}
-      <div className="rounded-md border">
+      <div className="rounded-xl border border-gray-200 overflow-hidden bg-white">
         <Table>
           <TableHeader>
             <TableRow>
@@ -243,10 +246,11 @@ export function DataTable<T extends Record<string, unknown>>({
             {paginatedData.length === 0 ? (
               <TableRow>
                 <TableCell colSpan={columns.length} className="h-24 text-center">
-                  <div className="flex flex-col items-center gap-1 text-muted-foreground">
-                    <span className="text-2xl">&#x1F50D;</span>
-                    <span>{emptyMessage}</span>
-                  </div>
+                  {emptyState ?? (
+                    <div className="flex flex-col items-center gap-1 text-gray-400">
+                      <span>{emptyMessage}</span>
+                    </div>
+                  )}
                 </TableCell>
               </TableRow>
             ) : (
@@ -274,7 +278,7 @@ export function DataTable<T extends Record<string, unknown>>({
       {/* Paginacao */}
       {totalPages > 1 && (
         <div className="flex items-center justify-between px-2">
-          <span className="text-sm text-muted-foreground">
+          <span className="text-sm text-gray-500">
             Pagina {currentPage} de {totalPages} ({sortedData.length} registro
             {sortedData.length !== 1 ? 's' : ''})
           </span>

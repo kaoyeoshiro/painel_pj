@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
-import { useNavigate } from '@tanstack/react-router'
-import { ArrowLeft, Play, RotateCw, FlaskConical, MessageSquare, Send, User, Bot, Loader2, AlertCircle, Download } from 'lucide-react'
+import { Play, RotateCw, FlaskConical, MessageSquare, Send, User, Bot, Loader2, AlertCircle, Download } from 'lucide-react'
+import { SystemTopbar } from '@/components/layout/SystemTopbar'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -8,7 +8,6 @@ import { Label } from '@/components/ui/label'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Separator } from '@/components/ui/separator'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import { useAuthStore } from '@/stores/auth-store'
 import { useApiQuery } from '@/hooks/useApiQuery'
@@ -20,12 +19,10 @@ import type {
   ConsolidationResponse,
   ChatMessageResponse,
   SSEEvent,
-  PieceSuggestion,
   GeneratedPieceResponse,
 } from '@/types/cumprimento-beta'
 
 export function CumprimentoBetaPage() {
-  const navigate = useNavigate()
   const user = useAuthStore((state) => state.user)
 
   // Estado da sessão atual
@@ -360,67 +357,50 @@ export function CumprimentoBetaPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
-      {/* Header */}
-      <header className="sticky top-0 z-50 w-full border-b bg-white/95 backdrop-blur supports-[backdrop-filter]:bg-white/60">
-        <div className="container flex h-16 items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => navigate({ to: '/dashboard' })}>
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <div className="flex items-center gap-2">
-              <FlaskConical className="h-6 w-6 text-purple-600" />
-              <div>
-                <h1 className="text-lg font-semibold">Cumprimento de Sentença</h1>
-                <Badge variant="secondary" className="text-xs">
-                  <FlaskConical className="mr-1 h-3 w-3" />
-                  Beta
-                </Badge>
-              </div>
-            </div>
-          </div>
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-muted-foreground">{user?.full_name}</span>
-            {/* Drawer de histórico */}
-            <Sheet>
-              <SheetTrigger asChild>
-                <Button variant="outline" size="sm">
-                  Histórico
-                </Button>
-              </SheetTrigger>
-              <SheetContent>
-                <SheetHeader>
-                  <SheetTitle>Sessões Anteriores</SheetTitle>
-                </SheetHeader>
-                <ScrollArea className="h-[calc(100vh-8rem)] mt-4">
-                  <div className="space-y-2">
-                    {sessoes?.sessoes.map((sessao) => (
-                      <Card
-                        key={sessao.id}
-                        className="cursor-pointer hover:bg-accent transition-colors"
-                        onClick={() => carregarSessao(sessao.id)}
-                      >
-                        <CardHeader className="p-4">
-                          <CardTitle className="text-sm">{sessao.numero_processo_formatado}</CardTitle>
-                          <CardDescription className="text-xs">
-                            {new Date(sessao.created_at).toLocaleString('pt-BR')}
-                          </CardDescription>
-                        </CardHeader>
-                        <CardContent className="p-4 pt-0">
-                          {getStatusBadge(sessao.status)}
-                        </CardContent>
-                      </Card>
-                    ))}
-                  </div>
-                </ScrollArea>
-              </SheetContent>
-            </Sheet>
-          </div>
-        </div>
-      </header>
+    <div className="flex flex-col h-screen bg-gray-50">
+      <SystemTopbar
+        title="Cumprimento de Sentença"
+        subtitle="Beta"
+        icon={<FlaskConical className="h-5 w-5" />}
+        actions={
+          <Sheet>
+            <SheetTrigger asChild>
+              <button className="p-2 text-gray-400 hover:text-gray-600 transition-colors rounded-md hover:bg-gray-50" title="Histórico">
+                <RotateCw className="h-5 w-5" />
+              </button>
+            </SheetTrigger>
+            <SheetContent>
+              <SheetHeader>
+                <SheetTitle>Sessões Anteriores</SheetTitle>
+              </SheetHeader>
+              <ScrollArea className="h-[calc(100vh-8rem)] mt-4">
+                <div className="space-y-2">
+                  {sessoes?.sessoes.map((sessao) => (
+                    <Card
+                      key={sessao.id}
+                      className="cursor-pointer hover:bg-accent transition-colors"
+                      onClick={() => carregarSessao(sessao.id)}
+                    >
+                      <CardHeader className="p-4">
+                        <CardTitle className="text-sm">{sessao.numero_processo_formatado}</CardTitle>
+                        <CardDescription className="text-xs">
+                          {new Date(sessao.created_at).toLocaleString('pt-BR')}
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent className="p-4 pt-0">
+                        {getStatusBadge(sessao.status)}
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </ScrollArea>
+            </SheetContent>
+          </Sheet>
+        }
+      />
 
-      {/* Main Content */}
-      <main className="container py-6 space-y-6">
+      <main className="flex-1 overflow-y-auto">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
         {/* Input de Processo */}
         <Card>
           <CardHeader>
@@ -659,6 +639,7 @@ export function CumprimentoBetaPage() {
             </CardContent>
           </Card>
         )}
+        </div>
       </main>
     </div>
   )

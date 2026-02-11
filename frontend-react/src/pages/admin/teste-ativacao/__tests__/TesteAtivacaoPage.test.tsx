@@ -48,6 +48,8 @@ describe('TesteAtivacaoPage', () => {
     { slug: 'var_global', label: 'Variável Global', tipo: 'text' },
   ]
 
+  const mockCenarios: unknown[] = []
+
   const mockResultado = {
     modulos_ativados: [
       {
@@ -79,20 +81,21 @@ describe('TesteAtivacaoPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
 
-    // Mock inicial para as 3 chamadas GET
+    // Mock inicial para as 4 chamadas GET (tipos-peca, categorias, variaveis, cenarios)
     vi.mocked(adminApi.get)
-      .mockResolvedValueOnce(mockTiposPeca) // tipos-peca
-      .mockResolvedValueOnce(mockCategorias) // categorias-extracao
-      .mockResolvedValueOnce(mockVariaveis) // variaveis-processo
+      .mockResolvedValueOnce(mockTiposPeca)
+      .mockResolvedValueOnce(mockCategorias)
+      .mockResolvedValueOnce(mockVariaveis)
+      .mockResolvedValueOnce(mockCenarios)
   })
 
   it('renders title and main elements', async () => {
     render(<TesteAtivacaoPage />)
 
-    // Verificar título
-    expect(screen.getByText('Teste de Ativação de Módulos')).toBeInTheDocument()
+    // Verificar título (sem acentos no componente)
+    expect(screen.getByText('Teste de Ativacao de Modulos')).toBeInTheDocument()
     expect(
-      screen.getByText('Simule a ativação de módulos baseado em variáveis do processo')
+      screen.getByText('Simule ativacao de prompts com variaveis de teste')
     ).toBeInTheDocument()
 
     // Aguardar carregamento
@@ -109,8 +112,8 @@ describe('TesteAtivacaoPage', () => {
       expect(adminApi.get).toHaveBeenCalledWith('/teste-ativacao/tipos-peca')
     })
 
-    // Verificar que o select foi renderizado
-    expect(screen.getByText('Tipo de Peça')).toBeInTheDocument()
+    // Verificar que o label de tipo de peça está renderizado
+    expect(screen.getByText('Tipo de Peca:')).toBeInTheDocument()
   })
 
   it('loads and displays categorias de extracao', async () => {
@@ -137,12 +140,12 @@ describe('TesteAtivacaoPage', () => {
       expect(screen.getByText('Categoria A')).toBeInTheDocument()
     })
 
-    // Selecionar categoria A
-    const checkboxA = screen.getByLabelText('Categoria A')
-    await user.click(checkboxA)
+    // Selecionar categoria A using checkbox label
+    const checkboxLabel = screen.getByText('Categoria A')
+    await user.click(checkboxLabel)
 
-    // Clicar na aba Variáveis
-    const tabVariaveis = screen.getByRole('tab', { name: /variáveis/i })
+    // Clicar na aba Variáveis Extracao (custom button tab, not role="tab")
+    const tabVariaveis = screen.getByText('Variaveis Extracao')
     await user.click(tabVariaveis)
 
     // Verificar que as variáveis da categoria A aparecem
@@ -164,11 +167,11 @@ describe('TesteAtivacaoPage', () => {
     })
 
     // Selecionar categoria
-    const checkboxA = screen.getByLabelText('Categoria A')
-    await user.click(checkboxA)
+    const checkboxLabel = screen.getByText('Categoria A')
+    await user.click(checkboxLabel)
 
-    // Clicar no botão Simular
-    const botaoSimular = screen.getByRole('button', { name: /simular/i })
+    // Clicar no botão SIMULAR ATIVACAO
+    const botaoSimular = screen.getByRole('button', { name: /SIMULAR ATIVACAO/i })
     await user.click(botaoSimular)
 
     // Verificar chamada à API
@@ -176,11 +179,7 @@ describe('TesteAtivacaoPage', () => {
       expect(adminApi.post).toHaveBeenCalledWith('/teste-ativacao/simular', expect.any(Object))
     })
 
-    // Clicar na aba Resultados
-    const tabResultados = screen.getByRole('tab', { name: /resultados/i })
-    await user.click(tabResultados)
-
-    // Verificar que os resultados aparecem
+    // Os resultados devem ser mostrados na aba Resultados (auto-switched)
     await waitFor(() => {
       expect(screen.getByText('Módulo Ativado')).toBeInTheDocument()
     })
@@ -189,7 +188,7 @@ describe('TesteAtivacaoPage', () => {
     expect(screen.getByText('Grupo B')).toBeInTheDocument()
   })
 
-  it('shows loading states correctly', () => {
+  it('shows loading state correctly', () => {
     // Mock com delay para simular loading
     vi.mocked(adminApi.get).mockImplementation(
       () => new Promise((resolve) => setTimeout(() => resolve([]), 100))
@@ -197,7 +196,7 @@ describe('TesteAtivacaoPage', () => {
 
     render(<TesteAtivacaoPage />)
 
-    // Verificar estados de loading (usando getAllByText pois há múltiplos "Carregando...")
+    // Verificar estados de loading
     expect(screen.getAllByText('Carregando...').length).toBeGreaterThan(0)
   })
 
@@ -212,7 +211,7 @@ describe('TesteAtivacaoPage', () => {
     })
 
     // Verificar que a página ainda renderiza
-    expect(screen.getByText('Teste de Ativação de Módulos')).toBeInTheDocument()
+    expect(screen.getByText('Teste de Ativacao de Modulos')).toBeInTheDocument()
     expect(container).toBeTruthy()
   })
 
@@ -222,11 +221,12 @@ describe('TesteAtivacaoPage', () => {
       .mockImplementationOnce(() => new Promise((resolve) => setTimeout(() => resolve([]), 100)))
       .mockResolvedValueOnce(mockCategorias)
       .mockResolvedValueOnce(mockVariaveis)
+      .mockResolvedValueOnce(mockCenarios)
 
     render(<TesteAtivacaoPage />)
 
     // Verificar que o botão está desabilitado durante o loading
-    const botaoSimular = screen.getByRole('button', { name: /simular/i })
+    const botaoSimular = screen.getByRole('button', { name: /SIMULAR ATIVACAO/i })
     expect(botaoSimular).toBeDisabled()
 
     // Aguardar carregamento completo

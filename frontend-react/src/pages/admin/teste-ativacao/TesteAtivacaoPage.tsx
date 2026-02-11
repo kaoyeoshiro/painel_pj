@@ -1,35 +1,26 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect } from 'react'
 import { adminApi } from '@/lib/api'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Checkbox } from '@/components/ui/checkbox'
 import { Textarea } from '@/components/ui/textarea'
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from '@/components/ui/dialog'
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu'
+import { Label } from '@/components/ui/label'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Badge } from '@/components/ui/badge'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useToast } from '@/hooks/use-toast'
-import { PageContainer } from '@/components/layout'
-
-// ─── Interfaces ──────────────────────────────────────────────────────────────
+import {
+  Wand2,
+  FileText,
+  Edit3,
+  Tags,
+  Bookmark,
+  Save,
+  PlayCircle,
+  Download,
+} from 'lucide-react'
+import { PageContainer } from '@/components/layout/PageContainer'
+import { PageHeader } from '@/components/layout'
 
 interface TipoPeca {
   slug: string
@@ -41,7 +32,6 @@ interface Variavel {
   label: string
   tipo: string
   descricao?: string
-  opcoes?: string[]
 }
 
 interface CategoriaExtracao {
@@ -56,7 +46,6 @@ interface ModuloSimulado {
   grupo: string
   modo: string
   ativado: boolean
-  regra_usada?: string
   detalhes?: string
 }
 
@@ -69,7 +58,6 @@ interface SimulacaoResultado {
   }
 }
 
-/** Cenario salvo com configuracao completa para reutilizar */
 interface Cenario {
   id: number
   nome: string
@@ -79,873 +67,493 @@ interface Cenario {
   descricao_situacao?: string
 }
 
-// ─── Componente principal ────────────────────────────────────────────────────
+type ActiveTab = 'variaveis-extracao' | 'variaveis-processo' | 'resultados'
 
 export function TesteAtivacaoPage() {
   const { toast } = useToast()
 
-  // Estado para tipos de peca
   const [tiposPeca, setTiposPeca] = useState<TipoPeca[]>([])
-  const [tipoPecaSelecionado, setTipoPecaSelecionado] = useState<string>('')
+  const [tipoPecaSelecionado, setTipoPecaSelecionado] = useState('')
 
-  // Estado para categorias de extracao
   const [categorias, setCategorias] = useState<CategoriaExtracao[]>([])
   const [categoriasSelecionadas, setCategoriasSelecionadas] = useState<Set<number>>(new Set())
 
-  // Estado para variaveis do processo
   const [variaveisDisponiveis, setVariaveisDisponiveis] = useState<Variavel[]>([])
   const [valoresVariaveis, setValoresVariaveis] = useState<Record<string, string | boolean>>({})
 
-  // Estado para resultado da simulacao
-  const [resultado, setResultado] = useState<SimulacaoResultado | null>(null)
-  const [simulando, setSimulando] = useState(false)
-
-  // Estado de loading
-  const [loadingTipos, setLoadingTipos] = useState(true)
-  const [loadingCategorias, setLoadingCategorias] = useState(true)
-  const [loadingVariaveis, setLoadingVariaveis] = useState(true)
-
-  // Estado para geracao de variaveis via IA (24.2)
-  const [gerandoVariaveisIA, setGerandoVariaveisIA] = useState(false)
-
-  // Estado para cenarios (24.4, 24.5, 24.6, 24.8)
-  const [cenarios, setCenarios] = useState<Cenario[]>([])
-  const [cenarioSelecionadoId, setCenarioSelecionadoId] = useState<string>('')
-  const [loadingCenarios, setLoadingCenarios] = useState(false)
-  const [dialogSalvarAberto, setDialogSalvarAberto] = useState(false)
-  const [nomeCenario, setNomeCenario] = useState('')
-  const [salvandoCenario, setSalvandoCenario] = useState(false)
-  const [excluindoCenario, setExcluindoCenario] = useState(false)
-
-  // Estado para descricao da situacao (24.10)
   const [descricaoSituacao, setDescricaoSituacao] = useState('')
 
-  // ─── Carregamento inicial de dados ──────────────────────────────────────────
+  const [cenarios, setCenarios] = useState<Cenario[]>([])
+  const [cenarioSelecionadoId, setCenarioSelecionadoId] = useState('')
+  const [nomeCenario, setNomeCenario] = useState('')
+
+  const [resultado, setResultado] = useState<SimulacaoResultado | null>(null)
+
+  const [loading, setLoading] = useState(true)
+  const [simulando, setSimulando] = useState(false)
+  const [gerandoVariaveisIA, setGerandoVariaveisIA] = useState(false)
+  const [salvandoCenario, setSalvandoCenario] = useState(false)
+  const [exportandoJson, setExportandoJson] = useState(false)
+
+  const [activeTab, setActiveTab] = useState<ActiveTab>('variaveis-extracao')
 
   useEffect(() => {
-    carregarTiposPeca()
+    void carregarDadosIniciais()
   }, [])
 
-  useEffect(() => {
-    carregarCategorias()
-  }, [])
-
-  useEffect(() => {
-    carregarVariaveis()
-  }, [])
-
-  useEffect(() => {
-    carregarCenarios()
-  }, [])
-
-  // ─── Funcoes de carregamento ────────────────────────────────────────────────
-
-  const carregarTiposPeca = async () => {
+  async function carregarDadosIniciais() {
+    setLoading(true)
     try {
-      setLoadingTipos(true)
-      const data = await adminApi.get<TipoPeca[]>('/teste-ativacao/tipos-peca')
-      setTiposPeca(data)
-      if (data.length > 0) {
-        setTipoPecaSelecionado(data[0].slug)
+      const [tipos, cats, vars, cs] = await Promise.all([
+        adminApi.get<TipoPeca[]>('/teste-ativacao/tipos-peca'),
+        adminApi.get<CategoriaExtracao[]>('/teste-ativacao/categorias-extracao'),
+        adminApi.get<Variavel[]>('/teste-ativacao/variaveis-processo'),
+        adminApi.get<Cenario[]>('/teste-ativacao/cenarios'),
+      ])
+
+      setTiposPeca(tipos)
+      setCategorias(cats)
+      setVariaveisDisponiveis(vars)
+      setCenarios(cs)
+
+      if (tipos.length > 0) {
+        setTipoPecaSelecionado(tipos[0].slug)
       }
     } catch (error) {
       toast({
-        title: 'Erro ao carregar tipos de peca',
-        description: 'Nao foi possivel carregar os tipos de peca',
-        variant: 'destructive'
+        variant: 'destructive',
+        title: 'Erro ao carregar dados',
+        description: error instanceof Error ? error.message : 'Erro desconhecido',
       })
     } finally {
-      setLoadingTipos(false)
+      setLoading(false)
     }
   }
-
-  const carregarCategorias = async () => {
-    try {
-      setLoadingCategorias(true)
-      const data = await adminApi.get<CategoriaExtracao[]>('/teste-ativacao/categorias-extracao')
-      setCategorias(data)
-    } catch (error) {
-      toast({
-        title: 'Erro ao carregar categorias',
-        description: 'Nao foi possivel carregar as categorias de extracao',
-        variant: 'destructive'
-      })
-    } finally {
-      setLoadingCategorias(false)
-    }
-  }
-
-  const carregarVariaveis = async () => {
-    try {
-      setLoadingVariaveis(true)
-      const data = await adminApi.get<Variavel[]>('/teste-ativacao/variaveis-processo')
-      setVariaveisDisponiveis(data)
-    } catch (error) {
-      toast({
-        title: 'Erro ao carregar variaveis',
-        description: 'Nao foi possivel carregar as variaveis do processo',
-        variant: 'destructive'
-      })
-    } finally {
-      setLoadingVariaveis(false)
-    }
-  }
-
-  /** Carrega cenarios salvos do backend (24.5, 24.8) */
-  const carregarCenarios = async () => {
-    try {
-      setLoadingCenarios(true)
-      const data = await adminApi.get<Cenario[]>('/teste-ativacao/cenarios')
-      setCenarios(data)
-    } catch (error) {
-      toast({
-        title: 'Erro ao carregar cenarios',
-        description: 'Nao foi possivel carregar os cenarios salvos',
-        variant: 'destructive'
-      })
-    } finally {
-      setLoadingCenarios(false)
-    }
-  }
-
-  // ─── Manipulacao de categorias e variaveis ──────────────────────────────────
 
   const toggleCategoria = (categoriaId: number) => {
-    setCategoriasSelecionadas(prev => {
-      const novas = new Set(prev)
-      if (novas.has(categoriaId)) {
-        novas.delete(categoriaId)
-      } else {
-        novas.add(categoriaId)
-      }
-      return novas
+    setCategoriasSelecionadas((prev) => {
+      const next = new Set(prev)
+      if (next.has(categoriaId)) next.delete(categoriaId)
+      else next.add(categoriaId)
+      return next
     })
   }
 
-  /** Retorna variaveis de extracao (vinculadas as categorias selecionadas) */
-  const getVariaveisExtracao = useCallback((): Variavel[] => {
-    const variaveis: Variavel[] = []
-    categoriasSelecionadas.forEach(catId => {
-      const categoria = categorias.find(c => c.id === catId)
-      if (categoria) {
-        variaveis.push(...categoria.variaveis)
-      }
+  const getVariaveisExtracao = () => {
+    const vars: Variavel[] = []
+    categoriasSelecionadas.forEach((catId) => {
+      const cat = categorias.find((c) => c.id === catId)
+      if (cat) vars.push(...cat.variaveis)
     })
-    return variaveis
-  }, [categoriasSelecionadas, categorias])
-
-  const handleVariavelChange = (slug: string, valor: string | boolean) => {
-    setValoresVariaveis(prev => ({
-      ...prev,
-      [slug]: valor
-    }))
+    return vars
   }
 
-  // ─── Simulacao ──────────────────────────────────────────────────────────────
+  const handleVariavelChange = (slug: string, value: string | boolean) => {
+    setValoresVariaveis((prev) => ({ ...prev, [slug]: value }))
+  }
 
-  const simular = async () => {
+  async function simularAtivacao() {
     if (!tipoPecaSelecionado) {
-      toast({
-        title: 'Tipo de peca nao selecionado',
-        description: 'Por favor, selecione um tipo de peca',
-        variant: 'destructive'
-      })
+      toast({ variant: 'destructive', title: 'Tipo de peça é obrigatório' })
       return
     }
 
+    setSimulando(true)
     try {
-      setSimulando(true)
-      const payload = {
+      const data = await adminApi.post<SimulacaoResultado>('/teste-ativacao/simular', {
         tipo_peca: tipoPecaSelecionado,
         categorias_extracao: Array.from(categoriasSelecionadas),
         variaveis: valoresVariaveis,
-        descricao_situacao: descricaoSituacao || undefined
-      }
-
-      const data = await adminApi.post<SimulacaoResultado>('/teste-ativacao/simular', payload)
-      setResultado(data)
-      toast({
-        title: 'Simulacao concluida',
-        description: `${data.totais.ativados} modulos ativados, ${data.totais.nao_ativados} nao ativados`
+        descricao_situacao: descricaoSituacao || undefined,
       })
+      setResultado(data)
+      setActiveTab('resultados')
     } catch (error) {
       toast({
-        title: 'Erro na simulacao',
-        description: 'Nao foi possivel executar a simulacao',
-        variant: 'destructive'
+        variant: 'destructive',
+        title: 'Erro na simulação',
+        description: error instanceof Error ? error.message : 'Erro desconhecido',
       })
     } finally {
       setSimulando(false)
     }
   }
 
-  // ─── (24.2) Gerar variaveis via IA ─────────────────────────────────────────
-
-  /** Envia tipo de peca e categorias para a IA e preenche as variaveis */
-  const gerarVariaveisIA = async () => {
-    if (!tipoPecaSelecionado) {
-      toast({
-        title: 'Tipo de peca nao selecionado',
-        description: 'Selecione um tipo de peca antes de gerar variaveis via IA',
-        variant: 'destructive'
-      })
+  async function gerarVariaveisIA() {
+    if (!tipoPecaSelecionado || categoriasSelecionadas.size === 0) {
+      toast({ variant: 'destructive', title: 'Selecione tipo de peça e ao menos uma categoria' })
       return
     }
 
-    if (categoriasSelecionadas.size === 0) {
-      toast({
-        title: 'Nenhuma categoria selecionada',
-        description: 'Selecione ao menos uma categoria para gerar variaveis via IA',
-        variant: 'destructive'
-      })
-      return
-    }
-
+    setGerandoVariaveisIA(true)
     try {
-      setGerandoVariaveisIA(true)
-      const payload = {
+      const data = await adminApi.post<Record<string, string | boolean>>('/teste-ativacao/gerar-variaveis-ia', {
         tipo_peca: tipoPecaSelecionado,
-        categorias: Array.from(categoriasSelecionadas)
-      }
-
-      const data = await adminApi.post<Record<string, string | boolean>>(
-        '/teste-ativacao/gerar-variaveis-ia',
-        payload
-      )
-
-      setValoresVariaveis(prev => ({ ...prev, ...data }))
-      toast({
-        title: 'Variaveis geradas com sucesso',
-        description: 'Os valores foram preenchidos pela IA. Revise antes de simular.'
+        categorias: Array.from(categoriasSelecionadas),
       })
+      setValoresVariaveis((prev) => ({ ...prev, ...data }))
+      toast({ title: 'Variáveis geradas via IA' })
     } catch (error) {
       toast({
-        title: 'Erro ao gerar variaveis',
-        description: 'Nao foi possivel gerar variaveis via IA',
-        variant: 'destructive'
+        variant: 'destructive',
+        title: 'Erro ao gerar variáveis',
+        description: error instanceof Error ? error.message : 'Erro desconhecido',
       })
     } finally {
       setGerandoVariaveisIA(false)
     }
   }
 
-  // ─── (24.3) Exportar JSON ──────────────────────────────────────────────────
+  function exportarJSON() {
+    if (!resultado) return
+    setExportandoJson(true)
+    try {
+      const payload = {
+        tipo_peca: tipoPecaSelecionado,
+        categorias_extracao: Array.from(categoriasSelecionadas),
+        variaveis: valoresVariaveis,
+        descricao_situacao: descricaoSituacao,
+        resultado,
+      }
 
-  /** Exporta o resultado da simulacao como arquivo JSON para download */
-  const exportarJSON = () => {
-    if (!resultado) {
-      toast({
-        title: 'Sem resultado para exportar',
-        description: 'Execute uma simulacao antes de exportar',
-        variant: 'destructive'
-      })
-      return
+      const blob = new Blob([JSON.stringify(payload, null, 2)], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = `simulacao-${tipoPecaSelecionado}-${Date.now()}.json`
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      URL.revokeObjectURL(url)
+    } finally {
+      setExportandoJson(false)
     }
-
-    const exportData = {
-      tipo_peca: tipoPecaSelecionado,
-      categorias_extracao: Array.from(categoriasSelecionadas),
-      variaveis: valoresVariaveis,
-      descricao_situacao: descricaoSituacao || undefined,
-      resultado
-    }
-
-    const blob = new Blob([JSON.stringify(exportData, null, 2)], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    link.href = url
-    link.download = `simulacao-${tipoPecaSelecionado}-${Date.now()}.json`
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    URL.revokeObjectURL(url)
-
-    toast({
-      title: 'JSON exportado',
-      description: 'O arquivo foi baixado com sucesso'
-    })
   }
 
-  // ─── (24.4) Salvar cenario ─────────────────────────────────────────────────
-
-  /** Salva a configuracao atual como cenario nomeado no backend */
-  const salvarCenario = async () => {
+  async function salvarCenario() {
     if (!nomeCenario.trim()) {
-      toast({
-        title: 'Nome obrigatorio',
-        description: 'Informe um nome para o cenario',
-        variant: 'destructive'
-      })
+      toast({ variant: 'destructive', title: 'Informe o nome do cenário' })
       return
     }
 
+    setSalvandoCenario(true)
     try {
-      setSalvandoCenario(true)
-      const payload = {
+      await adminApi.post('/teste-ativacao/cenarios', {
         nome: nomeCenario.trim(),
         tipo_peca: tipoPecaSelecionado,
         categorias: Array.from(categoriasSelecionadas),
         variaveis: valoresVariaveis,
-        descricao_situacao: descricaoSituacao || undefined
-      }
-
-      await adminApi.post<Cenario>('/teste-ativacao/cenarios', payload)
-
-      toast({
-        title: 'Cenario salvo',
-        description: `O cenario "${nomeCenario}" foi salvo com sucesso`
+        descricao_situacao: descricaoSituacao || undefined,
       })
 
-      setDialogSalvarAberto(false)
+      const novosCenarios = await adminApi.get<Cenario[]>('/teste-ativacao/cenarios')
+      setCenarios(novosCenarios)
       setNomeCenario('')
-      // Recarrega a lista de cenarios
-      await carregarCenarios()
+      toast({ title: 'Cenário salvo' })
     } catch (error) {
       toast({
-        title: 'Erro ao salvar cenario',
-        description: 'Nao foi possivel salvar o cenario',
-        variant: 'destructive'
+        variant: 'destructive',
+        title: 'Erro ao salvar cenário',
+        description: error instanceof Error ? error.message : 'Erro desconhecido',
       })
     } finally {
       setSalvandoCenario(false)
     }
   }
 
-  // ─── (24.5) Carregar cenario pre-definido / (24.8) Select cenario ──────────
-
-  /** Aplica um cenario selecionado preenchendo todos os campos */
   const aplicarCenario = (cenario: Cenario) => {
     setTipoPecaSelecionado(cenario.tipo_peca)
     setCategoriasSelecionadas(new Set(cenario.categorias))
     setValoresVariaveis(cenario.variaveis)
     setDescricaoSituacao(cenario.descricao_situacao || '')
     setCenarioSelecionadoId(String(cenario.id))
-
-    toast({
-      title: 'Cenario aplicado',
-      description: `Cenario "${cenario.nome}" carregado com sucesso`
-    })
   }
 
-  /** Handler do select de cenarios (24.8) */
-  const handleCenarioSelect = (cenarioIdStr: string) => {
-    setCenarioSelecionadoId(cenarioIdStr)
-    const cenario = cenarios.find(c => String(c.id) === cenarioIdStr)
-    if (cenario) {
-      aplicarCenario(cenario)
-    }
-  }
-
-  // ─── (24.6) Excluir cenario ────────────────────────────────────────────────
-
-  /** Remove um cenario do backend e atualiza a lista */
-  const excluirCenario = async (cenarioId: number) => {
-    try {
-      setExcluindoCenario(true)
-      await adminApi.delete(`/teste-ativacao/cenarios/${cenarioId}`)
-
-      toast({
-        title: 'Cenario excluido',
-        description: 'O cenario foi removido com sucesso'
-      })
-
-      // Limpa selecao se o cenario excluido estava selecionado
-      if (cenarioSelecionadoId === String(cenarioId)) {
-        setCenarioSelecionadoId('')
-      }
-
-      await carregarCenarios()
-    } catch (error) {
-      toast({
-        title: 'Erro ao excluir cenario',
-        description: 'Nao foi possivel excluir o cenario',
-        variant: 'destructive'
-      })
-    } finally {
-      setExcluindoCenario(false)
-    }
-  }
-
-  // ─── Helpers ────────────────────────────────────────────────────────────────
-
-  const isLoading = loadingTipos || loadingCategorias || loadingVariaveis
-
-  /** Retorna o cenario atualmente selecionado, se houver */
-  const cenarioAtual = cenarios.find(c => String(c.id) === cenarioSelecionadoId)
-
-  // ─── Renderizacao de campos de variavel ─────────────────────────────────────
-
-  /** Renderiza o campo de input adequado para cada tipo de variavel */
-  const renderCampoVariavel = (variavel: Variavel) => (
-    <div key={variavel.slug} className="space-y-2">
-      <Label htmlFor={`var-${variavel.slug}`}>
-        {variavel.label}
-        {variavel.descricao && (
-          <span className="text-xs text-muted-foreground ml-2">
-            ({variavel.descricao})
-          </span>
-        )}
-      </Label>
-
-      {variavel.tipo === 'boolean' ? (
-        <div className="flex space-x-4">
-          <Button
-            variant={valoresVariaveis[variavel.slug] === true ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => handleVariavelChange(variavel.slug, true)}
-          >
-            Sim
-          </Button>
-          <Button
-            variant={valoresVariaveis[variavel.slug] === false ? 'default' : 'outline'}
-            size="sm"
-            onClick={() => handleVariavelChange(variavel.slug, false)}
-          >
-            Nao
-          </Button>
+  const renderCampoVariavel = (variavel: Variavel) => {
+    if (variavel.tipo === 'boolean') {
+      return (
+        <div key={variavel.slug} className="space-y-2">
+          <Label className="text-sm">{variavel.label}</Label>
+          <div className="flex gap-2">
+            <Button
+              size="sm"
+              variant={valoresVariaveis[variavel.slug] === true ? 'default' : 'outline'}
+              onClick={() => handleVariavelChange(variavel.slug, true)}
+            >
+              Sim
+            </Button>
+            <Button
+              size="sm"
+              variant={valoresVariaveis[variavel.slug] === false ? 'default' : 'outline'}
+              onClick={() => handleVariavelChange(variavel.slug, false)}
+            >
+              Não
+            </Button>
+          </div>
         </div>
-      ) : variavel.tipo === 'number' ? (
-        <Input
-          id={`var-${variavel.slug}`}
-          type="number"
-          value={(valoresVariaveis[variavel.slug] as string) || ''}
-          onChange={(e) => handleVariavelChange(variavel.slug, e.target.value)}
-          placeholder={`Digite ${variavel.label.toLowerCase()}`}
-        />
-      ) : (
-        <Input
-          id={`var-${variavel.slug}`}
-          type="text"
-          value={(valoresVariaveis[variavel.slug] as string) || ''}
-          onChange={(e) => handleVariavelChange(variavel.slug, e.target.value)}
-          placeholder={`Digite ${variavel.label.toLowerCase()}`}
-        />
-      )}
-    </div>
-  )
+      )
+    }
 
-  // ─── Render ─────────────────────────────────────────────────────────────────
+    return (
+      <div key={variavel.slug} className="space-y-2">
+        <Label className="text-sm">{variavel.label}</Label>
+        <Input
+          value={String(valoresVariaveis[variavel.slug] ?? '')}
+          onChange={(e) => handleVariavelChange(variavel.slug, e.target.value)}
+          placeholder={variavel.descricao || `Digite ${variavel.label.toLowerCase()}`}
+        />
+      </div>
+    )
+  }
 
   return (
-    <PageContainer className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Teste de Ativacao de Modulos</h1>
-        <p className="text-muted-foreground">
-          Simule a ativacao de modulos baseado em variaveis do processo
-        </p>
+    <PageContainer fluid noPadding>
+      <div className="px-4 pt-4">
+        <PageHeader
+          title="Teste de Ativacao de Modulos"
+          description="Simule ativacao de prompts com variaveis de teste"
+          actions={
+            <div className="flex items-center gap-2 bg-amber-50 px-4 py-2 rounded-lg border-2 border-amber-300 shrink-0">
+              <FileText className="h-4 w-4 text-amber-600" />
+              <label className="text-sm font-medium text-amber-700">Tipo de Peca:</label>
+              <Select value={tipoPecaSelecionado || '__none__'} onValueChange={(v) => setTipoPecaSelecionado(v === '__none__' ? '' : v)}>
+                <SelectTrigger className="h-10 min-w-[200px] border-2 border-amber-400 bg-white font-semibold">
+                  <SelectValue placeholder="-- Selecione --" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="__none__">-- Selecione --</SelectItem>
+                  {tiposPeca.map((tipo) => (
+                    <SelectItem key={tipo.slug} value={tipo.slug}>
+                      {tipo.nome}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              {!tipoPecaSelecionado && <span className="text-xs text-red-600 font-medium animate-pulse">(obrigatorio)</span>}
+            </div>
+          }
+        />
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* ── Sidebar esquerda (1/3) ─────────────────────────────────────── */}
-        <div className="lg:col-span-1 space-y-4">
-          {/* Card de configuracao principal */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Configuracao</CardTitle>
-              <CardDescription>Selecione o tipo de peca e categorias</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* Select para tipo de peca */}
-              <div className="space-y-2">
-                <Label htmlFor="tipo-peca">Tipo de Peca</Label>
-                {loadingTipos ? (
-                  <div className="text-sm text-muted-foreground">Carregando...</div>
-                ) : (
-                  <Select value={tipoPecaSelecionado} onValueChange={setTipoPecaSelecionado}>
-                    <SelectTrigger id="tipo-peca" data-testid="select-tipo-peca">
-                      <SelectValue placeholder="Selecione um tipo" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {tiposPeca.map(tipo => (
-                        <SelectItem key={tipo.slug} value={tipo.slug}>
-                          {tipo.nome}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                )}
+      <div className="p-4">
+        <div className="grid grid-cols-12 gap-4">
+          <div className="col-span-12 lg:col-span-3 space-y-4">
+            <Card className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+              <div className="px-4 py-3 border-b border-gray-200 bg-gradient-to-r from-purple-50 to-indigo-50">
+                <h3 className="font-semibold text-gray-700 flex items-center gap-2">
+                  <Edit3 className="h-4 w-4 text-purple-500" />
+                  Descricao da Situacao
+                </h3>
               </div>
-
-              {/* Checkboxes para categorias */}
-              <div className="space-y-2">
-                <Label>Categorias de Extracao</Label>
-                {loadingCategorias ? (
-                  <div className="text-sm text-muted-foreground">Carregando...</div>
-                ) : (
-                  <div className="space-y-2">
-                    {categorias.map(categoria => (
-                      <div key={categoria.id} className="flex items-center space-x-2">
-                        <Checkbox
-                          id={`cat-${categoria.id}`}
-                          checked={categoriasSelecionadas.has(categoria.id)}
-                          onCheckedChange={() => toggleCategoria(categoria.id)}
-                        />
-                        <Label
-                          htmlFor={`cat-${categoria.id}`}
-                          className="text-sm font-normal cursor-pointer"
-                        >
-                          {categoria.titulo}
-                        </Label>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </div>
-
-              {/* (24.10) Textarea para descricao da situacao */}
-              <div className="space-y-2">
-                <Label htmlFor="descricao-situacao">Descricao da Situacao</Label>
+              <div className="p-4">
                 <Textarea
-                  id="descricao-situacao"
-                  data-testid="textarea-descricao-situacao"
-                  placeholder="Descreva a situacao do processo em texto livre..."
+                  rows={5}
                   value={descricaoSituacao}
                   onChange={(e) => setDescricaoSituacao(e.target.value)}
-                  rows={4}
+                  className="w-full text-sm resize-none"
+                  placeholder="Descreva a situacao processual...&#10;Ex: Acao para medicamento nao incorporado ao SUS, valor R$ 450.000, Estado no polo passivo."
                 />
+                <Button
+                  onClick={gerarVariaveisIA}
+                  disabled={gerandoVariaveisIA || loading}
+                  className="w-full mt-3 bg-purple-600 hover:bg-purple-700 text-white"
+                >
+                  <Wand2 className="h-4 w-4 mr-2" />
+                  {gerandoVariaveisIA ? 'Gerando...' : 'Gerar Variaveis via IA'}
+                </Button>
               </div>
+            </Card>
 
-              {/* Botao Simular */}
-              <Button
-                onClick={simular}
-                disabled={simulando || isLoading || !tipoPecaSelecionado}
-                className="w-full"
-                data-testid="btn-simular"
-              >
-                {simulando ? 'Simulando...' : 'Simular'}
-              </Button>
-
-              {/* (24.2) Botao Gerar Variaveis via IA */}
-              <Button
-                onClick={gerarVariaveisIA}
-                disabled={gerandoVariaveisIA || isLoading || !tipoPecaSelecionado || categoriasSelecionadas.size === 0}
-                variant="outline"
-                className="w-full"
-                data-testid="btn-gerar-variaveis-ia"
-              >
-                {gerandoVariaveisIA ? 'Gerando...' : 'Gerar Variaveis via IA'}
-              </Button>
-
-              {/* (24.3) Botao Exportar JSON */}
-              <Button
-                onClick={exportarJSON}
-                disabled={!resultado}
-                variant="outline"
-                className="w-full"
-                data-testid="btn-exportar-json"
-              >
-                Exportar JSON
-              </Button>
-            </CardContent>
-          </Card>
-
-          {/* Card de cenarios (24.4, 24.5, 24.6, 24.8) */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Cenarios</CardTitle>
-              <CardDescription>Salve e reutilize configuracoes</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              {/* (24.8) Select de cenarios salvos */}
-              <div className="space-y-2">
-                <Label htmlFor="select-cenario">Cenario Salvo</Label>
-                {loadingCenarios ? (
-                  <div className="text-sm text-muted-foreground">Carregando cenarios...</div>
+            <Card className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+              <div className="px-4 py-3 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-cyan-50">
+                <h3 className="font-semibold text-gray-700 flex items-center gap-2">
+                  <Tags className="h-4 w-4 text-blue-500" />
+                  Categorias de Extracao
+                </h3>
+              </div>
+              <div className="p-4 max-h-[200px] overflow-y-auto space-y-2">
+                {categorias.length === 0 ? (
+                  <p className="text-center text-gray-400 text-sm py-4">{loading ? 'Carregando...' : 'Nenhuma categoria'}</p>
                 ) : (
-                  <Select
-                    value={cenarioSelecionadoId}
-                    onValueChange={handleCenarioSelect}
-                  >
-                    <SelectTrigger id="select-cenario" data-testid="select-cenario">
-                      <SelectValue placeholder="Selecione um cenario" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {cenarios.length === 0 ? (
-                        <SelectItem value="_empty" disabled>
-                          Nenhum cenario salvo
-                        </SelectItem>
-                      ) : (
-                        cenarios.map(cenario => (
-                          <SelectItem key={cenario.id} value={String(cenario.id)}>
-                            {cenario.nome}
-                          </SelectItem>
-                        ))
-                      )}
-                    </SelectContent>
-                  </Select>
+                  categorias.map((categoria) => (
+                    <div key={categoria.id} className="flex items-center gap-2">
+                      <Checkbox
+                        id={`cat-${categoria.id}`}
+                        checked={categoriasSelecionadas.has(categoria.id)}
+                        onCheckedChange={() => toggleCategoria(categoria.id)}
+                      />
+                      <Label htmlFor={`cat-${categoria.id}`} className="text-sm cursor-pointer font-normal">
+                        {categoria.titulo}
+                      </Label>
+                    </div>
+                  ))
                 )}
               </div>
+            </Card>
 
-              {/* (24.5) Dropdown de cenarios pre-definidos */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="w-full"
-                    disabled={cenarios.length === 0}
-                    data-testid="btn-pre-definidos"
-                  >
-                    Pre-definidos
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent className="w-56">
-                  <DropdownMenuLabel>Cenarios salvos</DropdownMenuLabel>
-                  <DropdownMenuSeparator />
-                  {cenarios.map(cenario => (
-                    <DropdownMenuItem
-                      key={cenario.id}
-                      onClick={() => aplicarCenario(cenario)}
-                      data-testid={`dropdown-cenario-${cenario.id}`}
-                    >
-                      {cenario.nome}
-                    </DropdownMenuItem>
-                  ))}
-                </DropdownMenuContent>
-              </DropdownMenu>
-
-              {/* (24.4) Botao + Dialog para salvar cenario */}
-              <Dialog open={dialogSalvarAberto} onOpenChange={setDialogSalvarAberto}>
-                <DialogTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className="w-full"
-                    disabled={!tipoPecaSelecionado}
-                    data-testid="btn-salvar-cenario"
-                  >
-                    Salvar Cenario
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DialogHeader>
-                    <DialogTitle>Salvar Cenario</DialogTitle>
-                    <DialogDescription>
-                      Salve a configuracao atual como um cenario reutilizavel.
-                    </DialogDescription>
-                  </DialogHeader>
-                  <div className="space-y-4 py-4">
-                    <div className="space-y-2">
-                      <Label htmlFor="nome-cenario">Nome do Cenario</Label>
-                      <Input
-                        id="nome-cenario"
-                        data-testid="input-nome-cenario"
-                        placeholder="Ex: Contestacao padrao com dano moral"
-                        value={nomeCenario}
-                        onChange={(e) => setNomeCenario(e.target.value)}
-                      />
-                    </div>
-                    <div className="text-sm text-muted-foreground space-y-1">
-                      <p>Tipo de peca: <strong>{tipoPecaSelecionado || 'Nenhum'}</strong></p>
-                      <p>Categorias: <strong>{categoriasSelecionadas.size}</strong></p>
-                      <p>Variaveis preenchidas: <strong>{Object.keys(valoresVariaveis).length}</strong></p>
-                      {descricaoSituacao && (
-                        <p>Descricao: <strong>{descricaoSituacao.slice(0, 80)}...</strong></p>
-                      )}
-                    </div>
-                  </div>
-                  <DialogFooter>
-                    <Button
-                      variant="outline"
-                      onClick={() => setDialogSalvarAberto(false)}
-                    >
-                      Cancelar
-                    </Button>
-                    <Button
-                      onClick={salvarCenario}
-                      disabled={salvandoCenario || !nomeCenario.trim()}
-                      data-testid="btn-confirmar-salvar-cenario"
-                    >
-                      {salvandoCenario ? 'Salvando...' : 'Salvar'}
-                    </Button>
-                  </DialogFooter>
-                </DialogContent>
-              </Dialog>
-
-              {/* (24.6) Botao para excluir cenario selecionado */}
-              {cenarioAtual && (
-                <Button
-                  variant="destructive"
-                  className="w-full"
-                  disabled={excluindoCenario}
-                  onClick={() => excluirCenario(cenarioAtual.id)}
-                  data-testid="btn-excluir-cenario"
+            <Card className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+              <div className="px-4 py-3 border-b border-gray-200 bg-gradient-to-r from-green-50 to-emerald-50 flex items-center justify-between">
+                <h3 className="font-semibold text-gray-700 flex items-center gap-2">
+                  <Bookmark className="h-4 w-4 text-green-500" />
+                  Cenarios Salvos
+                </h3>
+                <button onClick={salvarCenario} className="text-green-600 hover:text-green-800 text-sm" title="Salvar cenário atual">
+                  <Save className="h-4 w-4" />
+                </button>
+              </div>
+              <div className="p-2 space-y-2">
+                <Select
+                  value={cenarioSelecionadoId || '__none__'}
+                  onValueChange={(v) => {
+                    if (v === '__none__') {
+                      setCenarioSelecionadoId('')
+                      return
+                    }
+                    const cenario = cenarios.find((c) => String(c.id) === v)
+                    if (cenario) aplicarCenario(cenario)
+                  }}
                 >
-                  {excluindoCenario ? 'Excluindo...' : `Excluir "${cenarioAtual.nome}"`}
-                </Button>
-              )}
-            </CardContent>
-          </Card>
-        </div>
+                  <SelectTrigger className="h-10 text-sm">
+                    <SelectValue placeholder="-- Selecionar cenario --" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__none__">-- Selecionar cenario --</SelectItem>
+                    {cenarios.map((cenario) => (
+                      <SelectItem key={cenario.id} value={String(cenario.id)}>
+                        {cenario.nome}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
 
-        {/* ── Painel direito (2/3) ───────────────────────────────────────── */}
-        <div className="lg:col-span-2">
-          <Tabs defaultValue="variaveis-extracao" className="w-full">
-            {/* (24.9) 3 tabs: Variaveis de Extracao, Variaveis do Processo, Resultados */}
-            <TabsList data-testid="tabs-lista">
-              <TabsTrigger value="variaveis-extracao" data-testid="tab-variaveis-extracao">
-                Variaveis de Extracao
-              </TabsTrigger>
-              <TabsTrigger value="variaveis-processo" data-testid="tab-variaveis-processo">
-                Variaveis do Processo
-              </TabsTrigger>
-              <TabsTrigger value="resultados" data-testid="tab-resultados">
-                Resultados
-              </TabsTrigger>
-            </TabsList>
+                <div className="flex gap-2">
+                  <Input
+                    value={nomeCenario}
+                    onChange={(e) => setNomeCenario(e.target.value)}
+                    placeholder="Nome do cenário"
+                    className="h-8 text-xs"
+                  />
+                  <Button onClick={salvarCenario} size="sm" variant="outline" disabled={salvandoCenario}>
+                    {salvandoCenario ? '...' : 'Salvar'}
+                  </Button>
+                </div>
+              </div>
+            </Card>
+          </div>
 
-            {/* ── Tab: Variaveis de Extracao (das categorias selecionadas) ──── */}
-            <TabsContent value="variaveis-extracao" className="space-y-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Variaveis de Extracao</CardTitle>
-                  <CardDescription>
-                    Variaveis vinculadas as categorias de extracao selecionadas
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {loadingCategorias ? (
-                    <div className="text-center py-8">Carregando variaveis...</div>
-                  ) : categoriasSelecionadas.size === 0 ? (
-                    <div className="text-center py-8 text-muted-foreground">
-                      Selecione ao menos uma categoria para visualizar as variaveis de extracao
-                    </div>
+          <div className="col-span-12 lg:col-span-9">
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 relative overflow-hidden">
+              <div className="flex border-b border-gray-200">
+                <button
+                  onClick={() => setActiveTab('variaveis-extracao')}
+                  className={`flex-1 px-6 py-3 text-sm font-medium flex items-center justify-center gap-2 ${
+                    activeTab === 'variaveis-extracao' ? 'border-b-[3px] border-primary-600 text-primary-600 bg-primary-50' : 'text-gray-500'
+                  }`}
+                >
+                  <FileText className="h-4 w-4" />
+                  Variaveis Extracao
+                </button>
+                <button
+                  onClick={() => setActiveTab('variaveis-processo')}
+                  className={`flex-1 px-6 py-3 text-sm font-medium flex items-center justify-center gap-2 ${
+                    activeTab === 'variaveis-processo' ? 'border-b-[3px] border-primary-600 text-primary-600 bg-primary-50' : 'text-gray-500'
+                  }`}
+                >
+                  <FileText className="h-4 w-4" />
+                  Variaveis Processo
+                </button>
+                <button
+                  onClick={() => setActiveTab('resultados')}
+                  className={`flex-1 px-6 py-3 text-sm font-medium flex items-center justify-center gap-2 ${
+                    activeTab === 'resultados' ? 'border-b-[3px] border-primary-600 text-primary-600 bg-primary-50' : 'text-gray-500'
+                  }`}
+                >
+                  <FileText className="h-4 w-4" />
+                  Resultados
+                </button>
+              </div>
+
+              {activeTab === 'variaveis-extracao' && (
+                <div className="p-4 overflow-y-auto h-[calc(100vh-280px)] max-h-[calc(100vh-280px)]">
+                  {categoriasSelecionadas.size === 0 ? (
+                    <p className="text-center text-gray-400 py-8">Selecione categorias para ver as variaveis</p>
                   ) : (
-                    <div className="space-y-4" data-testid="lista-variaveis-extracao">
-                      {getVariaveisExtracao().map(variavel => renderCampoVariavel(variavel))}
-                    </div>
+                    <div className="space-y-4">{getVariaveisExtracao().map((v) => renderCampoVariavel(v))}</div>
                   )}
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            {/* ── Tab: Variaveis do Processo (gerais) ──────────────────────── */}
-            <TabsContent value="variaveis-processo" className="space-y-4">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Variaveis do Processo</CardTitle>
-                  <CardDescription>
-                    Variaveis gerais do processo que influenciam a ativacao de modulos
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  {loadingVariaveis ? (
-                    <div className="text-center py-8">Carregando variaveis...</div>
-                  ) : variaveisDisponiveis.length === 0 ? (
-                    <div className="text-center py-8 text-muted-foreground">
-                      Nenhuma variavel do processo disponivel
-                    </div>
-                  ) : (
-                    <div className="space-y-4" data-testid="lista-variaveis-processo">
-                      {variaveisDisponiveis.map(variavel => renderCampoVariavel(variavel))}
-                    </div>
-                  )}
-                </CardContent>
-              </Card>
-            </TabsContent>
-
-            {/* ── Tab: Resultados ──────────────────────────────────────────── */}
-            <TabsContent value="resultados" className="space-y-4">
-              {!resultado ? (
-                <Card>
-                  <CardContent className="py-8">
-                    <div className="text-center text-muted-foreground">
-                      Execute uma simulacao para ver os resultados
-                    </div>
-                  </CardContent>
-                </Card>
-              ) : (
-                <>
-                  {/* Modulos Ativados */}
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-green-600">
-                        Modulos Ativados ({resultado.totais.ativados})
-                      </CardTitle>
-                      <CardDescription>
-                        Modulos que foram ativados pela simulacao
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-3">
-                        {resultado.modulos_ativados.length === 0 ? (
-                          <div className="text-sm text-muted-foreground">
-                            Nenhum modulo foi ativado
-                          </div>
-                        ) : (
-                          resultado.modulos_ativados.map(modulo => (
-                            <Card key={modulo.id} className="border-green-200 bg-green-50">
-                              <CardContent className="p-4">
-                                <div className="flex items-start justify-between">
-                                  <div className="flex-1">
-                                    <h4 className="font-semibold">{modulo.titulo}</h4>
-                                    <div className="flex gap-2 mt-2">
-                                      <Badge variant="outline">{modulo.grupo}</Badge>
-                                      <Badge variant="default">{modulo.modo}</Badge>
-                                    </div>
-                                    {modulo.regra_usada && (
-                                      <div className="mt-2 text-xs text-muted-foreground">
-                                        Regra: {modulo.regra_usada}
-                                      </div>
-                                    )}
-                                    {modulo.detalhes && (
-                                      <div className="mt-1 text-xs text-muted-foreground">
-                                        {modulo.detalhes}
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-                              </CardContent>
-                            </Card>
-                          ))
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-
-                  {/* Modulos Nao Ativados */}
-                  <Card>
-                    <CardHeader>
-                      <CardTitle className="text-red-600">
-                        Modulos Nao Ativados ({resultado.totais.nao_ativados})
-                      </CardTitle>
-                      <CardDescription>
-                        Modulos que nao foram ativados pela simulacao
-                      </CardDescription>
-                    </CardHeader>
-                    <CardContent>
-                      <div className="space-y-3">
-                        {resultado.modulos_nao_ativados.length === 0 ? (
-                          <div className="text-sm text-muted-foreground">
-                            Todos os modulos foram ativados
-                          </div>
-                        ) : (
-                          resultado.modulos_nao_ativados.map(modulo => (
-                            <Card key={modulo.id} className="border-red-200 bg-red-50">
-                              <CardContent className="p-4">
-                                <div className="flex items-start justify-between">
-                                  <div className="flex-1">
-                                    <h4 className="font-semibold">{modulo.titulo}</h4>
-                                    <div className="flex gap-2 mt-2">
-                                      <Badge variant="outline">{modulo.grupo}</Badge>
-                                      <Badge variant="secondary">{modulo.modo}</Badge>
-                                    </div>
-                                    {modulo.detalhes && (
-                                      <div className="mt-2 text-xs text-muted-foreground">
-                                        {modulo.detalhes}
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-                              </CardContent>
-                            </Card>
-                          ))
-                        )}
-                      </div>
-                    </CardContent>
-                  </Card>
-                </>
+                </div>
               )}
-            </TabsContent>
-          </Tabs>
+
+              {activeTab === 'variaveis-processo' && (
+                <div className="p-4 overflow-y-auto h-[calc(100vh-280px)] max-h-[calc(100vh-280px)]">
+                  {variaveisDisponiveis.length === 0 ? (
+                    <p className="text-center text-gray-400 py-8">Carregando...</p>
+                  ) : (
+                    <div className="space-y-4">{variaveisDisponiveis.map((v) => renderCampoVariavel(v))}</div>
+                  )}
+                </div>
+              )}
+
+              {activeTab === 'resultados' && (
+                <div className="h-[calc(100vh-280px)] max-h-[calc(100vh-280px)]">
+                  <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 flex items-center gap-4">
+                    <span className="text-sm text-gray-600">
+                      <span className="font-bold text-green-600">{resultado?.totais.ativados ?? 0}</span> ativados |
+                      <span className="font-bold text-red-600 ml-1">{resultado?.totais.nao_ativados ?? 0}</span> nao ativados
+                    </span>
+                    <div className="flex-1" />
+                    <Button onClick={exportarJSON} variant="outline" size="sm" disabled={!resultado || exportandoJson}>
+                      <Download className="h-4 w-4 mr-1" />
+                      {exportandoJson ? 'Exportando...' : 'Exportar JSON'}
+                    </Button>
+                  </div>
+
+                  <div className="overflow-y-auto p-4 h-[calc(100%-52px)] space-y-3">
+                    {!resultado ? (
+                      <div className="text-center py-12 text-gray-400">
+                        <p className="text-lg">Clique em "SIMULAR ATIVACAO" para ver os resultados</p>
+                      </div>
+                    ) : (
+                      <>
+                        {resultado.modulos_ativados.map((modulo) => (
+                          <Card key={`on-${modulo.id}`} className="p-4 border-l-4 border-l-green-500 bg-gradient-to-r from-green-50 to-white">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="font-semibold text-gray-800">{modulo.titulo}</p>
+                                <p className="text-xs text-gray-500 mt-1">{modulo.grupo}</p>
+                              </div>
+                              <Badge variant="success">Ativado</Badge>
+                            </div>
+                          </Card>
+                        ))}
+                        {resultado.modulos_nao_ativados.map((modulo) => (
+                          <Card key={`off-${modulo.id}`} className="p-4 border-l-4 border-l-red-500 bg-gradient-to-r from-red-50 to-white">
+                            <div className="flex items-center justify-between">
+                              <div>
+                                <p className="font-semibold text-gray-800">{modulo.titulo}</p>
+                                <p className="text-xs text-gray-500 mt-1">{modulo.grupo}</p>
+                              </div>
+                              <Badge variant="destructive">Não ativado</Badge>
+                            </div>
+                          </Card>
+                        ))}
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            <div className="mt-3">
+              <Button
+                onClick={simularAtivacao}
+                disabled={simulando || loading || !tipoPecaSelecionado}
+                className="w-full py-4 bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 text-white rounded-xl font-bold text-lg shadow-lg flex items-center justify-center gap-3"
+              >
+                <PlayCircle className="h-5 w-5" />
+                {simulando ? 'SIMULANDO...' : 'SIMULAR ATIVACAO'}
+              </Button>
+            </div>
+          </div>
         </div>
       </div>
     </PageContainer>

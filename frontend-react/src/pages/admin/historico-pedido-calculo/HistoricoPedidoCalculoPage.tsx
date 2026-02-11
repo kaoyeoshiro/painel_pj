@@ -23,7 +23,8 @@ import { useToast } from '@/components/ui/toast'
 import { pedidoCalculoAdminApi } from '@/lib/api'
 import { useApiQuery } from '@/hooks/useApiQuery'
 import { useMarkdown } from '@/hooks/useMarkdown'
-import { PageContainer } from '@/components/layout'
+import { PageContainer, PageHeader } from '@/components/layout'
+import { History } from 'lucide-react'
 
 // ---------------------------------------------------------------------------
 // Tipos
@@ -444,13 +445,13 @@ export function HistoricoPedidoCalculoPage() {
   ]
 
   return (
-    <PageContainer className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">Historico - Pedido de Calculo</h1>
-        <p className="text-muted-foreground mt-1">
-          Todas as geracoes de pedidos de calculo com logs de IA
-        </p>
-      </div>
+    <PageContainer wide className="space-y-6">
+      <PageHeader
+        title="Histórico - Pedido de Cálculo"
+        description="Todas as gerações de pedidos de cálculo com logs de IA"
+        icon={<History className="h-5 w-5" />}
+        backTo="/dashboard"
+      />
 
       <DataTable
         columns={columns}

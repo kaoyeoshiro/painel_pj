@@ -7,6 +7,7 @@ import * as api from '@/lib/api'
 // Mock do router
 vi.mock('@tanstack/react-router', () => ({
   useNavigate: () => vi.fn(),
+  Link: ({ children, ...props }: { children: React.ReactNode; to?: string }) => <a href={props.to}>{children}</a>,
 }))
 
 // Mock do auth store com suporte a seletores zustand
@@ -16,6 +17,7 @@ const mockAuthState = {
   isAuthenticated: true,
   isLoading: false,
   error: null,
+  logout: vi.fn(),
 }
 
 vi.mock('@/stores/auth-store', () => ({
@@ -62,8 +64,8 @@ describe('RelatorioCumprimentoPage', () => {
     // Verifica botao de gerar
     expect(screen.getByRole('button', { name: /gerar relatorio/i })).toBeInTheDocument()
 
-    // Verifica botao de historico
-    expect(screen.getByRole('button', { name: /historico/i })).toBeInTheDocument()
+    // Verifica botao de historico (button inside SheetTrigger)
+    expect(screen.getByTitle('Histórico')).toBeInTheDocument()
   })
 
   it('deve mostrar estado de carregamento ao buscar historico', async () => {
@@ -122,7 +124,7 @@ describe('RelatorioCumprimentoPage', () => {
     render(<RelatorioCumprimentoPage />)
 
     // Clica no botao de historico para abrir o drawer
-    const btnHistorico = screen.getByRole('button', { name: /historico/i })
+    const btnHistorico = screen.getByTitle('Histórico')
     await userEvent.click(btnHistorico)
 
     // Verifica se o drawer mostra o titulo
@@ -191,18 +193,15 @@ describe('RelatorioCumprimentoPage', () => {
     // Verifica titulo principal
     expect(screen.getByText('Relatorio de Cumprimento')).toBeInTheDocument()
 
-    // Verifica subtitulo
-    expect(screen.getByText('Cumprimento de Sentenca')).toBeInTheDocument()
-
-    // Verifica nome do usuario
-    expect(screen.getByText('Usuario Teste')).toBeInTheDocument()
+    // Verifica subtitulo (rendered inside SystemTopbar subtitle)
+    expect(screen.getByText('Relatorio Inicial para Cumprimento de Sentenca')).toBeInTheDocument()
   })
 
   it('deve mostrar descricao do campo CNJ', () => {
     render(<RelatorioCumprimentoPage />)
 
     expect(
-      screen.getByText(/informe o numero do processo de cumprimento/i)
+      screen.getByText(/digite o numero do processo de cumprimento/i)
     ).toBeInTheDocument()
   })
 
@@ -212,7 +211,7 @@ describe('RelatorioCumprimentoPage', () => {
     render(<RelatorioCumprimentoPage />)
 
     // Abre o drawer de historico
-    const btnHistorico = screen.getByRole('button', { name: /historico/i })
+    const btnHistorico = screen.getByTitle('Histórico')
     await userEvent.click(btnHistorico)
 
     // Verifica mensagem de vazio

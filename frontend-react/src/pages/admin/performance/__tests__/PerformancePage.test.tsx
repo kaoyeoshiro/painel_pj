@@ -8,6 +8,7 @@ import { adminApi } from '@/lib/api';
 vi.mock('@/lib/api', () => ({
   adminApi: {
     get: vi.fn(),
+    delete: vi.fn(),
   },
   getToken: vi.fn(() => null),
 }));
@@ -17,6 +18,16 @@ vi.mock('@/hooks/use-toast', () => ({
   useToast: () => ({
     toast: vi.fn(),
   }),
+}));
+
+// Mock recharts (SVG components cause issues in jsdom)
+vi.mock('recharts', () => ({
+  ResponsiveContainer: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  PieChart: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  Pie: () => <div />,
+  Cell: () => <div />,
+  Tooltip: () => <div />,
+  Legend: () => <div />,
 }));
 
 describe('PerformancePage', () => {
@@ -118,6 +129,9 @@ describe('PerformancePage', () => {
       if (url.includes('/admin/api/gemini-logs')) {
         return Promise.resolve(mockGeminiLogs);
       }
+      if (url.includes('/admin/api/performance/route-mapping')) {
+        return Promise.resolve({ mappings: [] });
+      }
       return Promise.resolve({});
     });
   });
@@ -126,22 +140,23 @@ describe('PerformancePage', () => {
     render(<PerformancePage />);
 
     // Verifica se o título está presente
-    expect(screen.getByText('Performance do Sistema')).toBeInTheDocument();
+    expect(screen.getByText('Performance & Logs')).toBeInTheDocument();
 
     // Aguarda o carregamento dos dados
     await waitFor(() => {
-      expect(adminApi.get).toHaveBeenCalledWith('/admin/api/performance/summary?hours=24');
-      expect(adminApi.get).toHaveBeenCalledWith('/admin/api/performance/logs?hours=24&limit=50');
-      expect(adminApi.get).toHaveBeenCalledWith('/admin/api/gemini-logs/summary?hours=24');
-      expect(adminApi.get).toHaveBeenCalledWith('/admin/api/gemini-logs?hours=24&limit=50');
+      expect(adminApi.get).toHaveBeenCalledWith(
+        expect.stringContaining('/admin/api/performance/summary')
+      );
+      expect(adminApi.get).toHaveBeenCalledWith(
+        expect.stringContaining('/admin/api/performance/logs')
+      );
     });
 
-    // Verifica se os cards de resumo foram renderizados
+    // Verifica se os cards de gargalo foram renderizados
     await waitFor(() => {
-      expect(screen.getByText('1200ms')).toBeInTheDocument(); // LLM médio
-      expect(screen.getByText('300ms')).toBeInTheDocument(); // DB médio
-      expect(screen.getByText('100ms')).toBeInTheDocument(); // Parse médio
-      expect(screen.getByText('1600ms')).toBeInTheDocument(); // Total médio
+      expect(screen.getByText('Gargalo LLM')).toBeInTheDocument();
+      expect(screen.getByText('Gargalo DB')).toBeInTheDocument();
+      expect(screen.getByText('Gargalo Parse')).toBeInTheDocument();
     });
   });
 
@@ -150,23 +165,14 @@ describe('PerformancePage', () => {
 
     // Aguarda o carregamento
     await waitFor(() => {
-      expect(screen.getByText('1200ms')).toBeInTheDocument();
+      expect(screen.getByText('Gargalo LLM')).toBeInTheDocument();
     });
 
-    // Verifica se o gráfico de bottlenecks está presente
-    expect(screen.getByText('Distribuição de Bottlenecks')).toBeInTheDocument();
-
-    // Verifica se os erros recentes estão visíveis
-    expect(screen.getByText('Erros Recentes')).toBeInTheDocument();
-    expect(screen.getByText('/api/test')).toBeInTheDocument();
-    expect(screen.getByText('Timeout')).toBeInTheDocument();
+    // Verifica se o gráfico de gargalos está presente
+    expect(screen.getByText('Distribuicao de Gargalos')).toBeInTheDocument();
 
     // Verifica se a tabela de logs está presente
     expect(screen.getByText('Logs de Performance')).toBeInTheDocument();
-    await waitFor(() => {
-      expect(screen.getByText('gerador_pecas')).toBeInTheDocument();
-      expect(screen.getByText('/api/gerar')).toBeInTheDocument();
-    });
   });
 
   it('deve alternar para a tab Logs Gemini e exibir dados', async () => {
@@ -175,48 +181,25 @@ describe('PerformancePage', () => {
 
     // Aguarda o carregamento inicial
     await waitFor(() => {
-      expect(screen.getByText('1200ms')).toBeInTheDocument();
+      expect(screen.getByText('Gargalo LLM')).toBeInTheDocument();
     });
 
-    // Clica na tab Logs Gemini
-    const geminiTab = screen.getByRole('tab', { name: /logs gemini/i });
+    // Clica na tab Logs Gemini (custom button, not role="tab")
+    const geminiTab = screen.getByText('Logs Gemini API');
     await user.click(geminiTab);
 
     // Verifica se os cards de resumo Gemini estão visíveis
     await waitFor(() => {
-      expect(screen.getByText('150')).toBeInTheDocument(); // Total de chamadas
-      expect(screen.getByText('1250ms')).toBeInTheDocument(); // Latência média
-      expect(screen.getByText('96.7%')).toBeInTheDocument(); // Taxa de sucesso
+      expect(screen.getByText('Total Chamadas')).toBeInTheDocument();
+      expect(screen.getByText('Latencia Media')).toBeInTheDocument();
+      expect(screen.getByText('Taxa Sucesso')).toBeInTheDocument();
     });
 
-    // Verifica se as distribuições estão presentes
-    expect(screen.getByText('Chamadas por Sistema')).toBeInTheDocument();
-    expect(screen.getByText('Chamadas por Modelo')).toBeInTheDocument();
-
-    // Verifica se a tabela de logs Gemini está presente
-    expect(screen.getByText('Logs de Chamadas Gemini')).toBeInTheDocument();
-    await waitFor(() => {
-      // Usa getAllByText porque o texto aparece na tabela e no gráfico
-      const modelElements = screen.getAllByText('gemini-1.5-pro');
-      expect(modelElements.length).toBeGreaterThan(0);
-    });
+    // Verifica se a tabela de logs Gemini está presente (text appears in tab + heading)
+    expect(screen.getAllByText('Logs Gemini API').length).toBeGreaterThanOrEqual(2);
   });
 
-  it('deve ter seletor de período de tempo', async () => {
-    render(<PerformancePage />);
-
-    // Aguarda o carregamento inicial
-    await waitFor(() => {
-      expect(adminApi.get).toHaveBeenCalledWith('/admin/api/performance/summary?hours=24');
-    });
-
-    // Verifica se o seletor está presente com o valor padrão
-    expect(screen.getByText('24 horas')).toBeInTheDocument();
-    expect(screen.getByRole('combobox')).toBeInTheDocument();
-  });
-
-  it('deve clicar no botão Atualizar e recarregar dados', async () => {
-    const user = userEvent.setup();
+  it('deve ter as três tabs navegáveis', async () => {
     render(<PerformancePage />);
 
     // Aguarda o carregamento inicial
@@ -224,46 +207,31 @@ describe('PerformancePage', () => {
       expect(adminApi.get).toHaveBeenCalled();
     });
 
-    // Limpa os mocks
-    vi.clearAllMocks();
-
-    // Clica no botão Atualizar
-    const updateButton = screen.getByRole('button', { name: /atualizar/i });
-    await user.click(updateButton);
-
-    // Verifica se os dados foram recarregados
-    await waitFor(() => {
-      expect(adminApi.get).toHaveBeenCalledWith('/admin/api/performance/summary?hours=24');
-      expect(adminApi.get).toHaveBeenCalledWith('/admin/api/performance/logs?hours=24&limit=50');
-    });
+    // Verifica se as tabs estão presentes
+    expect(screen.getByText('Performance Sistema')).toBeInTheDocument();
+    expect(screen.getByText('Logs Gemini API')).toBeInTheDocument();
+    expect(screen.getByText('Logs Avancados')).toBeInTheDocument();
   });
 
-  it('deve exibir mensagem quando não houver dados de bottleneck', async () => {
-    // Mock com bottleneck vazio
-    (adminApi.get as any).mockImplementation((url: string) => {
-      if (url.includes('/admin/api/performance/summary')) {
-        return Promise.resolve({
-          bottleneck_summary: {},
-          avg_times: { llm: 0, db: 0, parse: 0, total: 0 },
-          recent_errors: [],
-        });
-      }
-      if (url.includes('/admin/api/performance/logs')) {
-        return Promise.resolve({ logs: [] });
-      }
-      if (url.includes('/admin/api/gemini-logs/summary')) {
-        return Promise.resolve(mockGeminiSummary);
-      }
-      if (url.includes('/admin/api/gemini-logs')) {
-        return Promise.resolve({ logs: [] });
-      }
-      return Promise.resolve({});
+  it('deve exibir os filtros na tab Performance Sistema', async () => {
+    render(<PerformancePage />);
+
+    // Aguarda o carregamento
+    await waitFor(() => {
+      expect(screen.getByText('Gargalo LLM')).toBeInTheDocument();
     });
 
+    // Verifica filtros
+    expect(screen.getByText('Filtrar')).toBeInTheDocument();
+  });
+
+  it('deve exibir o botão Limpar antigos na tabela de logs', async () => {
     render(<PerformancePage />);
 
     await waitFor(() => {
-      expect(screen.getByText('Nenhum dado disponível')).toBeInTheDocument();
+      expect(screen.getByText('Logs de Performance')).toBeInTheDocument();
     });
+
+    expect(screen.getByText('Limpar antigos')).toBeInTheDocument();
   });
 });

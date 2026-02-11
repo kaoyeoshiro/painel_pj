@@ -956,7 +956,7 @@ async def processar_processo_stream(
                 
                 # === EARLY PARECER CHECK (pré-Agent 1) ===
                 parecer_config_early = load_parecer_natjus_config(db, use_cache=False)
-                if piece_requires_parecer(tipo_peca_inicial, parecer_config_early) and not req.parecer_upload_id:
+                if piece_requires_parecer(tipo_peca_inicial, parecer_config_early) and not req.parecer_upload_id and req.parecer_user_choice_when_missing != "continue_without":
                     yield f"data: {json.dumps({'tipo': 'info', 'mensagem': 'Verificando documentos do processo...'})}\n\n"
                     try:
                         docs_metadata = await orq.agente1.consultar_codigos_documentos(cnj_limpo)
@@ -1105,7 +1105,7 @@ async def processar_processo_stream(
                     yield f"data: {json.dumps({'tipo': 'erro', 'mensagem': config_error_message})}\n\n"
                     return
 
-                if parecer_status.get("parecer_required") and not parecer_status.get("parecer_found"):
+                if parecer_status.get("parecer_required") and not parecer_status.get("parecer_found") and req.parecer_user_choice_when_missing != "continue_without":
                     logger.warning(
                         "[PARECER-NATJUS] Parecer ausente: cnj=%s tipo_peca=%s codes=%s",
                         cnj_limpo,

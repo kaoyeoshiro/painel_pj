@@ -14,7 +14,7 @@ export function SectionCard({ children, className }: SectionCardProps) {
   return (
     <div
       className={cn(
-        'bg-white rounded-xl shadow-sm border border-gray-200 p-4',
+        'bg-white rounded-xl shadow-sm border border-gray-200 p-6',
         className,
       )}
     >

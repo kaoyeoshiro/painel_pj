@@ -11,7 +11,8 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Textarea } from '@/components/ui/textarea'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { useToast } from '@/hooks/use-toast'
-import { PageContainer } from '@/components/layout'
+import { PageContainer, PageHeader, AdminSubNav } from '@/components/layout'
+import { Settings as SettingsIcon } from 'lucide-react'
 
 // Interfaces
 interface CategoriaDocumento {
@@ -603,35 +604,35 @@ export function ConfigPecasPage() {
   }
 
   return (
-    <PageContainer className="space-y-6">
-      <div className="flex justify-between items-start">
-        <div>
-          <h1 className="text-2xl font-bold">Configuração de Peças</h1>
-          <p className="text-muted-foreground">
-            Gerencie categorias de documentos e tipos de peças jurídicas
-          </p>
-        </div>
+    <PageContainer wide className="space-y-6">
+      <PageHeader
+        title="Configuração de Peças"
+        description="Gerencie categorias de documentos e tipos de peças jurídicas"
+        icon={<SettingsIcon className="h-5 w-5" />}
+        backTo="/dashboard"
+        actions={
+          <div className="flex gap-2" data-testid="admin-actions">
+            <Button
+              variant="outline"
+              onClick={carregarDadosIniciais}
+              disabled={loadingCarregarIniciais}
+              data-testid="btn-carregar-dados-iniciais"
+            >
+              {loadingCarregarIniciais ? 'Carregando...' : 'Carregar Dados Iniciais'}
+            </Button>
+            <Button
+              variant="outline"
+              onClick={sincronizarComPrompts}
+              disabled={loadingSincronizar}
+              data-testid="btn-sincronizar-prompts"
+            >
+              {loadingSincronizar ? 'Sincronizando...' : 'Sincronizar com Prompts'}
+            </Button>
+          </div>
+        }
+      />
 
-        {/* Botões administrativos (itens 29.10 e 29.11) */}
-        <div className="flex gap-2" data-testid="admin-actions">
-          <Button
-            variant="outline"
-            onClick={carregarDadosIniciais}
-            disabled={loadingCarregarIniciais}
-            data-testid="btn-carregar-dados-iniciais"
-          >
-            {loadingCarregarIniciais ? 'Carregando...' : 'Carregar Dados Iniciais'}
-          </Button>
-          <Button
-            variant="outline"
-            onClick={sincronizarComPrompts}
-            disabled={loadingSincronizar}
-            data-testid="btn-sincronizar-prompts"
-          >
-            {loadingSincronizar ? 'Sincronizando...' : 'Sincronizar com Prompts'}
-          </Button>
-        </div>
-      </div>
+      <AdminSubNav />
 
       <Tabs defaultValue="categorias" className="w-full">
         <TabsList>

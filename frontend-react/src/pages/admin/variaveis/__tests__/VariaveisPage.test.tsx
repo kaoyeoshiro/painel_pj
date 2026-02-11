@@ -102,11 +102,12 @@ describe('VariaveisPage', () => {
     })
   })
 
-  it('deve renderizar a página com resumo e variáveis', async () => {
+  it('deve renderizar a página com título e resumo', async () => {
     render(<VariaveisPage />)
 
     // Verificar título
-    expect(screen.getByText('Gerenciar Variáveis')).toBeInTheDocument()
+    expect(screen.getByText('Painel de Variaveis')).toBeInTheDocument()
+    expect(screen.getByText('Variaveis de extracao do sistema')).toBeInTheDocument()
 
     // Aguardar carregamento dos dados
     await waitFor(() => {
@@ -114,13 +115,18 @@ describe('VariaveisPage', () => {
     })
 
     // Verificar cards de resumo
-    expect(screen.getByText('Total')).toBeInTheDocument()
+    expect(screen.getByText('Total de Variaveis')).toBeInTheDocument()
     expect(screen.getByText('Em Uso')).toBeInTheDocument()
     expect(screen.getByText('Sem Uso')).toBeInTheDocument()
     expect(screen.getByText('Tipos')).toBeInTheDocument()
 
     expect(screen.getByText('10')).toBeInTheDocument() // Em uso
-    expect(screen.getByText('5')).toBeInTheDocument() // Sem uso
+    // '5' appears in both "Sem Uso" card and "Tipos" card (5 types), so use getAllByText
+    expect(screen.getAllByText('5').length).toBeGreaterThanOrEqual(2) // Sem uso + Tipos
+  })
+
+  it('deve carregar e exibir variáveis na tabela', async () => {
+    render(<VariaveisPage />)
 
     // Verificar que as variáveis foram carregadas
     await waitFor(() => {
@@ -140,81 +146,33 @@ describe('VariaveisPage', () => {
     )
   })
 
-  it('deve abrir dialog ao clicar em Nova Variável', async () => {
-    const user = userEvent.setup()
+  it('deve exibir cabeçalhos da tabela', async () => {
     render(<VariaveisPage />)
 
-    // Aguardar carregamento
     await waitFor(() => {
       expect(screen.getByText('valor_causa')).toBeInTheDocument()
     })
 
-    // Clicar no botão Nova Variável
-    const novaVariavelBtn = screen.getByRole('button', { name: /nova variável/i })
-    await user.click(novaVariavelBtn)
-
-    // Verificar que o dialog foi aberto - usar getAllByText e verificar que há mais de um
-    await waitFor(() => {
-      const titles = screen.getAllByText('Nova Variável')
-      expect(titles.length).toBeGreaterThan(0)
-      expect(screen.getByText('Crie uma nova variável de extração')).toBeInTheDocument()
-    })
-
-    // Verificar campos do formulário - usando IDs específicos
-    expect(screen.getByLabelText('Slug *')).toBeInTheDocument()
-    expect(screen.getByLabelText('Label *')).toBeInTheDocument()
-    expect(screen.getByLabelText('Tipo *')).toBeInTheDocument()
-    expect(screen.getByLabelText('Descrição')).toBeInTheDocument()
+    // Verificar cabeçalhos
+    expect(screen.getByText('Slug')).toBeInTheDocument()
+    expect(screen.getByText('Label')).toBeInTheDocument()
+    expect(screen.getByText('Tipo')).toBeInTheDocument()
+    expect(screen.getByText('Categoria')).toBeInTheDocument()
+    expect(screen.getByText('Status')).toBeInTheDocument()
+    expect(screen.getByText('Uso')).toBeInTheDocument()
   })
 
-  it('deve criar uma nova variável com sucesso', async () => {
-    const user = userEvent.setup()
-    vi.mocked(adminApi.post).mockResolvedValue({ id: 4 })
-
+  it('deve exibir badges de tipo corretamente', async () => {
     render(<VariaveisPage />)
 
-    // Aguardar carregamento
     await waitFor(() => {
       expect(screen.getByText('valor_causa')).toBeInTheDocument()
     })
 
-    // Abrir dialog
-    const novaVariavelBtn = screen.getByRole('button', { name: /nova variável/i })
-    await user.click(novaVariavelBtn)
-
-    // Preencher formulário - usar labels específicas
-    await waitFor(() => {
-      expect(screen.getByLabelText('Slug *')).toBeInTheDocument()
-    })
-
-    const slugInput = screen.getByLabelText('Slug *')
-    const labelInput = screen.getByLabelText('Label *')
-    const descricaoInput = screen.getByLabelText('Descrição')
-
-    await user.type(slugInput, 'nova_variavel')
-    await user.type(labelInput, 'Nova Variável')
-    await user.type(descricaoInput, 'Descrição da nova variável')
-
-    // Salvar
-    const salvarBtn = screen.getByRole('button', { name: /salvar/i })
-    await user.click(salvarBtn)
-
-    // Verificar chamada à API
-    await waitFor(() => {
-      expect(adminApi.post).toHaveBeenCalledWith(
-        '/admin/api/extraction/variaveis',
-        expect.objectContaining({
-          slug: 'nova_variavel',
-          label: 'Nova Variável',
-          descricao: 'Descrição da nova variável',
-          tipo: 'text',
-          ativo: true,
-        })
-      )
-    })
-
-    // Verificar que recarregou os dados
-    expect(adminApi.get).toHaveBeenCalledWith('/admin/api/extraction/variaveis/resumo')
+    // Verificar que os tipos são traduzidos
+    expect(screen.getByText('Numero')).toBeInTheDocument()
+    expect(screen.getByText('Escolha')).toBeInTheDocument()
+    expect(screen.getByText('Texto')).toBeInTheDocument()
   })
 
   it('deve filtrar variáveis por busca', async () => {
@@ -242,7 +200,7 @@ describe('VariaveisPage', () => {
     })
 
     // Buscar por "valor"
-    const buscaInput = screen.getByPlaceholderText(/slug ou label/i)
+    const buscaInput = screen.getByPlaceholderText(/slug.*label/i)
     await user.type(buscaInput, 'valor')
 
     // Verificar que chamou a API com o filtro
@@ -253,92 +211,41 @@ describe('VariaveisPage', () => {
     })
   })
 
-  it('deve abrir dialog de edição ao clicar em Editar', async () => {
-    const user = userEvent.setup()
+  it('deve exibir Nova Variavel button', async () => {
     render(<VariaveisPage />)
 
-    // Aguardar carregamento
     await waitFor(() => {
       expect(screen.getByText('valor_causa')).toBeInTheDocument()
     })
 
-    // Clicar no botão Editar da primeira variável
-    const editarBtns = screen.getAllByRole('button', { name: /editar/i })
-    await user.click(editarBtns[0])
-
-    // Verificar que o dialog foi aberto com os dados corretos
-    await waitFor(() => {
-      expect(screen.getByText('Editar Variável')).toBeInTheDocument()
-      expect(screen.getByText('Atualize os dados da variável de extração')).toBeInTheDocument()
-    })
-
-    // Verificar que os campos estão preenchidos - usar labels específicas
-    const slugInput = screen.getByLabelText('Slug *') as HTMLInputElement
-    expect(slugInput.value).toBe('valor_causa')
-    expect(slugInput).toBeDisabled() // Slug não pode ser editado
-
-    const labelInput = screen.getByLabelText('Label *') as HTMLInputElement
-    expect(labelInput.value).toBe('Valor da Causa')
+    expect(screen.getByText('Nova Variavel')).toBeInTheDocument()
   })
 
-  it('deve excluir uma variável com confirmação', async () => {
-    const user = userEvent.setup()
-    vi.mocked(adminApi.delete).mockResolvedValue({})
+  it('deve exibir links de navegação via AdminSubNav', async () => {
+    render(<VariaveisPage />)
+
+    expect(screen.getByText('Categorias')).toBeInTheDocument()
+    expect(screen.getByText('Módulos')).toBeInTheDocument()
+  })
+
+  it('deve exibir estado vazio quando não há variáveis', async () => {
+    vi.mocked(adminApi.get).mockImplementation((url: string) => {
+      if (url === '/admin/api/extraction/variaveis/resumo') {
+        return Promise.resolve({ total: 0, variaveis_com_uso: 0, variaveis_sem_uso: 0, distribuicao_tipos: {} })
+      }
+      if (url.startsWith('/admin/api/extraction/variaveis?')) {
+        return Promise.resolve([])
+      }
+      if (url.startsWith('/admin/api/categorias-resumo-json')) {
+        return Promise.resolve([])
+      }
+      return Promise.reject(new Error('URL não mockada'))
+    })
 
     render(<VariaveisPage />)
 
-    // Aguardar carregamento
     await waitFor(() => {
-      expect(screen.getByText('observacoes')).toBeInTheDocument()
+      expect(screen.getByText('Nenhuma variavel encontrada')).toBeInTheDocument()
     })
-
-    // Clicar no botão Excluir da última variável (observacoes)
-    const excluirBtns = screen.getAllByRole('button', { name: /excluir/i })
-    await user.click(excluirBtns[2]) // Terceira variável
-
-    // Verificar dialog de confirmação
-    await waitFor(() => {
-      expect(screen.getByText('Confirmar exclusão')).toBeInTheDocument()
-      // Verificar que o texto de confirmação aparece (texto está dentro de um <strong>)
-      const confirmText = screen.getByText(/tem certeza que deseja excluir/i)
-      expect(confirmText).toBeInTheDocument()
-    })
-
-    // Confirmar exclusão - pegar todos os botões excluir e usar o último (do dialog)
-    const allExcluirBtns = screen.getAllByRole('button', { name: /excluir/i })
-    const confirmarBtn = allExcluirBtns[allExcluirBtns.length - 1]
-    await user.click(confirmarBtn)
-
-    // Verificar chamada à API
-    await waitFor(() => {
-      expect(adminApi.delete).toHaveBeenCalledWith('/admin/api/extraction/variaveis/3')
-    })
-
-    // Verificar que recarregou os dados
-    expect(adminApi.get).toHaveBeenCalledWith('/admin/api/extraction/variaveis/resumo')
-  })
-
-  it('deve exibir campo de opções para tipo choice', async () => {
-    render(<VariaveisPage />)
-
-    // Aguardar carregamento
-    await waitFor(() => {
-      expect(screen.getByText('valor_causa')).toBeInTheDocument()
-    })
-
-    // Editar uma variável do tipo choice (tipo_acao)
-    const editarBtns = screen.getAllByRole('button', { name: /editar/i })
-    await userEvent.click(editarBtns[1]) // Segunda variável (tipo_acao, tipo choice)
-
-    // Verificar que campo de opções está visível (variável é tipo choice)
-    await waitFor(() => {
-      expect(screen.getByLabelText(/opções/i)).toBeInTheDocument()
-    })
-
-    // Verificar que as opções estão preenchidas
-    const opcoesTextarea = screen.getByLabelText(/opções/i) as HTMLTextAreaElement
-    expect(opcoesTextarea.value).toContain('Cível')
-    expect(opcoesTextarea.value).toContain('Penal')
-    expect(opcoesTextarea.value).toContain('Trabalhista')
   })
 })

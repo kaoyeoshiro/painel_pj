@@ -143,7 +143,7 @@ class BertWorker:
             response = self._api_request(
                 'GET',
                 f'/api/jobs/{job_id}/status',
-                data={'worker_token': self.token}
+                params={'worker_token': self.token}
             )
             if response.status_code == 200:
                 data = response.json()

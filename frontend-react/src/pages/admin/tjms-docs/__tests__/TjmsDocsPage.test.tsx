@@ -12,26 +12,40 @@ describe('TjmsDocsPage', () => {
   it('deve renderizar o título da página', () => {
     render(<TjmsDocsPage />);
 
-    expect(screen.getByText('Documentação Integração TJ-MS')).toBeInTheDocument();
-    expect(screen.getByText(/Módulo unificado de integração com o sistema MNI\/SOAP/)).toBeInTheDocument();
+    expect(screen.getByText('Documentacao Integracao TJ-MS')).toBeInTheDocument();
   });
 
   it('deve mostrar alerta de sincronização backend/frontend', () => {
     render(<TjmsDocsPage />);
 
-    expect(screen.getByText(/REGRA CRÍTICA - Sincronização Backend\/Frontend/)).toBeInTheDocument();
-    expect(screen.getByText(/Ao alterar qualquer arquivo em/)).toBeInTheDocument();
+    expect(screen.getByText('Importante: Sincronizacao Backend/Frontend')).toBeInTheDocument();
+    expect(screen.getByText(/Quando alterar qualquer arquivo listado abaixo/)).toBeInTheDocument();
   });
 
-  it('deve mostrar os cards dos módulos', () => {
+  it('deve mostrar bloco de migração concluída', () => {
     render(<TjmsDocsPage />);
 
-    // Verifica se os 6 módulos principais estão presentes
-    expect(screen.getByText('config.py')).toBeInTheDocument();
-    expect(screen.getByText('client.py')).toBeInTheDocument();
-    expect(screen.getByText('models.py')).toBeInTheDocument();
-    expect(screen.getByText('constants.py')).toBeInTheDocument();
-    expect(screen.getByText('adapters.py')).toBeInTheDocument();
-    expect(screen.getByText('parsers.py')).toBeInTheDocument();
+    expect(screen.getByText(/Migracao Concluida/)).toBeInTheDocument();
+    expect(screen.getByText(/Todos os sistemas foram migrados/)).toBeInTheDocument();
+  });
+
+  it('deve mostrar a arquitetura unificada', () => {
+    render(<TjmsDocsPage />);
+
+    expect(screen.getByText('Arquitetura Unificada de Integracao')).toBeInTheDocument();
+  });
+
+  it('deve mostrar os módulos no bloco de código', () => {
+    render(<TjmsDocsPage />);
+
+    // Os módulos estão dentro de um <pre> block, verificar que o texto contém os nomes dos módulos
+    const preBlock = screen.getByText(/CLIENTE UNIFICADO/);
+    expect(preBlock).toBeInTheDocument();
+    expect(preBlock.textContent).toContain('config.py');
+    expect(preBlock.textContent).toContain('client.py');
+    expect(preBlock.textContent).toContain('models.py');
+    expect(preBlock.textContent).toContain('constants.py');
+    expect(preBlock.textContent).toContain('adapters.py');
+    expect(preBlock.textContent).toContain('parsers.py');
   });
 });

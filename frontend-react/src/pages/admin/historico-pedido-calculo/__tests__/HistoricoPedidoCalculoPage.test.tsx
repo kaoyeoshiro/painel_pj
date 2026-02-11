@@ -38,9 +38,9 @@ describe('HistoricoPedidoCalculoPage', () => {
 
     render(<HistoricoPedidoCalculoPage />)
 
-    expect(screen.getByText('Historico - Pedido de Calculo')).toBeInTheDocument()
+    expect(screen.getByText('Histórico - Pedido de Cálculo')).toBeInTheDocument()
     expect(
-      screen.getByText('Todas as geracoes de pedidos de calculo com logs de IA')
+      screen.getByText('Todas as gerações de pedidos de cálculo com logs de IA')
     ).toBeInTheDocument()
   })
 

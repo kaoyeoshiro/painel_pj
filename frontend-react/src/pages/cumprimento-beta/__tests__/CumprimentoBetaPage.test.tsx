@@ -7,11 +7,13 @@ import * as api from '@/lib/api'
 // Mock do router
 vi.mock('@tanstack/react-router', () => ({
   useNavigate: () => vi.fn(),
+  Link: ({ children, ...props }: { children: React.ReactNode; to?: string }) => <a href={props.to}>{children}</a>,
 }))
 
 // Mock do auth store
 vi.mock('@/stores/auth-store', () => ({
   useAuthStore: () => ({
+    logout: vi.fn(),
     user: { id: 1, full_name: 'Usuário Teste', email: 'teste@example.com' },
   }),
 }))

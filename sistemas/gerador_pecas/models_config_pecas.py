@@ -51,9 +51,14 @@ class CategoriaDocumento(Base):
     # Cor para exibição no frontend (opcional)
     cor = Column(String(20), nullable=True)
     
-    # Categoria especial: considera apenas o primeiro documento cronológico
-    # Usado para "Petição Inicial" que pega só o primeiro doc 9500/500 do processo
+    # Categoria especial: considera apenas o primeiro documento cronológico.
+    # Os códigos candidatos são definidos em codigos_documento (config-driven).
     is_primeiro_documento = Column(Boolean, default=False)
+
+    # Configuracao do resolver para categorias especiais (opcional)
+    # Formato JSON: {"type": "bert", "codigos_diretos": [8320], "codigos_bert": [500,510], "label_match": "contestacao"}
+    # Se None, usa SimpleCodeResolver (default) ou PrimeiroDocumentoResolver (se is_primeiro_documento=True)
+    resolver_config = Column(JSON, nullable=True)
     
     # Auditoria
     criado_em = Column(DateTime, default=get_utc_now)
@@ -134,7 +139,7 @@ class TipoPeca(Base):
     def get_codigos_primeiro_documento(self) -> set:
         """
         Retorna códigos de categorias que devem considerar apenas o primeiro documento.
-        Exemplo: Petição Inicial (só o primeiro documento 9500/500 do processo).
+        Os códigos são config-driven (definidos no admin por categoria).
         """
         codigos = set()
         for categoria in self.categorias_documento:
@@ -226,19 +231,38 @@ def get_categorias_documento_seed() -> list:
     resultado = []
     ordem = 1
     
-    # Categoria especial: Petição Inicial (primeiro documento 9500, 500 ou 10)
-    # O código 10 (Termo) também pode ser petição inicial quando é o primeiro documento do processo
+    # Categoria especial: Petição Inicial (primeiro documento substancial 9500 ou 500)
+    # NOTA: Código 10 (Termo) NÃO está aqui — é documento preparatório/formal
+    # que precede a petição real. Ver CODIGOS_PREPARATORIOS_PI em services_source_resolver.py.
     resultado.append({
         "nome": "peticao_inicial",
         "titulo": "Petição Inicial",
-        "descricao": "Primeiro documento do processo (código 9500, 500 ou 10). Categoria especial que considera apenas o primeiro documento cronológico.",
-        "codigos_documento": [9500, 500, 10],
+        "descricao": "Primeiro documento substancial do processo (código 9500 ou 500). Documentos preparatórios (ex: código 10/Termo) são ignorados automaticamente.",
+        "codigos_documento": [9500, 500],
         "ordem": ordem,
         "cor": "#2980b9",
         "is_primeiro_documento": True  # Marca como categoria que pega só o primeiro documento
     })
     ordem += 1
-    
+
+    # Categoria especial: Contestação (código 8320 direto + BERT para 500, 510, 9500, 8326)
+    resultado.append({
+        "nome": "contestacao_doc",
+        "titulo": "Contestação",
+        "descricao": "Documentos de contestação. Código 8320 é direto; códigos 500, 510, 9500, 8326 passam por classificação BERT.",
+        "codigos_documento": [8320, 500, 510, 9500, 8326],
+        "ordem": ordem,
+        "cor": "#e67e22",
+        "is_primeiro_documento": False,
+        "resolver_config": {
+            "type": "bert",
+            "codigos_diretos": [8320],
+            "codigos_bert": [500, 510, 9500, 8326],
+            "label_match": "contestacao"
+        }
+    })
+    ordem += 1
+
     # Gerar categorias a partir do JSON
     for cat_nome, codigos in categorias_json.items():
         # Normalizar nome para usar como identificador

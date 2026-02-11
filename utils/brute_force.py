@@ -208,10 +208,7 @@ class BruteForceProtection:
                 ip_record.blocked_until = now + self._config.block_duration
                 logger.warning(
                     f"[BruteForce] IP {ip_address} bloqueado por {self._config.block_duration}s "
-                    f"após {ip_record.failures} tentativas",
-                    ip=ip_address,
-                    failures=ip_record.failures,
-                    block_duration=self._config.block_duration
+                    f"após {ip_record.failures} tentativas"
                 )
 
             # Atualiza registro do usuário
@@ -229,10 +226,7 @@ class BruteForceProtection:
                     user_record.blocked_until = now + self._config.block_duration
                     logger.warning(
                         f"[BruteForce] Usuário '{username}' bloqueado por {self._config.block_duration}s "
-                        f"após {user_record.failures} tentativas",
-                        username=username,
-                        failures=user_record.failures,
-                        block_duration=self._config.block_duration
+                        f"após {user_record.failures} tentativas"
                     )
 
     def record_success(

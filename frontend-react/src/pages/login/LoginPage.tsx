@@ -1,19 +1,16 @@
 import { useState, useEffect } from 'react'
 import { useNavigate } from '@tanstack/react-router'
 import { useAuthStore } from '@/stores/auth-store'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Label } from '@/components/ui/label'
-import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Loader2, AlertCircle } from 'lucide-react'
+import { Loader2, AlertCircle, User, Lock, Eye, EyeOff } from 'lucide-react'
 
 /**
- * Página de login
- * Formulário centralizado com logo PGE, username e password
+ * Página de login — réplica pixel-perfect do legado
+ * Formulário centralizado com logo PGE fora do card, ícones nos inputs e toggle de senha
  */
 export function LoginPage() {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
 
@@ -34,7 +31,6 @@ export function LoginPage() {
 
     try {
       await login(username, password)
-      // Após login bem-sucedido, redireciona para dashboard
       navigate({ to: '/dashboard' })
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Erro ao fazer login')
@@ -44,88 +40,119 @@ export function LoginPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-primary-50 to-primary-100 px-4">
+    <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-slate-100 to-gray-200 p-4">
       <div className="w-full max-w-md">
-        {/* Card de login */}
-        <div className="bg-white rounded-lg shadow-xl p-8">
-          {/* Logo PGE */}
-          <div className="flex justify-center mb-8">
-            <img
-              src="/logo/logo-pge.png"
-              alt="PGE-MS"
-              className="h-16 w-auto"
-            />
-          </div>
+        {/* Logo — fora do card, centralizada */}
+        <div className="text-center mb-8">
+          <img
+            src="/logo/logo-pge.png"
+            alt="PGE-MS"
+            className="h-20 mx-auto mb-4"
+          />
+        </div>
 
-          {/* Título */}
-          <div className="text-center mb-6">
-            <h1 className="text-2xl font-bold text-gray-900">Portal PGE</h1>
-            <p className="text-sm text-gray-600 mt-1">
-              Faça login para continuar
-            </p>
-          </div>
+        {/* Card de Login */}
+        <div className="bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
+          <h2 className="text-xl font-semibold text-gray-800 mb-6 text-center">
+            Acessar Sistema
+          </h2>
+
+          {/* Mensagem de erro */}
+          {error && (
+            <div className="mb-4 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm flex items-center gap-2">
+              <AlertCircle className="h-4 w-4 flex-shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
 
           {/* Formulário */}
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {/* Erro */}
-            {error && (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertDescription>{error}</AlertDescription>
-              </Alert>
-            )}
-
-            {/* Username */}
-            <div className="space-y-2">
-              <Label htmlFor="username">Usuário</Label>
-              <Input
-                id="username"
-                type="text"
-                value={username}
-                onChange={(e) => setUsername(e.target.value)}
-                placeholder="Digite seu usuário"
-                required
-                disabled={isLoading}
-                autoFocus
-              />
+          <form onSubmit={handleSubmit} className="space-y-5">
+            {/* Usuário */}
+            <div>
+              <label
+                htmlFor="username"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
+                Usuário
+              </label>
+              <div className="relative">
+                <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400 pointer-events-none">
+                  <User className="h-4 w-4" />
+                </span>
+                <input
+                  type="text"
+                  id="username"
+                  name="username"
+                  value={username}
+                  onChange={(e) => setUsername(e.target.value)}
+                  placeholder="Digite seu usuário"
+                  required
+                  disabled={isLoading}
+                  autoFocus
+                  className="w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors disabled:opacity-50"
+                />
+              </div>
             </div>
 
-            {/* Password */}
-            <div className="space-y-2">
-              <Label htmlFor="password">Senha</Label>
-              <Input
-                id="password"
-                type="password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Digite sua senha"
-                required
-                disabled={isLoading}
-              />
+            {/* Senha */}
+            <div>
+              <label
+                htmlFor="password"
+                className="block text-sm font-medium text-gray-700 mb-1"
+              >
+                Senha
+              </label>
+              <div className="relative">
+                <span className="absolute inset-y-0 left-0 pl-3 flex items-center text-gray-400 pointer-events-none">
+                  <Lock className="h-4 w-4" />
+                </span>
+                <input
+                  type={showPassword ? 'text' : 'password'}
+                  id="password"
+                  name="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Digite sua senha"
+                  required
+                  disabled={isLoading}
+                  className="w-full pl-10 pr-12 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500 transition-colors disabled:opacity-50"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600"
+                >
+                  {showPassword ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
+                </button>
+              </div>
             </div>
 
-            {/* Botão de submit */}
-            <Button
+            {/* Botão de Login */}
+            <button
               type="submit"
-              className="w-full"
               disabled={isLoading}
+              className="w-full bg-primary-600 text-white py-3 rounded-lg font-semibold hover:bg-primary-700 focus:ring-4 focus:ring-primary-500/30 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
             >
               {isLoading ? (
                 <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Entrando...
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span>Entrando...</span>
                 </>
               ) : (
-                'Entrar'
+                <span>Entrar</span>
               )}
-            </Button>
+            </button>
           </form>
-
-          {/* Footer */}
-          <div className="mt-6 text-center text-xs text-gray-500">
-            PGE-MS &copy; {new Date().getFullYear()}
-          </div>
         </div>
+
+        {/* Footer */}
+        <p className="text-center text-gray-500 text-sm mt-6">
+          &copy; 2025 PGE-MS &bull; Todos os direitos reservados
+        </p>
       </div>
     </div>
   )

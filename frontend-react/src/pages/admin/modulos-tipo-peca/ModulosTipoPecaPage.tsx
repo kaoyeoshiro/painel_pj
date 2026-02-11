@@ -13,7 +13,8 @@ import {
 } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useToast } from '@/components/ui/toast'
-import { PageContainer } from '@/components/layout'
+import { PageContainer, PageHeader } from '@/components/layout'
+import { FileJson } from 'lucide-react'
 
 interface PromptGroup {
   id: number
@@ -385,42 +386,41 @@ export function ModulosTipoPecaPage() {
   }
 
   return (
-    <PageContainer className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Módulos por Tipo de Peça</h1>
-
-        <div className="flex items-center gap-4">
-          {/* Seletor de grupo */}
-          {carregandoGrupos ? (
-            <Skeleton className="h-10 w-48" />
-          ) : (
-            <Select
-              value={grupoSelecionado?.toString() || ''}
-              onValueChange={(value) => setGrupoSelecionado(Number(value))}
+    <PageContainer wide className="space-y-6">
+      <PageHeader
+        title="Módulos por Tipo de Peça"
+        icon={<FileJson className="h-5 w-5" />}
+        backTo="/dashboard"
+        actions={
+          <div className="flex items-center gap-4">
+            {carregandoGrupos ? (
+              <Skeleton className="h-10 w-48" />
+            ) : (
+              <Select
+                value={grupoSelecionado?.toString() || ''}
+                onValueChange={(value) => setGrupoSelecionado(Number(value))}
+              >
+                <SelectTrigger className="w-48">
+                  <SelectValue placeholder="Selecione um grupo" />
+                </SelectTrigger>
+                <SelectContent>
+                  {grupos.map(grupo => (
+                    <SelectItem key={grupo.id} value={grupo.id.toString()}>
+                      {grupo.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+            <Button
+              onClick={salvarTodasAlteracoes}
+              disabled={salvando || totalAlteracoesPendentes === 0}
             >
-              <SelectTrigger className="w-48">
-                <SelectValue placeholder="Selecione um grupo" />
-              </SelectTrigger>
-              <SelectContent>
-                {grupos.map(grupo => (
-                  <SelectItem key={grupo.id} value={grupo.id.toString()}>
-                    {grupo.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          )}
-
-          {/* Botão de salvar tudo */}
-          <Button
-            onClick={salvarTodasAlteracoes}
-            disabled={salvando || totalAlteracoesPendentes === 0}
-          >
-            {salvando ? 'Salvando...' : 'Salvar Alterações'}
-          </Button>
-        </div>
-      </div>
+              {salvando ? 'Salvando...' : 'Salvar Alterações'}
+            </Button>
+          </div>
+        }
+      />
 
       {/* Cards de estatísticas */}
       {carregandoTipos ? (

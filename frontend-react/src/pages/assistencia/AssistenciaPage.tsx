@@ -1,8 +1,7 @@
 import { useState, useCallback } from 'react'
-import { Search, Scale, Trash2, FileText, FileDown, RotateCw, Database } from 'lucide-react'
+import { Search, Scale, Trash2, FileText, FileDown, RotateCw, Database, Wand2 } from 'lucide-react'
 import { useMarkdown } from '@/hooks/useMarkdown'
-import { PageContainer } from '@/components/layout/PageContainer'
-import { PageHeader } from '@/components/layout/PageHeader'
+import { SystemTopbar } from '@/components/layout/SystemTopbar'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -64,8 +63,7 @@ export function AssistenciaPage() {
         setFeedbackEnviado(false)
         setFeedbackTipo('')
       }
-    } catch (error) {
-      // Se erro, assume que não tem feedback
+    } catch {
       setFeedbackEnviado(false)
       setFeedbackTipo('')
     }
@@ -97,10 +95,8 @@ export function AssistenciaPage() {
         setConsultaAtual(result)
         setViewState('resultado')
 
-        // Atualiza histórico
         refetchHistorico()
 
-        // Verifica feedback
         if (result.consulta_id) {
           verificarFeedback(result.consulta_id)
         }
@@ -243,7 +239,6 @@ export function AssistenciaPage() {
           },
         })
 
-        // Criar link para download
         const url = URL.createObjectURL(blob)
         const link = document.createElement('a')
         link.href = url
@@ -295,35 +290,38 @@ export function AssistenciaPage() {
   }
 
   return (
-    <PageContainer noPadding fluid className="flex flex-col h-full">
-      <div className="px-4 sm:px-6 lg:px-8 pt-6">
-        <PageHeader
-          title="Assistência Judiciária"
-          subtitle="Consulta de Processos TJ-MS"
-          backTo="/dashboard"
-        />
-      </div>
+    <div className="flex flex-col h-screen bg-gray-50">
+      {/* Topbar matching legacy */}
+      <SystemTopbar
+        title="Assistência Judiciária"
+        subtitle="Consulta de Processos TJ-MS"
+        icon={<Wand2 className="h-5 w-5" />}
+      />
 
       <div className="flex flex-1 overflow-hidden">
         {/* Sidebar - Consulta e Histórico */}
-        <aside className="w-80 flex-shrink-0 border-r bg-white">
+        <aside className="w-80 flex-shrink-0 border-r border-gray-200 bg-white flex flex-col">
           {/* Formulário de consulta */}
-          <div className="border-b p-4">
+          <div className="border-b border-gray-200 p-4">
             <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-700">
-              <Search className="h-4 w-4 text-primary" />
+              <Search className="h-4 w-4 text-primary-600" />
               Consultar Processo
             </h2>
             <div className="space-y-3">
               <div>
-                <label className="mb-1 block text-xs text-gray-500">Número CNJ</label>
+                <label className="mb-1 block text-xs font-medium text-primary-600">
+                  Número CNJ
+                </label>
                 <Input
                   value={cnjInput}
                   onChange={(e) => setCnjInput(e.target.value)}
-                  onKeyPress={handleKeyPress}
+                  onKeyDown={(e) => { if (e.key === 'Enter') consultarProcesso(cnjInput) }}
                   placeholder="0000000-00.0000.0.00.0000"
                   className="text-sm"
                 />
-                <p className="mt-1 text-xs text-gray-400">Ex: 0800123-45.2024.8.12.0001</p>
+                <p className="mt-1 text-xs text-gray-400">
+                  Ex: 0800123-45.2024.8.12.0001
+                </p>
               </div>
               <Button
                 onClick={() => consultarProcesso(cnjInput)}
@@ -337,11 +335,11 @@ export function AssistenciaPage() {
           </div>
 
           {/* Histórico */}
-          <div className="flex-1 p-4">
-            <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-gray-500">
+          <div className="flex-1 overflow-hidden p-4">
+            <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-400">
               Histórico Recente
             </h3>
-            <ScrollArea className="h-[calc(100vh-320px)]">
+            <ScrollArea className="h-[calc(100vh-280px)]">
               {isLoadingHistorico ? (
                 <div className="space-y-2">
                   {[...Array(5)].map((_, i) => (
@@ -351,11 +349,11 @@ export function AssistenciaPage() {
               ) : !historico || historico.length === 0 ? (
                 <p className="text-sm italic text-gray-400">Nenhuma consulta ainda</p>
               ) : (
-                <div className="space-y-2">
+                <div className="space-y-1">
                   {historico.slice(0, 10).map((item) => (
                     <div
                       key={item.id}
-                      className="group flex items-center justify-between rounded-lg p-2 transition-colors hover:bg-gray-100"
+                      className="group flex items-center justify-between rounded-lg p-2 transition-colors hover:bg-gray-50 cursor-pointer"
                     >
                       <button
                         onClick={() => {
@@ -364,10 +362,10 @@ export function AssistenciaPage() {
                         }}
                         className="flex-1 text-left"
                       >
-                        <div className="font-mono text-xs text-gray-600 group-hover:text-primary">
+                        <div className="font-mono text-sm font-semibold text-gray-700 group-hover:text-primary-600">
                           {item.cnj}
                         </div>
-                        <div className="truncate text-xs text-gray-400">
+                        <div className="truncate text-xs text-gray-400 italic">
                           {item.classe || 'Processo'}
                         </div>
                       </button>
@@ -394,15 +392,15 @@ export function AssistenciaPage() {
             {viewState === 'inicial' && (
               <div className="flex h-full items-center justify-center">
                 <div className="max-w-md text-center">
-                  <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-2xl bg-primary/10">
-                    <Scale className="h-10 w-10 text-primary" />
+                  <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-2xl bg-sky-100">
+                    <Scale className="h-10 w-10 text-primary-500" />
                   </div>
                   <h2 className="mb-2 text-xl font-semibold text-gray-700">
                     Consulta de Processos
                   </h2>
-                  <p className="text-gray-500">
-                    Digite o número CNJ do processo para consultar informações no TJ-MS e gerar um
-                    relatório automático com análise por IA.
+                  <p className="text-gray-500 leading-relaxed">
+                    Digite o número CNJ do processo para consultar informações
+                    no TJ-MS e gerar um relatório automático com análise por IA.
                   </p>
                 </div>
               </div>
@@ -572,7 +570,7 @@ export function AssistenciaPage() {
           </ScrollArea>
         </main>
       </div>
-    </PageContainer>
+    </div>
   )
 }
 

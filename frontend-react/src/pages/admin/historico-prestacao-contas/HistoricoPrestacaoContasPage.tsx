@@ -10,7 +10,8 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { useToast } from '@/hooks/use-toast'
 import { useMarkdown } from '@/hooks/useMarkdown'
-import { PageContainer } from '@/components/layout'
+import { PageContainer, PageHeader } from '@/components/layout'
+import { History } from 'lucide-react'
 
 // Interfaces
 interface GeracaoAdmin {
@@ -327,13 +328,13 @@ export function HistoricoPrestacaoContasPage() {
   ]
 
   return (
-    <PageContainer>
-      <div className="mb-6">
-        <h1 className="text-2xl font-bold">Histórico - Prestação de Contas</h1>
-        <p className="text-muted-foreground mt-2">
-          Visualize todas as prestações de contas geradas
-        </p>
-      </div>
+    <PageContainer wide>
+      <PageHeader
+        title="Histórico - Prestação de Contas"
+        description="Visualize todas as prestações de contas geradas"
+        icon={<History className="h-5 w-5" />}
+        backTo="/dashboard"
+      />
 
       {loading ? (
         <div className="space-y-3">

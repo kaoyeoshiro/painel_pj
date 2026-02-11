@@ -1,0 +1,1858 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gerenciar Prompts - Portal PGE-MS</title>
+    <link rel="icon" type="image/png" href="/logo/logo-pge.png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <script src="/static/js/timezone.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        primary: {
+                            50: '#f0f9ff',
+                            100: '#e0f2fe',
+                            500: '#0ea5e9',
+                            600: '#0284c7',
+                            700: '#0369a1',
+                            800: '#075985',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .prompt-editor {
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 13px;
+            line-height: 1.5;
+        }
+    </style>
+</head>
+<body class="min-h-screen bg-gray-50">
+    
+    <!-- Header -->
+    <header class="bg-white shadow-sm border-b border-gray-200 sticky top-0 z-50">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center gap-4">
+                    <a href="/dashboard" class="text-gray-500 hover:text-gray-700">
+                        <i class="fas fa-arrow-left"></i>
+                    </a>
+                    <a href="/dashboard" class="flex items-center gap-3 hover:opacity-80 transition-opacity">
+                        <img src="/logo/logo-pge.png" alt="PGE-MS" class="h-10 w-auto">
+                    </a>
+                    <div class="border-l border-gray-300 pl-4">
+                        <h1 class="font-semibold text-gray-800">Configuração de Prompts e IA</h1>
+                        <p class="text-xs text-gray-500">Gerenciamento de prompts e modelos</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        
+        <!-- Título -->
+        <div class="mb-6 flex items-center justify-between">
+            <div>
+                <h2 class="text-2xl font-bold text-gray-800">Gerenciamento de Prompts de IA</h2>
+                <p class="text-gray-500 mt-1">Configure os prompts utilizados pelos sistemas de análise</p>
+            </div>
+            <div class="flex gap-2">
+                <a
+                    href="/admin/prompts-modulos"
+                    class="px-4 py-2 text-sm bg-orange-100 text-orange-700 rounded-lg hover:bg-orange-200 transition-colors flex items-center gap-2"
+                >
+                    <i class="fas fa-puzzle-piece"></i>
+                    Prompts Modulares
+                </a>
+                <a
+                    href="/admin/categorias-resumo-json"
+                    class="px-4 py-2 text-sm bg-green-100 text-green-700 rounded-lg hover:bg-green-200 transition-colors flex items-center gap-2"
+                >
+                    <i class="fas fa-code"></i>
+                    Formatos JSON
+                </a>
+            </div>
+        </div>
+
+        <!-- Filtros -->
+        <div class="mb-6 flex gap-4">
+            <select 
+                id="filter-sistema" 
+                onchange="loadPrompts()"
+                class="px-4 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+            >
+                <option value="">Todos os sistemas</option>
+                <option value="matriculas">Matriculas Confrontantes</option>
+                <option value="assistencia_judiciaria">Assistencia Judiciaria</option>
+                <option value="pedido_calculo">Pedido de Calculo</option>
+                <option value="prestacao_contas">Prestacao de Contas</option>
+                <option value="relatorio_cumprimento">Relatorio de Cumprimento</option>
+            </select>
+        </div>
+
+        <!-- Alerta de Thinking Level -->
+        <div id="thinking-level-alert" class="hidden mb-4 bg-amber-50 border border-amber-300 rounded-xl p-4">
+            <div class="flex items-start gap-3">
+                <div class="flex-shrink-0 mt-0.5">
+                    <i class="fas fa-exclamation-triangle text-amber-600 text-xl"></i>
+                </div>
+                <div class="flex-1">
+                    <h4 class="font-semibold text-amber-800 mb-1">
+                        Thinking Level não está sendo aplicado
+                    </h4>
+                    <p class="text-sm text-amber-700 mb-2">
+                        As configurações de thinking_level podem não estar sendo usadas em algumas chamadas de IA. Isso pode resultar em maior consumo de tokens.
+                    </p>
+                    <div id="thinking-level-details" class="text-xs text-amber-600 space-y-1"></div>
+                    <button
+                        onclick="document.getElementById('thinking-level-alert').classList.add('hidden')"
+                        class="mt-2 text-xs text-amber-700 hover:text-amber-900 underline"
+                    >
+                        Fechar alerta
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Configuração de Modelos de IA -->
+        <div class="mb-8 bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+            <h3 class="text-lg font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                <i class="fas fa-robot text-primary-600"></i>
+                Configurações de IA
+                <span id="thinking-level-badge" class="hidden ml-2 px-2 py-0.5 text-xs bg-amber-100 text-amber-700 rounded-full cursor-pointer hover:bg-amber-200" onclick="document.getElementById('thinking-level-alert').classList.toggle('hidden')">
+                    <i class="fas fa-exclamation-circle mr-1"></i>
+                    <span id="thinking-level-badge-count">0</span> alerta(s)
+                </span>
+            </h3>
+
+            <!-- Tabs para sistemas -->
+            <div class="border-b border-gray-200 mb-4">
+                <nav class="flex gap-4">
+                    <button onclick="showConfigTab('matriculas')" id="tab-matriculas" class="config-tab px-4 py-2 text-sm font-medium border-b-2 border-primary-500 text-primary-600">
+                        <i class="fas fa-file-alt mr-1"></i> Matrículas
+                    </button>
+                    <button onclick="showConfigTab('assistencia')" id="tab-assistencia" class="config-tab px-4 py-2 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700">
+                        <i class="fas fa-gavel mr-1"></i> Assistência Judiciária
+                    </button>
+                    <button onclick="showConfigTab('gerador_pecas')" id="tab-gerador_pecas" class="config-tab px-4 py-2 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700">
+                        <i class="fas fa-file-signature mr-1"></i> Gerador de Peças
+                    </button>
+                    <button onclick="showConfigTab('pedido_calculo')" id="tab-pedido_calculo" class="config-tab px-4 py-2 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700">
+                        <i class="fas fa-calculator mr-1"></i> Pedido de Cálculo
+                    </button>
+                    <button onclick="showConfigTab('prestacao_contas')" id="tab-prestacao_contas" class="config-tab px-4 py-2 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700">
+                        <i class="fas fa-file-invoice-dollar mr-1"></i> Prestacao de Contas
+                    </button>
+                    <button onclick="showConfigTab('relatorio_cumprimento')" id="tab-relatorio_cumprimento" class="config-tab px-4 py-2 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700">
+                        <i class="fas fa-file-lines mr-1"></i> Relatorio Cumprimento
+                    </button>
+                    <button onclick="showConfigTab('sistemas_acessorios')" id="tab-sistemas_acessorios" class="config-tab px-4 py-2 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700">
+                        <i class="fas fa-cogs mr-1"></i> Sistemas Acessórios
+                    </button>
+                    <button onclick="showConfigTab('global')" id="tab-global" class="config-tab px-4 py-2 text-sm font-medium border-b-2 border-transparent text-gray-500 hover:text-gray-700">
+                        <i class="fas fa-globe mr-1"></i> Global
+                    </button>
+                </nav>
+            </div>
+            
+            <!-- Config Matrículas -->
+            <div id="config-matriculas" class="config-panel">
+                <!-- Configuração por agente será carregada dinamicamente -->
+                <div class="text-center py-8 text-gray-400">
+                    <i class="fas fa-spinner fa-spin text-xl mb-2"></i>
+                    <p class="text-sm">Carregando configurações...</p>
+                </div>
+            </div>
+            
+            <!-- Config Assistência -->
+            <div id="config-assistencia" class="config-panel hidden">
+                <!-- Configuração por agente será carregada dinamicamente -->
+                <div class="text-center py-8 text-gray-400">
+                    <i class="fas fa-spinner fa-spin text-xl mb-2"></i>
+                    <p class="text-sm">Carregando configurações...</p>
+                </div>
+            </div>
+
+            <!-- Config Gerador de Peças -->
+            <div id="config-gerador_pecas" class="config-panel hidden">
+                <!-- Configuração por agente será carregada dinamicamente -->
+                <div class="agent-config-container">
+                    <div class="text-center py-8 text-gray-400">
+                        <i class="fas fa-spinner fa-spin text-xl mb-2"></i>
+                        <p class="text-sm">Carregando configurações...</p>
+                    </div>
+                </div>
+
+                <!-- Prompt de Critérios de Relevância -->
+                <div class="mt-6 border border-amber-200 rounded-lg p-4 bg-amber-50">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fas fa-filter text-amber-600 mr-1"></i>
+                        Critérios de Relevância de Documentos
+                    </label>
+                    <p class="text-xs text-gray-500 mb-3">
+                        Define quais documentos são considerados irrelevantes na extração de resumos.
+                        Documentos marcados como irrelevantes não serão resumidos.
+                    </p>
+                    <textarea
+                        id="gerador_pecas-prompt_criterios_relevancia"
+                        rows="6"
+                        placeholder="Se o documento for meramente administrativo..."
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm font-mono"
+                    ></textarea>
+                    <p class="text-xs text-amber-700 mt-2">
+                        <i class="fas fa-lightbulb mr-1"></i>
+                        Dica: Adicione tipos de documentos que devem ser considerados RELEVANTES para evitar que sejam descartados.
+                    </p>
+                </div>
+
+                <!-- Modo 2º Grau (competencia=999) -->
+                <div class="mt-4 border border-indigo-200 rounded-lg p-4 bg-indigo-50">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fas fa-balance-scale text-indigo-600 mr-1"></i>
+                        Modo 2º Grau (competencia=999)
+                    </label>
+                    <p class="text-xs text-gray-500 mb-3">
+                        Limita a quantidade de PDFs analisados em processos de 2º grau.
+                    </p>
+                    <div class="grid md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1">Limite de Petições Recentes</label>
+                            <input type="number" id="gerador_pecas-competencia_999_last_peticoes_limit" min="1" max="50" step="1" placeholder="10"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm">
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1">Limite de Recursos Recentes</label>
+                            <input type="number" id="gerador_pecas-competencia_999_last_recursos_limit" min="1" max="50" step="1" placeholder="10"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Busca Vetorial de Argumentos -->
+                <div class="mt-4 border border-emerald-200 rounded-lg p-4 bg-emerald-50">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fas fa-search text-emerald-600 mr-1"></i>
+                        Busca Vetorial de Argumentos (Chat)
+                    </label>
+                    <p class="text-xs text-gray-500 mb-3">
+                        Configura a busca semântica de argumentos no chatbot de edição de minutas.
+                    </p>
+                    <div class="grid md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1">Threshold de Similaridade (%)</label>
+                            <input type="number" id="gerador_pecas-busca_vetorial_threshold" min="0" max="100" step="5" placeholder="70"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm">
+                            <p class="text-xs text-gray-400 mt-1">Apenas argumentos com similaridade acima deste valor serao retornados. Padrao: 70%</p>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1">Limite de Resultados</label>
+                            <input type="number" id="gerador_pecas-busca_vetorial_limit" min="1" max="10" step="1" placeholder="3"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm">
+                            <p class="text-xs text-gray-400 mt-1">Quantidade maxima de argumentos retornados. Padrao: 3</p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Prompt do Chat de Edição -->
+                <div class="mt-4 border border-violet-200 rounded-lg p-4 bg-violet-50">
+                    <label class="block text-sm font-medium text-gray-700 mb-2">
+                        <i class="fas fa-comments text-violet-600 mr-1"></i>
+                        Prompt do Chat de Edição de Minutas
+                    </label>
+                    <p class="text-xs text-gray-500 mb-3">
+                        Define o comportamento do assistente de IA no chat de edição de minutas.
+                        Este prompt controla como a IA interpreta pedidos de alteração, usa argumentos da base de conhecimento e interage com o usuário.
+                    </p>
+                    <textarea
+                        id="gerador_pecas-prompt_chat_edicao"
+                        rows="20"
+                        placeholder="Você é um assistente jurídico especializado em edição de peças jurídicas..."
+                        class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm font-mono"
+                    ></textarea>
+                    <div class="mt-2 flex items-center justify-between">
+                        <p class="text-xs text-violet-700">
+                            <i class="fas fa-lightbulb mr-1"></i>
+                            Dica: Use [PERGUNTA] no prompt para permitir que a IA faça perguntas de clarificação ao usuário.
+                        </p>
+                        <button onclick="restaurarPromptChatPadrao()" class="text-xs text-violet-600 hover:text-violet-800 underline">
+                            <i class="fas fa-undo mr-1"></i>Restaurar padrão
+                        </button>
+                    </div>
+                </div>
+
+                <div class="mt-4 flex justify-end">
+                    <button onclick="salvarConfigSistemaExtra('gerador_pecas')" class="px-4 py-2 bg-gray-600 text-white text-sm rounded-lg hover:bg-gray-700 transition-colors flex items-center gap-2">
+                        <i class="fas fa-save"></i>
+                        Salvar Configurações Extras
+                    </button>
+                </div>
+            </div>
+
+            <!-- Config Pedido de Cálculo -->
+            <div id="config-pedido_calculo" class="config-panel hidden">
+                <!-- Configuração por agente será carregada dinamicamente -->
+                <div class="text-center py-8 text-gray-400">
+                    <i class="fas fa-spinner fa-spin text-xl mb-2"></i>
+                    <p class="text-sm">Carregando configurações...</p>
+                </div>
+            </div>
+
+            <!-- Config Prestação de Contas -->
+            <div id="config-prestacao_contas" class="config-panel hidden">
+                <!-- Configuração por agente será carregada dinamicamente -->
+                <div class="text-center py-8 text-gray-400">
+                    <i class="fas fa-spinner fa-spin text-xl mb-2"></i>
+                    <p class="text-sm">Carregando configurações...</p>
+                </div>
+            </div>
+
+            <!-- Config Relatório de Cumprimento -->
+            <div id="config-relatorio_cumprimento" class="config-panel hidden">
+                <!-- Configuração por agente será carregada dinamicamente -->
+                <div class="text-center py-8 text-gray-400">
+                    <i class="fas fa-spinner fa-spin text-xl mb-2"></i>
+                    <p class="text-sm">Carregando configurações...</p>
+                </div>
+            </div>
+
+            <!-- Config Sistemas Acessórios -->
+            <div id="config-sistemas_acessorios" class="config-panel hidden">
+                <div class="mb-4 p-4 bg-amber-50 border border-amber-200 rounded-lg">
+                    <p class="text-sm text-amber-800">
+                        <i class="fas fa-info-circle mr-1"></i>
+                        <strong>Sistemas Acessórios</strong> são agentes de IA auxiliares com escopo técnico bem delimitado.
+                        Eles não compartilham configuração com os agentes jurídicos principais.
+                    </p>
+                </div>
+
+                <!-- Gerador de Regras Determinísticas -->
+                <div class="border border-gray-200 rounded-lg p-4 mb-6 bg-white">
+                    <h4 class="text-md font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                        <i class="fas fa-code-branch text-indigo-500"></i>
+                        Gerador de Regras Determinísticas via IA
+                    </h4>
+                    <p class="text-xs text-gray-500 mb-4">
+                        Converte linguagem natural em regras booleanas determinísticas. Acessado em:
+                        <code class="bg-gray-100 px-1 rounded">/admin/prompts-modulos → Editar Módulo → Gerar Regra via IA</code>
+                    </p>
+
+                    <div class="grid md:grid-cols-3 gap-4">
+                        <!-- Modelo -->
+                        <div class="border border-gray-200 rounded-lg p-3">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                <i class="fas fa-robot text-indigo-500 mr-1"></i>
+                                Modelo
+                            </label>
+                            <input
+                                type="text"
+                                id="sistemas_acessorios-gerador_regras_modelo"
+                                placeholder="gemini-3-flash-preview"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+                            >
+                            <p class="text-xs text-gray-400 mt-1">Modelo para converter texto → regra JSON</p>
+                        </div>
+
+                        <!-- Thinking Level -->
+                        <div class="border border-indigo-200 rounded-lg p-3 bg-indigo-50">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                <i class="fas fa-brain text-indigo-500 mr-1"></i>
+                                Nível de Raciocínio
+                            </label>
+                            <select
+                                id="sistemas_acessorios-gerador_regras_thinking_level"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+                            >
+                                <option value="low">Low - Direto e objetivo (Recomendado)</option>
+                                <option value="minimal">Minimal - Quase sem thinking</option>
+                                <option value="medium">Medium - Balanceado</option>
+                                <option value="high">High - Máximo raciocínio</option>
+                            </select>
+                            <p class="text-xs text-gray-400 mt-1">LOW recomendado: tarefa mecânica e lógica</p>
+                        </div>
+
+                        <!-- Temperatura -->
+                        <div class="border border-gray-200 rounded-lg p-3">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                <i class="fas fa-thermometer-half text-orange-500 mr-1"></i>
+                                Temperatura
+                            </label>
+                            <input
+                                type="number"
+                                id="sistemas_acessorios-gerador_regras_temperatura"
+                                min="0" max="1" step="0.1"
+                                placeholder="0.1"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+                            >
+                            <p class="text-xs text-gray-400 mt-1">0.1 recomendado: máximo determinismo</p>
+                        </div>
+                    </div>
+
+                    <div class="mt-3 p-2 bg-gray-50 rounded text-xs text-gray-600">
+                        <i class="fas fa-lightbulb text-yellow-500 mr-1"></i>
+                        <strong>Comportamento esperado:</strong> Pensamento curto e direto, sem inferência jurídica, apenas identificar variáveis e montar condições lógicas.
+                    </div>
+                </div>
+
+                <!-- Classificador de Documentos PDF -->
+                <div class="border border-gray-200 rounded-lg p-4 mb-6 bg-white">
+                    <h4 class="text-md font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                        <i class="fas fa-file-pdf text-rose-500"></i>
+                        Classificador de Documentos PDF
+                    </h4>
+                    <p class="text-xs text-gray-500 mb-4">
+                        Classifica PDFs anexados em categorias do <code class="bg-gray-100 px-1 rounded">/admin/categorias-resumo-json</code>.
+                        Usado quando o usuário anexa PDFs diretamente no gerador de peças (sem metadado de código).
+                    </p>
+
+                    <div class="grid md:grid-cols-3 gap-4">
+                        <!-- Modelo -->
+                        <div class="border border-rose-200 rounded-lg p-3 bg-rose-50">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                <i class="fas fa-robot text-rose-500 mr-1"></i>
+                                Modelo
+                            </label>
+                            <input
+                                type="text"
+                                id="sistemas_acessorios-classificador_documentos_modelo"
+                                placeholder="gemini-3-flash-preview"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+                            >
+                            <p class="text-xs text-gray-400 mt-1"><strong>Recomendado:</strong> gemini-3-flash-preview (rápido e barato)</p>
+                        </div>
+
+                        <!-- Temperatura -->
+                        <div class="border border-gray-200 rounded-lg p-3">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                <i class="fas fa-thermometer-half text-orange-500 mr-1"></i>
+                                Temperatura
+                            </label>
+                            <input
+                                type="number"
+                                id="sistemas_acessorios-classificador_documentos_temperatura"
+                                min="0" max="1" step="0.1"
+                                placeholder="0.1"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+                            >
+                            <p class="text-xs text-gray-400 mt-1">0.1 recomendado para classificação</p>
+                        </div>
+
+                        <!-- Threshold de Confiança -->
+                        <div class="border border-gray-200 rounded-lg p-3">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                <i class="fas fa-percentage text-blue-500 mr-1"></i>
+                                Threshold de Confiança
+                            </label>
+                            <input
+                                type="number"
+                                id="sistemas_acessorios-classificador_documentos_threshold"
+                                min="0" max="1" step="0.1"
+                                placeholder="0.5"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+                            >
+                            <p class="text-xs text-gray-400 mt-1">Abaixo deste valor, aplica fallback</p>
+                        </div>
+                    </div>
+
+                    <div class="mt-3 p-2 bg-gray-50 rounded text-xs text-gray-600">
+                        <i class="fas fa-lightbulb text-yellow-500 mr-1"></i>
+                        <strong>Heurística:</strong> Para PDFs com texto, envia primeiros + últimos 1000 tokens.
+                        Para PDFs imagem ou OCR falho, envia PDF completo como imagem.
+                    </div>
+                </div>
+
+                <!-- Espaço para futuros sistemas acessórios -->
+                <div class="border border-dashed border-gray-300 rounded-lg p-4 text-center text-gray-400">
+                    <i class="fas fa-plus-circle text-2xl mb-2"></i>
+                    <p class="text-sm">Outros sistemas acessórios podem ser adicionados aqui futuramente</p>
+                </div>
+
+                <div class="mt-4 flex justify-end">
+                    <button
+                        onclick="salvarConfigSistema('sistemas_acessorios')"
+                        class="px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition-colors flex items-center gap-2"
+                    >
+                        <i class="fas fa-save"></i>
+                        Salvar Configurações Sistemas Acessórios
+                    </button>
+                </div>
+            </div>
+
+            <!-- Config Global -->
+            <div id="config-global" class="config-panel hidden">
+                <div class="mb-4 p-4 bg-purple-50 border border-purple-200 rounded-lg">
+                    <p class="text-sm text-purple-800">
+                        <i class="fas fa-info-circle mr-1"></i>
+                        <strong>Configurações Globais</strong> afetam todos os sistemas. Use com cautela.
+                    </p>
+                </div>
+
+                <!-- SLA Fallback -->
+                <div class="border border-gray-200 rounded-lg p-4 mb-6 bg-white">
+                    <h4 class="text-md font-semibold text-gray-800 mb-4 flex items-center gap-2">
+                        <i class="fas fa-clock text-amber-500"></i>
+                        SLA Fallback Automático
+                    </h4>
+                    <p class="text-xs text-gray-500 mb-4">
+                        Quando habilitado, se o modelo principal demorar mais que o timeout configurado para responder (TTFT),
+                        automaticamente troca para um modelo mais rápido.
+                        <strong class="text-red-600">DESABILITADO por padrão</strong> - habilite apenas se souber o que está fazendo.
+                    </p>
+
+                    <div class="grid md:grid-cols-3 gap-4">
+                        <!-- Habilitado -->
+                        <div class="border border-amber-200 rounded-lg p-3 bg-amber-50">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                <i class="fas fa-toggle-on text-amber-500 mr-1"></i>
+                                SLA Fallback Habilitado
+                            </label>
+                            <select
+                                id="global-sla_fallback_habilitado"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+                            >
+                                <option value="false">Desabilitado (Recomendado)</option>
+                                <option value="true">Habilitado</option>
+                            </select>
+                            <p class="text-xs text-red-600 mt-1 font-medium">
+                                <i class="fas fa-exclamation-triangle mr-1"></i>
+                                Habilitar pode resultar em respostas de menor qualidade
+                            </p>
+                        </div>
+
+                        <!-- Timeout -->
+                        <div class="border border-gray-200 rounded-lg p-3">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                <i class="fas fa-stopwatch text-blue-500 mr-1"></i>
+                                Timeout (segundos)
+                            </label>
+                            <input
+                                type="number"
+                                id="global-sla_timeout_segundos"
+                                min="5" max="120" step="5"
+                                placeholder="30"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+                            >
+                            <p class="text-xs text-gray-400 mt-1">Tempo máximo para TTFT antes de fallback</p>
+                        </div>
+
+                        <!-- Modelo Fallback -->
+                        <div class="border border-gray-200 rounded-lg p-3">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                <i class="fas fa-robot text-gray-500 mr-1"></i>
+                                Modelo de Fallback
+                            </label>
+                            <select
+                                id="global-modelo_fallback"
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500 text-sm"
+                            >
+                                <option value="gemini-2.0-flash-lite">Gemini 2.0 Flash Lite (Mais rápido)</option>
+                                <option value="gemini-3-flash-preview">Gemini 3 Flash Preview</option>
+                            </select>
+                            <p class="text-xs text-gray-400 mt-1">Modelo usado quando timeout excede</p>
+                        </div>
+                    </div>
+
+                    <div class="mt-3 p-2 bg-gray-50 rounded text-xs text-gray-600">
+                        <i class="fas fa-lightbulb text-yellow-500 mr-1"></i>
+                        <strong>Comportamento:</strong> Se o modelo principal não responder em X segundos, o sistema automaticamente
+                        tenta com o modelo de fallback. Útil para alta disponibilidade, mas pode comprometer qualidade em tarefas complexas.
+                    </div>
+                </div>
+
+                <!-- Espaço para futuras configurações globais -->
+                <div class="border border-dashed border-gray-300 rounded-lg p-4 text-center text-gray-400">
+                    <i class="fas fa-plus-circle text-2xl mb-2"></i>
+                    <p class="text-sm">Outras configurações globais podem ser adicionadas aqui futuramente</p>
+                </div>
+
+                <div class="mt-4 flex justify-end">
+                    <button
+                        onclick="salvarConfigSistema('global')"
+                        class="px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition-colors flex items-center gap-2"
+                    >
+                        <i class="fas fa-save"></i>
+                        Salvar Configurações Globais
+                    </button>
+                </div>
+            </div>
+
+                <div class="mt-4 p-3 bg-blue-50 rounded-lg">
+                <p class="text-xs text-blue-700">
+                    <i class="fas fa-info-circle mr-1"></i>
+                    Modelos recomendados: gemini-3-flash-preview (rápido), gemini-2.5-pro (preciso), gemini-3-pro-preview (avançado)
+                </p>
+            </div>
+        </div>
+
+        <!-- Lista de Prompts -->
+        <div id="prompts-container" class="space-y-4">
+            <div class="text-center py-12 text-gray-400">
+                <i class="fas fa-spinner fa-spin text-2xl mb-2"></i>
+                <p>Carregando prompts...</p>
+            </div>
+        </div>
+
+    </main>
+
+    <!-- Modal de Edição -->
+    <div id="edit-modal" class="hidden fixed inset-0 z-50 flex items-center justify-center bg-black/50">
+        <div class="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden flex flex-col m-4">
+            <div class="flex items-center justify-between px-6 py-4 border-b border-gray-100 bg-gradient-to-r from-primary-50 to-blue-50">
+                <div>
+                    <h2 id="modal-title" class="text-lg font-semibold text-gray-800">Editar Prompt</h2>
+                    <p id="modal-subtitle" class="text-sm text-gray-500"></p>
+                </div>
+                <button onclick="closeEditModal()" class="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            
+            <div class="flex-1 overflow-y-auto p-6">
+                <form id="edit-form" class="space-y-4">
+                    <input type="hidden" id="edit-id">
+                    
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Sistema</label>
+                            <input 
+                                type="text" 
+                                id="edit-sistema" 
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50"
+                                readonly
+                            >
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-700 mb-1">Tipo</label>
+                            <input 
+                                type="text" 
+                                id="edit-tipo" 
+                                class="w-full px-3 py-2 border border-gray-300 rounded-lg bg-gray-50"
+                                readonly
+                            >
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Nome</label>
+                        <input 
+                            type="text" 
+                            id="edit-nome" 
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                        >
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Descrição</label>
+                        <input 
+                            type="text" 
+                            id="edit-descricao" 
+                            class="w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                        >
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">
+                            Conteúdo do Prompt
+                            <span class="text-xs text-gray-400 ml-2">(Markdown e emojis suportados)</span>
+                        </label>
+                        <textarea 
+                            id="edit-conteudo" 
+                            class="prompt-editor w-full px-3 py-2 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-primary-500"
+                            rows="20"
+                        ></textarea>
+                        <p class="text-xs text-gray-400 mt-1">
+                            <i class="fas fa-info-circle"></i>
+                            Para o prompt de relatório, use <code>{data_json}</code> como placeholder para os dados extraídos.
+                        </p>
+                    </div>
+                    
+                    <div class="flex items-center gap-2">
+                        <input type="checkbox" id="edit-active" class="rounded border-gray-300 text-primary-600 focus:ring-primary-500">
+                        <label for="edit-active" class="text-sm text-gray-700">Prompt ativo</label>
+                    </div>
+                </form>
+            </div>
+            
+            <div class="px-6 py-4 border-t border-gray-100 bg-gray-50 flex justify-between">
+                <button 
+                    onclick="closeEditModal()"
+                    class="px-4 py-2 text-sm bg-gray-100 text-gray-700 rounded-lg hover:bg-gray-200 transition-colors"
+                >
+                    Cancelar
+                </button>
+                <button 
+                    onclick="savePrompt()"
+                    class="px-4 py-2 text-sm bg-primary-600 text-white rounded-lg hover:bg-primary-700 transition-colors flex items-center gap-2"
+                >
+                    <i class="fas fa-save"></i>
+                    Salvar Alterações
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Toast -->
+    <div id="toast" class="hidden fixed bottom-4 right-4 z-50">
+        <div class="bg-gray-800 text-white px-6 py-3 rounded-lg shadow-lg flex items-center gap-3">
+            <i id="toast-icon" class="fas fa-check-circle text-green-400"></i>
+            <span id="toast-message">Mensagem</span>
+        </div>
+    </div>
+
+    <script>
+        const API_URL = '';
+        let currentPrompts = [];
+
+        // Verifica autenticação e role admin
+        async function checkAdminAuth() {
+            const token = localStorage.getItem('access_token');
+            
+            if (!token) {
+                window.location.href = '/login';
+                return null;
+            }
+
+            try {
+                const response = await fetch(`${API_URL}/auth/me`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (!response.ok) throw new Error('Token inválido');
+
+                const user = await response.json();
+                
+                if (user.role !== 'admin') {
+                    alert('Acesso restrito a administradores');
+                    window.location.href = '/dashboard';
+                    return null;
+                }
+
+                return user;
+            } catch (error) {
+                localStorage.removeItem('access_token');
+                window.location.href = '/login';
+                return null;
+            }
+        }
+
+        // Carrega prompts
+        async function loadPrompts() {
+            const token = localStorage.getItem('access_token');
+            const sistema = document.getElementById('filter-sistema').value;
+            
+            let url = `${API_URL}/admin/prompts`;
+            if (sistema) url += `?sistema=${sistema}`;
+
+            console.log('[loadPrompts] Carregando de:', url);
+
+            try {
+                const response = await fetch(url, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                console.log('[loadPrompts] Status:', response.status);
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('[loadPrompts] Erro:', errorText);
+                    throw new Error('Erro ao carregar prompts');
+                }
+
+                const data = await response.json();
+                console.log('[loadPrompts] Dados recebidos:', data);
+                console.log('[loadPrompts] Total prompts:', data.total);
+                
+                currentPrompts = data.prompts || [];
+                renderPrompts(currentPrompts);
+            } catch (error) {
+                console.error('[loadPrompts] Erro:', error);
+                showToast('Erro ao carregar prompts', 'error');
+            }
+        }
+
+        // Renderiza lista de prompts
+        function renderPrompts(prompts) {
+            const container = document.getElementById('prompts-container');
+            
+            console.log('[renderPrompts] Prompts a renderizar:', prompts?.length || 0);
+            
+            if (!prompts || prompts.length === 0) {
+                container.innerHTML = `
+                    <div class="text-center py-12 text-gray-400">
+                        <i class="fas fa-inbox text-4xl mb-2"></i>
+                        <p>Nenhum prompt encontrado</p>
+                        <p class="text-sm mt-2">Selecione um sistema para criar os prompts:</p>
+                        <div class="flex flex-wrap gap-2 justify-center mt-4">
+                            <button onclick="criarPromptsSistema('pedido_calculo')" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2">
+                                <i class="fas fa-calculator"></i>
+                                Pedido de Cálculo
+                            </button>
+                            <button onclick="criarPromptsSistema('prestacao_contas')" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 flex items-center gap-2">
+                                <i class="fas fa-file-invoice-dollar"></i>
+                                Prestacao de Contas
+                            </button>
+                            <button onclick="criarPromptsSistema('relatorio_cumprimento')" class="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 flex items-center gap-2">
+                                <i class="fas fa-file-lines"></i>
+                                Relatorio Cumprimento
+                            </button>
+                            <button onclick="criarPromptsSistema('matriculas')" class="px-4 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 flex items-center gap-2">
+                                <i class="fas fa-file-alt"></i>
+                                Matrículas
+                            </button>
+                            <button onclick="criarPromptsSistema('assistencia_judiciaria')" class="px-4 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 flex items-center gap-2">
+                                <i class="fas fa-gavel"></i>
+                                Assistência Judiciária
+                            </button>
+                        </div>
+                    </div>
+                `;
+                return;
+            }
+
+            // Agrupa por sistema
+            const grouped = {};
+            prompts.forEach(p => {
+                if (!grouped[p.sistema]) grouped[p.sistema] = [];
+                grouped[p.sistema].push(p);
+            });
+            
+            console.log('[renderPrompts] Agrupados:', Object.keys(grouped));
+
+            const sistemaLabels = {
+                'matriculas': 'Matrículas Confrontantes',
+                'assistencia': 'Assistência Judiciária',
+                'assistencia_judiciaria': 'Assistência Judiciária',
+                'gerador_pecas': 'Gerador de Peças Jurídicas',
+                'pedido_calculo': 'Pedido de Cálculo',
+                'prestacao_contas': 'Prestação de Contas',
+                'relatorio_cumprimento': 'Relatório de Cumprimento'
+            };
+
+            const tipoLabels = {
+                'system': 'Prompt de Sistema',
+                'analise': 'Prompt de Análise',
+                'relatorio': 'Prompt de Relatório'
+            };
+
+            let html = '';
+            
+            for (const [sistema, sistemaPrompts] of Object.entries(grouped)) {
+                console.log('[renderPrompts] Sistema:', sistema, 'com', sistemaPrompts.length, 'prompts');
+                
+                html += `
+                    <div class="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-4">
+                        <div class="px-6 py-4 bg-gradient-to-r from-gray-50 to-white border-b border-gray-100">
+                            <h3 class="text-lg font-semibold text-gray-800">
+                                <i class="fas fa-folder text-primary-500 mr-2"></i>
+                                ${sistemaLabels[sistema] || sistema}
+                            </h3>
+                        </div>
+                        <div class="divide-y divide-gray-100">
+                `;
+
+                sistemaPrompts.forEach(prompt => {
+                    const statusBadge = prompt.is_active 
+                        ? '<span class="px-2 py-1 text-xs bg-green-100 text-green-700 rounded-full">Ativo</span>'
+                        : '<span class="px-2 py-1 text-xs bg-gray-100 text-gray-500 rounded-full">Inativo</span>';
+                    
+                    const updatedAt = formatDateTime(prompt.updated_at);
+                    const previewContent = (prompt.conteudo || '').substring(0, 200).replace(/\n/g, ' ');
+
+                    html += `
+                        <div class="px-6 py-4 hover:bg-gray-50 transition-colors">
+                            <div class="flex items-start justify-between gap-4">
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex items-center gap-3 mb-2">
+                                        <span class="px-2 py-1 text-xs bg-primary-100 text-primary-700 rounded-full font-medium">
+                                            ${tipoLabels[prompt.tipo] || prompt.tipo}
+                                        </span>
+                                        ${statusBadge}
+                                    </div>
+                                    <h4 class="font-medium text-gray-800">${prompt.nome}</h4>
+                                    <p class="text-sm text-gray-500 mt-1">${prompt.descricao || ''}</p>
+                                    <p class="text-xs text-gray-400 mt-2 font-mono truncate">${previewContent}...</p>
+                                    <p class="text-xs text-gray-400 mt-2">
+                                        <i class="fas fa-clock"></i> Atualizado em ${updatedAt}
+                                        ${prompt.updated_by ? ' por ' + prompt.updated_by : ''}
+                                    </p>
+                                </div>
+                                <div class="flex-shrink-0">
+                                    <button 
+                                        onclick="editPrompt(${prompt.id})"
+                                        class="px-4 py-2 text-sm text-primary-600 bg-primary-50 hover:bg-primary-100 rounded-lg transition-colors flex items-center gap-2"
+                                    >
+                                        <i class="fas fa-edit"></i>
+                                        Editar
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                });
+
+                html += '</div></div>';
+            }
+
+            container.innerHTML = html;
+            console.log('[renderPrompts] HTML renderizado');
+        }
+
+        // Abre modal de edição
+        function editPrompt(id) {
+            console.log('[editPrompt] Abrindo prompt ID:', id);
+            console.log('[editPrompt] Prompts disponíveis:', currentPrompts.map(p => p.id));
+            
+            const prompt = currentPrompts.find(p => p.id === id);
+            if (!prompt) {
+                console.error('[editPrompt] Prompt não encontrado!');
+                showToast('Prompt não encontrado', 'error');
+                return;
+            }
+            
+            console.log('[editPrompt] Prompt encontrado:', prompt.nome);
+
+            document.getElementById('edit-id').value = prompt.id;
+            document.getElementById('edit-sistema').value = prompt.sistema;
+            document.getElementById('edit-tipo').value = prompt.tipo;
+            document.getElementById('edit-nome').value = prompt.nome;
+            document.getElementById('edit-descricao').value = prompt.descricao || '';
+            document.getElementById('edit-conteudo').value = prompt.conteudo;
+            document.getElementById('edit-active').checked = prompt.is_active;
+
+            document.getElementById('modal-title').textContent = 'Editar: ' + prompt.nome;
+            document.getElementById('modal-subtitle').textContent = prompt.sistema + ' / ' + prompt.tipo;
+
+            document.getElementById('edit-modal').classList.remove('hidden');
+            console.log('[editPrompt] Modal aberto');
+        }
+
+        // Fecha modal
+        function closeEditModal() {
+            document.getElementById('edit-modal').classList.add('hidden');
+        }
+
+        // Salva prompt
+        async function savePrompt() {
+            const token = localStorage.getItem('access_token');
+            const id = document.getElementById('edit-id').value;
+            
+            console.log('[savePrompt] Salvando prompt ID:', id);
+
+            const data = {
+                nome: document.getElementById('edit-nome').value,
+                descricao: document.getElementById('edit-descricao').value,
+                conteudo: document.getElementById('edit-conteudo').value,
+                is_active: document.getElementById('edit-active').checked
+            };
+            
+            console.log('[savePrompt] Dados:', { nome: data.nome, descricao: data.descricao, is_active: data.is_active, conteudo_length: data.conteudo?.length });
+
+            try {
+                const response = await fetch(API_URL + '/admin/prompts/' + id, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': 'Bearer ' + token
+                    },
+                    body: JSON.stringify(data)
+                });
+                
+                console.log('[savePrompt] Status:', response.status);
+
+                if (!response.ok) {
+                    const errorText = await response.text();
+                    console.error('[savePrompt] Erro:', errorText);
+                    throw new Error('Erro ao salvar: ' + errorText);
+                }
+
+                const result = await response.json();
+                console.log('[savePrompt] Resultado:', result);
+
+                showToast('Prompt salvo com sucesso!', 'success');
+                closeEditModal();
+                loadPrompts();
+            } catch (error) {
+                console.error('[savePrompt] Erro:', error);
+                showToast('Erro ao salvar prompt: ' + error.message, 'error');
+            }
+        }
+
+        // Cria prompts para um sistema específico
+        async function criarPromptsSistema(sistema) {
+            const nomesSistemas = {
+                'pedido_calculo': 'Pedido de Cálculo',
+                'prestacao_contas': 'Prestação de Contas',
+                'relatorio_cumprimento': 'Relatório de Cumprimento',
+                'matriculas': 'Matrículas',
+                'assistencia_judiciaria': 'Assistência Judiciária'
+            };
+
+            if (!confirm(`Criar prompts padrão para o sistema "${nomesSistemas[sistema]}"?`)) {
+                return;
+            }
+
+            const token = localStorage.getItem('access_token');
+
+            try {
+                const response = await fetch(`${API_URL}/admin/prompts/criar-sistema/${sistema}`, {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || 'Erro ao criar prompts');
+                }
+
+                const result = await response.json();
+                showToast(result.message || 'Prompts criados com sucesso!', 'success');
+                loadPrompts();
+            } catch (error) {
+                console.error('Erro:', error);
+                showToast('Erro ao criar prompts: ' + error.message, 'error');
+            }
+        }
+
+        // Toast notification
+        function showToast(message, type = 'success') {
+            const toast = document.getElementById('toast');
+            const icon = document.getElementById('toast-icon');
+            const msg = document.getElementById('toast-message');
+
+            msg.textContent = message;
+            
+            if (type === 'success') {
+                icon.className = 'fas fa-check-circle text-green-400';
+            } else if (type === 'error') {
+                icon.className = 'fas fa-exclamation-circle text-red-400';
+            } else {
+                icon.className = 'fas fa-info-circle text-blue-400';
+            }
+
+            toast.classList.remove('hidden');
+            setTimeout(() => toast.classList.add('hidden'), 3000);
+        }
+
+        // Carrega modelos de IA configurados
+        async function loadModelosIA() {
+            const token = localStorage.getItem('access_token');
+            
+            try {
+                const response = await fetch(`${API_URL}/admin/modelos-ia`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+                
+                if (!response.ok) throw new Error('Erro ao carregar modelos');
+                
+                const data = await response.json();
+                
+                // Preenche os campos
+                if (data.assistencia_judiciaria) {
+                    document.getElementById('modelo-assistencia').value = data.assistencia_judiciaria.modelo || '';
+                }
+                if (data.matriculas) {
+                    document.getElementById('modelo-matriculas').value = data.matriculas.modelo || '';
+                }
+            } catch (error) {
+                console.error('Erro ao carregar modelos:', error);
+            }
+        }
+        
+        // Salva modelo de IA para um sistema
+        async function salvarModelo(sistema) {
+            const token = localStorage.getItem('access_token');
+            const inputId = sistema === 'assistencia_judiciaria' ? 'modelo-assistencia' : 'modelo-matriculas';
+            const modelo = document.getElementById(inputId).value.trim();
+            
+            if (!modelo) {
+                showToast('Digite o nome do modelo', 'error');
+                return;
+            }
+            
+            try {
+                const response = await fetch(`${API_URL}/admin/modelos-ia/${sistema}?modelo=${encodeURIComponent(modelo)}`, {
+                    method: 'PUT',
+                    headers: { 
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                if (!response.ok) throw new Error('Erro ao salvar modelo');
+                
+                showToast('Modelo salvo com sucesso!', 'success');
+            } catch (error) {
+                console.error('Erro ao salvar modelo:', error);
+                showToast('Erro ao salvar modelo', 'error');
+            }
+        }
+        
+        // Tabs de configuração
+        function showConfigTab(tab) {
+            // Esconde todos os painéis
+            document.querySelectorAll('.config-panel').forEach(p => p.classList.add('hidden'));
+            // Remove classe ativa de todas as tabs
+            document.querySelectorAll('.config-tab').forEach(t => {
+                t.classList.remove('border-primary-500', 'text-primary-600');
+                t.classList.add('border-transparent', 'text-gray-500');
+            });
+            
+            // Mostra painel selecionado
+            document.getElementById(`config-${tab}`).classList.remove('hidden');
+            // Ativa tab selecionada
+            const activeTab = document.getElementById(`tab-${tab}`);
+            activeTab.classList.add('border-primary-500', 'text-primary-600');
+            activeTab.classList.remove('border-transparent', 'text-gray-500');
+        }
+        
+        // Carrega configurações extras (sistemas_acessorios + campos extras do gerador_pecas)
+        async function loadConfiguracoesExtras() {
+            const token = localStorage.getItem('access_token');
+
+            try {
+                const response = await fetch(`${API_URL}/admin/config-ia`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (!response.ok) throw new Error('Erro ao carregar configurações');
+
+                const configs = await response.json();
+
+                // Preenche campos de sistemas_acessorios, global e extras do gerador_pecas
+                configs.forEach(config => {
+                    if (config.sistema === 'sistemas_acessorios' || config.sistema === 'gerador_pecas' || config.sistema === 'global') {
+                        const prefix = config.sistema;
+                        const inputId = `${prefix}-${config.chave}`;
+                        const input = document.getElementById(inputId);
+                        if (input) {
+                            // Para selects, precisamos selecionar a opção correta
+                            if (input.tagName === 'SELECT') {
+                                input.value = config.valor || '';
+                            } else {
+                                input.value = config.valor || '';
+                            }
+                        }
+                    }
+                });
+            } catch (error) {
+                console.error('Erro ao carregar configurações extras:', error);
+            }
+        }
+
+        // Salva configurações de sistemas_acessorios
+        async function salvarConfigSistema(sistema) {
+            const token = localStorage.getItem('access_token');
+            const prefix = sistema;
+
+            // Coleta todos os inputs do sistema
+            const inputs = document.querySelectorAll(`[id^="${prefix}-"]`);
+
+            try {
+                for (const input of inputs) {
+                    const chave = input.id.replace(`${prefix}-`, '');
+                    const valor = input.value.trim();
+
+                    if (valor || chave.includes('thinking_level')) {
+                        await fetch(`${API_URL}/admin/config-ia/upsert`, {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Bearer ${token}`,
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                sistema: sistema,
+                                chave: chave,
+                                valor: valor
+                            })
+                        });
+                    }
+                }
+
+                showToast('Configurações salvas com sucesso!', 'success');
+            } catch (error) {
+                console.error('Erro ao salvar configurações:', error);
+                showToast('Erro ao salvar configurações', 'error');
+            }
+        }
+
+        // Salva configurações extras do gerador_pecas (Critérios, Modo 2º Grau)
+        async function salvarConfigSistemaExtra(sistema) {
+            const token = localStorage.getItem('access_token');
+
+            // Campos extras do gerador_pecas
+            const camposExtras = [
+                'prompt_criterios_relevancia',
+                'competencia_999_last_peticoes_limit',
+                'competencia_999_last_recursos_limit',
+                'busca_vetorial_threshold',
+                'busca_vetorial_limit',
+                'prompt_chat_edicao'
+            ];
+
+            try {
+                for (const chave of camposExtras) {
+                    const input = document.getElementById(`${sistema}-${chave}`);
+                    if (input) {
+                        const valor = input.value.trim();
+                        await fetch(`${API_URL}/admin/config-ia/upsert`, {
+                            method: 'POST',
+                            headers: {
+                                'Authorization': `Bearer ${token}`,
+                                'Content-Type': 'application/json'
+                            },
+                            body: JSON.stringify({
+                                sistema: sistema,
+                                chave: chave,
+                                valor: valor
+                            })
+                        });
+                    }
+                }
+
+                showToast('Configurações extras salvas!', 'success');
+            } catch (error) {
+                console.error('Erro ao salvar configurações extras:', error);
+                showToast('Erro ao salvar configurações', 'error');
+            }
+        }
+
+        // Prompt padrão do chat de edição de minutas
+        const PROMPT_CHAT_EDICAO_PADRAO = `Você é um assistente jurídico especializado em edição de peças jurídicas.
+
+Sua função é modificar a minuta fornecida de acordo com o pedido do usuário.
+
+## FORMATO DE RESPOSTA
+
+Você DEVE responder em um dos dois formatos:
+
+### FORMATO 1 - PERGUNTA DE CLARIFICAÇÃO (quando tiver dúvidas)
+Se o pedido não estiver claro, for ambíguo, ou você precisar de mais informações, comece sua resposta EXATAMENTE com [PERGUNTA] na primeira linha, seguido da sua pergunta:
+
+[PERGUNTA]
+Sua pergunta aqui para o usuário...
+
+IMPORTANTE: O marcador [PERGUNTA] DEVE estar sozinho no início da resposta, sem nenhum texto antes.
+
+Exemplos de quando perguntar:
+- "Adicione argumento sobre prescrição" → Pergunte: qual tipo de prescrição? Intercorrente? Quinquenal?
+- "Melhore a fundamentação" → Pergunte: qual parte específica? O que está faltando?
+- "Adicione jurisprudência" → Pergunte: sobre qual tema específico?
+
+### FORMATO 2 - MINUTA EDITADA (quando tiver certeza do que fazer)
+Quando o pedido estiver claro, retorne APENAS a minuta editada em markdown, sem explicações e SEM o marcador [PERGUNTA].
+
+## REGRAS PARA USO DE ARGUMENTOS DA BASE DE CONHECIMENTO
+
+ATENÇÃO: Você pode receber argumentos/teses da base de conhecimento junto com o pedido.
+Antes de usar qualquer argumento fornecido, você DEVE avaliar:
+
+1. **RELEVÂNCIA**: O argumento corresponde EXATAMENTE ao que o usuário pediu?
+   - Se não corresponder, IGNORE o argumento e pergunte ao usuário o que ele realmente quer
+   - Não use argumentos só porque foram fornecidos - use apenas se forem relevantes
+
+2. **ADEQUAÇÃO**: O argumento faz sentido no contexto da peça?
+   - Verifique se o tipo de ação, parte processual e situação são compatíveis
+
+3. **QUANDO USAR**: Só use argumentos da base se:
+   - O usuário explicitamente pediu para adicionar argumentos/teses sobre aquele tema
+   - O argumento corresponde precisamente ao pedido
+   - Faz sentido no contexto da minuta
+
+4. **QUANDO IGNORAR**: Desconsidere argumentos se:
+   - Não correspondem ao que o usuário pediu
+   - São de tema diferente do solicitado
+   - Não se aplicam ao tipo de ação da minuta
+
+Se receber argumentos mas eles NÃO corresponderem ao pedido do usuário, IGNORE-OS completamente e:
+- Ou faça a edição sem eles (se o pedido for claro)
+- Ou pergunte ao usuário o que ele realmente quer (se for ambíguo)
+
+## REGRAS DE FORMATAÇÃO
+
+- Mantenha a formatação formal jurídica
+- Preserve as partes que não foram solicitadas para alteração
+- Use markdown correto (## para títulos, **negrito**, *itálico*, > para citações)
+- Mantenha o tom formal e técnico-jurídico
+- Quando usar argumentos, adapte ao caso concreto mantendo os fundamentos jurídicos
+- Integre de forma fluida na seção apropriada (Preliminares, Mérito, etc.)
+
+## O QUE NÃO FAZER
+
+- NÃO use argumentos irrelevantes só porque foram fornecidos
+- NÃO inclua explicações sobre as alterações (a menos que seja uma pergunta)
+- NÃO adicione comentários como "Aqui está a minuta editada"
+- NÃO faça suposições sobre o que o usuário quer - pergunte se não tiver certeza`;
+
+        // Restaura o prompt padrão do chat de edição
+        function restaurarPromptChatPadrao() {
+            if (confirm('Tem certeza que deseja restaurar o prompt padrão? As alterações atuais serão perdidas.')) {
+                const textarea = document.getElementById('gerador_pecas-prompt_chat_edicao');
+                if (textarea) {
+                    textarea.value = PROMPT_CHAT_EDICAO_PADRAO;
+                    showToast('Prompt restaurado para o padrão. Clique em "Salvar" para aplicar.', 'info');
+                }
+            }
+        }
+
+        // ============================================
+        // Configuração por Agente (Edição Completa)
+        // ============================================
+
+        // Lista de modelos disponíveis para seleção
+        const MODELOS_DISPONIVEIS = [
+            { value: '', label: '-- Herdar do sistema --' },
+            { value: 'gemini-3-flash-preview', label: 'Gemini 3 Flash Preview' },
+            { value: 'gemini-3-pro-preview', label: 'Gemini 3 Pro Preview' },
+            { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro' },
+            { value: 'gemini-2.0-flash-lite', label: 'Gemini 2.0 Flash Lite' },
+        ];
+
+        // Opções de thinking level
+        const THINKING_LEVELS = [
+            { value: '', label: '-- Herdar --' },
+            { value: 'minimal', label: 'Minimal' },
+            { value: 'low', label: 'Low' },
+            { value: 'medium', label: 'Medium' },
+            { value: 'high', label: 'High' },
+        ];
+
+        // Cores por fonte de configuração
+        const SOURCE_COLORS = {
+            'agent': 'bg-blue-100 text-blue-700 border-blue-300',
+            'system': 'bg-green-100 text-green-700 border-green-300',
+            'global': 'bg-purple-100 text-purple-700 border-purple-300',
+            'default': 'bg-gray-100 text-gray-600 border-gray-300',
+            'override': 'bg-orange-100 text-orange-700 border-orange-300'
+        };
+
+        // Helper: renderiza options do select de modelo
+        function renderModeloOptions(currentValue, source) {
+            let html = '<option value="">-- Herdar do sistema --</option>';
+            const models = [
+                { value: 'gemini-3-flash-preview', label: 'Gemini 3 Flash Preview' },
+                { value: 'gemini-3-pro-preview', label: 'Gemini 3 Pro Preview' },
+                { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro' },
+                { value: 'gemini-2.0-flash-lite', label: 'Gemini 2.0 Flash Lite' },
+            ];
+
+            // Se for override de agente, seleciona o valor atual
+            const selectedValue = source === 'agent' ? currentValue : '';
+
+            models.forEach(m => {
+                const selected = m.value === selectedValue ? 'selected' : '';
+                html += `<option value="${m.value}" ${selected}>${m.label}</option>`;
+            });
+
+            // Se o modelo atual não está na lista e é override do agente, adiciona como opção
+            if (selectedValue && !models.find(m => m.value === selectedValue)) {
+                html += `<option value="${selectedValue}" selected>${selectedValue}</option>`;
+            }
+
+            return html;
+        }
+
+        // Helper: renderiza options do select de thinking level
+        function renderThinkingOptions(currentValue, source) {
+            let html = '<option value="">-- Herdar --</option>';
+            const levels = [
+                { value: 'minimal', label: 'Minimal' },
+                { value: 'low', label: 'Low' },
+                { value: 'medium', label: 'Medium' },
+                { value: 'high', label: 'High' },
+            ];
+
+            const selectedValue = source === 'agent' ? currentValue : '';
+
+            levels.forEach(l => {
+                const selected = l.value === selectedValue ? 'selected' : '';
+                html += `<option value="${l.value}" ${selected}>${l.label}</option>`;
+            });
+
+            return html;
+        }
+
+        // Carrega e exibe configurações EDITÁVEIS por agente para um sistema
+        async function loadConfigPerAgent(sistema) {
+            const token = localStorage.getItem('access_token');
+
+            try {
+                const response = await fetch(`${API_URL}/admin/config-ia/per-agent/${sistema}`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (!response.ok) throw new Error(`Erro ao carregar configurações por agente: ${response.status}`);
+
+                const data = await response.json();
+
+                // Monta HTML da seção editável (no topo do painel)
+                let html = `
+                    <div class="p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-xl border border-blue-200">
+                        <div class="flex items-center justify-between mb-4">
+                            <h4 class="font-semibold text-gray-800 flex items-center gap-2">
+                                <i class="fas fa-sliders-h text-blue-600"></i>
+                                Configuração por Agente
+                            </h4>
+                            <button
+                                onclick="salvarConfigAgentes('${sistema}')"
+                                class="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition-colors flex items-center gap-2"
+                            >
+                                <i class="fas fa-save"></i>
+                                Salvar Configurações
+                            </button>
+                        </div>
+
+                        <p class="text-xs text-gray-600 mb-4">
+                            <i class="fas fa-info-circle mr-1"></i>
+                            Hierarquia:
+                            <span class="px-1.5 py-0.5 ${SOURCE_COLORS['agent']} rounded text-xs font-medium">agente</span> &gt;
+                            <span class="px-1.5 py-0.5 ${SOURCE_COLORS['system']} rounded text-xs font-medium">sistema</span> &gt;
+                            <span class="px-1.5 py-0.5 ${SOURCE_COLORS['global']} rounded text-xs font-medium">global</span> &gt;
+                            <span class="px-1.5 py-0.5 ${SOURCE_COLORS['default']} rounded text-xs font-medium">default</span>
+                            &nbsp;|&nbsp; <span class="text-gray-500">Deixe em branco para herdar.</span>
+                        </p>
+                `;
+
+                // Para cada agente, cria uma seção editável
+                for (const [slug, config] of Object.entries(data.agentes)) {
+                    const agentId = `${sistema}-${slug}`;
+
+                    html += `
+                        <div class="mb-4 p-4 bg-white rounded-lg border border-gray-200 shadow-sm" id="agent-card-${agentId}">
+                            <div class="flex items-center justify-between mb-3">
+                                <div>
+                                    <h5 class="font-semibold text-gray-800">${slug}</h5>
+                                    <p class="text-xs text-gray-500">${config.descricao || ''}</p>
+                                </div>
+                                <button
+                                    onclick="resetarAgente('${sistema}', '${slug}')"
+                                    class="text-xs px-2 py-1 text-red-600 hover:bg-red-50 rounded transition-colors"
+                                    title="Limpar todos os overrides deste agente"
+                                >
+                                    <i class="fas fa-undo mr-1"></i>Resetar
+                                </button>
+                            </div>
+
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                                <!-- Modelo -->
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-600 mb-1">
+                                        Modelo
+                                        <span class="ml-1 px-1.5 py-0.5 ${SOURCE_COLORS[config.modelo_fonte]} rounded text-xs" id="source-modelo-${agentId}">${config.modelo_fonte}</span>
+                                    </label>
+                                    <select
+                                        id="modelo-${agentId}"
+                                        data-sistema="${sistema}"
+                                        data-agente="${slug}"
+                                        data-param="modelo"
+                                        data-original-source="${config.modelo_fonte}"
+                                        class="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${config.modelo_fonte === 'agent' ? 'border-blue-400 bg-blue-50' : ''}"
+                                        onchange="marcarModificado(this)"
+                                    >
+                                        ${renderModeloOptions(config.modelo, config.modelo_fonte)}
+                                    </select>
+                                    ${config.modelo_fonte === 'agent' ?
+                                        `<div class="text-xs text-blue-600 mt-1"><i class="fas fa-check-circle"></i> Override ativo: ${config.modelo}</div>` :
+                                        `<div class="text-xs text-gray-400 mt-1">Efetivo: ${config.modelo}</div>`
+                                    }
+                                </div>
+
+                                <!-- Temperatura -->
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-600 mb-1">
+                                        Temperatura
+                                        <span class="ml-1 px-1.5 py-0.5 ${SOURCE_COLORS[config.temperatura_fonte]} rounded text-xs" id="source-temperatura-${agentId}">${config.temperatura_fonte}</span>
+                                    </label>
+                                    <div class="flex gap-1">
+                                        <input
+                                            type="number"
+                                            id="temperatura-${agentId}"
+                                            data-sistema="${sistema}"
+                                            data-agente="${slug}"
+                                            data-param="temperatura"
+                                            data-original-source="${config.temperatura_fonte}"
+                                            min="0" max="2" step="0.1"
+                                            placeholder="${config.temperatura}"
+                                            value="${config.temperatura_fonte === 'agent' ? config.temperatura : ''}"
+                                            class="flex-1 px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${config.temperatura_fonte === 'agent' ? 'border-blue-400 bg-blue-50' : ''}"
+                                            onchange="marcarModificado(this)"
+                                        >
+                                        <button
+                                            onclick="limparCampo('temperatura-${agentId}')"
+                                            class="px-2 py-1 text-gray-400 hover:text-red-500 text-xs"
+                                            title="Limpar (herdar)"
+                                        >
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    </div>
+                                    ${config.temperatura_fonte === 'agent' ?
+                                        `<div class="text-xs text-blue-600 mt-1"><i class="fas fa-check-circle"></i> Override ativo</div>` :
+                                        `<div class="text-xs text-gray-400 mt-1">Efetivo: ${config.temperatura}</div>`
+                                    }
+                                </div>
+
+                                <!-- Max Tokens -->
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-600 mb-1">
+                                        Max Tokens
+                                        <span class="ml-1 px-1.5 py-0.5 ${SOURCE_COLORS[config.max_tokens_fonte]} rounded text-xs" id="source-max_tokens-${agentId}">${config.max_tokens_fonte}</span>
+                                    </label>
+                                    <div class="flex gap-1">
+                                        <input
+                                            type="number"
+                                            id="max_tokens-${agentId}"
+                                            data-sistema="${sistema}"
+                                            data-agente="${slug}"
+                                            data-param="max_tokens"
+                                            data-original-source="${config.max_tokens_fonte}"
+                                            min="100" max="200000" step="100"
+                                            placeholder="${config.max_tokens || 'auto'}"
+                                            value="${config.max_tokens_fonte === 'agent' ? (config.max_tokens || '') : ''}"
+                                            class="flex-1 px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${config.max_tokens_fonte === 'agent' ? 'border-blue-400 bg-blue-50' : ''}"
+                                            onchange="marcarModificado(this)"
+                                        >
+                                        <button
+                                            onclick="limparCampo('max_tokens-${agentId}')"
+                                            class="px-2 py-1 text-gray-400 hover:text-red-500 text-xs"
+                                            title="Limpar (herdar)"
+                                        >
+                                            <i class="fas fa-times"></i>
+                                        </button>
+                                    </div>
+                                    ${config.max_tokens_fonte === 'agent' ?
+                                        `<div class="text-xs text-blue-600 mt-1"><i class="fas fa-check-circle"></i> Override ativo</div>` :
+                                        `<div class="text-xs text-gray-400 mt-1">Efetivo: ${config.max_tokens || 'auto'}</div>`
+                                    }
+                                </div>
+
+                                <!-- Thinking Level -->
+                                <div>
+                                    <label class="block text-xs font-medium text-gray-600 mb-1">
+                                        Thinking Level
+                                        <span class="ml-1 px-1.5 py-0.5 ${SOURCE_COLORS[config.thinking_level_fonte]} rounded text-xs" id="source-thinking_level-${agentId}">${config.thinking_level_fonte}</span>
+                                    </label>
+                                    <select
+                                        id="thinking_level-${agentId}"
+                                        data-sistema="${sistema}"
+                                        data-agente="${slug}"
+                                        data-param="thinking_level"
+                                        data-original-source="${config.thinking_level_fonte}"
+                                        class="w-full px-2 py-1.5 text-sm border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 ${config.thinking_level_fonte === 'agent' ? 'border-blue-400 bg-blue-50' : ''}"
+                                        onchange="marcarModificado(this)"
+                                    >
+                                        ${THINKING_LEVELS.map(t =>
+                                            `<option value="${t.value}" ${config.thinking_level === t.value && config.thinking_level_fonte === 'agent' ? 'selected' : (t.value === '' && config.thinking_level_fonte !== 'agent' ? 'selected' : '')}>${t.label}</option>`
+                                        ).join('')}
+                                    </select>
+                                    ${config.thinking_level_fonte === 'agent' ?
+                                        `<div class="text-xs text-blue-600 mt-1"><i class="fas fa-check-circle"></i> Override ativo: ${config.thinking_level}</div>` :
+                                        `<div class="text-xs text-gray-400 mt-1">Efetivo: ${config.thinking_level || 'default'}</div>`
+                                    }
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                html += `</div>`;
+
+                // Para relatorio_cumprimento, adiciona botão para criar prompts se não existirem
+                if (sistema === 'relatorio_cumprimento') {
+                    html += `
+                        <div class="mt-4 p-4 bg-amber-50 border border-amber-200 rounded-lg" id="criar-prompts-relatorio">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <h5 class="font-medium text-amber-800 flex items-center gap-2">
+                                        <i class="fas fa-exclamation-triangle"></i>
+                                        Prompts não configurados
+                                    </h5>
+                                    <p class="text-sm text-amber-700 mt-1">
+                                        Os prompts de geração e edição ainda não foram criados para este sistema.
+                                    </p>
+                                </div>
+                                <button
+                                    onclick="criarPromptsSistema('relatorio_cumprimento')"
+                                    class="px-4 py-2 bg-emerald-600 text-white rounded-lg hover:bg-emerald-700 flex items-center gap-2"
+                                >
+                                    <i class="fas fa-plus"></i>
+                                    Criar Prompts
+                                </button>
+                            </div>
+                        </div>
+                    `;
+                }
+
+                // Insere no container do sistema correspondente (NO TOPO)
+                const prefix = sistema === 'assistencia_judiciaria' ? 'assistencia' : sistema;
+                const container = document.getElementById(`config-${prefix}`);
+                if (container) {
+                    // Para gerador_pecas, preserva as seções extras (Critérios, Modo 2º Grau)
+                    const extraSections = container.querySelectorAll('.mt-6, .mt-4');
+
+                    // Limpa o container
+                    const agentConfigContainer = container.querySelector('.agent-config-container');
+                    if (agentConfigContainer) {
+                        // Se existe container específico, substitui apenas ele
+                        agentConfigContainer.innerHTML = html;
+                    } else {
+                        // Caso contrário, substitui todo o conteúdo
+                        container.innerHTML = html;
+                    }
+                }
+
+            } catch (error) {
+                console.error('Erro ao carregar config por agente:', error);
+
+                // Mostra mensagem de erro com botão para criar prompts
+                const prefix = sistema === 'assistencia_judiciaria' ? 'assistencia' : sistema;
+                const container = document.getElementById(`config-${prefix}`);
+                if (container) {
+                    const nomesSistemas = {
+                        'gerador_pecas': 'Gerador de Peças',
+                        'pedido_calculo': 'Pedido de Cálculo',
+                        'prestacao_contas': 'Prestação de Contas',
+                        'relatorio_cumprimento': 'Relatório de Cumprimento',
+                        'matriculas': 'Matrículas',
+                        'assistencia_judiciaria': 'Assistência Judiciária'
+                    };
+                    const nomeSistema = nomesSistemas[sistema] || sistema;
+
+                    container.innerHTML = `
+                        <div class="text-center py-8">
+                            <i class="fas fa-exclamation-triangle text-amber-500 text-3xl mb-4"></i>
+                            <p class="text-gray-600 mb-4">Nenhuma configuração encontrada para <strong>${nomeSistema}</strong>.</p>
+                            <p class="text-sm text-gray-500 mb-4">Clique abaixo para criar os prompts e configurações iniciais.</p>
+                            <button
+                                onclick="criarPromptsSistema('${sistema}')"
+                                class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 flex items-center gap-2 mx-auto"
+                            >
+                                <i class="fas fa-plus"></i>
+                                Criar Prompts para ${nomeSistema}
+                            </button>
+                        </div>
+                    `;
+                }
+            }
+        }
+
+        // Marca campo como modificado visualmente
+        function marcarModificado(element) {
+            const card = element.closest('[id^="agent-card-"]');
+            if (card) {
+                card.classList.add('ring-2', 'ring-orange-300');
+            }
+            element.classList.add('border-orange-400', 'bg-orange-50');
+            element.classList.remove('border-gray-300');
+        }
+
+        // Limpa um campo (para herdar)
+        function limparCampo(fieldId) {
+            const field = document.getElementById(fieldId);
+            if (field) {
+                field.value = '';
+                marcarModificado(field);
+            }
+        }
+
+        // Reseta todos os campos de um agente
+        async function resetarAgente(sistema, agente) {
+            if (!confirm(`Deseja realmente limpar todos os overrides do agente "${agente}"? Ele passará a herdar todas as configurações do sistema.`)) {
+                return;
+            }
+
+            const token = localStorage.getItem('access_token');
+            const params = ['modelo', 'temperatura', 'max_tokens', 'thinking_level'];
+
+            try {
+                for (const param of params) {
+                    const chave = `${param}_${agente}`;
+
+                    // Salva valor vazio para remover o override
+                    await fetch(`${API_URL}/admin/config-ia/upsert`, {
+                        method: 'POST',
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                        },
+                        body: JSON.stringify({
+                            sistema: sistema,
+                            chave: chave,
+                            valor: ''
+                        })
+                    });
+                }
+
+                showToast(`Overrides do agente "${agente}" removidos!`, 'success');
+
+                // Recarrega as configurações
+                await loadConfigPerAgent(sistema);
+
+            } catch (error) {
+                console.error('Erro ao resetar agente:', error);
+                showToast('Erro ao resetar agente', 'error');
+            }
+        }
+
+        // Salva configurações de todos os agentes de um sistema
+        async function salvarConfigAgentes(sistema) {
+            const token = localStorage.getItem('access_token');
+            const prefix = sistema === 'assistencia_judiciaria' ? 'assistencia' : sistema;
+            const container = document.getElementById(`config-${prefix}`);
+
+            if (!container) return;
+
+            // Coleta todos os campos de configuração por agente
+            const campos = container.querySelectorAll('[data-sistema][data-agente][data-param]');
+
+            let salvos = 0;
+            let erros = 0;
+
+            try {
+                for (const campo of campos) {
+                    const sistemaData = campo.dataset.sistema;
+                    const agente = campo.dataset.agente;
+                    const param = campo.dataset.param;
+                    const valor = campo.value.trim();
+
+                    // Monta a chave no formato {param}_{agente}
+                    const chave = `${param}_${agente}`;
+
+                    // Salva apenas se houver valor OU se o campo foi modificado (para limpar override)
+                    // Para modelo e thinking_level vazios, salvamos "" para indicar "herdar"
+                    const originalSource = campo.dataset.originalSource;
+                    const foiModificado = campo.classList.contains('border-orange-400') ||
+                                          (originalSource === 'agent' && valor === '');
+
+                    if (valor || foiModificado) {
+                        try {
+                            await fetch(`${API_URL}/admin/config-ia/upsert`, {
+                                method: 'POST',
+                                headers: {
+                                    'Authorization': `Bearer ${token}`,
+                                    'Content-Type': 'application/json'
+                                },
+                                body: JSON.stringify({
+                                    sistema: sistemaData,
+                                    chave: chave,
+                                    valor: valor
+                                })
+                            });
+                            salvos++;
+                        } catch (e) {
+                            erros++;
+                            console.error(`Erro ao salvar ${chave}:`, e);
+                        }
+                    }
+                }
+
+                if (erros === 0) {
+                    showToast(`Configurações dos agentes salvas! (${salvos} campos)`, 'success');
+                } else {
+                    showToast(`Salvo com ${erros} erro(s)`, 'warning');
+                }
+
+                // Recarrega para mostrar as fontes atualizadas
+                await loadConfigPerAgent(sistema);
+
+            } catch (error) {
+                console.error('Erro ao salvar configurações:', error);
+                showToast('Erro ao salvar configurações', 'error');
+            }
+        }
+
+        // Carrega configurações por agente para todos os sistemas
+        async function loadAllConfigPerAgent() {
+            const sistemas = ['gerador_pecas', 'pedido_calculo', 'prestacao_contas', 'relatorio_cumprimento', 'matriculas', 'assistencia_judiciaria'];
+            for (const sistema of sistemas) {
+                try {
+                    await loadConfigPerAgent(sistema);
+                } catch (e) {
+                    console.log(`Sistema ${sistema} não tem configuração por agente`);
+                }
+            }
+        }
+
+        // ============================================
+        // Verificação de Thinking Level
+        // ============================================
+
+        /**
+         * Verifica se as configurações de thinking_level estão sendo aplicadas.
+         * Mostra alertas quando há discrepâncias entre a configuração e o uso real.
+         */
+        async function verificarThinkingLevelStatus() {
+            const token = localStorage.getItem('access_token');
+
+            try {
+                const response = await fetch(`${API_URL}/admin/api/gemini-logs/thinking-level-status?hours=24`, {
+                    headers: { 'Authorization': `Bearer ${token}` }
+                });
+
+                if (!response.ok) {
+                    console.log('[ThinkingLevel] Endpoint não disponível ou erro:', response.status);
+                    return;
+                }
+
+                const data = await response.json();
+
+                // Filtra apenas alertas do tipo 'nao_aplicado' (mais críticos)
+                const alertasCriticos = data.alertas.filter(a => a.tipo === 'nao_aplicado');
+
+                if (alertasCriticos.length > 0) {
+                    // Mostra badge de alerta
+                    const badge = document.getElementById('thinking-level-badge');
+                    const badgeCount = document.getElementById('thinking-level-badge-count');
+                    const details = document.getElementById('thinking-level-details');
+
+                    badge.classList.remove('hidden');
+                    badgeCount.textContent = alertasCriticos.length;
+
+                    // Monta detalhes dos alertas
+                    let detailsHtml = '';
+                    alertasCriticos.forEach(alerta => {
+                        detailsHtml += `
+                            <div class="p-2 bg-amber-100 rounded">
+                                <strong>${alerta.sistema}</strong> → ${alerta.agente}:
+                                configurado <code class="bg-amber-200 px-1 rounded">${alerta.esperado}</code>,
+                                encontrado <code class="bg-red-200 px-1 rounded">${alerta.encontrado.join(', ')}</code>
+                            </div>
+                        `;
+                    });
+                    details.innerHTML = detailsHtml;
+
+                    console.log(`[ThinkingLevel] ${alertasCriticos.length} alerta(s) de thinking_level não aplicado`);
+                } else if (data.resumo.total_chamadas_analisadas === 0) {
+                    // Sem dados suficientes para análise
+                    console.log('[ThinkingLevel] Sem chamadas recentes para análise');
+                } else {
+                    console.log('[ThinkingLevel] Configurações de thinking_level estão sendo aplicadas corretamente');
+                }
+
+            } catch (error) {
+                console.log('[ThinkingLevel] Erro ao verificar status:', error.message);
+            }
+        }
+
+        // Inicialização
+        (async function() {
+            const user = await checkAdminAuth();
+            if (user) {
+                loadPrompts();
+                // Carrega configs por agente imediatamente
+                loadAllConfigPerAgent();
+                // Carrega configs extras (sistemas_acessorios, campos extras do gerador_pecas)
+                loadConfiguracoesExtras();
+                // Verifica status do thinking_level (não bloqueia a UI)
+                verificarThinkingLevelStatus();
+            }
+        })();
+    </script>
+</body>
+</html>

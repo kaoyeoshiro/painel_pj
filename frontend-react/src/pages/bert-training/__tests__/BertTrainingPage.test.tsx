@@ -6,6 +6,15 @@ import { BertTrainingPage } from '../BertTrainingPage'
 // Mock do router
 vi.mock('@tanstack/react-router', () => ({
   useNavigate: () => vi.fn(),
+  Link: ({ children, ...props }: { children: React.ReactNode; to?: string }) => <a href={props.to}>{children}</a>,
+}))
+
+// Mock do auth store (SystemTopbar usa useAuthStore)
+vi.mock('@/stores/auth-store', () => ({
+  useAuthStore: () => ({
+    logout: vi.fn(),
+    user: { id: 1, full_name: 'Teste' },
+  }),
 }))
 
 // Mock do modulo de API
@@ -122,7 +131,7 @@ describe('BertTrainingPage', () => {
   it('deve renderizar a pagina com as 4 abas', async () => {
     render(<BertTrainingPage />)
 
-    expect(screen.getByText('Treinamento BERT')).toBeInTheDocument()
+    expect(screen.getByText('Treinamento de IA')).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: /novo treino/i })).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: /monitorar jobs/i })).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: /testar modelo/i })).toBeInTheDocument()

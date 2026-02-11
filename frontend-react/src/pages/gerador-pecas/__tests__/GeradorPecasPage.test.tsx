@@ -61,12 +61,12 @@ describe('GeradorPecasPage', () => {
   it('deve renderizar o formulario com campo de CNJ e seletor de tipo', async () => {
     render(<GeradorPecasPage />)
 
-    expect(screen.getByText('Gerador de Pecas Juridicas')).toBeInTheDocument()
-    expect(screen.getByLabelText('Numero do Processo (CNJ)')).toBeInTheDocument()
+    expect(screen.getByText('Gerador de Pecas')).toBeInTheDocument()
+    expect(screen.getByLabelText('Numero do Processo')).toBeInTheDocument()
 
     // O Select placeholder aparece apos o loading dos tipos
     await waitFor(() => {
-      expect(screen.getByText('-- Selecione o tipo de peca --')).toBeInTheDocument()
+      expect(screen.getByText('Selecione o tipo de peca')).toBeInTheDocument()
     })
   })
 
@@ -74,9 +74,7 @@ describe('GeradorPecasPage', () => {
     render(<GeradorPecasPage />)
 
     await waitFor(() => {
-      // O Select do shadcn/ui renderiza as opcoes na tela
-      // Verificamos que as opcoes de tipos estao disponiveis via botao do trigger
-      expect(screen.getByText('-- Selecione o tipo de peca --')).toBeInTheDocument()
+      expect(screen.getByText('Selecione o tipo de peca')).toBeInTheDocument()
     })
 
     // Verifica que a API foi chamada para buscar tipos
@@ -95,7 +93,7 @@ describe('GeradorPecasPage', () => {
   it('deve habilitar botao Gerar Automatico quando CNJ tem valor', async () => {
     render(<GeradorPecasPage />)
 
-    const input = screen.getByLabelText('Numero do Processo (CNJ)')
+    const input = screen.getByLabelText('Numero do Processo')
     // Simula digitacao do CNJ
     await waitFor(() => {
       input.focus()
@@ -111,27 +109,17 @@ describe('GeradorPecasPage', () => {
     input.dispatchEvent(new Event('input', { bubbles: true }))
     input.dispatchEvent(new Event('change', { bubbles: true }))
 
-    // A abordagem mais segura: verificar que o botao nao esta desabilitado quando o input tem conteudo
-    // Como o teste DOM pode ser complicado com react state, verificamos a logica indiretamente
-    expect(screen.getByLabelText('Numero do Processo (CNJ)')).toBeInTheDocument()
+    expect(screen.getByLabelText('Numero do Processo')).toBeInTheDocument()
   })
 
-  it('deve exibir titulo da secao de historico', async () => {
+  it('deve exibir pipeline de geracao', async () => {
     render(<GeradorPecasPage />)
 
     await waitFor(() => {
-      expect(screen.getByText('Geracoes Recentes')).toBeInTheDocument()
-    })
-  })
-
-  it('deve exibir card de informacoes "Como funciona?"', async () => {
-    render(<GeradorPecasPage />)
-
-    await waitFor(() => {
-      expect(screen.getByText('Como funciona?')).toBeInTheDocument()
-      expect(screen.getByText('Coleta')).toBeInTheDocument()
-      expect(screen.getByText('Analise')).toBeInTheDocument()
-      expect(screen.getByText('Geracao')).toBeInTheDocument()
+      expect(screen.getByText('Pipeline de Geracao')).toBeInTheDocument()
+      expect(screen.getByText('Coletor')).toBeInTheDocument()
+      expect(screen.getByText('Analisador')).toBeInTheDocument()
+      expect(screen.getByText('Redator')).toBeInTheDocument()
     })
   })
 
@@ -139,7 +127,7 @@ describe('GeradorPecasPage', () => {
     render(<GeradorPecasPage />)
 
     await waitFor(() => {
-      const btn = screen.getByRole('button', { name: /Modo Semi-Automatico/i })
+      const btn = screen.getByRole('button', { name: /Semi-Automatico/i })
       expect(btn).toBeDisabled()
     })
   })
@@ -148,8 +136,8 @@ describe('GeradorPecasPage', () => {
     render(<GeradorPecasPage />)
 
     await waitFor(() => {
-      expect(screen.getByText('Nenhuma geracao encontrada')).toBeInTheDocument()
-      expect(screen.getByText('Use o formulario acima para gerar sua primeira peca')).toBeInTheDocument()
+      expect(screen.getByText('Nenhuma geracao ainda')).toBeInTheDocument()
+      expect(screen.getByText('Preencha o formulario acima para gerar sua primeira peca')).toBeInTheDocument()
     })
   })
 
@@ -191,7 +179,7 @@ describe('GeradorPecasPage', () => {
   it('deve ter campo de observacoes opcional', async () => {
     render(<GeradorPecasPage />)
 
-    expect(screen.getByLabelText('Observacoes (opcional)')).toBeInTheDocument()
-    expect(screen.getByPlaceholderText('Observacoes adicionais para o agente gerador...')).toBeInTheDocument()
+    expect(screen.getByLabelText(/Observacoes/)).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('Instrucoes adicionais para a geracao...')).toBeInTheDocument()
   })
 })

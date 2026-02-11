@@ -114,6 +114,30 @@ class AgenteTJMSIntegrado:
             self.codigos_primeiro_doc = codigos_primeiro_doc
             self.agente.codigos_primeiro_doc = codigos_primeiro_doc
     
+    async def consultar_codigos_documentos(self, numero_processo: str):
+        """
+        Consulta rápida: retorna apenas metadados dos documentos (sem download/OCR/IA).
+
+        Faz uma chamada SOAP leve (~1-2s) e parseia o XML para extrair a lista
+        de DocumentoTJMS com ``tipo_documento`` populado.  Usado para o early
+        check de parecer NATJus antes de iniciar o pipeline completo do Agente 1.
+
+        Returns:
+            Lista de DocumentoTJMS (apenas metadados, sem conteúdo/resumo).
+        """
+        import aiohttp
+        from sistemas.gerador_pecas.agente_tjms import (
+            consultar_processo_async,
+            extrair_documentos_xml,
+        )
+
+        connector = aiohttp.TCPConnector(limit=5, limit_per_host=5)
+        async with aiohttp.ClientSession(connector=connector) as session:
+            xml = await consultar_processo_async(session, numero_processo)
+            if "<sucesso>true</sucesso>" not in xml.lower():
+                return []
+            return extrair_documentos_xml(xml)
+
     async def coletar_e_resumir(
         self,
         numero_processo: str,

@@ -1,0 +1,2683 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Extrator de Autos - Portal PGE-MS</title>
+    <link rel="icon" type="image/png" href="/logo/logo-pge.png">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/all.min.css">
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        pge: { blue: '#1e3a5f', orange: '#e67e22' }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .custom-scrollbar::-webkit-scrollbar { width: 6px; }
+        .custom-scrollbar::-webkit-scrollbar-track { background: #f1f5f9; border-radius: 3px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+        .tab-active { border-bottom: 2px solid #0891b2; color: #0891b2; font-weight: 600; }
+        .tab-inactive { border-bottom: 2px solid transparent; color: #6b7280; }
+        .tab-inactive:hover { color: #0891b2; border-bottom-color: #cffafe; }
+
+        .category-card { transition: all 0.2s ease; cursor: pointer; }
+        .category-card:hover { transform: translateY(-1px); box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+        .category-card.selected { border-color: #06b6d4; background-color: #ecfeff; }
+
+        .progress-bar-fill { transition: width 0.4s ease; }
+
+        .toast { animation: slideIn 0.3s ease, fadeOut 0.3s ease 2.7s; }
+        @keyframes slideIn { from { transform: translateX(100%); opacity:0; } to { transform: translateX(0); opacity:1; } }
+        @keyframes fadeOut { from { opacity:1; } to { opacity:0; } }
+
+        .fade-in { animation: fadeInAnim 0.3s ease; }
+        @keyframes fadeInAnim { from { opacity:0; transform:translateY(8px); } to { opacity:1; transform:translateY(0); } }
+
+        .spinner { border: 3px solid #e5e7eb; border-top: 3px solid #06b6d4; border-radius: 50%; width: 20px; height: 20px; animation: spin 0.8s linear infinite; display: inline-block; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .modal-backdrop { background: rgba(0,0,0,0.5); backdrop-filter: blur(4px); }
+    </style>
+</head>
+
+<body class="bg-gray-50 min-h-screen">
+
+    <!-- ========== HEADER ========== -->
+    <header class="fixed top-0 left-0 right-0 z-50 bg-white border-b border-gray-200 shadow-sm">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex items-center justify-between h-16">
+                <div class="flex items-center gap-3">
+                    <a href="/dashboard" title="Voltar ao Dashboard">
+                        <img src="/logo/logo-pge.png" alt="PGE-MS" class="h-10 w-auto">
+                    </a>
+                    <div class="border-l border-gray-300 pl-3">
+                        <h1 class="text-lg font-bold text-gray-900">Extrator de Autos</h1>
+                        <p class="text-xs text-gray-500">Download de documentos processuais</p>
+                    </div>
+                </div>
+                <div class="flex items-center gap-4">
+                    <span id="user-name" class="text-sm text-gray-600"></span>
+                    <a href="/dashboard" class="px-3 py-1.5 bg-gray-100 hover:bg-gray-200 text-gray-700 rounded-lg text-sm font-medium flex items-center gap-1.5 transition-colors">
+                        <i class="fas fa-arrow-left text-xs"></i> Voltar
+                    </a>
+                </div>
+            </div>
+        </div>
+    </header>
+
+    <!-- ========== MAIN CONTENT ========== -->
+    <main class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-24 pb-12">
+
+        <!-- ===== BANNER SESSAO INTERROMPIDA ===== -->
+        <div id="banner-sessao-interrompida" class="hidden mb-6 p-4 bg-amber-50 border border-amber-300 rounded-2xl fade-in">
+            <div class="flex items-start gap-3">
+                <i class="fas fa-exclamation-triangle text-amber-500 mt-0.5"></i>
+                <div class="flex-1">
+                    <p class="text-sm font-semibold text-amber-900">Sessao de lote interrompida</p>
+                    <p class="text-xs text-amber-700 mt-1" id="banner-sessao-detalhe"></p>
+                    <div class="flex gap-2 mt-3">
+                        <button onclick="retomarSessaoLote()"
+                            class="px-4 py-1.5 bg-cyan-600 text-white rounded-lg text-xs font-medium hover:bg-cyan-700 transition flex items-center gap-1.5">
+                            <i class="fas fa-play"></i> Retomar
+                        </button>
+                        <button onclick="descartarSessaoLote()"
+                            class="px-4 py-1.5 bg-white border border-amber-300 text-amber-700 rounded-lg text-xs font-medium hover:bg-amber-100 transition flex items-center gap-1.5">
+                            <i class="fas fa-trash-alt"></i> Descartar
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ===== SECTION 1: INPUT ===== -->
+        <section id="section-input" class="bg-white rounded-2xl border border-gray-200 p-6 mb-6 fade-in">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-base font-semibold text-gray-900 flex items-center gap-2">
+                    <i class="fas fa-search text-cyan-600"></i> Consultar Processo
+                </h2>
+                <div class="flex items-center gap-4">
+                    <!-- BERT Status (clicavel para config) -->
+                    <button id="bert-status-area" onclick="abrirBertConfig()"
+                        class="flex items-center gap-1.5 text-xs text-gray-500 hover:text-cyan-600 cursor-pointer transition-colors"
+                        title="Clique para configurar BERT">
+                        <span id="bert-dot" class="w-2 h-2 rounded-full bg-gray-400"></span>
+                        <span id="bert-label">Status BERT</span>
+                        <i class="fas fa-cog text-[10px] opacity-50"></i>
+                    </button>
+                    <!-- Toggle Modo Lote -->
+                    <label class="flex items-center gap-2 cursor-pointer select-none">
+                        <span class="text-sm text-gray-600">Modo Lote</span>
+                        <div class="relative">
+                            <input type="checkbox" id="toggle-lote" class="sr-only peer" onchange="toggleModoLote()">
+                            <div class="w-9 h-5 bg-gray-300 peer-checked:bg-cyan-500 rounded-full transition-colors"></div>
+                            <div class="absolute left-0.5 top-0.5 w-4 h-4 bg-white rounded-full shadow peer-checked:translate-x-4 transition-transform"></div>
+                        </div>
+                    </label>
+                </div>
+            </div>
+
+            <!-- Input Single -->
+            <div id="input-single" class="flex gap-3 items-end">
+                <div class="flex-1">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Numero CNJ</label>
+                    <input type="text" id="input-cnj" placeholder="0000000-00.0000.0.00.0000"
+                        class="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-cyan-300 focus:border-cyan-400 outline-none text-sm"
+                        onkeydown="if(event.key==='Enter') consultarProcesso()">
+                </div>
+                <button onclick="consultarProcesso()" id="btn-consultar"
+                    class="px-6 py-2.5 bg-cyan-600 text-white rounded-xl hover:bg-cyan-700 transition font-medium text-sm flex items-center gap-2 whitespace-nowrap">
+                    <i class="fas fa-search"></i> Consultar
+                </button>
+            </div>
+
+            <!-- Input Lote (hidden by default) -->
+            <div id="input-lote" class="hidden">
+                <div class="mb-2">
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Numeros CNJ (um por linha)</label>
+                    <textarea id="input-cnj-lote" rows="5" placeholder="0000000-00.0000.0.00.0000&#10;1111111-11.1111.1.11.1111"
+                        class="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-cyan-300 focus:border-cyan-400 outline-none text-sm font-mono resize-y"
+                        oninput="atualizarContadorLote()"></textarea>
+                </div>
+                <div class="flex items-center justify-between">
+                    <span id="contador-lote" class="text-xs text-gray-500">0 processos</span>
+                    <button onclick="consultarLote()" id="btn-consultar-lote"
+                        class="px-6 py-2.5 bg-cyan-600 text-white rounded-xl hover:bg-cyan-700 transition font-medium text-sm flex items-center gap-2">
+                        <i class="fas fa-search"></i> Consultar Lote
+                    </button>
+                </div>
+            </div>
+
+            <!-- Opcao Instancias -->
+            <div class="mt-3 flex items-center gap-2">
+                <input type="checkbox" id="check-instancias" class="w-4 h-4 text-cyan-600 rounded focus:ring-cyan-500">
+                <label for="check-instancias" class="text-sm text-gray-600">Buscar todas as instancias</label>
+            </div>
+
+            <!-- Info do Processo Consultado -->
+            <div id="processo-info" class="hidden mt-4 p-4 bg-cyan-50 border border-cyan-200 rounded-xl fade-in">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <span class="text-sm font-medium text-cyan-900" id="processo-numero"></span>
+                        <span class="text-xs text-cyan-700 ml-2" id="processo-classe"></span>
+                    </div>
+                    <div class="text-xs text-cyan-600">
+                        <span id="processo-docs-count"></span> documento(s) encontrado(s)
+                    </div>
+                </div>
+                <div class="text-xs text-cyan-700 mt-1" id="processo-assunto"></div>
+            </div>
+
+            <!-- Info Lote Consultado -->
+            <div id="lote-info" class="hidden mt-4 p-4 bg-cyan-50 border border-cyan-200 rounded-xl fade-in">
+                <div class="flex items-center justify-between">
+                    <span class="text-sm font-medium text-cyan-900" id="lote-resumo"></span>
+                    <button onclick="limparConsulta()" class="text-xs text-cyan-600 hover:text-cyan-700 underline">Limpar</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- ===== SECTION 2: SELECAO DE DOCUMENTOS ===== -->
+        <section id="section-selecao" class="bg-white rounded-2xl border border-gray-200 p-6 mb-6 hidden fade-in">
+            <h2 class="text-base font-semibold text-gray-900 flex items-center gap-2 mb-4">
+                <i class="fas fa-layer-group text-cyan-600"></i> Selecao de Documentos
+            </h2>
+
+            <!-- Tabs -->
+            <div class="flex border-b border-gray-200 mb-4">
+                <button onclick="trocarTab('categoria')" id="tab-categoria"
+                    class="px-4 py-2 text-sm tab-active transition">
+                    <i class="fas fa-th-large mr-1"></i> Categorias
+                </button>
+                <button onclick="trocarTab('manual')" id="tab-manual"
+                    class="px-4 py-2 text-sm tab-inactive transition">
+                    <i class="fas fa-list-ol mr-1"></i> Manual
+                </button>
+                <button onclick="trocarTab('hibrido')" id="tab-hibrido"
+                    class="px-4 py-2 text-sm tab-inactive transition">
+                    <i class="fas fa-sliders-h mr-1"></i> Hibrido
+                </button>
+            </div>
+
+            <!-- Tab: Categorias -->
+            <div id="panel-categoria" class="fade-in">
+                <p class="text-sm text-gray-500 mb-3">Selecione as categorias de documentos que deseja baixar.</p>
+                <div id="categorias-grid" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                    <!-- Populated by JS -->
+                </div>
+                <div id="categorias-loading" class="text-center py-8 text-gray-400">
+                    <div class="spinner mx-auto mb-2"></div>
+                    <span class="text-sm">Carregando categorias...</span>
+                </div>
+            </div>
+
+            <!-- Tab: Manual -->
+            <div id="panel-manual" class="hidden fade-in">
+                <p class="text-sm text-gray-500 mb-3">Pesquise e selecione codigos de tipo de documento individualmente.</p>
+                <div class="mb-3">
+                    <input type="text" id="busca-codigos" placeholder="Buscar por codigo ou descricao..."
+                        class="w-full px-4 py-2.5 border border-gray-300 rounded-xl focus:ring-2 focus:ring-cyan-300 focus:border-cyan-400 outline-none text-sm"
+                        oninput="filtrarCodigos()">
+                </div>
+                <div id="codigos-list" class="max-h-80 overflow-y-auto custom-scrollbar border border-gray-200 rounded-xl divide-y divide-gray-100">
+                    <!-- Populated by JS -->
+                </div>
+                <div class="mt-2 text-xs text-gray-500">
+                    <span id="codigos-selecionados-count">0</span> codigo(s) selecionado(s)
+                </div>
+            </div>
+
+            <!-- Tab: Hibrido -->
+            <div id="panel-hibrido" class="hidden fade-in">
+                <p class="text-sm text-gray-500 mb-3">Combine categorias com ajustes manuais (adicionar/remover codigos).</p>
+
+                <!-- Mini categorias -->
+                <div class="mb-4">
+                    <h3 class="text-sm font-medium text-gray-700 mb-2">Categorias Base</h3>
+                    <div id="hibrido-categorias" class="flex flex-wrap gap-2">
+                        <!-- Populated by JS -->
+                    </div>
+                </div>
+
+                <!-- Adicionar/Remover manuais -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">
+                            <i class="fas fa-plus-circle text-green-500 mr-1"></i> Adicionar Codigos
+                        </label>
+                        <input type="text" id="hibrido-add" placeholder="Ex: 60, 7, 463"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-cyan-300 focus:border-cyan-400 outline-none">
+                        <p class="text-xs text-gray-400 mt-1">Codigos separados por virgula</p>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">
+                            <i class="fas fa-minus-circle text-red-500 mr-1"></i> Remover Codigos
+                        </label>
+                        <input type="text" id="hibrido-remove" placeholder="Ex: 999, 1000"
+                            class="w-full px-3 py-2 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-cyan-300 focus:border-cyan-400 outline-none">
+                        <p class="text-xs text-gray-400 mt-1">Codigos separados por virgula</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Botoes Preview / Resumo Lote -->
+            <div class="mt-4 flex justify-end gap-3">
+                <button onclick="mostrarResumoLote()" id="btn-resumo-lote"
+                    class="px-5 py-2 bg-green-600 text-white rounded-xl hover:bg-green-700 transition font-medium text-sm flex items-center gap-2 hidden">
+                    <i class="fas fa-clipboard-list"></i> Resumo do Lote
+                </button>
+                <button onclick="carregarPreview()" id="btn-preview"
+                    class="px-5 py-2 bg-cyan-600 text-white rounded-xl hover:bg-cyan-700 transition font-medium text-sm flex items-center gap-2">
+                    <i class="fas fa-eye"></i> Visualizar Documentos
+                </button>
+            </div>
+        </section>
+
+        <!-- ===== SECTION 2.5: RESUMO LOTE (sem preview) ===== -->
+        <section id="section-resumo-lote" class="bg-white rounded-2xl border border-gray-200 p-6 mb-6 hidden fade-in">
+            <h2 class="text-base font-semibold text-gray-900 flex items-center gap-2 mb-4">
+                <i class="fas fa-clipboard-list text-green-600"></i> Resumo do Lote
+            </h2>
+
+            <!-- Aviso sem preview -->
+            <div class="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-4">
+                <div class="flex items-start gap-3">
+                    <i class="fas fa-exclamation-triangle text-amber-500 mt-0.5"></i>
+                    <div>
+                        <p class="text-sm font-medium text-amber-800">Modo Lote — sem preview individual</p>
+                        <p class="text-xs text-amber-600 mt-1">O download sera feito diretamente com o pipeline completo de resolucao de categorias (incluindo BERT e primeiro documento, se configurados).</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Grid de metricas -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-4">
+                <div class="bg-gray-50 rounded-xl p-3 text-center">
+                    <div id="resumo-total-processos" class="text-2xl font-bold text-gray-900">0</div>
+                    <div class="text-xs text-gray-500">Processos</div>
+                </div>
+                <div class="bg-gray-50 rounded-xl p-3 text-center">
+                    <div id="resumo-total-categorias" class="text-2xl font-bold text-cyan-700">0</div>
+                    <div class="text-xs text-gray-500">Categorias</div>
+                </div>
+                <div class="bg-gray-50 rounded-xl p-3 text-center">
+                    <div id="resumo-total-codigos" class="text-2xl font-bold text-green-700">0</div>
+                    <div class="text-xs text-gray-500">Codigos Unicos</div>
+                </div>
+                <div class="bg-gray-50 rounded-xl p-3 text-center">
+                    <div id="resumo-metodo" class="text-lg font-bold text-purple-700">-</div>
+                    <div class="text-xs text-gray-500">Metodo</div>
+                </div>
+            </div>
+
+            <!-- Lista de categorias -->
+            <div id="resumo-categorias-lista" class="space-y-2 mb-4"></div>
+
+            <!-- Aviso BERT -->
+            <div id="resumo-aviso-bert" class="bg-red-50 border border-red-200 rounded-xl p-3 hidden">
+                <p class="text-sm text-red-700"><i class="fas fa-robot mr-1"></i> <span id="resumo-aviso-texto"></span></p>
+            </div>
+        </section>
+
+        <!-- ===== SECTION 3: PREVIEW ===== -->
+        <section id="section-preview" class="bg-white rounded-2xl border border-gray-200 p-6 mb-6 hidden fade-in">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-base font-semibold text-gray-900 flex items-center gap-2">
+                    <i class="fas fa-table text-cyan-600"></i> Preview de Documentos
+                </h2>
+                <div class="flex items-center gap-3 text-sm text-gray-500">
+                    <span><span id="preview-selected" class="font-semibold text-cyan-700">0</span> selecionado(s)</span>
+                    <span>de <span id="preview-total" class="font-semibold">0</span> encontrado(s)</span>
+                </div>
+            </div>
+
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead>
+                        <tr class="border-b border-gray-200 text-left">
+                            <th class="py-2 px-3 w-10">
+                                <input type="checkbox" id="select-all-docs" class="w-4 h-4 text-cyan-600 rounded" onchange="toggleSelectAll()">
+                            </th>
+                            <th class="py-2 px-3 text-gray-600 font-medium">Codigo</th>
+                            <th class="py-2 px-3 text-gray-600 font-medium">Tipo</th>
+                            <th class="py-2 px-3 text-gray-600 font-medium">Descricao</th>
+                            <th class="py-2 px-3 text-gray-600 font-medium">Data</th>
+                            <th class="py-2 px-3 text-gray-600 font-medium">Resolucao</th>
+                        </tr>
+                    </thead>
+                    <tbody id="preview-tbody" class="divide-y divide-gray-100">
+                        <!-- Populated by JS -->
+                    </tbody>
+                </table>
+            </div>
+
+            <div id="preview-empty" class="hidden text-center py-8 text-gray-400">
+                <i class="fas fa-inbox text-3xl mb-2"></i>
+                <p class="text-sm">Nenhum documento encontrado com os filtros selecionados.</p>
+            </div>
+
+            <div id="preview-loading" class="hidden text-center py-8 text-gray-400">
+                <div class="spinner mx-auto mb-2"></div>
+                <span class="text-sm">Carregando preview...</span>
+            </div>
+        </section>
+
+        <!-- ===== SECTION 4: OPCOES ===== -->
+        <section id="section-opcoes" class="bg-white rounded-2xl border border-gray-200 p-6 mb-6 hidden fade-in">
+            <h2 class="text-base font-semibold text-gray-900 flex items-center gap-2 mb-4">
+                <i class="fas fa-cog text-cyan-600"></i> Opcoes de Download
+            </h2>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+                <!-- Formato de Saida -->
+                <div>
+                    <h3 class="text-sm font-medium text-gray-700 mb-2">Formato de Saida</h3>
+                    <div class="space-y-2">
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="radio" name="modo-saida" value="pdf_txt" checked class="text-cyan-600 focus:ring-cyan-500">
+                            <span class="text-sm text-gray-700">PDF + TXT</span>
+                        </label>
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="radio" name="modo-saida" value="pdf" class="text-cyan-600 focus:ring-cyan-500">
+                            <span class="text-sm text-gray-700">Somente PDF</span>
+                        </label>
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="radio" name="modo-saida" value="txt" class="text-cyan-600 focus:ring-cyan-500">
+                            <span class="text-sm text-gray-700">Somente TXT</span>
+                        </label>
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="radio" name="modo-saida" value="xml_only" class="text-cyan-600 focus:ring-cyan-500">
+                            <span class="text-sm text-gray-700">Somente XML</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Opcoes Adicionais -->
+                <div>
+                    <h3 class="text-sm font-medium text-gray-700 mb-2">Opcoes Adicionais</h3>
+                    <div class="space-y-2">
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" id="check-mesclar" class="w-4 h-4 text-cyan-600 rounded focus:ring-cyan-500">
+                            <span class="text-sm text-gray-700">Mesclar PDFs</span>
+                            <span class="text-gray-400 cursor-help" title="Mescla todos os PDFs do processo em um unico arquivo, do mais antigo ao mais novo. TXTs sao mantidos separados."><i class="fas fa-info-circle text-xs"></i></span>
+                        </label>
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" id="check-salvar-xml" class="w-4 h-4 text-cyan-600 rounded focus:ring-cyan-500">
+                            <span class="text-sm text-gray-700">Salvar XML completo</span>
+                        </label>
+                        <label id="label-pasta-unica" class="flex items-center gap-2 cursor-pointer hidden">
+                            <input type="checkbox" id="check-pasta-unica" class="w-4 h-4 text-cyan-600 rounded focus:ring-cyan-500">
+                            <span class="text-sm text-gray-700">Pasta unica (sem subpastas por processo)</span>
+                            <span class="text-gray-400 cursor-help" title="Por padrao, cada processo fica em sua propria subpasta. Marque para colocar todos os arquivos juntos."><i class="fas fa-info-circle text-xs"></i></span>
+                        </label>
+                        <div id="label-paralelos" class="flex items-center gap-2 hidden">
+                            <span class="text-sm text-gray-700">Processos simultaneos:</span>
+                            <select id="select-paralelos" class="w-16 px-2 py-1 text-sm border border-gray-300 rounded-md focus:ring-cyan-500 focus:border-cyan-500">
+                                <option value="1">1</option>
+                                <option value="2">2</option>
+                                <option value="3" selected>3</option>
+                                <option value="5">5</option>
+                            </select>
+                            <span class="text-gray-400 cursor-help" title="Quantos processos baixar ao mesmo tempo. Valores altos sao mais rapidos mas podem sobrecarregar o TJ-MS."><i class="fas fa-info-circle text-xs"></i></span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Tipo de Saida (ZIP vs Pasta) -->
+                <div>
+                    <h3 class="text-sm font-medium text-gray-700 mb-2">Destino</h3>
+                    <div class="space-y-2">
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="radio" name="tipo-destino" value="zip" checked class="text-cyan-600 focus:ring-cyan-500">
+                            <span class="text-sm text-gray-700">Baixar ZIP</span>
+                        </label>
+                        <label id="label-salvar-pasta" class="flex items-center gap-2 cursor-pointer" style="display:none" title="Salva os arquivos diretamente em uma pasta (Chrome/Edge)">
+                            <input type="radio" name="tipo-destino" value="pasta" class="text-cyan-600 focus:ring-cyan-500">
+                            <span class="text-sm text-gray-700">Salvar em pasta</span>
+                            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-50 text-blue-600">Chromium</span>
+                        </label>
+                    </div>
+                </div>
+
+                <!-- Filtro Ano -->
+                <div>
+                    <h3 class="text-sm font-medium text-gray-700 mb-2">Filtrar por Ano</h3>
+                    <input type="text" id="filtro-anos" placeholder="Ex: 2023, 2024"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-cyan-300 focus:border-cyan-400 outline-none">
+                    <p class="text-xs text-gray-400 mt-1">Varios anos separados por virgula</p>
+                </div>
+
+                <!-- Filtro Mes -->
+                <div>
+                    <h3 class="text-sm font-medium text-gray-700 mb-2">Filtrar por Mes</h3>
+                    <select id="filtro-mes"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-cyan-300 focus:border-cyan-400 outline-none bg-white">
+                        <option value="">Todos os meses</option>
+                        <option value="1">Janeiro</option>
+                        <option value="2">Fevereiro</option>
+                        <option value="3">Marco</option>
+                        <option value="4">Abril</option>
+                        <option value="5">Maio</option>
+                        <option value="6">Junho</option>
+                        <option value="7">Julho</option>
+                        <option value="8">Agosto</option>
+                        <option value="9">Setembro</option>
+                        <option value="10">Outubro</option>
+                        <option value="11">Novembro</option>
+                        <option value="12">Dezembro</option>
+                    </select>
+                </div>
+            </div>
+        </section>
+
+        <!-- ===== SECTION 5: DOWNLOAD ===== -->
+        <section id="section-download" class="bg-white rounded-2xl border border-gray-200 p-6 mb-6 hidden fade-in">
+            <div class="flex items-center justify-between mb-4">
+                <h2 class="text-base font-semibold text-gray-900 flex items-center gap-2">
+                    <i class="fas fa-download text-cyan-600"></i> Download
+                </h2>
+            </div>
+
+            <!-- Botao Baixar -->
+            <div id="download-actions" class="flex items-center gap-4">
+                <button onclick="iniciarDownload()" id="btn-download"
+                    class="px-6 py-3 bg-cyan-600 text-white rounded-xl hover:bg-cyan-700 transition font-semibold text-sm flex items-center gap-2 shadow-md">
+                    <i class="fas fa-cloud-download-alt"></i> Baixar Documentos
+                </button>
+                <span id="download-count" class="text-sm text-gray-500"></span>
+            </div>
+
+            <!-- Progress Area -->
+            <div id="download-progress" class="hidden mt-4">
+                <div class="flex items-center justify-between mb-2">
+                    <span id="progress-label" class="text-sm text-gray-700">Iniciando...</span>
+                    <span id="progress-percent" class="text-sm font-semibold text-cyan-700">0%</span>
+                </div>
+                <div class="w-full h-3 bg-gray-200 rounded-full overflow-hidden">
+                    <div id="progress-bar" class="h-full bg-gradient-to-r from-cyan-500 to-cyan-600 rounded-full progress-bar-fill" style="width:0%"></div>
+                </div>
+                <div id="progress-log" class="mt-3 max-h-40 overflow-y-auto custom-scrollbar text-xs text-gray-500 font-mono bg-gray-50 rounded-xl p-3 border border-gray-200">
+                </div>
+            </div>
+
+            <!-- Download Link -->
+            <div id="download-link-area" class="hidden mt-4 p-4 bg-green-50 border border-green-200 rounded-xl fade-in">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center gap-2">
+                        <i class="fas fa-check-circle text-green-600 text-lg"></i>
+                        <span class="text-sm font-medium text-green-800" id="download-success-msg">Download concluido!</span>
+                    </div>
+                    <a id="download-zip-link" href="#" class="px-4 py-2 bg-green-600 text-white rounded-xl hover:bg-green-700 transition text-sm font-medium flex items-center gap-2">
+                        <i class="fas fa-file-archive"></i> Baixar ZIP
+                    </a>
+                </div>
+            </div>
+        </section>
+
+        <!-- ===== SECTION 6: HISTORICO ===== -->
+        <section id="section-historico" class="bg-white rounded-2xl border border-gray-200 mb-6">
+            <button onclick="toggleHistorico()" class="w-full p-6 flex items-center justify-between text-left">
+                <h2 class="text-base font-semibold text-gray-900 flex items-center gap-2">
+                    <i class="fas fa-history text-cyan-600"></i> Historico de Downloads
+                </h2>
+                <i id="historico-chevron" class="fas fa-chevron-down text-gray-400 transition-transform"></i>
+            </button>
+            <div id="historico-content" class="hidden px-6 pb-6">
+                <div id="historico-table-area" class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead>
+                            <tr class="border-b border-gray-200 text-left">
+                                <th class="py-2 px-3 text-gray-600 font-medium">Processo</th>
+                                <th class="py-2 px-3 text-gray-600 font-medium">Modo</th>
+                                <th class="py-2 px-3 text-gray-600 font-medium">Formato</th>
+                                <th class="py-2 px-3 text-gray-600 font-medium">Docs</th>
+                                <th class="py-2 px-3 text-gray-600 font-medium">Status</th>
+                                <th class="py-2 px-3 text-gray-600 font-medium">Data</th>
+                            </tr>
+                        </thead>
+                        <tbody id="historico-tbody" class="divide-y divide-gray-100">
+                        </tbody>
+                    </table>
+                </div>
+                <div id="historico-empty" class="hidden text-center py-8 text-gray-400">
+                    <i class="fas fa-inbox text-2xl mb-2"></i>
+                    <p class="text-sm">Nenhum download realizado ainda.</p>
+                </div>
+                <div id="historico-pagination" class="hidden mt-4 flex items-center justify-between">
+                    <span id="historico-info" class="text-xs text-gray-500"></span>
+                    <div class="flex gap-2">
+                        <button onclick="carregarHistorico(state.historicoPagina - 1)" id="btn-hist-prev"
+                            class="px-3 py-1 text-xs border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">Anterior</button>
+                        <button onclick="carregarHistorico(state.historicoPagina + 1)" id="btn-hist-next"
+                            class="px-3 py-1 text-xs border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed">Proximo</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- ========== MODAL: BERT INDISPONIVEL ========== -->
+    <div id="modal-bert" class="fixed inset-0 z-[100] hidden items-center justify-center modal-backdrop">
+        <div class="bg-white rounded-2xl shadow-xl max-w-md w-full mx-4 p-6 fade-in">
+            <div class="flex items-center gap-3 mb-4">
+                <div class="w-10 h-10 bg-amber-100 rounded-xl flex items-center justify-center">
+                    <i class="fas fa-exclamation-triangle text-amber-600"></i>
+                </div>
+                <h3 class="text-lg font-semibold text-gray-900">BERT Indisponivel</h3>
+            </div>
+            <p class="text-sm text-gray-600 mb-2">
+                O servico de classificacao BERT esta offline. Documentos marcados como
+                <span class="font-medium text-amber-700">"BERT: Candidato"</span> no preview
+                precisam do BERT para serem classificados (ex: identificar contestacoes).
+            </p>
+            <p class="text-sm text-gray-500 mb-2">
+                Sem o BERT, apenas documentos com codigo direto (ex: 8320 = Contestacao) serao incluidos.
+                Candidatos que precisam de classificacao por IA serao excluidos do download.
+            </p>
+            <p class="text-sm text-gray-500 mb-6">
+                Para ativar o BERT, clique no indicador "BERT" no topo e use o botao "Iniciar Worker".
+            </p>
+            <div class="flex justify-end gap-3">
+                <button onclick="fecharModalBert()" class="px-4 py-2 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 text-sm font-medium">
+                    Cancelar
+                </button>
+                <button onclick="confirmarDownloadSemBert()" class="px-4 py-2 bg-amber-500 text-white rounded-xl hover:bg-amber-600 text-sm font-medium">
+                    Continuar sem BERT
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== MODAL: BERT CONFIG ========== -->
+    <div id="modal-bert-config" class="fixed inset-0 z-[100] hidden items-center justify-center modal-backdrop">
+        <div class="bg-white rounded-2xl shadow-xl max-w-lg w-full mx-4 p-6 fade-in max-h-[90vh] overflow-y-auto">
+            <div class="flex items-center gap-3 mb-4">
+                <div class="w-10 h-10 bg-cyan-100 rounded-xl flex items-center justify-center">
+                    <i class="fas fa-brain text-cyan-600"></i>
+                </div>
+                <div>
+                    <h3 class="text-lg font-semibold text-gray-900">Configuracao BERT</h3>
+                    <p class="text-xs text-gray-500">Modelo de IA por tipo de peca</p>
+                </div>
+            </div>
+
+            <!-- Status atual -->
+            <div id="bert-config-status" class="mb-4 p-3 rounded-xl bg-gray-50 border border-gray-200">
+                <div class="flex items-center gap-2 mb-1">
+                    <span id="bert-config-dot" class="w-2 h-2 rounded-full bg-gray-400"></span>
+                    <span id="bert-config-status-text" class="text-sm font-medium text-gray-700">Verificando...</span>
+                </div>
+                <p id="bert-config-status-detail" class="text-xs text-gray-500 ml-4"></p>
+            </div>
+
+            <!-- Botao iniciar worker -->
+            <div id="bert-worker-section" class="mb-4 p-3 rounded-xl bg-blue-50 border border-blue-200">
+                <div class="flex items-center justify-between">
+                    <div class="text-xs text-blue-800">
+                        <p class="font-medium mb-0.5"><i class="fas fa-server mr-1"></i> Worker de Inferencia</p>
+                        <p id="bert-worker-detail" class="text-blue-600">Sobe o servidor BERT na porta 8765 para classificacao automatica.</p>
+                    </div>
+                    <button id="btn-iniciar-worker" onclick="iniciarWorkerBert()"
+                        class="ml-3 px-3 py-1.5 bg-blue-600 text-white rounded-lg text-xs font-medium hover:bg-blue-700 transition-colors whitespace-nowrap flex items-center gap-1.5">
+                        <i class="fas fa-play"></i> Iniciar Worker
+                    </button>
+                </div>
+            </div>
+
+            <!-- Endpoint -->
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-gray-700 mb-1">Endpoint do Worker</label>
+                <input type="text" id="bert-cfg-endpoint" placeholder="http://127.0.0.1:8765"
+                    class="w-full px-3 py-2 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500">
+                <p class="text-[11px] text-gray-400 mt-0.5">Padrao: http://127.0.0.1:8765</p>
+            </div>
+
+            <!-- Modelos por categoria -->
+            <div class="mb-6">
+                <h4 class="text-sm font-semibold text-gray-800 mb-2 flex items-center gap-2">
+                    <i class="fas fa-puzzle-piece text-cyan-500 text-xs"></i>
+                    Modelos por Categoria
+                </h4>
+                <div id="bert-categorias-container" class="space-y-3">
+                    <div class="text-xs text-gray-400 italic p-3 bg-gray-50 rounded-xl">Carregando categorias BERT...</div>
+                </div>
+            </div>
+
+            <div class="flex items-center justify-between">
+                <a href="/bert-training/" target="_blank" class="text-xs text-cyan-600 hover:text-cyan-700 flex items-center gap-1">
+                    <i class="fas fa-external-link-alt"></i> Abrir BERT Training
+                </a>
+                <div class="flex gap-3">
+                    <button onclick="fecharBertConfig()" class="px-4 py-2 border border-gray-300 text-gray-700 rounded-xl hover:bg-gray-50 text-sm font-medium">
+                        Fechar
+                    </button>
+                    <button onclick="salvarBertConfig()" class="px-4 py-2 bg-cyan-600 text-white rounded-xl hover:bg-cyan-700 text-sm font-medium">
+                        <i class="fas fa-save mr-1"></i> Salvar
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ========== TOAST CONTAINER ========== -->
+    <div id="toast-container" class="fixed top-20 right-4 z-[200] flex flex-col gap-2"></div>
+
+    <!-- ========== JAVASCRIPT ========== -->
+    <script>
+    // ============================================================
+    // STATE
+    // ============================================================
+    const API_BASE = '/extrator-autos/api';
+
+    const state = {
+        processo: null,
+        documentos: [],
+        categorias: [],
+        codigosMap: {},
+        selectedCategorias: new Set(),
+        selectedCodigos: new Set(),
+        selectedDocs: new Set(),
+        modoSelecao: 'categoria',
+        modoLote: false,
+        bertStatus: null,
+        downloading: false,
+        loteResultados: null,
+        historicoPagina: 1,
+        historicoTotal: 0,
+        pendingDownloadCallback: null,
+        previewResolucoes: [],
+        pastaHandle: null,
+        loteCancelado: false,
+    };
+
+    // ============================================================
+    // SESSAO DE LOTE (persistencia localStorage)
+    // ============================================================
+    const SESSAO_LOTE_KEY = 'extrator_lote_sessao';
+
+    function salvarSessaoLote(sessao) {
+        sessao.updated_at = new Date().toISOString();
+        localStorage.setItem(SESSAO_LOTE_KEY, JSON.stringify(sessao));
+    }
+
+    function carregarSessaoLote() {
+        try {
+            const raw = localStorage.getItem(SESSAO_LOTE_KEY);
+            return raw ? JSON.parse(raw) : null;
+        } catch (_) {
+            localStorage.removeItem(SESSAO_LOTE_KEY);
+            return null;
+        }
+    }
+
+    function removerSessaoLote() {
+        localStorage.removeItem(SESSAO_LOTE_KEY);
+    }
+
+    function criarSessaoLote(todosCnjs, buscarInstancias) {
+        const sessao = {
+            id: Date.now().toString(36) + Math.random().toString(36).slice(2, 6),
+            status: 'in_progress',
+            todos_cnjs: todosCnjs,
+            cnjs_concluidos: [],
+            cnjs_com_erro: [],
+            resultados: [],
+            erros: [],
+            buscar_instancias: buscarInstancias,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+        };
+        salvarSessaoLote(sessao);
+        return sessao;
+    }
+
+    function verificarSessaoInterrompida() {
+        const sessao = carregarSessaoLote();
+        if (!sessao || sessao.status === 'completed') return;
+
+        const total = sessao.todos_cnjs.length;
+        const feitos = sessao.cnjs_concluidos.length;
+        const erros = sessao.cnjs_com_erro.length;
+        const pendentes = total - feitos - erros;
+        const criado = new Date(sessao.created_at);
+        const dataStr = criado.toLocaleDateString('pt-BR') + ' ' + criado.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+        const banner = document.getElementById('banner-sessao-interrompida');
+        document.getElementById('banner-sessao-detalhe').textContent =
+            `Iniciada em ${dataStr} — ${feitos} de ${total} processo(s) consultado(s), ${erros} erro(s), ${pendentes} pendente(s).`;
+        banner.classList.remove('hidden');
+    }
+
+    function descartarSessaoLote() {
+        removerSessaoLote();
+        document.getElementById('banner-sessao-interrompida').classList.add('hidden');
+        showToast('Sessao descartada.', 'success');
+    }
+
+    async function retomarSessaoLote() {
+        const sessao = carregarSessaoLote();
+        if (!sessao) {
+            showToast('Nenhuma sessao para retomar.', 'warning');
+            return;
+        }
+
+        // Ativa modo lote e popula textarea com CNJs pendentes
+        if (!state.modoLote) {
+            document.getElementById('toggle-lote').checked = true;
+            toggleModoLote();
+        }
+
+        document.getElementById('input-cnj-lote').value = sessao.todos_cnjs.join('\n');
+        atualizarContadorLote();
+
+        // Esconde banner
+        document.getElementById('banner-sessao-interrompida').classList.add('hidden');
+
+        // Chama consulta lote com sessao existente
+        await consultarLote(sessao);
+    }
+
+    // ============================================================
+    // AUTH & INIT
+    // ============================================================
+    function getToken() {
+        return localStorage.getItem('access_token');
+    }
+
+    function checkAuth() {
+        if (!getToken()) {
+            window.location.href = '/login';
+            return false;
+        }
+        return true;
+    }
+
+    function apiHeaders() {
+        return {
+            'Authorization': `Bearer ${getToken()}`,
+            'Content-Type': 'application/json',
+        };
+    }
+
+    async function apiCall(endpoint, options = {}) {
+        const url = `${API_BASE}${endpoint}`;
+        const defaults = { headers: apiHeaders() };
+        const config = { ...defaults, ...options, headers: { ...defaults.headers, ...(options.headers || {}) } };
+
+        const resp = await fetch(url, config);
+
+        if (resp.status === 401) {
+            localStorage.removeItem('access_token');
+            window.location.href = '/login';
+            throw new Error('Sessao expirada');
+        }
+
+        if (!resp.ok) {
+            const body = await resp.json().catch(() => ({}));
+            let msg = `Erro ${resp.status}`;
+            if (body.detail) {
+                if (typeof body.detail === 'string') {
+                    msg = body.detail;
+                } else if (Array.isArray(body.detail)) {
+                    msg = body.detail.map(e => e.msg || JSON.stringify(e)).join('; ');
+                }
+            }
+            throw new Error(msg);
+        }
+
+        return resp;
+    }
+
+    async function init() {
+        if (!checkAuth()) return;
+
+        // Set user name
+        try {
+            const token = getToken();
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            document.getElementById('user-name').textContent = payload.nome || payload.sub || '';
+        } catch (_) { /* ignore */ }
+
+        // Detectar File System Access API (Chrome/Edge)
+        if ('showDirectoryPicker' in window) {
+            document.getElementById('label-salvar-pasta').style.display = '';
+        }
+
+        // Reatividade: opcoes adicionais reagem ao formato selecionado
+        document.querySelectorAll('input[name="modo-saida"]').forEach(radio => {
+            radio.addEventListener('change', atualizarOpcoesFormato);
+        });
+        atualizarOpcoesFormato();
+
+        // Load data in parallel
+        await Promise.all([
+            carregarCategorias(),
+            carregarCodigosMap(),
+            verificarBert(),
+        ]);
+
+        // Verifica se ha sessao de lote interrompida
+        verificarSessaoInterrompida();
+    }
+
+    function atualizarOpcoesFormato() {
+        const modo = document.querySelector('input[name="modo-saida"]:checked')?.value || 'pdf_txt';
+        const checkMesclar = document.getElementById('check-mesclar');
+        const checkXml = document.getElementById('check-salvar-xml');
+        const labelMesclar = checkMesclar.closest('label');
+        const labelXml = checkXml.closest('label');
+
+        // "Mesclar PDFs" so faz sentido com PDF
+        const temPdf = modo === 'pdf' || modo === 'pdf_txt';
+        checkMesclar.disabled = !temPdf;
+        labelMesclar.classList.toggle('opacity-50', !temPdf);
+        if (!temPdf) checkMesclar.checked = false;
+
+        // "Somente XML" implica "Salvar XML completo" automaticamente
+        if (modo === 'xml_only') {
+            checkXml.checked = true;
+            checkXml.disabled = true;
+            labelXml.classList.add('opacity-50');
+        } else {
+            checkXml.disabled = false;
+            labelXml.classList.remove('opacity-50');
+        }
+    }
+
+    // ============================================================
+    // TOAST NOTIFICATIONS
+    // ============================================================
+    function showToast(message, type = 'info') {
+        const container = document.getElementById('toast-container');
+        const colors = {
+            success: 'bg-green-600',
+            error: 'bg-red-600',
+            info: 'bg-cyan-600',
+            warning: 'bg-amber-500',
+        };
+        const icons = {
+            success: 'fa-check-circle',
+            error: 'fa-times-circle',
+            info: 'fa-info-circle',
+            warning: 'fa-exclamation-triangle',
+        };
+
+        const toast = document.createElement('div');
+        toast.className = `toast ${colors[type] || colors.info} text-white px-4 py-3 rounded-xl shadow-lg text-sm flex items-center gap-2 max-w-sm`;
+        toast.innerHTML = `<i class="fas ${icons[type] || icons.info}"></i> <span>${message}</span>`;
+        container.appendChild(toast);
+
+        setTimeout(() => {
+            if (toast.parentNode) toast.remove();
+        }, 3000);
+    }
+
+    // ============================================================
+    // BERT STATUS
+    // ============================================================
+    async function verificarBert() {
+        const dot = document.getElementById('bert-dot');
+        const label = document.getElementById('bert-label');
+
+        dot.className = 'w-2 h-2 rounded-full bg-gray-400 animate-pulse';
+        label.textContent = 'Verificando BERT...';
+
+        try {
+            const resp = await apiCall('/bert/health');
+            const data = await resp.json();
+            state.bertStatus = data;
+
+            if (data.available) {
+                dot.className = 'w-2 h-2 rounded-full bg-green-500';
+                label.textContent = `BERT: ${data.mode || 'Online'}`;
+            } else {
+                dot.className = 'w-2 h-2 rounded-full bg-red-500';
+                label.textContent = 'BERT: Offline';
+            }
+        } catch (e) {
+            dot.className = 'w-2 h-2 rounded-full bg-red-500';
+            label.textContent = 'BERT: Erro';
+            state.bertStatus = { available: false, error: e.message };
+        }
+    }
+
+    // ============================================================
+    // BERT CONFIG
+    // ============================================================
+    // Cache de dados do modal BERT
+    let _bertCategorias = [];
+    let _bertModelosDisponiveis = [];
+    let _bertModelosOriginais = {};  // cat_id -> model_run_id original
+
+    async function abrirBertConfig() {
+        const modal = document.getElementById('modal-bert-config');
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+
+        // Update status display
+        const dot = document.getElementById('bert-config-dot');
+        const statusText = document.getElementById('bert-config-status-text');
+        const statusDetail = document.getElementById('bert-config-status-detail');
+
+        // Update worker button state based on BERT status
+        const btn = document.getElementById('btn-iniciar-worker');
+        const workerDetail = document.getElementById('bert-worker-detail');
+
+        if (state.bertStatus) {
+            if (state.bertStatus.available) {
+                dot.className = 'w-2 h-2 rounded-full bg-green-500';
+                statusText.textContent = 'Online';
+                statusText.className = 'text-sm font-medium text-green-700';
+                statusDetail.textContent = `Modo: ${state.bertStatus.mode || '-'} | Endpoint: ${state.bertStatus.endpoint || '-'}`;
+                btn.innerHTML = '<i class="fas fa-check"></i> Ativo';
+                btn.className = btn.className.replace('bg-blue-600 hover:bg-blue-700', 'bg-green-600 hover:bg-green-700');
+                btn.disabled = true;
+                workerDetail.textContent = 'Worker BERT ativo e pronto!';
+            } else {
+                dot.className = 'w-2 h-2 rounded-full bg-red-500';
+                statusText.textContent = 'Offline';
+                statusText.className = 'text-sm font-medium text-red-700';
+                statusDetail.textContent = state.bertStatus.error || 'Servico indisponivel';
+                btn.innerHTML = '<i class="fas fa-play"></i> Iniciar Worker';
+                btn.className = btn.className.replace('bg-green-600 hover:bg-green-700', 'bg-blue-600 hover:bg-blue-700');
+                btn.disabled = false;
+                workerDetail.textContent = 'Sobe o servidor BERT na porta 8765 para classificacao automatica.';
+            }
+        }
+
+        // Load endpoint config
+        try {
+            const resp = await apiCall('/bert/config');
+            const cfg = await resp.json();
+            document.getElementById('bert-cfg-endpoint').value = cfg.endpoint || '';
+        } catch (e) {
+            console.error('Erro ao carregar config BERT:', e);
+        }
+
+        // Load BERT categories + available models in parallel
+        await carregarCategoriasEModelos();
+    }
+
+    async function carregarCategoriasEModelos() {
+        const container = document.getElementById('bert-categorias-container');
+        container.innerHTML = '<div class="text-xs text-gray-400 italic p-3 bg-gray-50 rounded-xl">Carregando...</div>';
+
+        try {
+            const [catResp, modelosResp] = await Promise.all([
+                apiCall('/bert/categorias'),
+                fetch('/bert-training/api/models/completed', { headers: apiHeaders() }),
+            ]);
+
+            _bertCategorias = await catResp.json();
+            _bertModelosDisponiveis = modelosResp.ok ? await modelosResp.json() : [];
+
+            // Salvar estado original para detectar mudancas no save
+            _bertModelosOriginais = {};
+            _bertCategorias.forEach(c => {
+                _bertModelosOriginais[c.categoria_id] = c.model_run_id;
+            });
+
+            renderizarCategoriasModelo(container);
+        } catch (e) {
+            container.innerHTML = `<div class="text-xs text-red-500 p-3 bg-red-50 rounded-xl">Erro ao carregar: ${e.message}</div>`;
+        }
+    }
+
+    function renderizarCategoriasModelo(container) {
+        if (_bertCategorias.length === 0) {
+            container.innerHTML = '<div class="text-xs text-gray-400 italic p-3 bg-gray-50 rounded-xl">Nenhuma categoria BERT configurada no admin.</div>';
+            return;
+        }
+
+        container.innerHTML = _bertCategorias.map(cat => {
+            const modelInfo = cat.model_info;
+            const opcoes = _bertModelosDisponiveis.map(m => {
+                const selected = m.id === cat.model_run_id ? 'selected' : '';
+                const acc = m.final_accuracy ? `${(m.final_accuracy * 100).toFixed(1)}%` : '-';
+                const f1 = m.f1_score ? `F1: ${(m.f1_score * 100).toFixed(1)}%` : '';
+                return `<option value="${m.id}" ${selected}>${m.name} | ${acc} ${f1}</option>`;
+            }).join('');
+
+            const noneSelected = !cat.model_run_id ? 'selected' : '';
+
+            return `
+                <div class="p-3 rounded-xl border border-gray-200 bg-white">
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-sm font-medium text-gray-900">${cat.categoria_nome}</span>
+                        <span class="text-[10px] px-2 py-0.5 bg-cyan-100 text-cyan-700 rounded-full font-medium">
+                            label: ${cat.label_match}
+                        </span>
+                    </div>
+                    <select id="bert-model-cat-${cat.categoria_id}"
+                        class="w-full px-3 py-2 border border-gray-300 rounded-xl text-sm focus:ring-2 focus:ring-cyan-500 focus:border-cyan-500 bg-white">
+                        <option value="" ${noneSelected}>-- Nenhum modelo selecionado --</option>
+                        ${opcoes}
+                    </select>
+                    ${!cat.model_run_id ? '<p class="text-[11px] text-amber-600 mt-1"><i class="fas fa-exclamation-triangle mr-1"></i>Sem modelo: BERT nao sera executado para esta categoria</p>' : ''}
+                    ${modelInfo ? `<p class="text-[11px] text-gray-400 mt-1">Modelo atual: ${modelInfo.name} (${(modelInfo.accuracy * 100).toFixed(1)}%)</p>` : ''}
+                </div>
+            `;
+        }).join('');
+    }
+
+    function fecharBertConfig() {
+        const modal = document.getElementById('modal-bert-config');
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+
+    async function salvarBertConfig() {
+        let erros = 0;
+        let salvos = 0;
+
+        // 1. Salvar endpoint
+        const endpoint = document.getElementById('bert-cfg-endpoint').value.trim();
+        if (endpoint) {
+            try {
+                await apiCall('/bert/config', {
+                    method: 'PUT',
+                    body: JSON.stringify({ endpoint }),
+                });
+            } catch (e) {
+                showToast(`Erro ao salvar endpoint: ${e.message}`, 'error');
+                erros++;
+            }
+        }
+
+        // 2. Salvar modelos por categoria
+        for (const cat of _bertCategorias) {
+            const select = document.getElementById(`bert-model-cat-${cat.categoria_id}`);
+            if (!select) continue;
+
+            const novoModelId = select.value ? parseInt(select.value) : null;
+            const originalId = _bertModelosOriginais[cat.categoria_id] || null;
+
+            if (novoModelId === originalId) continue;  // Sem mudanca
+
+            try {
+                await apiCall(`/bert/categorias/${cat.categoria_id}/modelo`, {
+                    method: 'PUT',
+                    body: JSON.stringify({ model_run_id: novoModelId }),
+                });
+                salvos++;
+            } catch (e) {
+                showToast(`Erro ao associar modelo na categoria ${cat.categoria_nome}: ${e.message}`, 'error');
+                erros++;
+            }
+        }
+
+        if (erros === 0) {
+            showToast(salvos > 0 ? `Configuracao salva (${salvos} categoria(s) atualizada(s))` : 'Configuracao salva', 'success');
+        }
+
+        fecharBertConfig();
+        await verificarBert();
+    }
+
+    // ============================================================
+    // BERT WORKER
+    // ============================================================
+    async function iniciarWorkerBert() {
+        const btn = document.getElementById('btn-iniciar-worker');
+        const detail = document.getElementById('bert-worker-detail');
+        const originalHtml = btn.innerHTML;
+
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner" style="width:14px;height:14px;border-width:2px;"></span> Iniciando...';
+        detail.textContent = 'Iniciando servidor de inferencia...';
+
+        try {
+            const resp = await fetch('/bert-training/api/workers/start-inference', {
+                method: 'POST',
+                headers: { 'Authorization': 'Bearer ' + getToken() },
+            });
+
+            if (!resp.ok) {
+                const err = await resp.json().catch(() => ({}));
+                throw new Error(err.detail || `HTTP ${resp.status}`);
+            }
+
+            // Sucesso - auto-preencher endpoint e salvar config
+            const endpoint = 'http://127.0.0.1:8765';
+            document.getElementById('bert-cfg-endpoint').value = endpoint;
+
+            // Salvar config automaticamente
+            await apiCall('/bert/config', {
+                method: 'PUT',
+                body: JSON.stringify({ endpoint }),
+            });
+
+            // Aguardar servidor subir (ate 5s)
+            detail.textContent = 'Worker iniciado! Aguardando servidor ficar pronto...';
+            let ready = false;
+            for (let i = 0; i < 5; i++) {
+                await new Promise(r => setTimeout(r, 1000));
+                try {
+                    const h = await apiCall('/bert/health');
+                    const hData = await h.json();
+                    if (hData.available) { ready = true; break; }
+                } catch (_) {}
+            }
+
+            if (ready) {
+                detail.textContent = 'Worker BERT ativo e pronto!';
+                btn.innerHTML = '<i class="fas fa-check"></i> Ativo';
+                btn.className = btn.className.replace('bg-blue-600 hover:bg-blue-700', 'bg-green-600 hover:bg-green-700');
+                showToast('Worker BERT iniciado com sucesso!', 'success');
+            } else {
+                detail.textContent = 'Worker iniciado, mas ainda carregando modelo. Tente novamente em alguns segundos.';
+                btn.innerHTML = originalHtml;
+                btn.disabled = false;
+                showToast('Worker iniciado, aguardando modelo carregar...', 'warning');
+            }
+
+            // Atualizar status geral do BERT
+            await verificarBert();
+
+        } catch (e) {
+            detail.textContent = `Erro: ${e.message}`;
+            btn.innerHTML = originalHtml;
+            btn.disabled = false;
+            showToast(`Erro ao iniciar worker: ${e.message}`, 'error');
+        }
+    }
+
+    // ============================================================
+    // MODO LOTE
+    // ============================================================
+    function toggleModoLote() {
+        state.modoLote = document.getElementById('toggle-lote').checked;
+        document.getElementById('input-single').classList.toggle('hidden', state.modoLote);
+        document.getElementById('input-lote').classList.toggle('hidden', !state.modoLote);
+        // Toggle botoes preview vs resumo lote
+        document.getElementById('btn-preview').classList.toggle('hidden', state.modoLote);
+        document.getElementById('btn-resumo-lote').classList.toggle('hidden', !state.modoLote);
+        // Mostrar opcoes de lote (pasta unica, processos paralelos)
+        document.getElementById('label-pasta-unica').classList.toggle('hidden', !state.modoLote);
+        document.getElementById('label-paralelos').classList.toggle('hidden', !state.modoLote);
+        limparConsulta();
+    }
+
+    function atualizarContadorLote() {
+        const text = document.getElementById('input-cnj-lote').value.trim();
+        const lines = text ? text.split('\n').filter(l => l.trim().length > 0) : [];
+        document.getElementById('contador-lote').textContent = `${lines.length} processo(s)`;
+    }
+
+    // ============================================================
+    // CONSULTAR PROCESSO (SINGLE)
+    // ============================================================
+    async function consultarProcesso() {
+        const input = document.getElementById('input-cnj').value.trim();
+        if (!input) {
+            showToast('Informe o numero CNJ do processo.', 'warning');
+            return;
+        }
+
+        const btn = document.getElementById('btn-consultar');
+        btn.disabled = true;
+        btn.innerHTML = '<div class="spinner"></div> Consultando...';
+
+        try {
+            const resp = await apiCall('/consultar', {
+                method: 'POST',
+                body: JSON.stringify({
+                    numero_cnj: input,
+                    buscar_todas_instancias: document.getElementById('check-instancias').checked,
+                }),
+            });
+
+            const data = await resp.json();
+
+            state.processo = data.processo || data;
+            state.documentos = data.documentos || [];
+            state.loteResultados = null;
+
+            // Show info
+            const infoEl = document.getElementById('processo-info');
+            infoEl.classList.remove('hidden');
+            document.getElementById('lote-info').classList.add('hidden');
+
+            const numero = state.processo.numero_cnj || state.processo.numero || input;
+            document.getElementById('processo-numero').textContent = formatarCNJ(numero);
+            document.getElementById('processo-classe').textContent = state.processo.classe || '';
+            document.getElementById('processo-assunto').textContent = state.processo.assunto || '';
+            document.getElementById('processo-docs-count').textContent = state.documentos.length;
+
+            // Show selection section
+            mostrarSecoes(['section-selecao']);
+            showToast(`Processo consultado: ${state.documentos.length} documento(s)`, 'success');
+
+        } catch (e) {
+            showToast(`Erro na consulta: ${e.message}`, 'error');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-search"></i> Consultar';
+        }
+    }
+
+    // ============================================================
+    // CONSULTAR LOTE (com chunking, sessao persistente e cancelamento)
+    // ============================================================
+    const CHUNK_SIZE_CONSULTA = 100;
+
+    async function consultarLote(sessaoExistente) {
+        let sessao = sessaoExistente || null;
+        let numeros;
+        let buscarInstancias;
+
+        if (sessao) {
+            // Retomada: usa dados da sessao salva
+            const jaConcluidos = new Set([...sessao.cnjs_concluidos, ...sessao.cnjs_com_erro]);
+            numeros = sessao.todos_cnjs.filter(cnj => !jaConcluidos.has(cnj));
+            buscarInstancias = sessao.buscar_instancias;
+            if (numeros.length === 0) {
+                showToast('Todos os processos ja foram consultados.', 'success');
+                finalizarConsultaLote(sessao);
+                return;
+            }
+            showToast(`Retomando: ${numeros.length} processo(s) pendente(s)...`, 'success');
+        } else {
+            // Nova consulta
+            const text = document.getElementById('input-cnj-lote').value.trim();
+            if (!text) {
+                showToast('Informe os numeros CNJ.', 'warning');
+                return;
+            }
+            numeros = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+            if (numeros.length === 0) {
+                showToast('Nenhum numero CNJ valido.', 'warning');
+                return;
+            }
+            buscarInstancias = document.getElementById('check-instancias').checked;
+            sessao = criarSessaoLote(numeros, buscarInstancias);
+        }
+
+        const btn = document.getElementById('btn-consultar-lote');
+        btn.disabled = true;
+        state.loteCancelado = false;
+
+        // Divide pendentes em chunks
+        const chunks = [];
+        for (let i = 0; i < numeros.length; i += CHUNK_SIZE_CONSULTA) {
+            chunks.push(numeros.slice(i, i + CHUNK_SIZE_CONSULTA));
+        }
+
+        const totalGeral = sessao.todos_cnjs.length;
+
+        try {
+            for (let ci = 0; ci < chunks.length; ci++) {
+                // Verifica cancelamento antes de cada chunk
+                if (state.loteCancelado) {
+                    sessao.status = 'interrupted';
+                    salvarSessaoLote(sessao);
+                    showToast('Consulta cancelada. Voce pode retomar depois.', 'warning');
+                    verificarSessaoInterrompida();
+                    return;
+                }
+
+                const chunk = chunks[ci];
+                const feitos = sessao.cnjs_concluidos.length + sessao.cnjs_com_erro.length;
+                const pct = Math.round((feitos / totalGeral) * 100);
+                btn.innerHTML = `<div class="spinner"></div> ${feitos}/${totalGeral} (${pct}%) `
+                    + `<span onclick="event.stopPropagation(); cancelarConsultaLote()" `
+                    + `class="ml-2 px-2 py-0.5 bg-red-500 text-white rounded text-xs cursor-pointer hover:bg-red-600">Cancelar</span>`;
+
+                const resp = await apiCall('/consultar-lote', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        numeros_cnj: chunk,
+                        buscar_todas_instancias: buscarInstancias,
+                    }),
+                });
+
+                const data = await resp.json();
+
+                // Atualiza sessao com resultados do chunk
+                if (data.resultados) {
+                    for (const r of data.resultados) {
+                        const cnj = r.numero_cnj || r.processo?.numero || '';
+                        sessao.resultados.push(r);
+                        if (r.erro) {
+                            if (cnj) sessao.cnjs_com_erro.push(cnj);
+                            sessao.erros.push({ numero_cnj: cnj, erro: r.erro });
+                        } else {
+                            if (cnj) sessao.cnjs_concluidos.push(cnj);
+                        }
+                    }
+                }
+                if (data.erros) {
+                    for (const e of data.erros) {
+                        sessao.cnjs_com_erro.push(e.numero_cnj);
+                        sessao.erros.push(e);
+                    }
+                }
+
+                // Persiste progresso a cada chunk
+                salvarSessaoLote(sessao);
+            }
+
+            // Concluido
+            sessao.status = 'completed';
+            salvarSessaoLote(sessao);
+            finalizarConsultaLote(sessao);
+
+        } catch (e) {
+            // Erro de rede/timeout — marca como interrompida
+            sessao.status = 'interrupted';
+            salvarSessaoLote(sessao);
+            const feitos = sessao.cnjs_concluidos.length;
+            showToast(
+                `Erro na consulta lote: ${e.message}. ${feitos}/${totalGeral} salvos — voce pode retomar.`,
+                'error'
+            );
+            verificarSessaoInterrompida();
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-search"></i> Consultar Lote';
+        }
+    }
+
+    function cancelarConsultaLote() {
+        state.loteCancelado = true;
+    }
+
+    function finalizarConsultaLote(sessao) {
+        const totalSucesso = sessao.cnjs_concluidos.length;
+        const totalErros = sessao.cnjs_com_erro.length;
+        const totalConsultados = totalSucesso + totalErros;
+
+        const agregado = {
+            total_consultados: totalConsultados,
+            total_sucesso: totalSucesso,
+            total_erros: totalErros,
+            resultados: sessao.resultados,
+            erros: sessao.erros,
+        };
+
+        state.loteResultados = agregado;
+        state.processo = null;
+        state.documentos = [];
+
+        for (const r of sessao.resultados) {
+            const docs = r.documentos || [];
+            state.documentos.push(...docs);
+        }
+
+        document.getElementById('processo-info').classList.add('hidden');
+        document.getElementById('banner-sessao-interrompida').classList.add('hidden');
+        const loteInfo = document.getElementById('lote-info');
+        loteInfo.classList.remove('hidden');
+        document.getElementById('lote-resumo').textContent =
+            `${totalSucesso} de ${totalConsultados} processo(s) consultado(s) com sucesso | ${state.documentos.length} documento(s) total`;
+
+        if (totalErros > 0) {
+            showToast(`${totalErros} processo(s) com erro na consulta.`, 'warning');
+        }
+
+        mostrarSecoes(['section-selecao']);
+        showToast(`Lote consultado: ${totalSucesso} processo(s)`, 'success');
+
+        // Limpa sessao concluida
+        removerSessaoLote();
+    }
+
+    // ============================================================
+    // CATEGORIAS
+    // ============================================================
+    async function carregarCategorias() {
+        try {
+            const resp = await apiCall('/categorias');
+            const data = await resp.json();
+            state.categorias = data.categorias || [];
+            renderizarCategorias();
+            renderizarHibridoCategorias();
+        } catch (e) {
+            console.error('Erro carregando categorias:', e);
+        } finally {
+            const loading = document.getElementById('categorias-loading');
+            if (loading) loading.classList.add('hidden');
+        }
+    }
+
+    function renderizarCategorias() {
+        const grid = document.getElementById('categorias-grid');
+        grid.innerHTML = '';
+
+        if (state.categorias.length === 0) {
+            grid.innerHTML = '<p class="text-sm text-gray-400 col-span-3">Nenhuma categoria disponivel.</p>';
+            return;
+        }
+
+        for (const cat of state.categorias) {
+            const isSelected = state.selectedCategorias.has(cat.id);
+            const card = document.createElement('div');
+            card.className = `category-card border-2 rounded-xl p-4 ${isSelected ? 'selected' : 'border-gray-200 bg-white'}`;
+            card.setAttribute('data-cat-id', cat.id);
+            card.onclick = () => toggleCategoria(cat.id);
+
+            const corBg = cat.cor ? `${cat.cor}20` : '#ecfeff';
+            const corText = cat.cor || '#0891b2';
+
+            let badges = '';
+            if (cat.is_especial) {
+                badges += `<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-purple-100 text-purple-700 ml-1">
+                    <i class="fas fa-star text-[8px] mr-0.5"></i>${cat.resolver_type || 'especial'}
+                </span>`;
+            }
+            const codigoCount = (cat.codigos && cat.codigos.length) || 0;
+
+            card.innerHTML = `
+                <div class="flex items-start justify-between mb-2">
+                    <div class="w-8 h-8 rounded-lg flex items-center justify-center text-xs font-bold" style="background:${corBg};color:${corText}">
+                        ${cat.id}
+                    </div>
+                    <div class="flex items-center gap-1">
+                        ${codigoCount > 0 ? `<span class="text-[10px] px-1.5 py-0.5 bg-gray-100 text-gray-600 rounded">${codigoCount} cod.</span>` : ''}
+                        ${badges}
+                    </div>
+                </div>
+                <h4 class="text-sm font-semibold text-gray-900 mb-1">${cat.titulo || cat.nome}</h4>
+                <p class="text-xs text-gray-500 line-clamp-2">${cat.descricao || ''}</p>
+            `;
+
+            grid.appendChild(card);
+        }
+    }
+
+    function toggleCategoria(catId) {
+        if (state.selectedCategorias.has(catId)) {
+            state.selectedCategorias.delete(catId);
+        } else {
+            state.selectedCategorias.add(catId);
+        }
+        renderizarCategorias();
+        renderizarHibridoCategorias();
+    }
+
+    function renderizarHibridoCategorias() {
+        const container = document.getElementById('hibrido-categorias');
+        container.innerHTML = '';
+
+        if (state.categorias.length === 0) {
+            container.innerHTML = '<span class="text-xs text-gray-400">Nenhuma categoria disponivel</span>';
+            return;
+        }
+
+        for (const cat of state.categorias) {
+            const isSelected = state.selectedCategorias.has(cat.id);
+            const chip = document.createElement('button');
+            chip.className = `px-3 py-1.5 rounded-lg text-xs font-medium border transition ${
+                isSelected
+                    ? 'bg-cyan-100 border-cyan-300 text-cyan-700'
+                    : 'bg-white border-gray-200 text-gray-600 hover:border-cyan-300'
+            }`;
+            chip.textContent = cat.titulo || cat.nome;
+            chip.onclick = () => toggleCategoria(cat.id);
+            container.appendChild(chip);
+        }
+    }
+
+    // ============================================================
+    // CODIGOS MAP
+    // ============================================================
+    async function carregarCodigosMap() {
+        try {
+            const resp = await apiCall('/codigos-map');
+            const data = await resp.json();
+            state.codigosMap = data.codigos || {};
+            renderizarCodigos();
+        } catch (e) {
+            console.error('Erro carregando codigos:', e);
+        }
+    }
+
+    function renderizarCodigos() {
+        const list = document.getElementById('codigos-list');
+        list.innerHTML = '';
+
+        const entries = Object.entries(state.codigosMap).sort((a, b) => parseInt(a[0]) - parseInt(b[0]));
+
+        if (entries.length === 0) {
+            list.innerHTML = '<p class="p-4 text-sm text-gray-400 text-center">Nenhum codigo disponivel.</p>';
+            return;
+        }
+
+        for (const [codigo, descricao] of entries) {
+            const isSelected = state.selectedCodigos.has(parseInt(codigo));
+            const item = document.createElement('label');
+            item.className = `flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 cursor-pointer ${isSelected ? 'bg-cyan-50' : ''}`;
+            item.setAttribute('data-codigo', codigo);
+            item.setAttribute('data-descricao', (descricao || '').toLowerCase());
+
+            item.innerHTML = `
+                <input type="checkbox" class="w-4 h-4 text-cyan-600 rounded focus:ring-cyan-500"
+                    ${isSelected ? 'checked' : ''}
+                    onchange="toggleCodigo(${codigo})">
+                <span class="text-xs font-mono text-gray-500 w-12">${codigo}</span>
+                <span class="text-sm text-gray-700 flex-1">${descricao || 'Sem descricao'}</span>
+            `;
+
+            list.appendChild(item);
+        }
+    }
+
+    function toggleCodigo(codigo) {
+        codigo = parseInt(codigo);
+        if (state.selectedCodigos.has(codigo)) {
+            state.selectedCodigos.delete(codigo);
+        } else {
+            state.selectedCodigos.add(codigo);
+        }
+        atualizarContadorCodigos();
+    }
+
+    function filtrarCodigos() {
+        const query = document.getElementById('busca-codigos').value.toLowerCase().trim();
+        const items = document.getElementById('codigos-list').children;
+
+        for (const item of items) {
+            const codigo = item.getAttribute('data-codigo') || '';
+            const descricao = item.getAttribute('data-descricao') || '';
+            const match = !query || codigo.includes(query) || descricao.includes(query);
+            item.style.display = match ? '' : 'none';
+        }
+    }
+
+    function atualizarContadorCodigos() {
+        document.getElementById('codigos-selecionados-count').textContent = state.selectedCodigos.size;
+    }
+
+    // ============================================================
+    // TABS
+    // ============================================================
+    function trocarTab(tab) {
+        state.modoSelecao = tab;
+
+        const tabs = ['categoria', 'manual', 'hibrido'];
+        for (const t of tabs) {
+            document.getElementById(`tab-${t}`).className = `px-4 py-2 text-sm transition ${t === tab ? 'tab-active' : 'tab-inactive'}`;
+            document.getElementById(`panel-${t}`).classList.toggle('hidden', t !== tab);
+        }
+    }
+
+    // ============================================================
+    // RESUMO LOTE (sem preview)
+    // ============================================================
+    async function mostrarResumoLote() {
+        if (!state.modoLote) return;
+
+        // Valida que ha categorias/codigos selecionados
+        if (state.selectedCategorias.size === 0 && state.selectedCodigos.size === 0) {
+            showToast('Selecione ao menos uma categoria ou codigo.', 'warning');
+            return;
+        }
+
+        // Coleta numeros CNJ do textarea
+        const text = document.getElementById('input-cnj-lote').value.trim();
+        const linhas = text.split('\n').filter(l => l.trim().length > 0);
+        if (linhas.length === 0) {
+            showToast('Insira ao menos um numero de processo.', 'warning');
+            return;
+        }
+
+        const btn = document.getElementById('btn-resumo-lote');
+        btn.disabled = true;
+        btn.innerHTML = '<div class="spinner"></div> Calculando...';
+
+        try {
+            const payload = {
+                numeros_cnj: linhas,
+                categorias_ids: Array.from(state.selectedCategorias),
+                codigos_manuais_add: state.modoSelecao === 'hibrido' ? parseCodigosCsv(document.getElementById('hibrido-add').value) : [],
+                codigos_manuais_remove: state.modoSelecao === 'hibrido' ? parseCodigosCsv(document.getElementById('hibrido-remove').value) : [],
+                modo_selecao: state.modoSelecao,
+            };
+
+            const resp = await apiCall('/resumo-lote', {
+                method: 'POST',
+                body: JSON.stringify(payload),
+            });
+
+            if (resp.status === 401) {
+                localStorage.removeItem('access_token');
+                window.location.href = '/login';
+                return;
+            }
+
+            const data = await resp.json();
+            renderizarResumoLote(data);
+            mostrarSecoes(['section-selecao', 'section-resumo-lote', 'section-opcoes', 'section-download']);
+
+        } catch (e) {
+            showToast(`Erro ao calcular resumo: ${e.message}`, 'error');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-clipboard-list"></i> Resumo do Lote';
+        }
+    }
+
+    function renderizarResumoLote(data) {
+        document.getElementById('resumo-total-processos').textContent = data.total_processos || 0;
+        document.getElementById('resumo-total-categorias').textContent = (data.categorias_selecionadas || []).length;
+        document.getElementById('resumo-total-codigos').textContent = data.total_codigos_unicos || 0;
+
+        // Metodo
+        let metodo = 'Codigo';
+        if (data.tem_categorias_bert && data.tem_categorias_primeiro_doc) metodo = 'Misto';
+        else if (data.tem_categorias_bert) metodo = 'BERT';
+        else if (data.tem_categorias_primeiro_doc) metodo = '1o Doc';
+        document.getElementById('resumo-metodo').textContent = metodo;
+
+        // Lista de categorias
+        const container = document.getElementById('resumo-categorias-lista');
+        container.innerHTML = '';
+        for (const cat of (data.categorias_selecionadas || [])) {
+            const badge = cat.resolver_tipo === 'bert' ? '<span class="ml-2 text-xs px-1.5 py-0.5 bg-purple-100 text-purple-700 rounded">BERT</span>' :
+                          cat.resolver_tipo === 'primeiro_cronologico' ? '<span class="ml-2 text-xs px-1.5 py-0.5 bg-blue-100 text-blue-700 rounded">1o Doc</span>' : '';
+            container.innerHTML += `
+                <div class="flex items-center justify-between bg-gray-50 rounded-lg px-3 py-2">
+                    <span class="text-sm text-gray-800">${cat.titulo || cat.nome}${badge}</span>
+                    <span class="text-xs text-gray-500">${cat.total_codigos} codigo(s)</span>
+                </div>
+            `;
+        }
+
+        // Aviso BERT
+        const avisoEl = document.getElementById('resumo-aviso-bert');
+        if (data.aviso) {
+            document.getElementById('resumo-aviso-texto').textContent = data.aviso;
+            avisoEl.classList.remove('hidden');
+        } else {
+            avisoEl.classList.add('hidden');
+        }
+    }
+
+    // ============================================================
+    // PREVIEW
+    // ============================================================
+    async function carregarPreview() {
+        const btn = document.getElementById('btn-preview');
+        btn.disabled = true;
+        btn.innerHTML = '<div class="spinner"></div> Carregando...';
+
+        try {
+            // Resolve categories first if needed
+            let codigosResolvidos = [];
+            let docIds = [];
+
+            if (state.modoSelecao === 'categoria' || state.modoSelecao === 'hibrido') {
+                if (state.selectedCategorias.size === 0 && state.modoSelecao === 'categoria') {
+                    showToast('Selecione ao menos uma categoria.', 'warning');
+                    return;
+                }
+
+                const resolveResp = await apiCall('/resolver-categorias', {
+                    method: 'POST',
+                    body: JSON.stringify({
+                        categorias_ids: Array.from(state.selectedCategorias),
+                        codigos_manuais_add: state.modoSelecao === 'hibrido' ? parseCodigosCsv(document.getElementById('hibrido-add').value) : [],
+                        codigos_manuais_remove: state.modoSelecao === 'hibrido' ? parseCodigosCsv(document.getElementById('hibrido-remove').value) : [],
+                    }),
+                });
+
+                const resolveData = await resolveResp.json();
+                codigosResolvidos = resolveData.codigos_finais || [];
+
+                if (codigosResolvidos.length === 0) {
+                    showToast('Nenhum codigo resolvido das categorias selecionadas.', 'warning');
+                    return;
+                }
+            } else if (state.modoSelecao === 'manual') {
+                codigosResolvidos = Array.from(state.selectedCodigos);
+                if (codigosResolvidos.length === 0) {
+                    showToast('Selecione ao menos um codigo.', 'warning');
+                    return;
+                }
+            }
+
+            // Parse filters
+            const filtroAnos = parseCodigosCsv(document.getElementById('filtro-anos').value);
+            const filtroMes = document.getElementById('filtro-mes').value ? parseInt(document.getElementById('filtro-mes').value) : null;
+
+            // Determine CNJ
+            let numeroCnj = '';
+            if (state.processo) {
+                numeroCnj = state.processo.numero_cnj || state.processo.numero || document.getElementById('input-cnj').value.replace(/\D/g, '');
+            } else if (state.loteResultados && state.loteResultados.resultados && state.loteResultados.resultados.length > 0) {
+                const primeiro = state.loteResultados.resultados[0];
+                numeroCnj = primeiro.processo ? (primeiro.processo.numero_cnj || primeiro.processo.numero || '') : '';
+            }
+
+            // Call preview
+            const categoriasIds = (state.modoSelecao === 'categoria' || state.modoSelecao === 'hibrido')
+                ? Array.from(state.selectedCategorias) : [];
+
+            const previewResp = await apiCall('/preview', {
+                method: 'POST',
+                body: JSON.stringify({
+                    numero_cnj: numeroCnj,
+                    codigos_resolvidos: codigosResolvidos,
+                    documento_ids: docIds,
+                    categorias_ids: categoriasIds,
+                    filtro_anos: filtroAnos,
+                    filtro_mes: filtroMes,
+                    modo_selecao: state.modoSelecao,
+                }),
+            });
+
+            const previewData = await previewResp.json();
+            const allDocs = previewData.documentos || [];
+
+            // Filter: show only selected documents
+            const docs = allDocs.filter(d => d.selecionado);
+            state.previewResolucoes = previewData.resolucoes || [];
+
+            renderizarPreview(docs);
+            mostrarSecoes(['section-selecao', 'section-preview', 'section-opcoes', 'section-download']);
+
+            const totalProcesso = previewData.total_processo || allDocs.length;
+            showToast(`Preview: ${docs.length} de ${totalProcesso} documento(s) selecionado(s)`, 'success');
+
+        } catch (e) {
+            showToast(`Erro no preview: ${e.message}`, 'error');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-eye"></i> Visualizar Documentos';
+        }
+    }
+
+    function renderizarPreview(docs) {
+        const tbody = document.getElementById('preview-tbody');
+        const emptyEl = document.getElementById('preview-empty');
+        const loadingEl = document.getElementById('preview-loading');
+
+        loadingEl.classList.add('hidden');
+        tbody.innerHTML = '';
+
+        // Reset selections
+        state.selectedDocs = new Set();
+
+        if (docs.length === 0) {
+            emptyEl.classList.remove('hidden');
+            document.getElementById('preview-total').textContent = '0';
+            document.getElementById('preview-selected').textContent = '0';
+            atualizarDownloadCount();
+            return;
+        }
+
+        emptyEl.classList.add('hidden');
+        document.getElementById('preview-total').textContent = docs.length;
+
+        for (const doc of docs) {
+            state.selectedDocs.add(doc.id);
+
+            const tr = document.createElement('tr');
+            tr.className = 'hover:bg-gray-50';
+            tr.setAttribute('data-doc-id', doc.id);
+
+            // Build resolution badges
+            let resoBadge = '';
+            if (doc.resolucao_especial) {
+                const reso = doc.resolucao_especial;
+                if (reso.metodo === 'primeiro_cronologico') {
+                    resoBadge = '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-blue-100 text-blue-700"><i class="fas fa-sort-numeric-down text-[8px] mr-0.5"></i>1o Doc</span>';
+                } else if (reso.metodo === 'codigo') {
+                    resoBadge = '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-green-100 text-green-700"><i class="fas fa-hashtag text-[8px] mr-0.5"></i>codigo direto</span>';
+                } else if (reso.metodo === 'bert') {
+                    if (reso.bert_status === 'codigo_direto') {
+                        resoBadge = '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-green-100 text-green-700"><i class="fas fa-hashtag text-[8px] mr-0.5"></i>codigo direto</span>';
+                    } else {
+                        resoBadge = '<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-amber-100 text-amber-700" title="Sera classificado pelo BERT durante o download"><i class="fas fa-brain text-[8px] mr-0.5"></i>BERT: Candidato</span>';
+                    }
+                }
+                // Badge multi-categoria (doc pertence a mais de uma categoria)
+                const nCats = reso.resolucoes_todas?.length || 0;
+                if (nCats > 1) {
+                    resoBadge += ` <span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-medium bg-purple-100 text-purple-600" title="Documento pertence a ${nCats} categorias"><i class="fas fa-layer-group text-[8px] mr-0.5"></i>${nCats} cats</span>`;
+                }
+            }
+
+            // Format date
+            let dataStr = '-';
+            if (doc.data_juntada) {
+                try {
+                    const d = new Date(doc.data_juntada);
+                    dataStr = d.toLocaleDateString('pt-BR');
+                } catch (_) {
+                    dataStr = doc.data_juntada;
+                }
+            }
+
+            tr.innerHTML = `
+                <td class="py-2.5 px-3">
+                    <input type="checkbox" class="w-4 h-4 text-cyan-600 rounded focus:ring-cyan-500 doc-checkbox" checked
+                        data-doc-id="${doc.id}" onchange="toggleDoc('${doc.id}')">
+                </td>
+                <td class="py-2.5 px-3 text-xs font-mono text-gray-500">${doc.tipo_codigo || '-'}</td>
+                <td class="py-2.5 px-3 text-sm text-gray-700">${doc.tipo_descricao || '-'}</td>
+                <td class="py-2.5 px-3 text-sm text-gray-600 max-w-xs truncate" title="${doc.descricao || ''}">${doc.descricao || '-'}</td>
+                <td class="py-2.5 px-3 text-xs text-gray-500">${dataStr}</td>
+                <td class="py-2.5 px-3">${resoBadge || '<span class="text-xs text-gray-400">-</span>'}</td>
+            `;
+
+            tbody.appendChild(tr);
+        }
+
+        document.getElementById('preview-selected').textContent = state.selectedDocs.size;
+        document.getElementById('select-all-docs').checked = true;
+        atualizarDownloadCount();
+    }
+
+    function toggleDoc(docId) {
+        if (state.selectedDocs.has(docId)) {
+            state.selectedDocs.delete(docId);
+        } else {
+            state.selectedDocs.add(docId);
+        }
+        document.getElementById('preview-selected').textContent = state.selectedDocs.size;
+        atualizarSelectAllState();
+        atualizarDownloadCount();
+    }
+
+    function toggleSelectAll() {
+        const checkAll = document.getElementById('select-all-docs').checked;
+        const checkboxes = document.querySelectorAll('.doc-checkbox');
+
+        state.selectedDocs.clear();
+
+        for (const cb of checkboxes) {
+            cb.checked = checkAll;
+            if (checkAll) {
+                state.selectedDocs.add(cb.getAttribute('data-doc-id'));
+            }
+        }
+
+        document.getElementById('preview-selected').textContent = state.selectedDocs.size;
+        atualizarDownloadCount();
+    }
+
+    function atualizarSelectAllState() {
+        const checkboxes = document.querySelectorAll('.doc-checkbox');
+        const allChecked = Array.from(checkboxes).every(cb => cb.checked);
+        document.getElementById('select-all-docs').checked = allChecked;
+    }
+
+    function atualizarDownloadCount() {
+        const count = state.selectedDocs.size;
+        document.getElementById('download-count').textContent = count > 0 ? `${count} documento(s) selecionado(s)` : '';
+    }
+
+    // ============================================================
+    // DOWNLOAD
+    // ============================================================
+    async function iniciarDownload() {
+        if (state.downloading) return;
+
+        // Em modo lote, nao precisa de selectedDocs (nao houve preview)
+        if (!state.modoLote && state.selectedDocs.size === 0) {
+            showToast('Selecione ao menos um documento.', 'warning');
+            return;
+        }
+
+        // Check BERT availability for BERT categories
+        const temCategoriaBert = Array.from(state.selectedCategorias).some(catId => {
+            const cat = state.categorias.find(c => c.id === catId);
+            return cat && cat.resolver_tipo === 'bert';
+        });
+
+        if (temCategoriaBert && state.bertStatus && !state.bertStatus.available) {
+            // Show BERT modal
+            state.pendingDownloadCallback = () => executarDownload();
+            document.getElementById('modal-bert').classList.remove('hidden');
+            document.getElementById('modal-bert').classList.add('flex');
+            return;
+        }
+
+        await executarDownload();
+    }
+
+    function fecharModalBert() {
+        document.getElementById('modal-bert').classList.add('hidden');
+        document.getElementById('modal-bert').classList.remove('flex');
+        state.pendingDownloadCallback = null;
+    }
+
+    function confirmarDownloadSemBert() {
+        fecharModalBert();
+        if (state.pendingDownloadCallback) {
+            state.pendingDownloadCallback();
+            state.pendingDownloadCallback = null;
+        }
+    }
+
+    async function executarDownload() {
+        if (state.modoLote) {
+            await executarDownloadLote();
+            return;
+        }
+
+        // Pede pasta ANTES de iniciar download (user gesture context)
+        state.pastaHandle = null;
+        const tipoDestino = document.querySelector('input[name="tipo-destino"]:checked')?.value || 'zip';
+        if (tipoDestino === 'pasta') {
+            try {
+                state.pastaHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+            } catch (err) {
+                if (err.name === 'AbortError') return;
+                showToast('Erro ao selecionar pasta. Baixando como ZIP.', 'warning');
+            }
+        }
+
+        state.downloading = true;
+        onDownloadStart();
+
+        const btn = document.getElementById('btn-download');
+        btn.disabled = true;
+        btn.innerHTML = '<div class="spinner"></div> Baixando...';
+
+        document.getElementById('download-progress').classList.remove('hidden');
+        document.getElementById('download-link-area').classList.add('hidden');
+
+        resetProgress();
+        atualizarProgress(10, 'Enviando requisicao ao TJ-MS...');
+
+        // Gather options
+        const modoSaida = document.querySelector('input[name="modo-saida"]:checked').value;
+        const mesclar = document.getElementById('check-mesclar').checked && modoSaida !== 'txt' && modoSaida !== 'xml_only';
+        const salvarXml = modoSaida === 'xml_only' ? true : document.getElementById('check-salvar-xml').checked;
+
+        let numeroCnj = '';
+        if (state.processo) {
+            numeroCnj = state.processo.numero_cnj || state.processo.numero || document.getElementById('input-cnj').value.replace(/\D/g, '');
+        }
+
+        // Build BERT resolucoes_especiais from preview data
+        const protectedDocIds = new Set();
+        for (const reso of (state.previewResolucoes || [])) {
+            if (reso.metodo !== 'bert') {
+                for (const docId of (reso.documento_ids || [])) {
+                    protectedDocIds.add(docId);
+                }
+            }
+        }
+
+        const resolucoes = (state.previewResolucoes || [])
+            .filter(r => r.metodo === 'bert' && r.bert_predictions)
+            .map(r => ({
+                tipo: 'bert',
+                label_match: r.detalhes?.label_match || '',
+                model_run_id: r.detalhes?.model_run_id || null,
+                doc_ids_bert_candidatos: (r.bert_predictions || [])
+                    .filter(p => p.motivo === 'candidato_pendente_bert')
+                    .map(p => p.doc_id)
+                    .filter(id => state.selectedDocs.has(id))
+                    .filter(id => !protectedDocIds.has(id)),
+            }))
+            .filter(r => r.doc_ids_bert_candidatos.length > 0);
+
+        const payload = {
+            numero_cnj: numeroCnj,
+            documento_ids: Array.from(state.selectedDocs),
+            modo_saida: modoSaida,
+            mesclar_pdfs: mesclar,
+            salvar_xml_completo: salvarXml,
+            categorias_selecionadas: Array.from(state.selectedCategorias),
+            codigos_manuais_add: state.modoSelecao === 'hibrido' ? parseCodigosCsv(document.getElementById('hibrido-add').value) : [],
+            codigos_manuais_remove: state.modoSelecao === 'hibrido' ? parseCodigosCsv(document.getElementById('hibrido-remove').value) : [],
+            modo_selecao: state.modoSelecao,
+            resolucoes_especiais: resolucoes,
+        };
+
+        try {
+            // Download direto: 1 request, retorna ZIP como blob (sem SSE intermediario)
+            const response = await fetch(`${API_BASE}/baixar`, {
+                method: 'POST',
+                headers: apiHeaders(),
+                body: JSON.stringify(payload),
+            });
+
+            if (response.status === 401) {
+                localStorage.removeItem('access_token');
+                window.location.href = '/login';
+                return;
+            }
+
+            if (!response.ok) {
+                const errBody = await response.json().catch(() => ({}));
+                let errMsg = `Erro ${response.status}`;
+                if (errBody.detail) {
+                    if (typeof errBody.detail === 'string') errMsg = errBody.detail;
+                    else if (Array.isArray(errBody.detail)) errMsg = errBody.detail.map(e => e.msg || JSON.stringify(e)).join('; ');
+                }
+                throw new Error(errMsg);
+            }
+
+            atualizarProgress(80, 'Recebendo arquivos...');
+
+            const blob = await response.blob();
+            const disposition = response.headers.get('Content-Disposition') || '';
+            const match = disposition.match(/filename="?([^"]+)"?/);
+            const filename = match ? match[1] : `extrator_${numeroCnj}.zip`;
+
+            atualizarProgress(95, 'Salvando...');
+
+            if (tipoDestino === 'pasta' && state.pastaHandle) {
+                await salvarEmPasta(blob, state.pastaHandle);
+                state.pastaHandle = null;
+            } else if (tipoDestino === 'pasta') {
+                // Fallback: pasta sem handle (showDirectoryPicker falhou)
+                triggerZipDownload(blob, filename);
+                showToast('ZIP baixado (pasta nao selecionada)', 'warning');
+            } else {
+                triggerZipDownload(blob, filename);
+                showToast('ZIP baixado com sucesso!', 'success');
+            }
+
+            atualizarProgress(100, 'Concluido!');
+            addProgressLog(`Download concluido: ${state.selectedDocs.size} documento(s)`);
+
+        } catch (e) {
+            showToast(`Erro no download: ${e.message}`, 'error');
+            addProgressLog(`ERRO: ${e.message}`);
+        } finally {
+            state.downloading = false;
+            onDownloadEnd();
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-cloud-download-alt"></i> Baixar Documentos';
+        }
+    }
+
+    async function executarDownloadLote() {
+        // Pede pasta ANTES de iniciar download (user gesture context)
+        state.pastaHandle = null;
+        const tipoDestino = document.querySelector('input[name="tipo-destino"]:checked')?.value || 'zip';
+        if (tipoDestino === 'pasta') {
+            try {
+                state.pastaHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+            } catch (err) {
+                if (err.name === 'AbortError') return;
+                showToast('Erro ao selecionar pasta. Baixando como ZIP.', 'warning');
+            }
+        }
+
+        state.downloading = true;
+        onDownloadStart();
+
+        const btn = document.getElementById('btn-download');
+        btn.disabled = true;
+        btn.innerHTML = '<div class="spinner"></div> Preparando lote...';
+
+        document.getElementById('download-progress').classList.remove('hidden');
+        document.getElementById('download-link-area').classList.add('hidden');
+
+        resetProgress();
+
+        const modoSaida = document.querySelector('input[name="modo-saida"]:checked').value;
+        const mesclar = document.getElementById('check-mesclar').checked && modoSaida !== 'txt' && modoSaida !== 'xml_only';
+        const salvarXml = modoSaida === 'xml_only' ? true : document.getElementById('check-salvar-xml').checked;
+        const filtroAnos = parseCodigosCsv(document.getElementById('filtro-anos').value);
+        const filtroMes = document.getElementById('filtro-mes').value ? parseInt(document.getElementById('filtro-mes').value) : null;
+
+        // Get numeros CNJ: do loteResultados (se houve consulta) ou direto do textarea
+        let numeros = [];
+        if (state.loteResultados && state.loteResultados.resultados) {
+            numeros = state.loteResultados.resultados.map(r => {
+                const proc = r.processo || r;
+                return proc.numero_cnj || proc.numero || '';
+            }).filter(n => n);
+        } else {
+            // Modo lote sem preview: pega direto do textarea
+            const text = document.getElementById('input-cnj-lote').value.trim();
+            numeros = text.split('\n').map(l => l.trim().replace(/\D/g, '')).filter(n => n.length === 20);
+        }
+
+        if (numeros.length === 0) {
+            showToast('Nenhum processo valido encontrado.', 'warning');
+            state.downloading = false;
+            onDownloadEnd();
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-download"></i> Baixar Documentos';
+            return;
+        }
+
+        // v2: envia categorias_ids para pipeline completo no backend
+        // codigos_resolvidos como fallback para backward compat
+        let codigosResolvidos = [];
+        if (state.selectedCategorias.size === 0 && state.selectedCodigos.size > 0) {
+            codigosResolvidos = Array.from(state.selectedCodigos);
+        }
+
+        const payload = {
+            numeros_cnj: numeros,
+            codigos_resolvidos: codigosResolvidos,
+            categorias_ids: Array.from(state.selectedCategorias),
+            codigos_manuais_add: state.modoSelecao === 'hibrido' ? parseCodigosCsv(document.getElementById('hibrido-add').value) : [],
+            codigos_manuais_remove: state.modoSelecao === 'hibrido' ? parseCodigosCsv(document.getElementById('hibrido-remove').value) : [],
+            modo_selecao: state.modoSelecao,
+            modo_saida: modoSaida,
+            mesclar_pdfs: mesclar,
+            salvar_xml_completo: salvarXml,
+            agrupar_subpastas: !document.getElementById('check-pasta-unica').checked,
+            filtro_anos: filtroAnos,
+            filtro_mes: filtroMes,
+            pausa_entre_processos: 2.0,
+            max_processos_paralelos: parseInt(document.getElementById('select-paralelos').value) || 3,
+        };
+
+        try {
+            const response = await fetch(`${API_BASE}/baixar-lote`, {
+                method: 'POST',
+                headers: apiHeaders(),
+                body: JSON.stringify(payload),
+            });
+
+            if (response.status === 401) {
+                localStorage.removeItem('access_token');
+                window.location.href = '/login';
+                return;
+            }
+
+            if (!response.ok) {
+                const errBody = await response.json().catch(() => ({}));
+                let errMsg = `Erro ${response.status}`;
+                if (errBody.detail) {
+                    if (typeof errBody.detail === 'string') errMsg = errBody.detail;
+                    else if (Array.isArray(errBody.detail)) errMsg = errBody.detail.map(e => e.msg || JSON.stringify(e)).join('; ');
+                }
+                throw new Error(errMsg);
+            }
+
+            await processarSSEStream(response);
+
+        } catch (e) {
+            showToast(`Erro no download lote: ${e.message}`, 'error');
+            addProgressLog(`ERRO: ${e.message}`);
+        } finally {
+            state.downloading = false;
+            onDownloadEnd();
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-cloud-download-alt"></i> Baixar Documentos';
+        }
+    }
+
+    // ============================================================
+    // SSE STREAM READER
+    // ============================================================
+    async function processarSSEStream(response) {
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
+
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+
+            buffer += decoder.decode(value, { stream: true });
+
+            // Process complete SSE events
+            const lines = buffer.split('\n');
+            buffer = '';
+
+            for (let i = 0; i < lines.length; i++) {
+                const line = lines[i];
+
+                if (line.startsWith('data: ')) {
+                    try {
+                        const jsonStr = line.substring(6).trim();
+                        if (!jsonStr) continue;
+                        const event = JSON.parse(jsonStr);
+                        tratarEventoSSE(event);
+                    } catch (e) {
+                        // Incomplete JSON, put back in buffer
+                        if (i === lines.length - 1) {
+                            buffer = line;
+                        }
+                    }
+                } else if (line.trim() !== '') {
+                    // Could be continuation, keep in buffer if last line
+                    if (i === lines.length - 1) {
+                        buffer = line;
+                    }
+                }
+            }
+        }
+    }
+
+    function tratarEventoSSE(event) {
+        const tipo = event.tipo;
+
+        if (tipo === 'progresso') {
+            const pct = event.percentual || 0;
+            const msg = event.mensagem || '';
+            atualizarProgress(pct, msg);
+            addProgressLog(msg);
+        } else if (tipo === 'concluido') {
+            atualizarProgress(100, event.mensagem || 'Concluido!');
+            addProgressLog(event.mensagem || 'Download concluido!');
+
+            // Metricas extras do lote v2
+            if (event.total_docs) {
+                addProgressLog(`Documentos baixados: ${event.total_docs}`);
+            }
+            if (event.bert_filtrados > 0) {
+                addProgressLog(`Filtrados por BERT: ${event.bert_filtrados}`);
+            }
+            if (event.total_erros > 0) {
+                addProgressLog(`Processos com erro: ${event.total_erros}`);
+            }
+
+            if (event.job_id) {
+                // Auto-fetch e salva sem segundo clique
+                autoFetchESalvar(event.job_id);
+            }
+
+            showToast('Download concluido com sucesso!', 'success');
+        } else if (tipo === 'erro') {
+            addProgressLog(`ERRO: ${event.mensagem || 'Erro desconhecido'}`);
+            showToast(`Erro: ${event.mensagem}`, 'error');
+        }
+    }
+
+    async function autoFetchESalvar(jobId) {
+        try {
+            addProgressLog('Transferindo arquivo...');
+            const resp = await fetch(`${API_BASE}/download/${jobId}`, {
+                headers: { 'Authorization': `Bearer ${getToken()}` },
+            });
+
+            if (!resp.ok) {
+                throw new Error(`HTTP ${resp.status}`);
+            }
+
+            const blob = await resp.blob();
+            const disposition = resp.headers.get('Content-Disposition') || '';
+            const match = disposition.match(/filename="?([^"]+)"?/);
+            const filename = match ? match[1] : `extrator_lote_${Date.now()}.zip`;
+
+            const tipoDestino = document.querySelector('input[name="tipo-destino"]:checked')?.value || 'zip';
+
+            if (tipoDestino === 'pasta' && state.pastaHandle) {
+                addProgressLog('Extraindo arquivos para a pasta...');
+                await salvarEmPasta(blob, state.pastaHandle);
+                state.pastaHandle = null;
+            } else {
+                triggerZipDownload(blob, filename);
+                if (tipoDestino === 'pasta') {
+                    showToast('ZIP baixado (pasta nao foi selecionada)', 'warning');
+                }
+            }
+
+            addProgressLog('Salvo com sucesso!');
+        } catch (e) {
+            console.error('Erro no auto-fetch:', e);
+            // Fallback: mostra link manual para retry
+            mostrarLinkDownloadManual(jobId);
+        }
+    }
+
+    // ============================================================
+    // PROGRESS BAR
+    // ============================================================
+    function resetProgress() {
+        document.getElementById('progress-bar').style.width = '0%';
+        document.getElementById('progress-percent').textContent = '0%';
+        document.getElementById('progress-label').textContent = 'Iniciando...';
+        document.getElementById('progress-log').innerHTML = '';
+    }
+
+    function atualizarProgress(percent, label) {
+        document.getElementById('progress-bar').style.width = `${percent}%`;
+        document.getElementById('progress-percent').textContent = `${percent}%`;
+        if (label) {
+            document.getElementById('progress-label').textContent = label;
+        }
+    }
+
+    function addProgressLog(msg) {
+        const log = document.getElementById('progress-log');
+        const time = new Date().toLocaleTimeString('pt-BR');
+        log.innerHTML += `<div>[${time}] ${msg}</div>`;
+        log.scrollTop = log.scrollHeight;
+    }
+
+    // ============================================================
+    // DOWNLOAD ZIP
+    // ============================================================
+    function mostrarLinkDownloadManual(jobId) {
+        const linkArea = document.getElementById('download-link-area');
+        linkArea.classList.remove('hidden');
+
+        document.getElementById('download-success-msg').textContent = 'Clique para baixar:';
+
+        const link = document.getElementById('download-zip-link');
+        link.innerHTML = '<i class="fas fa-file-archive"></i> Baixar ZIP';
+        link.onclick = async (e) => {
+            e.preventDefault();
+            await baixarZip(jobId);
+        };
+    }
+
+    // JSZip lazy loader (para salvar em pasta)
+    let _jszipModule = null;
+    async function importJSZip() {
+        if (_jszipModule) return _jszipModule;
+        const mod = await import('https://cdn.jsdelivr.net/npm/jszip@3.10.1/+esm');
+        _jszipModule = mod.default || mod;
+        return _jszipModule;
+    }
+
+    async function salvarEmPasta(zipBlob, dirHandle) {
+        if (!dirHandle) {
+            dirHandle = await window.showDirectoryPicker({ mode: 'readwrite' });
+        }
+        const JSZip = await importJSZip();
+        const zip = await JSZip.loadAsync(zipBlob);
+
+        const entries = Object.entries(zip.files);
+        let saved = 0;
+
+        for (const [path, file] of entries) {
+            if (file.dir) continue;
+            const content = await file.async('arraybuffer');
+
+            // Preserva subpastas do ZIP dentro da pasta selecionada
+            const parts = path.split('/');
+            let currentDir = dirHandle;
+            // Navega/cria subdiretorios
+            for (let i = 0; i < parts.length - 1; i++) {
+                currentDir = await currentDir.getDirectoryHandle(parts[i], { create: true });
+            }
+            const fileName = parts[parts.length - 1];
+            const fileHandle = await currentDir.getFileHandle(fileName, { create: true });
+            const writable = await fileHandle.createWritable();
+            await writable.write(content);
+            await writable.close();
+            saved++;
+        }
+
+        showToast(`${saved} arquivo(s) salvos na pasta selecionada`, 'success');
+    }
+
+    function triggerZipDownload(blob, filename) {
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        URL.revokeObjectURL(url);
+    }
+
+    async function baixarZip(jobId) {
+        try {
+            const resp = await fetch(`${API_BASE}/download/${jobId}`, {
+                headers: { 'Authorization': `Bearer ${getToken()}` },
+            });
+
+            if (!resp.ok) {
+                throw new Error('Download nao encontrado ou expirado. Tente gerar novamente.');
+            }
+
+            const blob = await resp.blob();
+            const disposition = resp.headers.get('Content-Disposition') || '';
+            const match = disposition.match(/filename="?([^"]+)"?/);
+            const filename = match ? match[1] : `extrator_autos_${Date.now()}.zip`;
+
+            triggerZipDownload(blob, filename);
+            showToast('ZIP baixado com sucesso!', 'success');
+        } catch (e) {
+            showToast(`Erro ao baixar: ${e.message}`, 'error');
+        }
+    }
+
+    // ============================================================
+    // HISTORICO
+    // ============================================================
+    let historicoAberto = false;
+
+    function toggleHistorico() {
+        historicoAberto = !historicoAberto;
+        const content = document.getElementById('historico-content');
+        const chevron = document.getElementById('historico-chevron');
+
+        if (historicoAberto) {
+            content.classList.remove('hidden');
+            chevron.style.transform = 'rotate(180deg)';
+            carregarHistorico(1);
+        } else {
+            content.classList.add('hidden');
+            chevron.style.transform = 'rotate(0deg)';
+        }
+    }
+
+    async function carregarHistorico(pagina = 1) {
+        state.historicoPagina = pagina;
+
+        try {
+            const resp = await apiCall(`/historico?pagina=${pagina}&por_pagina=20`);
+            const data = await resp.json();
+
+            state.historicoTotal = data.total || 0;
+            const itens = data.itens || [];
+
+            renderizarHistorico(itens, data.total, pagina, data.por_pagina);
+        } catch (e) {
+            console.error('Erro carregando historico:', e);
+        }
+    }
+
+    function renderizarHistorico(itens, total, pagina, porPagina) {
+        const tbody = document.getElementById('historico-tbody');
+        const emptyEl = document.getElementById('historico-empty');
+        const paginationEl = document.getElementById('historico-pagination');
+
+        tbody.innerHTML = '';
+
+        if (itens.length === 0) {
+            emptyEl.classList.remove('hidden');
+            paginationEl.classList.add('hidden');
+            return;
+        }
+
+        emptyEl.classList.add('hidden');
+
+        for (const item of itens) {
+            const tr = document.createElement('tr');
+            tr.className = 'hover:bg-gray-50';
+
+            const statusClass = {
+                concluido: 'bg-green-100 text-green-700',
+                processando: 'bg-blue-100 text-blue-700',
+                erro: 'bg-red-100 text-red-700',
+            }[item.status] || 'bg-gray-100 text-gray-700';
+
+            let dataStr = '-';
+            if (item.criado_em) {
+                try {
+                    dataStr = new Date(item.criado_em).toLocaleString('pt-BR');
+                } catch (_) {
+                    dataStr = item.criado_em;
+                }
+            }
+
+            const cnj = item.numeros_cnj_lote && item.numeros_cnj_lote.length > 1
+                ? `${item.numeros_cnj_lote.length} processos`
+                : formatarCNJ(item.numero_cnj || '');
+
+            tr.innerHTML = `
+                <td class="py-2 px-3 text-sm text-gray-700 font-mono">${cnj}</td>
+                <td class="py-2 px-3 text-xs text-gray-500">${item.modo_selecao || '-'}</td>
+                <td class="py-2 px-3 text-xs text-gray-500">${item.modo_saida || '-'}</td>
+                <td class="py-2 px-3 text-sm text-gray-700">${item.total_docs_baixados || 0}</td>
+                <td class="py-2 px-3">
+                    <span class="px-2 py-0.5 rounded-full text-[10px] font-medium ${statusClass}">${item.status || '-'}</span>
+                </td>
+                <td class="py-2 px-3 text-xs text-gray-500">${dataStr}</td>
+            `;
+
+            tbody.appendChild(tr);
+        }
+
+        // Pagination
+        const totalPaginas = Math.ceil(total / porPagina);
+        if (totalPaginas > 1) {
+            paginationEl.classList.remove('hidden');
+            document.getElementById('historico-info').textContent = `Pagina ${pagina} de ${totalPaginas} (${total} registros)`;
+            document.getElementById('btn-hist-prev').disabled = pagina <= 1;
+            document.getElementById('btn-hist-next').disabled = pagina >= totalPaginas;
+        } else {
+            paginationEl.classList.add('hidden');
+        }
+    }
+
+    // ============================================================
+    // UTILITY FUNCTIONS
+    // ============================================================
+    function formatarCNJ(raw) {
+        const d = (raw || '').replace(/\D/g, '');
+        if (d.length !== 20) return raw || '';
+        return `${d.slice(0,7)}-${d.slice(7,9)}.${d.slice(9,13)}.${d.slice(13,14)}.${d.slice(14,16)}.${d.slice(16,20)}`;
+    }
+
+    function parseCodigosCsv(text) {
+        if (!text || !text.trim()) return [];
+        return text.split(',')
+            .map(s => parseInt(s.trim()))
+            .filter(n => !isNaN(n) && n > 0);
+    }
+
+    function mostrarSecoes(sectionIds) {
+        const allSections = ['section-selecao', 'section-resumo-lote', 'section-preview', 'section-opcoes', 'section-download'];
+        for (const id of allSections) {
+            const el = document.getElementById(id);
+            if (sectionIds.includes(id)) {
+                el.classList.remove('hidden');
+            }
+            // Do not hide sections that are already visible
+        }
+    }
+
+    function limparConsulta() {
+        state.processo = null;
+        state.documentos = [];
+        state.loteResultados = null;
+        state.selectedDocs.clear();
+
+        // Remove sessao de lote salva (usuario esta limpando tudo)
+        removerSessaoLote();
+        document.getElementById('banner-sessao-interrompida').classList.add('hidden');
+
+        document.getElementById('processo-info').classList.add('hidden');
+        document.getElementById('lote-info').classList.add('hidden');
+        document.getElementById('section-selecao').classList.add('hidden');
+        document.getElementById('section-resumo-lote').classList.add('hidden');
+        document.getElementById('section-preview').classList.add('hidden');
+        document.getElementById('section-opcoes').classList.add('hidden');
+        document.getElementById('section-download').classList.add('hidden');
+
+        document.getElementById('input-cnj').value = '';
+        document.getElementById('input-cnj-lote').value = '';
+        atualizarContadorLote();
+    }
+
+    // ============================================================
+    // PROTECAO CONTRA TIMEOUT (downloads longos)
+    // ============================================================
+
+    // 1. Aviso antes de fechar a aba durante download
+    window.addEventListener('beforeunload', (e) => {
+        if (state.downloading) {
+            e.preventDefault();
+            e.returnValue = 'Download em andamento. Sair pode interromper o processo.';
+            return e.returnValue;
+        }
+    });
+
+    // 2. Token refresh periodico durante downloads
+    let _tokenRefreshTimer = null;
+    const TOKEN_REFRESH_INTERVAL = 30 * 60 * 1000; // 30 minutos
+
+    function iniciarTokenRefresh() {
+        pararTokenRefresh();
+        _tokenRefreshTimer = setInterval(async () => {
+            try {
+                const resp = await apiCall('/refresh-token', { method: 'POST' });
+                const data = await resp.json();
+                if (data.access_token) {
+                    localStorage.setItem('access_token', data.access_token);
+                    console.log('[keepalive] Token renovado');
+                }
+            } catch (e) {
+                console.warn('[keepalive] Falha ao renovar token:', e.message);
+            }
+        }, TOKEN_REFRESH_INTERVAL);
+    }
+
+    function pararTokenRefresh() {
+        if (_tokenRefreshTimer) {
+            clearInterval(_tokenRefreshTimer);
+            _tokenRefreshTimer = null;
+        }
+    }
+
+    // 3. Prevenir suspensao da aba com Web Lock API (Chrome/Edge)
+    let _wakeLock = null;
+
+    async function solicitarWakeLock() {
+        try {
+            if ('wakeLock' in navigator) {
+                _wakeLock = await navigator.wakeLock.request('screen');
+                _wakeLock.addEventListener('release', () => { _wakeLock = null; });
+                console.log('[keepalive] Wake Lock ativo');
+            }
+        } catch (_) { /* nao suportado ou permissao negada */ }
+    }
+
+    function liberarWakeLock() {
+        if (_wakeLock) {
+            _wakeLock.release();
+            _wakeLock = null;
+        }
+    }
+
+    // Re-adquirir wake lock se a aba voltar ao foco durante download
+    document.addEventListener('visibilitychange', () => {
+        if (document.visibilityState === 'visible' && state.downloading) {
+            solicitarWakeLock();
+        }
+    });
+
+    // Hook: ativar protecoes quando download inicia/termina
+    const _originalDownloadingSet = Object.getOwnPropertyDescriptor(state, 'downloading');
+
+    // Monitoramos mudancas via proxy no state.downloading
+    // (forma simples: chamamos manualmente nos pontos de set)
+    function onDownloadStart() {
+        iniciarTokenRefresh();
+        solicitarWakeLock();
+    }
+
+    function onDownloadEnd() {
+        pararTokenRefresh();
+        liberarWakeLock();
+    }
+
+    // ============================================================
+    // INIT ON LOAD
+    // ============================================================
+    document.addEventListener('DOMContentLoaded', init);
+    </script>
+
+</body>
+</html>

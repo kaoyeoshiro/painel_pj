@@ -404,6 +404,25 @@ Atualizacao desta rodada (execucao atual):
    - `matriculas` (mobile);
    - `prestacao-contas` (mobile);
    - `relatorio-cumprimento` (mobile).
+24. Ajuste cirurgico executado nesta iteracao (escopo unico: `/gerador-pecas`):
+   - Removido shell global apenas nessa rota (`AppLayout` com `ALWAYS_NATIVE_NO_SHELL_PREFIXES` incluindo `/gerador-pecas`), evitando header/sidebars duplicados.
+   - Header/topbar da tela refeito no padrao legado:
+     - logo PGE no bloco esquerdo,
+     - titulo/subtitulo ao lado com separador,
+     - botao de voltar integrado,
+     - acoes `Historico` e `Dashboard` no lado direito.
+   - Corpo da pagina alinhado ao legado:
+     - card principal com largura/densidade e sombras do template legado,
+     - titulo do card alterado para `Gerar Nova Peca Juridica` (removendo duplicacao semantica),
+     - toggle `Buscar por Numero CNJ` / `Anexar PDFs`,
+     - caixa de dicas em destaque amarelo,
+     - ordem visual dos campos ajustada (`Numero` -> `Grupo` -> `Tipo` -> `Observacoes`),
+     - botoes finais com gradientes azul/laranja no estilo legado,
+     - bloco `Suas Pecas Recentes` com CTA `Ver todas`.
+25. Validacao desta iteracao (`/gerador-pecas`):
+   - `npm run build` -> OK
+   - `npx playwright test -c playwright.portal-smoke.config.ts --grep gerador-pecas` -> `1 passed`
+   - `npx playwright test -c playwright.portal-visual.config.ts --grep gerador-pecas` -> `2 passed` (desktop + mobile)
 ---
 
 ## Proximos passos (sequencia pratica)

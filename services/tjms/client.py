@@ -385,12 +385,15 @@ class TJMSClient:
         options: Optional[DownloadOptions] = None
     ) -> Dict[str, DocumentoTJMS]:
         """
-        Baixa multiplos documentos em paralelo.
+        Baixa multiplos documentos com batches paralelos.
+
+        Os documentos sao divididos em batches (batch_size) e os batches sao
+        processados em paralelo ate o limite de max_paralelo conexoes simultaneas.
 
         Args:
             numero_cnj: Numero CNJ do processo
             ids_documentos: Lista de IDs de documentos
-            options: Opcoes de download
+            options: Opcoes de download (batch_size, max_paralelo, timeout)
 
         Returns:
             Dict[doc_id -> DocumentoTJMS]
@@ -410,36 +413,49 @@ class TJMSClient:
             )
             raise TJMSCircuitOpenError(retry_after)
 
+        total_batches = (len(ids_documentos) + opts.batch_size - 1) // opts.batch_size
         logger.info(
             f"Baixando {len(ids_documentos)} documentos do processo {numero_limpo} "
-            f"(batch_size={opts.batch_size})"
+            f"({total_batches} batch(es) de ate {opts.batch_size}, "
+            f"max_paralelo={opts.max_paralelo})"
         )
+
+        # Divide em batches
+        batches = [
+            ids_documentos[i:i + opts.batch_size]
+            for i in range(0, len(ids_documentos), opts.batch_size)
+        ]
 
         resultado: Dict[str, DocumentoTJMS] = {}
         has_failure = False
+        semaphore = asyncio.Semaphore(opts.max_paralelo)
 
-        # Processa em batches
-        for i in range(0, len(ids_documentos), opts.batch_size):
-            batch = ids_documentos[i:i + opts.batch_size]
-            batch_num = i // opts.batch_size + 1
-            total_batches = (len(ids_documentos) + opts.batch_size - 1) // opts.batch_size
-
-            logger.debug(f"Processando batch {batch_num}/{total_batches}: {len(batch)} docs")
-
-            try:
-                batch_result = await self._baixar_batch(numero_limpo, batch, opts)
-                resultado.update(batch_result)
-            except Exception as e:
-                logger.error(f"Erro no batch {batch_num}: {e}")
-                has_failure = True
-                # Marca documentos do batch como erro
-                for doc_id in batch:
-                    if doc_id not in resultado:
-                        resultado[doc_id] = DocumentoTJMS(
+        async def _download_batch_limited(batch: List[str], batch_num: int) -> Dict[str, DocumentoTJMS]:
+            async with semaphore:
+                logger.debug(f"Processando batch {batch_num}/{total_batches}: {len(batch)} docs")
+                try:
+                    return await self._baixar_batch(numero_limpo, batch, opts)
+                except Exception as e:
+                    logger.error(f"Erro no batch {batch_num}: {e}")
+                    return {
+                        doc_id: DocumentoTJMS(
                             id=doc_id,
                             numero_processo=numero_cnj,
-                            erro=str(e)
+                            erro=str(e),
                         )
+                        for doc_id in batch
+                    }
+
+        # Processa todos os batches em paralelo (limitados pelo semaforo)
+        batch_results = await asyncio.gather(
+            *[_download_batch_limited(batch, i + 1) for i, batch in enumerate(batches)]
+        )
+
+        for batch_result in batch_results:
+            for doc_id, doc in batch_result.items():
+                resultado[doc_id] = doc
+                if not doc.sucesso:
+                    has_failure = True
 
         sucesso = sum(1 for d in resultado.values() if d.sucesso)
         logger.info(f"Download concluido: {sucesso}/{len(ids_documentos)} documentos")

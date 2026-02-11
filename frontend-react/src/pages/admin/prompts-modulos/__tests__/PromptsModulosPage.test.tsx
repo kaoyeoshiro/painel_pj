@@ -4,6 +4,13 @@ import userEvent from '@testing-library/user-event'
 import { PromptsModulosPage } from '../PromptsModulosPage'
 import * as api from '@/lib/api'
 
+// Mock do TanStack Router (usado por PageHeader e AdminSubNav)
+vi.mock('@tanstack/react-router', () => ({
+  useNavigate: () => vi.fn(),
+  useRouterState: () => '/admin/prompts-modulos',
+  Link: ({ children, ...props }: { children: React.ReactNode; to?: string }) => <a href={props.to}>{children}</a>,
+}))
+
 // Mock do toast
 vi.mock('@/components/ui/toast', () => ({
   useToast: () => ({
@@ -44,8 +51,12 @@ const mockModulos = [
   {
     id: 1,
     titulo: 'Módulo 1',
+    nome: 'modulo_1',
     conteudo: 'Conteúdo do módulo 1',
     categoria: 'Categoria A',
+    subcategoria: null,
+    subcategoria_ids: [],
+    subcategorias_nomes: [],
     group_id: 1,
     subgroup_id: null,
     tags: ['tag1', 'tag2'],
@@ -53,6 +64,8 @@ const mockModulos = [
     ordem: 1,
     ativo: true,
     modo_ativacao: 'llm' as const,
+    effective_activation_mode: 'llm',
+    versao: 1,
     created_at: '2024-01-01T00:00:00Z',
     updated_at: '2024-01-02T00:00:00Z',
     updated_by: 'admin'
@@ -60,15 +73,21 @@ const mockModulos = [
   {
     id: 2,
     titulo: 'Módulo 2',
+    nome: 'modulo_2',
     conteudo: 'Conteúdo do módulo 2',
     categoria: 'Categoria B',
+    subcategoria: null,
+    subcategoria_ids: [],
+    subcategorias_nomes: [],
     group_id: 1,
     subgroup_id: null,
     tags: ['tag3'],
-    tipo: 'instrucao' as const,
+    tipo: 'base' as const,
     ordem: 2,
-    ativo: false,
+    ativo: true,
     modo_ativacao: 'deterministic' as const,
+    effective_activation_mode: 'deterministic',
+    versao: 2,
     created_at: '2024-01-01T00:00:00Z',
     updated_at: '2024-01-03T00:00:00Z',
     updated_by: 'admin'
@@ -76,15 +95,21 @@ const mockModulos = [
   {
     id: 3,
     titulo: 'Módulo 3',
+    nome: 'modulo_3',
     conteudo: 'Conteúdo do módulo 3',
     categoria: 'Categoria A',
+    subcategoria: null,
+    subcategoria_ids: [],
+    subcategorias_nomes: [],
     group_id: 1,
     subgroup_id: null,
     tags: [],
-    tipo: 'exemplo' as const,
+    tipo: 'peca' as const,
     ordem: 3,
     ativo: true,
     modo_ativacao: 'llm' as const,
+    effective_activation_mode: 'llm',
+    versao: 1,
     created_at: '2024-01-01T00:00:00Z',
     updated_at: '2024-01-04T00:00:00Z',
     updated_by: null
@@ -102,21 +127,31 @@ const mockSubgrupos = [
   }
 ]
 
+function setupApiMocks() {
+  vi.mocked(api.adminApi.get).mockImplementation(async (url: string) => {
+    if (url === '/admin/api/prompts-modulos/grupos') {
+      return mockGrupos
+    }
+    if (url.startsWith('/admin/api/prompts-modulos?')) {
+      return mockModulos
+    }
+    if (url.match(/\/admin\/api\/prompts-modulos\/grupos\/\d+\/subgrupos/)) {
+      return mockSubgrupos
+    }
+    if (url.match(/\/admin\/api\/prompts-modulos\/grupos\/\d+\/subcategorias/)) {
+      return []
+    }
+    return []
+  })
+}
+
 describe('PromptsModulosPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
 
   it('deve renderizar a página e carregar grupos e módulos', async () => {
-    vi.mocked(api.adminApi.get).mockImplementation(async (url: string) => {
-      if (url === '/admin/api/prompts-modulos/grupos') {
-        return mockGrupos
-      }
-      if (url.startsWith('/admin/api/prompts-modulos?group_id=')) {
-        return mockModulos
-      }
-      return []
-    })
+    setupApiMocks()
 
     render(<PromptsModulosPage />)
 
@@ -133,25 +168,31 @@ describe('PromptsModulosPage', () => {
     expect(screen.getByText('Módulo 2')).toBeInTheDocument()
     expect(screen.getByText('Módulo 3')).toBeInTheDocument()
 
-    // Verifica agrupamento por categoria
-    expect(screen.getByText('Categoria A')).toBeInTheDocument()
-    expect(screen.getByText('Categoria B')).toBeInTheDocument()
-
     // Verifica que a API foi chamada corretamente
     expect(api.adminApi.get).toHaveBeenCalledWith('/admin/api/prompts-modulos/grupos')
-    expect(api.adminApi.get).toHaveBeenCalledWith('/admin/api/prompts-modulos?group_id=1')
+    expect(api.adminApi.get).toHaveBeenCalledWith(
+      expect.stringContaining('/admin/api/prompts-modulos?')
+    )
+  })
+
+  it('deve organizar módulos por tipo: Base, Peça, Conteúdo', async () => {
+    setupApiMocks()
+
+    render(<PromptsModulosPage />)
+
+    // Aguarda carregamento
+    await waitFor(() => {
+      expect(screen.getByText('Módulo 1')).toBeInTheDocument()
+    })
+
+    // Verifica seções de tipo
+    expect(screen.getByText('Base (Prompt do Sistema)')).toBeInTheDocument()
+    expect(screen.getByText('Peças (Estrutura/Template)')).toBeInTheDocument()
+    expect(screen.getByText('Conteúdo (Teses e Argumentos)')).toBeInTheDocument()
   })
 
   it('deve filtrar módulos por tipo', async () => {
-    vi.mocked(api.adminApi.get).mockImplementation(async (url: string) => {
-      if (url === '/admin/api/prompts-modulos/grupos') {
-        return mockGrupos
-      }
-      if (url.startsWith('/admin/api/prompts-modulos?group_id=')) {
-        return mockModulos
-      }
-      return []
-    })
+    setupApiMocks()
 
     const user = userEvent.setup()
     render(<PromptsModulosPage />)
@@ -166,28 +207,19 @@ describe('PromptsModulosPage', () => {
     expect(screen.getByText('Módulo 2')).toBeInTheDocument()
     expect(screen.getByText('Módulo 3')).toBeInTheDocument()
 
-    // Seleciona "Instrução" no dropdown de tipo
+    // Seleciona "Peça" no dropdown de tipo
     const tipoSelect = screen.getByDisplayValue('Todos os tipos')
-    await user.selectOptions(tipoSelect, 'instrucao')
+    await user.selectOptions(tipoSelect, 'peca')
 
-    // Apenas o Módulo 2 (tipo instrucao) deve estar visível
+    // Apenas o Módulo 3 (tipo peca) deve estar visível
     await waitFor(() => {
       expect(screen.queryByText('Módulo 1')).not.toBeInTheDocument()
-      expect(screen.getByText('Módulo 2')).toBeInTheDocument()
-      expect(screen.queryByText('Módulo 3')).not.toBeInTheDocument()
+      expect(screen.getByText('Módulo 3')).toBeInTheDocument()
     })
   })
 
   it('deve abrir dialog de criação ao clicar em Novo Módulo', async () => {
-    vi.mocked(api.adminApi.get).mockImplementation(async (url: string) => {
-      if (url === '/admin/api/prompts-modulos/grupos') {
-        return mockGrupos
-      }
-      if (url.startsWith('/admin/api/prompts-modulos?group_id=')) {
-        return mockModulos
-      }
-      return []
-    })
+    setupApiMocks()
 
     const user = userEvent.setup()
     render(<PromptsModulosPage />)
@@ -210,25 +242,28 @@ describe('PromptsModulosPage', () => {
     expect(screen.getByLabelText('Título')).toBeInTheDocument()
     expect(screen.getByLabelText('Conteúdo')).toBeInTheDocument()
     expect(screen.getByLabelText('Categoria')).toBeInTheDocument()
+    expect(screen.getByLabelText('Nome (código identificador)')).toBeInTheDocument()
+
+    // Verifica que dropdown de tipo tem as opções corretas
+    const tipoSelect = screen.getByLabelText('Tipo')
+    expect(tipoSelect).toBeInTheDocument()
+    // Verifica opções Base, Peça, Conteúdo (não instrucao/exemplo)
+    const options = tipoSelect.querySelectorAll('option')
+    const optionValues = Array.from(options).map(o => o.value)
+    expect(optionValues).toContain('base')
+    expect(optionValues).toContain('peca')
+    expect(optionValues).toContain('conteudo')
+    expect(optionValues).not.toContain('instrucao')
+    expect(optionValues).not.toContain('exemplo')
   })
 
   it('deve criar um novo módulo com sucesso', async () => {
-    vi.mocked(api.adminApi.get).mockImplementation(async (url: string) => {
-      if (url === '/admin/api/prompts-modulos/grupos') {
-        return mockGrupos
-      }
-      if (url.startsWith('/admin/api/prompts-modulos?group_id=')) {
-        return mockModulos
-      }
-      if (url.startsWith('/admin/api/prompts-modulos/grupos/')) {
-        return mockSubgrupos
-      }
-      return []
-    })
+    setupApiMocks()
 
     vi.mocked(api.adminApi.post).mockResolvedValue({
       id: 4,
       titulo: 'Novo Módulo',
+      nome: 'novo_modulo',
       conteudo: 'Conteúdo teste',
       categoria: 'Categoria C',
       group_id: 1,
@@ -238,6 +273,7 @@ describe('PromptsModulosPage', () => {
       ordem: 4,
       ativo: true,
       modo_ativacao: 'llm',
+      versao: 1,
       created_at: '2024-01-05T00:00:00Z',
       updated_at: '2024-01-05T00:00:00Z',
       updated_by: 'admin'
@@ -279,15 +315,7 @@ describe('PromptsModulosPage', () => {
   })
 
   it('deve buscar módulos por texto', async () => {
-    vi.mocked(api.adminApi.get).mockImplementation(async (url: string) => {
-      if (url === '/admin/api/prompts-modulos/grupos') {
-        return mockGrupos
-      }
-      if (url.startsWith('/admin/api/prompts-modulos?group_id=')) {
-        return mockModulos
-      }
-      return []
-    })
+    setupApiMocks()
 
     const user = userEvent.setup()
     render(<PromptsModulosPage />)
@@ -297,33 +325,19 @@ describe('PromptsModulosPage', () => {
       expect(screen.getByText('Módulo 1')).toBeInTheDocument()
     })
 
-    // Todos os módulos devem estar visíveis
-    expect(screen.getByText('Módulo 1')).toBeInTheDocument()
-    expect(screen.getByText('Módulo 2')).toBeInTheDocument()
-    expect(screen.getByText('Módulo 3')).toBeInTheDocument()
-
-    // Busca por "Módulo 2"
+    // Busca por "Módulo 3"
     const campoBusca = screen.getByPlaceholderText('Buscar por título ou conteúdo...')
-    await user.type(campoBusca, 'Módulo 2')
+    await user.type(campoBusca, 'Módulo 3')
 
-    // Apenas o Módulo 2 deve estar visível
+    // Apenas o Módulo 3 deve estar visível
     await waitFor(() => {
       expect(screen.queryByText('Módulo 1')).not.toBeInTheDocument()
-      expect(screen.getByText('Módulo 2')).toBeInTheDocument()
-      expect(screen.queryByText('Módulo 3')).not.toBeInTheDocument()
+      expect(screen.getByText('Módulo 3')).toBeInTheDocument()
     })
   })
 
   it('deve alternar status ativo de um módulo', async () => {
-    vi.mocked(api.adminApi.get).mockImplementation(async (url: string) => {
-      if (url === '/admin/api/prompts-modulos/grupos') {
-        return mockGrupos
-      }
-      if (url.startsWith('/admin/api/prompts-modulos?group_id=')) {
-        return mockModulos
-      }
-      return []
-    })
+    setupApiMocks()
 
     vi.mocked(api.adminApi.patch).mockResolvedValue({})
 
@@ -343,8 +357,31 @@ describe('PromptsModulosPage', () => {
     // Verifica que a API foi chamada
     await waitFor(() => {
       expect(api.adminApi.patch).toHaveBeenCalledWith(
-        '/admin/api/prompts-modulos/1/toggle'
+        expect.stringMatching(/\/admin\/api\/prompts-modulos\/\d+\/toggle/)
       )
     })
+  })
+
+  it('deve mostrar filtros de tipo corretos (Base, Peça, Conteúdo)', async () => {
+    setupApiMocks()
+
+    render(<PromptsModulosPage />)
+
+    // Aguarda carregamento
+    await waitFor(() => {
+      expect(screen.getByText('Módulo 1')).toBeInTheDocument()
+    })
+
+    // Verifica opções no dropdown de tipo do filtro
+    const tipoFilter = screen.getByDisplayValue('Todos os tipos')
+    const filterOptions = tipoFilter.querySelectorAll('option')
+    const filterValues = Array.from(filterOptions).map(o => o.value)
+
+    expect(filterValues).toContain('')  // "Todos os tipos"
+    expect(filterValues).toContain('base')
+    expect(filterValues).toContain('peca')
+    expect(filterValues).toContain('conteudo')
+    expect(filterValues).not.toContain('instrucao')
+    expect(filterValues).not.toContain('exemplo')
   })
 })

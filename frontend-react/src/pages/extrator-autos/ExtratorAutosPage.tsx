@@ -1,5 +1,4 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
-import { useNavigate } from '@tanstack/react-router'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -7,6 +6,9 @@ import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
+import { PageContainer } from '@/components/layout/PageContainer'
+import { PageHeader } from '@/components/layout/PageHeader'
+import { FolderSearch } from 'lucide-react'
 import { Textarea } from '@/components/ui/textarea'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import {
@@ -65,7 +67,6 @@ function timestamp(): string {
 // ---------------------------------------------------------------------------
 
 export function ExtratorAutosPage() {
-  const navigate = useNavigate()
   const { toast } = useToast()
 
   // -- Estado da maquina de estados --
@@ -471,70 +472,61 @@ export function ExtratorAutosPage() {
   // ---------------------------------------------------------------------------
 
   return (
-    <div className="flex min-h-screen flex-col bg-gray-50">
-      {/* ===== Header ===== */}
-      <header className="flex items-center justify-between border-b bg-white px-6 py-3 shadow-sm">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="sm" onClick={() => navigate({ to: '/dashboard' })}>
-            ← Voltar
-          </Button>
-          <Separator orientation="vertical" className="h-8" />
-          <div>
-            <h1 className="text-lg font-semibold">Extrator de Autos</h1>
-            <span className="text-xs text-gray-500">Download de documentos processuais</span>
-          </div>
-        </div>
-
-        {/* BERT Status */}
-        <Dialog>
-          <DialogTrigger asChild>
-            <button
-              type="button"
-              className="flex items-center gap-2 rounded-md border px-3 py-1.5 text-xs hover:bg-gray-50"
-              data-testid="bert-status"
-            >
-              <span
-                className={cn(
-                  'inline-block h-2 w-2 rounded-full',
-                  bertStatus?.available ? 'bg-green-500' : 'bg-red-400',
-                )}
-              />
-              BERT {bertStatus?.available ? 'Online' : 'Offline'}
-            </button>
-          </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Status do BERT</DialogTitle>
-              <DialogDescription>Configuracao do classificador BERT</DialogDescription>
-            </DialogHeader>
-            <div className="space-y-2 text-sm">
-              <div className="flex justify-between">
-                <span className="text-gray-500">Disponivel:</span>
-                <Badge variant={bertStatus?.available ? 'default' : 'destructive'}>
-                  {bertStatus?.available ? 'Sim' : 'Nao'}
-                </Badge>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-500">Modo:</span>
-                <span>{bertStatus?.mode ?? '-'}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-gray-500">Endpoint:</span>
-                <span className="truncate max-w-[200px]">{bertStatus?.endpoint ?? '-'}</span>
-              </div>
-              {bertStatus?.error && (
-                <div className="mt-2 rounded bg-red-50 p-2 text-xs text-red-600">
-                  {bertStatus.error}
+    <PageContainer>
+      <PageHeader
+        title="Extrator de Autos"
+        subtitle="Download de documentos processuais"
+        icon={<FolderSearch className="h-5 w-5" />}
+        backTo="/dashboard"
+        actions={
+          <Dialog>
+            <DialogTrigger asChild>
+              <button
+                type="button"
+                className="flex items-center gap-2 rounded-md border px-3 py-1.5 text-xs hover:bg-gray-50"
+                data-testid="bert-status"
+              >
+                <span
+                  className={cn(
+                    'inline-block h-2 w-2 rounded-full',
+                    bertStatus?.available ? 'bg-green-500' : 'bg-red-400',
+                  )}
+                />
+                BERT {bertStatus?.available ? 'Online' : 'Offline'}
+              </button>
+            </DialogTrigger>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Status do BERT</DialogTitle>
+                <DialogDescription>Configuracao do classificador BERT</DialogDescription>
+              </DialogHeader>
+              <div className="space-y-2 text-sm">
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Disponivel:</span>
+                  <Badge variant={bertStatus?.available ? 'default' : 'destructive'}>
+                    {bertStatus?.available ? 'Sim' : 'Nao'}
+                  </Badge>
                 </div>
-              )}
-            </div>
-          </DialogContent>
-        </Dialog>
-      </header>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Modo:</span>
+                  <span>{bertStatus?.mode ?? '-'}</span>
+                </div>
+                <div className="flex justify-between">
+                  <span className="text-gray-500">Endpoint:</span>
+                  <span className="truncate max-w-[200px]">{bertStatus?.endpoint ?? '-'}</span>
+                </div>
+                {bertStatus?.error && (
+                  <div className="mt-2 rounded bg-red-50 p-2 text-xs text-red-600">
+                    {bertStatus.error}
+                  </div>
+                )}
+              </div>
+            </DialogContent>
+          </Dialog>
+        }
+      />
 
-      {/* ===== Conteudo Principal ===== */}
-      <main className="flex-1 overflow-auto p-6">
-        <div className="mx-auto max-w-7xl space-y-6">
+      <div className="space-y-6">
           {/* ===== Secao 1: Input ===== */}
           {(pageState === 'idle' || pageState === 'erro') && (
             <Card>
@@ -1140,7 +1132,6 @@ export function ExtratorAutosPage() {
             )}
           </Card>
         </div>
-      </main>
-    </div>
+    </PageContainer>
   )
 }

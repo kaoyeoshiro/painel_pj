@@ -21,6 +21,19 @@ vi.mock('@/hooks/use-toast', () => ({
   }),
 }))
 
+// Mock useRouterState to return /admin/ path so PageHeader renders admin variant
+vi.mock('@tanstack/react-router', () => ({
+  useNavigate: () => vi.fn(),
+  useRouterState: (opts?: { select?: (s: unknown) => unknown }) => {
+    const state = { location: { pathname: '/admin/users' } }
+    return opts?.select ? opts.select(state) : state
+  },
+  Link: ({ children, to, ...props }: Record<string, unknown>) => {
+    const { createElement } = require('react')
+    return createElement('a', { href: to, ...props }, children)
+  },
+}))
+
 describe('UsersPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
@@ -32,8 +45,8 @@ describe('UsersPage', () => {
 
     render(<UsersPage />)
 
-    // Verificar titulo
-    expect(screen.getByText('Gerenciar Usuarios')).toBeInTheDocument()
+    // Verificar titulo (PageHeader renders h2 in admin mode)
+    expect(screen.getByText('Gerenciamento de Usuarios')).toBeInTheDocument()
 
     // Verificar botao de criar usuario
     expect(screen.getByRole('button', { name: /novo usuario/i })).toBeInTheDocument()
@@ -89,7 +102,8 @@ describe('UsersPage', () => {
 
     // Verificar badges de perfil
     expect(screen.getByText('Admin')).toBeInTheDocument()
-    expect(screen.getByText('Usuario')).toBeInTheDocument()
+    // "Usuario" appears both as table header and as badge text, use getAllByText
+    expect(screen.getAllByText('Usuario').length).toBeGreaterThanOrEqual(2)
 
     // Verificar botoes de acao
     const editButtons = screen.getAllByRole('button', { name: /editar/i })
@@ -111,8 +125,7 @@ describe('UsersPage', () => {
     render(<UsersPage />)
 
     // Verificar que a tabela esta em estado de loading
-    // O DataTable deve mostrar algum indicador de loading
-    expect(screen.getByText('Gerenciar Usuarios')).toBeInTheDocument()
+    expect(screen.getByText('Gerenciamento de Usuarios')).toBeInTheDocument()
   })
 
   it('handles API error gracefully', async () => {
@@ -127,7 +140,7 @@ describe('UsersPage', () => {
     })
 
     // Verificar que a pagina ainda renderiza
-    expect(screen.getByText('Gerenciar Usuarios')).toBeInTheDocument()
+    expect(screen.getByText('Gerenciamento de Usuarios')).toBeInTheDocument()
     expect(container).toBeTruthy()
   })
 

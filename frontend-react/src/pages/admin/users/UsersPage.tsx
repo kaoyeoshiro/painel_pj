@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { usersApi } from '@/lib/api'
-import { PageContainer } from '@/components/layout'
+import { PageContainer, PageHeader } from '@/components/layout'
+import { Users as UsersIcon, UserPlus, Users } from 'lucide-react'
 import { DataTable } from '@/components/shared/DataTable'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -387,12 +388,12 @@ export function UsersPage() {
   const columns = [
     {
       accessor: 'username',
-      header: 'Username',
+      header: 'Usuario',
       render: (_value: unknown, user: User) => user.username,
     },
     {
       accessor: 'full_name',
-      header: 'Nome',
+      header: 'Nome Completo',
       render: (_value: unknown, user: User) => user.full_name,
     },
     {
@@ -420,12 +421,12 @@ export function UsersPage() {
     },
     {
       accessor: 'created_at',
-      header: 'Data',
+      header: 'Criado em',
       render: (_value: unknown, user: User) => new Date(user.created_at).toLocaleDateString('pt-BR'),
     },
     {
       accessor: 'id',
-      header: 'Acoes',
+      header: 'Ações',
       render: (_value: unknown, user: User) => (
         <div className="flex gap-2">
           <Button
@@ -456,42 +457,62 @@ export function UsersPage() {
   ]
 
   return (
-    <PageContainer className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">Gerenciar Usuarios</h1>
-        <Button onClick={handleCreate}>Novo Usuario</Button>
-      </div>
-
-      {/* Filtro "Agrupar por" */}
-      <div className="flex items-center gap-4" data-testid="group-by-filter">
-        <Label htmlFor="group-by-select">Agrupar por</Label>
-        <Select
-          value={groupBy}
-          onValueChange={(value: GroupByOption) => {
-            setGroupBy(value)
-            setCollapsedGroups(new Set())
-          }}
-        >
-          <SelectTrigger id="group-by-select" className="w-48" data-testid="group-by-select">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="none">Nenhum</SelectItem>
-            <SelectItem value="sistema">Sistema</SelectItem>
-            <SelectItem value="setor">Setor</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+    <PageContainer wide className="space-y-6">
+      <PageHeader
+        title="Gerenciamento de Usuarios"
+        description="Controle de acessos ao Portal PGE-MS"
+        icon={<UsersIcon className="h-5 w-5" />}
+        actions={
+          <div className="flex items-center gap-2">
+            <div
+              className="flex items-center gap-2 bg-white px-2 py-2 rounded-lg border border-gray-200"
+              data-testid="group-by-filter"
+            >
+              <Label htmlFor="group-by-select" className="text-sm text-gray-600 whitespace-nowrap">
+                Agrupar por:
+              </Label>
+              <Select
+                value={groupBy}
+                onValueChange={(value: GroupByOption) => {
+                  setGroupBy(value)
+                  setCollapsedGroups(new Set())
+                }}
+              >
+                <SelectTrigger
+                  id="group-by-select"
+                  className="h-8 w-[104px] min-w-0 border-gray-300 px-2 py-1 text-sm"
+                  data-testid="group-by-select"
+                >
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Nenhum</SelectItem>
+                  <SelectItem value="sistema">Sistema</SelectItem>
+                  <SelectItem value="setor">Setor</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <Button onClick={handleCreate} className="h-10 px-3">
+              <UserPlus className="h-4 w-4 mr-2" />
+              Novo Usuario
+            </Button>
+          </div>
+        }
+      />
 
       {/* Tabela de usuarios — exibicao agrupada ou normal */}
       {groupBy === 'none' || !groupedUsers ? (
-        <Card className="p-6">
-          <DataTable
-            data={users}
-            columns={columns}
-            isLoading={loading}
-          />
-        </Card>
+        <DataTable
+          data={users}
+          columns={columns}
+          isLoading={loading}
+          emptyState={
+            <div className="flex flex-col items-center gap-2 text-[#98A2B3]">
+              <Users className="h-12 w-12" />
+              <span>Nenhum usuario encontrado</span>
+            </div>
+          }
+        />
       ) : (
         <div className="space-y-4" data-testid="grouped-table">
           {groupedUsers.map(([groupName, groupUsers]) => {

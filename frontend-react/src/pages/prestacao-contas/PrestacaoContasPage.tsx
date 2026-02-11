@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { Link } from '@tanstack/react-router'
-import { PageContainer, PageHeader } from '@/components/layout'
+import { SystemTopbar } from '@/components/layout/SystemTopbar'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -814,15 +814,15 @@ export function PrestacaoContasPage() {
 
           <Button
             type="submit"
-            className="w-full"
+            className="w-full h-12 text-base bg-gradient-to-r from-sky-500 to-teal-500 hover:from-sky-600 hover:to-teal-600 text-white"
             disabled={estadoPagina === 'processando' || estadoPagina === 'verificando'}
           >
             {estadoPagina === 'verificando' ? (
-              <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Verificando...</>
+              <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Verificando...</>
             ) : estadoPagina === 'processando' ? (
-              <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Processando...</>
+              <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Processando...</>
             ) : (
-              <><Search className="mr-2 h-4 w-4" /> Analisar Prestação de Contas</>
+              <><Search className="mr-2 h-5 w-5" /> Analisar Prestação de Contas</>
             )}
           </Button>
         </form>
@@ -1532,64 +1532,63 @@ export function PrestacaoContasPage() {
   // =====================================================
 
   return (
-    <PageContainer noPadding className="max-w-5xl px-4 sm:px-6 lg:px-8 pt-1 sm:pt-4 pb-0 space-y-6">
-      <PageHeader
-        title="Prestação de Contas"
-        subtitle="processos de Medicamentos"
-        backTo="/dashboard"
-        showMobileBrand
-        compactMobile
-        mobileInlineActions
-        className="border-b border-gray-200 pb-3 sm:border-0 sm:pb-0"
+    <div className="flex flex-col h-screen bg-gray-50">
+      <SystemTopbar
+        title="Análise de Prestação de Contas"
+        subtitle="Processos de Medicamentos"
         actions={
-          <div className="flex items-center gap-2">
+          <>
             {renderHistoricoSheet()}
             <Link
               to="/dashboard"
-              className="flex flex-col items-center justify-center text-[11px] leading-none text-gray-500 transition-colors hover:text-gray-700 sm:hidden"
+              className="p-2 text-gray-400 hover:text-gray-600 transition-colors rounded-md hover:bg-gray-50"
+              title="Dashboard"
             >
-              <LayoutGrid className="mb-0.5 h-3.5 w-3.5" />
-              <span>Dashboard</span>
+              <LayoutGrid className="h-5 w-5" />
             </Link>
-          </div>
+          </>
         }
       />
 
-      {/* Conteudo principal baseado no estado */}
-      {estadoPagina === 'idle' && (
-        <>
-          {renderFormulario()}
-          {renderInfoCard()}
-          {renderHistoricoRecente()}
-        </>
-      )}
+      <main className="flex-1 overflow-y-auto">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+          {/* Conteudo principal baseado no estado */}
+          {estadoPagina === 'idle' && (
+            <>
+              {renderFormulario()}
+              {renderInfoCard()}
+              {renderHistoricoRecente()}
+            </>
+          )}
 
-      {estadoPagina === 'verificando' && (
-        <>
-          {renderFormulario()}
-          {renderInfoCard()}
-        </>
-      )}
+          {estadoPagina === 'verificando' && (
+            <>
+              {renderFormulario()}
+              {renderInfoCard()}
+            </>
+          )}
 
-      {estadoPagina === 'processando' && renderProgresso()}
+          {estadoPagina === 'processando' && renderProgresso()}
 
-      {estadoPagina === 'resultado' && renderResultado()}
+          {estadoPagina === 'resultado' && renderResultado()}
 
-      {estadoPagina === 'duvidas' && renderDuvidas()}
+          {estadoPagina === 'duvidas' && renderDuvidas()}
 
-      {estadoPagina === 'aguardando_documentos' && renderDocumentosFaltantes()}
+          {estadoPagina === 'aguardando_documentos' && renderDocumentosFaltantes()}
 
-      {estadoPagina === 'erro' && (
-        <>
-          {renderErro()}
-          {renderFormulario()}
-        </>
-      )}
+          {estadoPagina === 'erro' && (
+            <>
+              {renderErro()}
+              {renderFormulario()}
+            </>
+          )}
+        </div>
+      </main>
 
       {/* Dialogs */}
       {renderFeedbackDialog()}
       {renderConfirmacaoDialog()}
-    </PageContainer>
+    </div>
   )
 }
 
