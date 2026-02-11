@@ -578,6 +578,7 @@ class BuscarArgumentosRequest(BaseModel):
 
 @router.get("/tipos-peca")
 async def listar_tipos_peca(
+    group_id: Optional[int] = None,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
@@ -585,25 +586,14 @@ async def listar_tipos_peca(
     Lista os tipos de peças disponíveis baseado nos prompts modulares ativos.
     Retorna apenas os tipos de peça que têm prompt configurado no banco.
 
+    Se group_id for informado, filtra/resolve prompts do grupo (com heranca).
     Retorna também `permite_auto` que indica se a detecção automática está habilitada.
     Quando `permite_auto=false`, o usuário DEVE selecionar um tipo de peça manualmente.
     """
-    from admin.models_prompts import PromptModulo
     from admin.models import ConfiguracaoIA
+    from sistemas.gerador_pecas.services_prompt_loader import listar_tipos_peca as loader_listar_tipos
 
-    # Busca módulos do tipo "peca" que estão ativos
-    modulos_peca = db.query(PromptModulo).filter(
-        PromptModulo.tipo == "peca",
-        PromptModulo.ativo == True
-    ).order_by(PromptModulo.ordem).all()
-
-    tipos = []
-    for modulo in modulos_peca:
-        tipos.append({
-            "valor": modulo.nome,    # Identificador único: "contestacao", "agravo_instrumento", etc.
-            "label": modulo.titulo,  # Ex: "Contestação", "Agravo de Instrumento"
-            "descricao": modulo.conteudo[:100] + "..." if len(modulo.conteudo) > 100 else modulo.conteudo
-        })
+    tipos = loader_listar_tipos(db, group_id)
 
     # Verifica flag de detecção automática
     config_auto = db.query(ConfiguracaoIA).filter(
@@ -3357,23 +3347,11 @@ async def curation_generate_stream(
             # ====== MONTA PROMPT CURADO ======
             yield f"data: {json.dumps({'tipo': 'info', 'mensagem': f'Montando prompt com {len(req.modulos_ids_curados)} modulos curados...'})}\n\n"
 
-            # Carrega prompts base e de peca
-            from admin.models_prompts import PromptModulo
+            # Carrega prompts base e de peca via loader centralizado
+            from sistemas.gerador_pecas.services_prompt_loader import carregar_prompt_sistema, carregar_prompt_peca
 
-            # Prompt do sistema (modulos base)
-            modulos_base = db.query(PromptModulo).filter(
-                PromptModulo.tipo == "base",
-                PromptModulo.ativo == True
-            ).order_by(PromptModulo.ordem).all()
-            prompt_sistema = "\n\n".join([f"## {m.titulo}\n\n{m.conteudo}" for m in modulos_base])
-
-            # Prompt da peca
-            modulo_peca = db.query(PromptModulo).filter(
-                PromptModulo.tipo == "peca",
-                PromptModulo.nome == req.tipo_peca,
-                PromptModulo.ativo == True
-            ).first()
-            prompt_peca = f"## ESTRUTURA DA PECA: {modulo_peca.titulo}\n\n{modulo_peca.conteudo}" if modulo_peca else ""
+            prompt_sistema = carregar_prompt_sistema(db, grupo.id)
+            prompt_peca = carregar_prompt_peca(db, req.tipo_peca, grupo.id)
 
             # Carrega modulos de conteudo selecionados
             modulos_query = db.query(PromptModulo).filter(

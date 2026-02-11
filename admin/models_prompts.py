@@ -152,9 +152,10 @@ class PromptModulo(Base):
     subgroup = relationship("PromptSubgroup")
     subcategorias = relationship("PromptSubcategoria", secondary=prompt_modulo_subcategorias, backref="modulos")
     
-    # Constraint de unicidade
+    # Constraint de unicidade: tipo + nome + group_id
+    # Em PostgreSQL, NULL != NULL, entao modulos com group_id=NULL nao conflitam entre si
     __table_args__ = (
-        UniqueConstraint('tipo', 'categoria', 'subcategoria', 'nome', name='uq_prompt_modulo'),
+        UniqueConstraint('tipo', 'nome', 'group_id', name='uq_prompt_modulo_group'),
     )
     
     def __repr__(self):
