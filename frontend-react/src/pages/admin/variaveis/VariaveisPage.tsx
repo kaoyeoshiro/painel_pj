@@ -7,9 +7,9 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useToast } from '@/components/ui/toast'
-import { Search, Hash, Link2, Unlink2, Layers3, BookOpen, HelpCircle, Plus, Users, ChevronLeft, ChevronRight } from 'lucide-react'
-import { PageContainer } from '@/components/layout/PageContainer'
-import { PageHeader } from '@/components/layout'
+import { Search, Hash, Link2, Unlink2, Layers3, BookOpen, HelpCircle, Plus, Users, ChevronLeft, ChevronRight, Variable } from 'lucide-react'
+import { BreadcrumbBar } from '@/components/layout/BreadcrumbBar'
+import { C, FONT_UI } from '@/lib/designTokens'
 import { AdminSubNav } from '@/components/layout/AdminSubNav'
 
 interface Variavel {
@@ -105,20 +105,20 @@ export function VariaveisPage() {
   }
 
   return (
-    <PageContainer wide>
-      <PageHeader
+    <div style={{ fontFamily: FONT_UI }}>
+      <BreadcrumbBar
         title="Painel de Variaveis"
-        description="Variaveis de extracao do sistema"
+        icon={<Variable style={{ width: 14, height: 14 }} />}
         actions={
           <div className="flex items-center gap-2">
-            <button onClick={() => setGlossarioOpen(true)} className="flex items-center gap-1 px-2 py-1 text-sm text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors">
+            <button onClick={() => setGlossarioOpen(true)} className="flex items-center gap-1 px-2 py-1 text-sm hover:bg-indigo-50 rounded-lg transition-colors" style={{ color: C.navy600 }}>
               <BookOpen className="h-4 w-4" />
               <span className="hidden sm:inline">Glossário</span>
             </button>
-            <button onClick={() => setAjudaOpen(true)} className="text-gray-500 hover:text-blue-600 transition-colors">
+            <button onClick={() => setAjudaOpen(true)} className="hover:text-blue-600 transition-colors" style={{ color: C.text500 }}>
               <HelpCircle className="h-4 w-4" />
             </button>
-            <Button onClick={() => toast({ title: 'Ação', description: 'Cadastro de nova variável em breve nesta tela.' })} className="bg-primary-600 hover:bg-primary-700 text-white">
+            <Button onClick={() => toast({ title: 'Ação', description: 'Cadastro de nova variável em breve nesta tela.' })} style={{ background: C.navy950, color: 'white' }}>
               <Plus className="h-4 w-4 mr-1" />
               Nova Variavel
             </Button>
@@ -126,189 +126,191 @@ export function VariaveisPage() {
         }
       />
 
-      <AdminSubNav />
+      <div style={{ maxWidth: 1350, margin: '0 auto', padding: '32px 40px' }}>
+        <AdminSubNav />
 
-      <div>
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-100 rounded-lg"><Hash className="h-4 w-4 text-blue-600" /></div>
-              <div>
-                <p className="text-sm text-gray-500">Total de Variaveis</p>
-                <p className="text-2xl font-bold text-gray-800">{resumo?.total ?? 0}</p>
+        <div>
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
+            <div className="bg-white rounded-xl shadow-sm p-4" style={{ border: `1px solid ${C.gray200}` }}>
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-blue-100 rounded-lg"><Hash className="h-4 w-4 text-blue-600" /></div>
+                <div>
+                  <p className="text-sm" style={{ color: C.text500 }}>Total de Variaveis</p>
+                  <p className="text-2xl font-bold" style={{ color: C.text900 }}>{resumo?.total ?? 0}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl shadow-sm p-4" style={{ border: `1px solid ${C.gray200}` }}>
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-green-100 rounded-lg"><Link2 className="h-4 w-4 text-green-600" /></div>
+                <div>
+                  <p className="text-sm" style={{ color: C.text500 }}>Em Uso</p>
+                  <p className="text-2xl font-bold" style={{ color: C.text900 }}>{resumo?.variaveis_com_uso ?? 0}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl shadow-sm p-4" style={{ border: `1px solid ${C.gray200}` }}>
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-yellow-100 rounded-lg"><Unlink2 className="h-4 w-4 text-yellow-600" /></div>
+                <div>
+                  <p className="text-sm" style={{ color: C.text500 }}>Sem Uso</p>
+                  <p className="text-2xl font-bold" style={{ color: C.text900 }}>{resumo?.variaveis_sem_uso ?? 0}</p>
+                </div>
+              </div>
+            </div>
+
+            <div className="bg-white rounded-xl shadow-sm p-4" style={{ border: `1px solid ${C.gray200}` }}>
+              <div className="flex items-center gap-3">
+                <div className="p-2 bg-purple-100 rounded-lg"><Layers3 className="h-4 w-4 text-purple-600" /></div>
+                <div>
+                  <p className="text-sm" style={{ color: C.text500 }}>Tipos</p>
+                  <p className="text-2xl font-bold" style={{ color: C.text900 }}>{totalTipos}</p>
+                </div>
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-green-100 rounded-lg"><Link2 className="h-4 w-4 text-green-600" /></div>
-              <div>
-                <p className="text-sm text-gray-500">Em Uso</p>
-                <p className="text-2xl font-bold text-gray-800">{resumo?.variaveis_com_uso ?? 0}</p>
+          <div className="bg-white rounded-xl shadow-sm p-4 mb-6" style={{ border: `1px solid ${C.gray200}` }}>
+            <div className="flex flex-wrap gap-4 items-center">
+              <div className="flex-1 min-w-[220px]">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4" style={{ color: C.text400 }} />
+                  <Input
+                    value={busca}
+                    onChange={(e) => setBusca(e.target.value)}
+                    className="pl-10"
+                    placeholder="Buscar por slug (com ou sem prefixo) ou label..."
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-2 items-center flex-wrap">
+                <Select value={tipoFiltro || '__all_types__'} onValueChange={(v) => setTipoFiltro(v === '__all_types__' ? '' : v)}>
+                  <SelectTrigger className="w-[140px] h-10"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__all_types__">Todos os tipos</SelectItem>
+                    <SelectItem value="text">Texto</SelectItem>
+                    <SelectItem value="number">Numero</SelectItem>
+                    <SelectItem value="date">Data</SelectItem>
+                    <SelectItem value="boolean">Sim/Nao</SelectItem>
+                    <SelectItem value="choice">Escolha Unica</SelectItem>
+                    <SelectItem value="list">Lista</SelectItem>
+                  </SelectContent>
+                </Select>
+
+                <Select value={categoriaFiltro || '__all_categories__'} onValueChange={(v) => setCategoriaFiltro(v === '__all_categories__' ? '' : v)}>
+                  <SelectTrigger className="w-[170px] h-10"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__all_categories__">Todas as categorias</SelectItem>
+                    {categorias.map((cat) => (
+                      <SelectItem key={cat.id} value={String(cat.id)}>{cat.nome}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+
+                <label className="flex items-center gap-2 px-3 py-2 rounded-lg cursor-pointer transition-colors" style={{ background: C.gray100 }}>
+                  <Checkbox checked={showInactive} onCheckedChange={(checked) => setShowInactive(checked === true)} />
+                  <span className="text-sm" style={{ color: C.text500 }}>Mostrar inativas</span>
+                </label>
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-yellow-100 rounded-lg"><Unlink2 className="h-4 w-4 text-yellow-600" /></div>
-              <div>
-                <p className="text-sm text-gray-500">Sem Uso</p>
-                <p className="text-2xl font-bold text-gray-800">{resumo?.variaveis_sem_uso ?? 0}</p>
+          <div className="bg-white rounded-xl shadow-sm overflow-hidden" style={{ border: `1px solid ${C.gray200}` }}>
+            {loading ? (
+              <div className="px-4 py-8 text-center" style={{ color: C.text400 }}>
+                <p>Carregando variaveis...</p>
               </div>
-            </div>
-          </div>
-
-          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-purple-100 rounded-lg"><Layers3 className="h-4 w-4 text-purple-600" /></div>
-              <div>
-                <p className="text-sm text-gray-500">Tipos</p>
-                <p className="text-2xl font-bold text-gray-800">{totalTipos}</p>
+            ) : variaveis.length === 0 ? (
+              <div className="min-h-[260px] flex items-center justify-center text-center px-6">
+                <div>
+                  <Users className="h-10 w-10 mx-auto mb-3" style={{ color: C.text400 }} />
+                  <p style={{ color: C.text400 }}>Nenhuma variavel encontrada</p>
+                </div>
               </div>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4 mb-6">
-          <div className="flex flex-wrap gap-4 items-center">
-            <div className="flex-1 min-w-[220px]">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 h-4 w-4" />
-                <Input
-                  value={busca}
-                  onChange={(e) => setBusca(e.target.value)}
-                  className="pl-10"
-                  placeholder="Buscar por slug (com ou sem prefixo) ou label..."
-                />
-              </div>
-            </div>
-
-            <div className="flex gap-2 items-center flex-wrap">
-              <Select value={tipoFiltro || '__all_types__'} onValueChange={(v) => setTipoFiltro(v === '__all_types__' ? '' : v)}>
-                <SelectTrigger className="w-[140px] h-10"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__all_types__">Todos os tipos</SelectItem>
-                  <SelectItem value="text">Texto</SelectItem>
-                  <SelectItem value="number">Numero</SelectItem>
-                  <SelectItem value="date">Data</SelectItem>
-                  <SelectItem value="boolean">Sim/Nao</SelectItem>
-                  <SelectItem value="choice">Escolha Unica</SelectItem>
-                  <SelectItem value="list">Lista</SelectItem>
-                </SelectContent>
-              </Select>
-
-              <Select value={categoriaFiltro || '__all_categories__'} onValueChange={(v) => setCategoriaFiltro(v === '__all_categories__' ? '' : v)}>
-                <SelectTrigger className="w-[170px] h-10"><SelectValue /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__all_categories__">Todas as categorias</SelectItem>
-                  {categorias.map((cat) => (
-                    <SelectItem key={cat.id} value={String(cat.id)}>{cat.nome}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-
-              <label className="flex items-center gap-2 px-3 py-2 bg-gray-100 rounded-lg cursor-pointer hover:bg-gray-200 transition-colors">
-                <Checkbox checked={showInactive} onCheckedChange={(checked) => setShowInactive(checked === true)} />
-                <span className="text-sm text-gray-600">Mostrar inativas</span>
-              </label>
-            </div>
-          </div>
-        </div>
-
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-          {loading ? (
-            <div className="px-4 py-8 text-center text-gray-400">
-              <p>Carregando variaveis...</p>
-            </div>
-          ) : variaveis.length === 0 ? (
-            <div className="min-h-[260px] flex items-center justify-center text-center px-6">
-              <div>
-                <Users className="h-10 w-10 text-slate-400 mx-auto mb-3" />
-                <p className="text-slate-400 text-3">Nenhuma variavel encontrada</p>
-              </div>
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead className="bg-gray-50 border-b border-gray-200">
-                  <tr>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Slug</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Label</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Tipo</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Categoria</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Status</th>
-                    <th className="px-4 py-3 text-left text-xs font-semibold text-gray-500 uppercase">Uso</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {variaveis.map((v) => (
-                    <tr key={v.id} className="border-b border-gray-100">
-                      <td className="px-4 py-3 font-mono text-xs text-gray-700">{v.slug}</td>
-                      <td className="px-4 py-3 text-gray-700">{v.label}</td>
-                      <td className="px-4 py-3"><Badge variant="outline">{tipoLabel(v.tipo)}</Badge></td>
-                      <td className="px-4 py-3 text-gray-600">{v.categoria_nome || '-'}</td>
-                      <td className="px-4 py-3">
-                        <Badge variant={v.ativo ? 'default' : 'secondary'}>{v.ativo ? 'Ativa' : 'Inativa'}</Badge>
-                      </td>
-                      <td className="px-4 py-3 text-xs text-gray-500">
-                        {v.em_uso_json ? 'JSON' : '-'} {v.uso_count_prompts > 0 ? `| ${v.uso_count_prompts} prompt(s)` : ''}
-                      </td>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead style={{ background: C.gray50, borderBottom: `1px solid ${C.gray200}` }}>
+                    <tr>
+                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase" style={{ color: C.text500 }}>Slug</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase" style={{ color: C.text500 }}>Label</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase" style={{ color: C.text500 }}>Tipo</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase" style={{ color: C.text500 }}>Categoria</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase" style={{ color: C.text500 }}>Status</th>
+                      <th className="px-4 py-3 text-left text-xs font-semibold uppercase" style={{ color: C.text500 }}>Uso</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {variaveis.map((v) => (
+                      <tr key={v.id} style={{ borderBottom: `1px solid ${C.gray100}` }}>
+                        <td className="px-4 py-3 font-mono text-xs" style={{ color: C.text700 }}>{v.slug}</td>
+                        <td className="px-4 py-3" style={{ color: C.text700 }}>{v.label}</td>
+                        <td className="px-4 py-3"><Badge variant="outline">{tipoLabel(v.tipo)}</Badge></td>
+                        <td className="px-4 py-3" style={{ color: C.text500 }}>{v.categoria_nome || '-'}</td>
+                        <td className="px-4 py-3">
+                          <Badge variant={v.ativo ? 'default' : 'secondary'}>{v.ativo ? 'Ativa' : 'Inativa'}</Badge>
+                        </td>
+                        <td className="px-4 py-3 text-xs" style={{ color: C.text500 }}>
+                          {v.em_uso_json ? 'JSON' : '-'} {v.uso_count_prompts > 0 ? `| ${v.uso_count_prompts} prompt(s)` : ''}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+          </div>
+
+          <div className="mt-4 flex items-center justify-between">
+            <div className="text-sm" style={{ color: C.text500 }}>Mostrando 0 - {variaveis.length} de {variaveis.length} variaveis</div>
+            <div className="flex gap-2">
+              <button className="px-3 py-2 rounded-lg cursor-not-allowed" style={{ border: `1px solid ${C.gray300}`, color: C.text400 }} disabled>
+                <ChevronLeft className="h-4 w-4" />
+              </button>
+              <button className="px-3 py-2 rounded-lg cursor-not-allowed" style={{ border: `1px solid ${C.gray300}`, color: C.text400 }} disabled>
+                <ChevronRight className="h-4 w-4" />
+              </button>
             </div>
-          )}
-        </div>
-
-        <div className="mt-4 flex items-center justify-between">
-          <div className="text-sm text-gray-500">Mostrando 0 - {variaveis.length} de {variaveis.length} variaveis</div>
-          <div className="flex gap-2">
-            <button className="px-3 py-2 border border-gray-300 rounded-lg text-gray-400 cursor-not-allowed" disabled>
-              <ChevronLeft className="h-4 w-4" />
-            </button>
-            <button className="px-3 py-2 border border-gray-300 rounded-lg text-gray-400 cursor-not-allowed" disabled>
-              <ChevronRight className="h-4 w-4" />
-            </button>
           </div>
         </div>
+
+        <Dialog open={glossarioOpen} onOpenChange={setGlossarioOpen}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Glossário</DialogTitle>
+              <DialogDescription>Referência rápida dos conceitos de variáveis e extração.</DialogDescription>
+            </DialogHeader>
+            <div className="text-sm space-y-2" style={{ color: C.text500 }}>
+              <p><strong>Slug:</strong> identificador técnico único da variável.</p>
+              <p><strong>Label:</strong> nome amigável exibido para usuários.</p>
+              <p><strong>Em Uso:</strong> variável referenciada por prompts e/ou JSON de extração.</p>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setGlossarioOpen(false)}>Fechar</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={ajudaOpen} onOpenChange={setAjudaOpen}>
+          <DialogContent className="max-w-2xl">
+            <DialogHeader>
+              <DialogTitle>Ajuda Rápida</DialogTitle>
+              <DialogDescription>Como usar esta tela de gerenciamento.</DialogDescription>
+            </DialogHeader>
+            <div className="text-sm space-y-2" style={{ color: C.text500 }}>
+              <p>1. Use busca e filtros para localizar variáveis.</p>
+              <p>2. Habilite "Mostrar inativas" para incluir variáveis desativadas.</p>
+              <p>3. Consulte o glossário para entender os tipos de campo.</p>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setAjudaOpen(false)}>Fechar</Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
       </div>
-
-      <Dialog open={glossarioOpen} onOpenChange={setGlossarioOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Glossário</DialogTitle>
-            <DialogDescription>Referência rápida dos conceitos de variáveis e extração.</DialogDescription>
-          </DialogHeader>
-          <div className="text-sm text-gray-600 space-y-2">
-            <p><strong>Slug:</strong> identificador técnico único da variável.</p>
-            <p><strong>Label:</strong> nome amigável exibido para usuários.</p>
-            <p><strong>Em Uso:</strong> variável referenciada por prompts e/ou JSON de extração.</p>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setGlossarioOpen(false)}>Fechar</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      <Dialog open={ajudaOpen} onOpenChange={setAjudaOpen}>
-        <DialogContent className="max-w-2xl">
-          <DialogHeader>
-            <DialogTitle>Ajuda Rápida</DialogTitle>
-            <DialogDescription>Como usar esta tela de gerenciamento.</DialogDescription>
-          </DialogHeader>
-          <div className="text-sm text-gray-600 space-y-2">
-            <p>1. Use busca e filtros para localizar variáveis.</p>
-            <p>2. Habilite "Mostrar inativas" para incluir variáveis desativadas.</p>
-            <p>3. Consulte o glossário para entender os tipos de campo.</p>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setAjudaOpen(false)}>Fechar</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-    </PageContainer>
+    </div>
   )
 }

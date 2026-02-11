@@ -1,9 +1,11 @@
 import { useState, useRef, useCallback, useEffect } from 'react'
 import { classificadorApi, getToken } from '@/lib/api'
-import { useApiQuery } from '@/hooks/useApiQuery'
+import { useQuery } from '@tanstack/react-query'
+import { queryKeys } from '@/lib/query-client'
 import { useToast } from '@/hooks/use-toast'
-import { PageContainer, PageHeader } from '@/components/layout'
-import { CircleDot, CirclePlus, FolderOpen, LogOut, MessageCircleMore, Zap } from 'lucide-react'
+import { BreadcrumbBar } from '@/components/layout/BreadcrumbBar'
+import { C, FONT_UI } from '@/lib/designTokens'
+import { CircleDot, CirclePlus, FileSearch, FolderOpen, MessageCircleMore, Zap } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -38,7 +40,6 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { Link } from '@tanstack/react-router'
 import type {
   Prompt,
   PromptPayload,
@@ -368,8 +369,8 @@ function NovoLoteTab({ prompts, promptsLoading, onProjetoCreated }: NovoLoteTabP
   return (
     <div className="space-y-6">
       <div className="space-y-4 sm:hidden">
-        <div className="flex items-center gap-2 text-[22px] font-semibold leading-tight text-gray-900">
-          <CirclePlus className="h-4 w-4 text-primary" />
+        <div className="flex items-center gap-2 text-[22px] font-semibold leading-tight" style={{ color: C.text900 }}>
+          <CirclePlus className="h-4 w-4" style={{ color: C.navy700 }} />
           <span>Criar Novo Lote de Classificacao</span>
         </div>
 
@@ -390,29 +391,29 @@ function NovoLoteTab({ prompts, promptsLoading, onProjetoCreated }: NovoLoteTabP
 
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg text-gray-800">Adicionar Documentos</CardTitle>
+            <CardTitle className="text-lg" style={{ color: C.text700 }}>Adicionar Documentos</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-2 border-b border-gray-200">
+            <div className="grid grid-cols-2" style={{ borderBottom: `1px solid ${C.gray200}` }}>
               <button
                 type="button"
                 onClick={() => setUploadMode('upload')}
-                className={`pb-2 text-sm font-semibold transition-colors ${
-                  uploadMode === 'upload'
-                    ? 'border-b-2 border-blue-500 text-blue-600'
-                    : 'text-gray-500'
-                }`}
+                className="pb-2 text-sm font-semibold transition-colors"
+                style={{
+                  color: uploadMode === 'upload' ? C.navy700 : C.text500,
+                  borderBottom: uploadMode === 'upload' ? `2px solid ${C.navy700}` : '2px solid transparent',
+                }}
               >
                 Upload de Arquivos
               </button>
               <button
                 type="button"
                 onClick={() => setUploadMode('tjms')}
-                className={`pb-2 text-sm font-semibold transition-colors ${
-                  uploadMode === 'tjms'
-                    ? 'border-b-2 border-blue-500 text-blue-600'
-                    : 'text-gray-500'
-                }`}
+                className="pb-2 text-sm font-semibold transition-colors"
+                style={{
+                  color: uploadMode === 'tjms' ? C.navy700 : C.text500,
+                  borderBottom: uploadMode === 'tjms' ? `2px solid ${C.navy700}` : '2px solid transparent',
+                }}
               >
                 Importar do TJ-MS
               </button>
@@ -599,19 +600,26 @@ function NovoLoteTab({ prompts, promptsLoading, onProjetoCreated }: NovoLoteTabP
               </div>
             )}
 
-            <ScrollArea className="max-h-48 border rounded-md p-3">
-              {logs.map((log, idx) => (
-                <p
-                  key={idx}
-                  className={`text-xs font-mono ${
-                    log.tipo === 'erro' ? 'text-destructive' :
-                    log.tipo === 'concluido' ? 'text-green-600' :
-                    'text-muted-foreground'
-                  }`}
-                >
-                  {log.mensagem}
-                </p>
-              ))}
+            <ScrollArea className="max-h-48 rounded-md p-3" style={{ border: `1px solid ${C.gray200}` }}>
+              {logs.map((log, idx) => {
+                let logColor: string
+                if (log.tipo === 'erro') {
+                  logColor = C.statusError
+                } else if (log.tipo === 'concluido') {
+                  logColor = C.statusSuccess
+                } else {
+                  logColor = C.text400
+                }
+                return (
+                  <p
+                    key={idx}
+                    className="text-xs font-mono"
+                    style={{ color: logColor }}
+                  >
+                    {log.mensagem}
+                  </p>
+                )
+              })}
             </ScrollArea>
           </CardContent>
         </Card>
@@ -683,14 +691,16 @@ function MeusLotesTab({ onSwitchTab }: MeusLotesTabProps) {
   const [detailLoading, setDetailLoading] = useState(false)
   const [codigosFiltro, setCodigosFiltro] = useState('')
 
-  const { data: projetos, isLoading: projetosLoading, refetch: refetchProjetos } = useApiQuery<Projeto[]>(
-    () => classificadorApi.get<Projeto[]>('/projetos')
-  )
+  const { data: projetos, isLoading: projetosLoading, refetch: refetchProjetos } = useQuery<Projeto[]>({
+    queryKey: queryKeys.classificador.projetos(),
+    queryFn: () => classificadorApi.get<Projeto[]>('/projetos'),
+  })
 
-  const { data: execucoesEmAndamento, refetch: refetchEmAndamento } = useApiQuery<Execucao[]>(
-    () => classificadorApi.get<Execucao[]>('/execucoes-em-andamento'),
-    { refetchInterval: 10000 }
-  )
+  const { data: execucoesEmAndamento, refetch: refetchEmAndamento } = useQuery<Execucao[]>({
+    queryKey: queryKeys.classificador.execucoesEmAndamento(),
+    queryFn: () => classificadorApi.get<Execucao[]>('/execucoes-em-andamento'),
+    refetchInterval: 10000,
+  })
 
   // Cleanup EventSource on unmount
   useEffect(() => {
@@ -1457,9 +1467,10 @@ function TesteRapidoTab({ prompts, promptsLoading }: TesteRapidoTabProps) {
 export function ClassificadorPage() {
   const [activeTab, setActiveTab] = useState<PageTab>('novo-lote')
 
-  const { data: prompts, isLoading: promptsLoading, refetch: refetchPrompts } = useApiQuery<Prompt[]>(
-    () => classificadorApi.get<Prompt[]>('/prompts')
-  )
+  const { data: prompts, isLoading: promptsLoading, refetch: refetchPrompts } = useQuery<Prompt[]>({
+    queryKey: queryKeys.classificador.prompts(),
+    queryFn: () => classificadorApi.get<Prompt[]>('/prompts'),
+  })
 
   const handleSwitchTab = useCallback((tab: PageTab) => {
     setActiveTab(tab)
@@ -1468,87 +1479,65 @@ export function ClassificadorPage() {
   const promptsList = prompts ?? []
 
   return (
-    <PageContainer className="space-y-6">
-      <div className="-mx-4 -mt-8 border-b border-gray-200 bg-white px-4 py-2 sm:hidden">
-        <div className="flex items-start justify-between gap-2">
-          <div className="flex min-w-0 items-start gap-2">
-            <img src="/logo/logo-pge.png" alt="PGE-MS" className="mt-1 h-6 w-auto shrink-0" />
-            <h1 className="max-w-[160px] text-[18px] font-semibold leading-tight text-gray-900">
-              Classificador de Documentos
-            </h1>
-          </div>
-
-          <div className="flex shrink-0 items-center gap-2">
-            <div className="rounded-full border border-red-100 bg-red-50 px-3 py-1 text-xs font-medium text-red-500">
-              <span className="mr-1 inline-block h-2 w-2 rounded-full bg-red-500" />
-              API Offline
-            </div>
-            <Link
-              to="/dashboard"
-              className="inline-flex h-8 w-8 items-center justify-center rounded-md text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700"
-              aria-label="Voltar ao Dashboard"
-              title="Voltar ao Dashboard"
-            >
-              <LogOut className="h-4 w-4" />
-            </Link>
-          </div>
-        </div>
-      </div>
-
-      <PageHeader
+    <div style={{ fontFamily: FONT_UI }}>
+      <BreadcrumbBar
         title="Classificador de Documentos"
-        className="mb-4 hidden sm:block"
-        backTo="/dashboard"
+        icon={<FileSearch style={{ width: 14, height: 14 }} />}
       />
 
-      <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as PageTab)}>
-        <TabsList className="grid w-full grid-cols-4 h-auto rounded-none border-b bg-transparent p-0">
-          <TabsTrigger value="novo-lote" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:shadow-none">
-            <CircleDot className="mr-2 h-4 w-4" />
-            Novo Lote
-          </TabsTrigger>
-          <TabsTrigger value="meus-lotes" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:shadow-none">
-            <FolderOpen className="mr-2 h-4 w-4" />
-            Meus Lotes
-          </TabsTrigger>
-          <TabsTrigger value="prompts" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:shadow-none">
-            <MessageCircleMore className="mr-2 h-4 w-4" />
-            Prompts
-          </TabsTrigger>
-          <TabsTrigger value="teste-rapido" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:shadow-none">
-            <Zap className="mr-2 h-4 w-4" />
-            Teste Rapido
-          </TabsTrigger>
-        </TabsList>
+      <div style={{ maxWidth: 1350, margin: '0 auto', padding: '32px 40px' }}>
+        <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as PageTab)}>
+          <TabsList
+            className="grid w-full grid-cols-4 h-auto rounded-none bg-transparent p-0"
+            style={{ borderBottom: `1px solid ${C.gray200}` }}
+          >
+            <TabsTrigger value="novo-lote" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:shadow-none">
+              <CircleDot className="mr-2 h-4 w-4" />
+              Novo Lote
+            </TabsTrigger>
+            <TabsTrigger value="meus-lotes" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:shadow-none">
+              <FolderOpen className="mr-2 h-4 w-4" />
+              Meus Lotes
+            </TabsTrigger>
+            <TabsTrigger value="prompts" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:shadow-none">
+              <MessageCircleMore className="mr-2 h-4 w-4" />
+              Prompts
+            </TabsTrigger>
+            <TabsTrigger value="teste-rapido" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:shadow-none">
+              <Zap className="mr-2 h-4 w-4" />
+              Teste Rapido
+            </TabsTrigger>
+          </TabsList>
 
-        <TabsContent value="novo-lote">
-          <NovoLoteTab
-            prompts={promptsList}
-            promptsLoading={promptsLoading}
-            onProjetoCreated={refetchPrompts}
-            onSwitchTab={handleSwitchTab}
-          />
-        </TabsContent>
+          <TabsContent value="novo-lote">
+            <NovoLoteTab
+              prompts={promptsList}
+              promptsLoading={promptsLoading}
+              onProjetoCreated={refetchPrompts}
+              onSwitchTab={handleSwitchTab}
+            />
+          </TabsContent>
 
-        <TabsContent value="meus-lotes">
-          <MeusLotesTab onSwitchTab={handleSwitchTab} />
-        </TabsContent>
+          <TabsContent value="meus-lotes">
+            <MeusLotesTab onSwitchTab={handleSwitchTab} />
+          </TabsContent>
 
-        <TabsContent value="prompts">
-          <PromptsTab
-            prompts={promptsList}
-            promptsLoading={promptsLoading}
-            onPromptsChange={refetchPrompts}
-          />
-        </TabsContent>
+          <TabsContent value="prompts">
+            <PromptsTab
+              prompts={promptsList}
+              promptsLoading={promptsLoading}
+              onPromptsChange={refetchPrompts}
+            />
+          </TabsContent>
 
-        <TabsContent value="teste-rapido">
-          <TesteRapidoTab
-            prompts={promptsList}
-            promptsLoading={promptsLoading}
-          />
-        </TabsContent>
-      </Tabs>
-    </PageContainer>
+          <TabsContent value="teste-rapido">
+            <TesteRapidoTab
+              prompts={promptsList}
+              promptsLoading={promptsLoading}
+            />
+          </TabsContent>
+        </Tabs>
+      </div>
+    </div>
   )
 }

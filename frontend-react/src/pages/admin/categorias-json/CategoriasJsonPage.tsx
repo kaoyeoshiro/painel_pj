@@ -21,11 +21,12 @@ import {
   SelectTrigger,
   SelectValue
 } from '@/components/ui/select'
-import { HelpCircle, X } from 'lucide-react'
+import { HelpCircle, X, Tags } from 'lucide-react'
 
 import { useToast } from '@/hooks/use-toast'
-import { PageContainer, PageHeader, AdminSubNav } from '@/components/layout'
-import { Tags } from 'lucide-react'
+import { BreadcrumbBar } from '@/components/layout/BreadcrumbBar'
+import { AdminSubNav } from '@/components/layout'
+import { C, FONT_UI } from '@/lib/designTokens'
 
 // Estrutura de dados da categoria JSON
 interface CategoriaJSON {
@@ -318,12 +319,10 @@ export function CategoriasJsonPage() {
   }
 
   return (
-    <PageContainer wide>
-      <PageHeader
+    <div style={{ fontFamily: FONT_UI }}>
+      <BreadcrumbBar
         title="Categorias JSON"
-        description="Categorias de resumo JSON para extração de dados"
-        icon={<Tags className="h-5 w-5" />}
-        backTo="/dashboard"
+        icon={<Tags style={{ width: 14, height: 14 }} />}
         actions={
           <div className="flex items-center gap-2">
             <Button
@@ -336,23 +335,29 @@ export function CategoriasJsonPage() {
             >
               <HelpCircle className="h-4 w-4" />
             </Button>
-            <Button onClick={handleCreate}>Nova Categoria</Button>
+            <Button
+              onClick={handleCreate}
+              style={{ background: C.navy950, color: 'white' }}
+            >
+              Nova Categoria
+            </Button>
           </div>
         }
       />
 
+      <div style={{ maxWidth: 1350, margin: '0 auto', padding: '32px 40px' }} className="space-y-6">
       <AdminSubNav />
 
       {/* Loading */}
       {loading && (
-        <div className="text-center py-8 text-muted-foreground">
+        <div className="text-center py-8" style={{ color: C.text500 }}>
           Carregando categorias...
         </div>
       )}
 
       {/* Grid de categorias */}
       {!loading && categorias.length === 0 && (
-        <div className="text-center py-8 text-muted-foreground">
+        <div className="text-center py-8" style={{ color: C.text500 }}>
           Nenhuma categoria cadastrada
         </div>
       )}
@@ -360,11 +365,11 @@ export function CategoriasJsonPage() {
       {!loading && categorias.length > 0 && (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {categorias.map(categoria => (
-            <Card key={categoria.id} className="p-4">
+            <Card key={categoria.id} className="p-4 rounded-2xl" style={{ borderColor: C.gray200 }}>
               {/* Título e descrição */}
               <div className="mb-3">
-                <h3 className="font-semibold text-lg mb-1">{categoria.nome}</h3>
-                <p className="text-sm text-muted-foreground">{categoria.descricao}</p>
+                <h3 className="font-semibold text-lg mb-1" style={{ color: C.text900 }}>{categoria.nome}</h3>
+                <p className="text-sm" style={{ color: C.text500 }}>{categoria.descricao}</p>
               </div>
 
               {/* Badges de status */}
@@ -380,7 +385,7 @@ export function CategoriasJsonPage() {
               {/* Códigos de documentos */}
               {categoria.codigos_documento && categoria.codigos_documento.length > 0 && (
                 <div className="mb-3">
-                  <div className="text-xs text-muted-foreground mb-1">Códigos:</div>
+                  <div className="text-xs mb-1" style={{ color: C.text400 }}>Códigos:</div>
                   <div className="flex gap-1 flex-wrap">
                     {categoria.codigos_documento.map((codigo, idx) => (
                       <Badge key={idx} variant="outline" className="text-xs">
@@ -431,8 +436,8 @@ export function CategoriasJsonPage() {
 
           <div className="space-y-6 py-4">
             {/* === Seção: Informações básicas === */}
-            <fieldset className="space-y-4 border rounded-lg p-4" data-testid="section-basic-info">
-              <legend className="text-sm font-semibold px-2">Informações Básicas</legend>
+            <fieldset className="space-y-4 border rounded-lg p-4" style={{ borderColor: C.gray200 }} data-testid="section-basic-info">
+              <legend className="text-sm font-semibold px-2" style={{ color: C.text700 }}>Informações Básicas</legend>
 
               {/* Nome */}
               <div>
@@ -491,8 +496,8 @@ export function CategoriasJsonPage() {
             </fieldset>
 
             {/* === Seção: Formato JSON e variáveis === */}
-            <fieldset className="space-y-4 border rounded-lg p-4" data-testid="section-formato">
-              <legend className="text-sm font-semibold px-2">Formato JSON</legend>
+            <fieldset className="space-y-4 border rounded-lg p-4" style={{ borderColor: C.gray200 }} data-testid="section-formato">
+              <legend className="text-sm font-semibold px-2" style={{ color: C.text700 }}>Formato JSON</legend>
 
               {/* 22.6 - Combobox de variáveis para inserção */}
               <div>
@@ -567,8 +572,8 @@ export function CategoriasJsonPage() {
 
             {/* === Seção: Blacklist === */}
             {/* 22.3 - Editor de blacklist com pills/tags */}
-            <fieldset className="space-y-4 border rounded-lg p-4" data-testid="section-blacklist">
-              <legend className="text-sm font-semibold px-2">Blacklist</legend>
+            <fieldset className="space-y-4 border rounded-lg p-4" style={{ borderColor: C.gray200 }} data-testid="section-blacklist">
+              <legend className="text-sm font-semibold px-2" style={{ color: C.text700 }}>Blacklist</legend>
 
               <div>
                 <Label htmlFor="blacklist-input">Adicionar termo à blacklist</Label>
@@ -629,8 +634,8 @@ export function CategoriasJsonPage() {
 
             {/* === Seção: Fonte especial === */}
             {/* 22.7 - Radio group para seleção de fonte */}
-            <fieldset className="space-y-4 border rounded-lg p-4" data-testid="section-font-type">
-              <legend className="text-sm font-semibold px-2">Fonte da Saída</legend>
+            <fieldset className="space-y-4 border rounded-lg p-4" style={{ borderColor: C.gray200 }} data-testid="section-font-type">
+              <legend className="text-sm font-semibold px-2" style={{ color: C.text700 }}>Fonte da Saída</legend>
 
               <div className="space-y-3" role="radiogroup" aria-label="Tipo de fonte">
                 {/* Opção: Normal */}
@@ -706,7 +711,7 @@ export function CategoriasJsonPage() {
             <Button variant="outline" onClick={() => setDialogOpen(false)} data-testid="btn-cancel">
               Cancelar
             </Button>
-            <Button onClick={handleSave} data-testid="btn-save">
+            <Button onClick={handleSave} data-testid="btn-save" style={{ background: C.navy950, color: 'white' }}>
               {editingId ? 'Atualizar' : 'Criar'}
             </Button>
           </DialogFooter>
@@ -745,8 +750,8 @@ export function CategoriasJsonPage() {
 
           <div className="space-y-4 py-4 text-sm">
             <section>
-              <h3 className="font-semibold mb-1">O que são Categorias JSON?</h3>
-              <p className="text-muted-foreground">
+              <h3 className="font-semibold mb-1" style={{ color: C.text900 }}>O que são Categorias JSON?</h3>
+              <p style={{ color: C.text500 }}>
                 As categorias JSON definem como os dados são extraídos e estruturados a partir
                 de documentos jurídicos. Cada categoria especifica um formato de saída em JSON
                 que a IA utiliza para organizar as informações extraídas.
@@ -754,19 +759,19 @@ export function CategoriasJsonPage() {
             </section>
 
             <section>
-              <h3 className="font-semibold mb-1">Formato JSON</h3>
-              <p className="text-muted-foreground">
+              <h3 className="font-semibold mb-1" style={{ color: C.text900 }}>Formato JSON</h3>
+              <p style={{ color: C.text500 }}>
                 O campo de formato define a estrutura esperada do JSON de saída. Você pode
-                utilizar variáveis como <code className="bg-muted px-1 rounded">{'{numero_cnj}'}</code>,{' '}
-                <code className="bg-muted px-1 rounded">{'{data}'}</code>,{' '}
-                <code className="bg-muted px-1 rounded">{'{valor}'}</code> e outras para indicar
+                utilizar variáveis como <code className="px-1 rounded" style={{ background: C.gray100 }}>{'{numero_cnj}'}</code>,{' '}
+                <code className="px-1 rounded" style={{ background: C.gray100 }}>{'{data}'}</code>,{' '}
+                <code className="px-1 rounded" style={{ background: C.gray100 }}>{'{valor}'}</code> e outras para indicar
                 campos dinâmicos. Utilize o seletor de variáveis para inseri-las facilmente.
               </p>
             </section>
 
             <section>
-              <h3 className="font-semibold mb-1">Blacklist</h3>
-              <p className="text-muted-foreground">
+              <h3 className="font-semibold mb-1" style={{ color: C.text900 }}>Blacklist</h3>
+              <p style={{ color: C.text500 }}>
                 A blacklist permite definir termos que devem ser ignorados durante o processo
                 de extração. Termos adicionados à blacklist não serão considerados na análise
                 do documento, melhorando a precisão dos resultados.
@@ -774,8 +779,8 @@ export function CategoriasJsonPage() {
             </section>
 
             <section>
-              <h3 className="font-semibold mb-1">Códigos de Documentos</h3>
-              <p className="text-muted-foreground">
+              <h3 className="font-semibold mb-1" style={{ color: C.text900 }}>Códigos de Documentos</h3>
+              <p style={{ color: C.text500 }}>
                 Os códigos de documentos associam a categoria a tipos específicos de documentos
                 no sistema. Uma categoria pode estar vinculada a múltiplos códigos, separados
                 por vírgula.
@@ -783,8 +788,8 @@ export function CategoriasJsonPage() {
             </section>
 
             <section>
-              <h3 className="font-semibold mb-1">Fonte da Saída</h3>
-              <p className="text-muted-foreground">
+              <h3 className="font-semibold mb-1" style={{ color: C.text900 }}>Fonte da Saída</h3>
+              <p style={{ color: C.text500 }}>
                 Selecione o tipo de fonte para a formatação da saída: Normal (fonte padrão do
                 sistema), Monoespaçada (ideal para dados tabulares) ou Personalizada (informe
                 o nome da fonte desejada).
@@ -793,12 +798,13 @@ export function CategoriasJsonPage() {
           </div>
 
           <DialogFooter>
-            <Button onClick={() => setHelpDialogOpen(false)} data-testid="btn-close-help">
+            <Button onClick={() => setHelpDialogOpen(false)} data-testid="btn-close-help" style={{ background: C.navy950, color: 'white' }}>
               Entendi
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </PageContainer>
+      </div>
+    </div>
   )
 }

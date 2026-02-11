@@ -1,9 +1,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import { GeradorPecasPage } from '../GeradorPecasPage'
-import * as api from '@/lib/api'
 
-// Mock do router (Link e useNavigate precisam de contexto)
+// Mock do router
 vi.mock('@tanstack/react-router', () => ({
   useNavigate: () => vi.fn(),
   useRouterState: (opts?: { select?: (s: unknown) => unknown }) =>
@@ -18,7 +17,14 @@ vi.mock('@/components/ui/toast', () => ({
   }),
 }))
 
-// Mock do API
+// Mock do useMarkdown
+vi.mock('@/hooks/useMarkdown', () => ({
+  useMarkdown: (text: string) => ({
+    html: text ? `<p>${text}</p>` : '',
+  }),
+}))
+
+// Mock do API (ainda necessário para funções que usam geradorApi diretamente como SSE)
 vi.mock('@/lib/api', () => ({
   geradorApi: {
     get: vi.fn(),
@@ -30,31 +36,68 @@ vi.mock('@/lib/api', () => ({
   getToken: vi.fn(() => 'fake-token'),
 }))
 
-// Mock do useMarkdown
-vi.mock('@/hooks/useMarkdown', () => ({
-  useMarkdown: (text: string) => ({
-    html: text ? `<p>${text}</p>` : '',
+// Mock dos hooks do TanStack Query
+const mockUseTiposPeca = vi.fn()
+const mockUseHistoricoGerador = vi.fn()
+const mockUseGruposDisponiveis = vi.fn()
+const mockUseSubcategorias = vi.fn()
+const mockUseVersoesGeracao = vi.fn()
+
+vi.mock('@/hooks/useQueries', () => ({
+  useTiposPeca: () => mockUseTiposPeca(),
+  useHistoricoGerador: () => mockUseHistoricoGerador(),
+  useGruposDisponiveis: () => mockUseGruposDisponiveis(),
+  useSubcategorias: () => mockUseSubcategorias(),
+  useVersoesGeracao: () => mockUseVersoesGeracao(),
+  useExcluirGeracao: () => ({ mutate: vi.fn(), isPending: false }),
+  useEnviarFeedback: () => ({ mutate: vi.fn(), isPending: false }),
+  useUploadParecer: () => ({ mutate: vi.fn(), isPending: false }),
+  useExportarDocx: () => ({ mutate: vi.fn(), isPending: false }),
+  useAtualizarMinuta: () => ({ mutate: vi.fn(), isPending: false }),
+  useRestaurarVersao: () => ({ mutate: vi.fn(), isPending: false }),
+  useInvalidateQueries: () => ({
+    invalidateGeradorHistorico: vi.fn(),
+    invalidateAll: vi.fn(),
+    invalidateByKey: vi.fn(),
   }),
 }))
 
 describe('GeradorPecasPage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    // Default mocks: tipos-peca e historico
-    vi.mocked(api.geradorApi.get).mockImplementation((path: string) => {
-      if (path === '/tipos-peca') {
-        return Promise.resolve({
-          tipos: [
-            { valor: 'contestacao', label: 'Contestacao', descricao: 'Peca de defesa' },
-            { valor: 'recurso_apelacao', label: 'Recurso de Apelacao', descricao: 'Recurso ordinario' },
-          ],
-          permite_auto: false,
-        })
-      }
-      if (path === '/historico') {
-        return Promise.resolve([])
-      }
-      return Promise.resolve(null)
+    
+    // Default mocks
+    mockUseTiposPeca.mockReturnValue({
+      data: {
+        tipos: [
+          { valor: 'contestacao', label: 'Contestacao', descricao: 'Peca de defesa' },
+          { valor: 'recurso_apelacao', label: 'Recurso de Apelacao', descricao: 'Recurso ordinario' },
+        ],
+        permite_auto: false,
+      },
+      isLoading: false,
+      isError: false,
+    })
+    
+    mockUseHistoricoGerador.mockReturnValue({
+      data: [],
+      isLoading: false,
+      isError: false,
+    })
+    
+    mockUseGruposDisponiveis.mockReturnValue({
+      data: { grupos: [] },
+      isLoading: false,
+    })
+    
+    mockUseSubcategorias.mockReturnValue({
+      data: [],
+      isLoading: false,
+    })
+    
+    mockUseVersoesGeracao.mockReturnValue({
+      data: { versoes: [] },
+      refetch: vi.fn(),
     })
   })
 
@@ -64,7 +107,6 @@ describe('GeradorPecasPage', () => {
     expect(screen.getByText('Gerador de Pecas')).toBeInTheDocument()
     expect(screen.getByLabelText('Numero do Processo')).toBeInTheDocument()
 
-    // O Select placeholder aparece apos o loading dos tipos
     await waitFor(() => {
       expect(screen.getByText('Selecione o tipo de peca')).toBeInTheDocument()
     })
@@ -77,8 +119,8 @@ describe('GeradorPecasPage', () => {
       expect(screen.getByText('Selecione o tipo de peca')).toBeInTheDocument()
     })
 
-    // Verifica que a API foi chamada para buscar tipos
-    expect(api.geradorApi.get).toHaveBeenCalledWith('/tipos-peca')
+    // Verifica que o hook foi chamado
+    expect(mockUseTiposPeca).toHaveBeenCalled()
   })
 
   it('deve desabilitar botao Gerar Automatico quando CNJ esta vazio', async () => {
@@ -94,16 +136,13 @@ describe('GeradorPecasPage', () => {
     render(<GeradorPecasPage />)
 
     const input = screen.getByLabelText('Numero do Processo')
-    // Simula digitacao do CNJ
     await waitFor(() => {
       input.focus()
     })
-    // fireEvent.change nao aplica a mascara, entao usamos o valor mascarado
     const event = new Event('input', { bubbles: true })
     Object.defineProperty(event, 'target', { value: { value: '0804330092024812' } })
     input.dispatchEvent(event)
 
-    // Usa o DOM para alterar o valor e disparar o onChange
     const nativeInputValueSetter = Object.getOwnPropertyDescriptor(window.HTMLInputElement.prototype, 'value')!.set!
     nativeInputValueSetter.call(input, '0804330-09.2024.8.12.0017')
     input.dispatchEvent(new Event('input', { bubbles: true }))
@@ -142,30 +181,23 @@ describe('GeradorPecasPage', () => {
   })
 
   it('deve exibir itens do historico quando retornados pela API', async () => {
-    vi.mocked(api.geradorApi.get).mockImplementation((path: string) => {
-      if (path === '/tipos-peca') {
-        return Promise.resolve({
-          tipos: [{ valor: 'contestacao', label: 'Contestacao', descricao: 'Defesa' }],
-          permite_auto: false,
-        })
-      }
-      if (path === '/historico') {
-        return Promise.resolve([
-          {
-            id: 1,
-            cnj: '0804330-09.2024.8.12.0017',
-            tipo_peca: 'contestacao',
-            data: '2026-02-01T10:00:00Z',
-          },
-          {
-            id: 2,
-            cnj: '0123456-78.2025.8.12.0001',
-            tipo_peca: 'recurso_apelacao',
-            data: '2026-02-02T14:30:00Z',
-          },
-        ])
-      }
-      return Promise.resolve(null)
+    mockUseHistoricoGerador.mockReturnValue({
+      data: [
+        {
+          id: 1,
+          cnj: '0804330-09.2024.8.12.0017',
+          tipo_peca: 'contestacao',
+          data: '2026-02-01T10:00:00Z',
+        },
+        {
+          id: 2,
+          cnj: '0123456-78.2025.8.12.0001',
+          tipo_peca: 'recurso_apelacao',
+          data: '2026-02-02T14:30:00Z',
+        },
+      ],
+      isLoading: false,
+      isError: false,
     })
 
     render(<GeradorPecasPage />)

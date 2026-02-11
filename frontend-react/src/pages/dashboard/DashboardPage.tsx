@@ -1,50 +1,51 @@
 import { useAuthStore } from '@/stores/auth-store'
-import { PageContainer } from '@/components/layout'
+import { C, FONT_UI } from '@/lib/designTokens'
 import { systemCards, adminCards } from './constants'
 import { SystemCard } from './SystemCard'
 import { AdminCard } from './AdminCard'
 
 /**
- * Página inicial (Dashboard) — réplica pixel-perfect do legado.
- * Grid de system cards + painel admin (apenas para admins).
+ * Pagina inicial (Dashboard) — grid de sistemas + painel admin.
  */
 export function DashboardPage() {
   const { user } = useAuthStore()
 
   return (
-    <PageContainer className="space-y-8">
-      {/* Boas-vindas */}
-      <div>
-        <h2 className="text-2xl font-bold text-gray-800">
-          Bem-vindo ao Portal
-        </h2>
-        <p className="text-gray-500 mt-1">
-          Selecione um sistema para começar
-        </p>
-      </div>
-
-      {/* Grid de sistemas */}
-      <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {systemCards.map((card) => (
-          <SystemCard key={card.to} card={card} />
-        ))}
-      </div>
-
-      {/* Painel Admin */}
-      {user?.is_admin && (
+    <div style={{ fontFamily: FONT_UI, maxWidth: 1350, margin: '0 auto', padding: '32px 40px' }}>
+      <div className="space-y-8">
+        {/* Boas-vindas */}
         <div>
-          <h3 className="text-lg font-semibold text-gray-800 mb-4">
-            Administração
-          </h3>
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-200 p-6">
-            <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              {adminCards.map((card) => (
-                <AdminCard key={card.to} card={card} />
-              ))}
+          <h2 className="text-2xl font-bold" style={{ color: C.text900 }}>
+            Bem-vindo ao Portal
+          </h2>
+          <p className="mt-1" style={{ color: C.text500 }}>
+            Selecione um sistema para começar
+          </p>
+        </div>
+
+        {/* Grid de sistemas */}
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {systemCards.map((card) => (
+            <SystemCard key={card.to} card={card} />
+          ))}
+        </div>
+
+        {/* Painel Admin */}
+        {user?.is_admin && (
+          <div>
+            <h3 className="text-lg font-semibold mb-4" style={{ color: C.text900 }}>
+              Administração
+            </h3>
+            <div className="bg-white rounded-2xl shadow-sm p-6" style={{ border: `1px solid ${C.gray200}` }}>
+              <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {adminCards.map((card) => (
+                  <AdminCard key={card.to} card={card} />
+                ))}
+              </div>
             </div>
           </div>
-        </div>
-      )}
-    </PageContainer>
+        )}
+      </div>
+    </div>
   )
 }

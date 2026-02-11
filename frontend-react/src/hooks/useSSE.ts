@@ -1,7 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { getToken } from '@/lib/api'
+import type { QueryClient } from '@tanstack/react-query'
 
-// Hook para conexoes Server-Sent Events (streaming de IA)
+// ---------------------------------------------------------------------------
+// Tipos
+// ---------------------------------------------------------------------------
+
 interface SSEOptions<T> {
   url: string
   token?: string
@@ -11,6 +15,17 @@ interface SSEOptions<T> {
   enabled?: boolean
   reconnect?: boolean
   maxRetries?: number
+
+  /**
+   * Integracao com TanStack Query.
+   * Ao final do streaming ([DONE]), invalida as query keys listadas.
+   *
+   * Politica:
+   * - Durante o streaming: componente atualiza estado local via onMessage
+   * - Ao completar: invalida queries para sincronizar cache server-side
+   */
+  queryClient?: QueryClient
+  invalidateOnComplete?: readonly (readonly unknown[])[]
 }
 
 interface SSEReturn {
@@ -20,6 +35,10 @@ interface SSEReturn {
   connect: () => void
   disconnect: () => void
 }
+
+// ---------------------------------------------------------------------------
+// Hook
+// ---------------------------------------------------------------------------
 
 export function useSSE<T>(options: SSEOptions<T>): SSEReturn {
   const {
@@ -31,6 +50,8 @@ export function useSSE<T>(options: SSEOptions<T>): SSEReturn {
     enabled = true,
     reconnect = false,
     maxRetries = 3,
+    queryClient,
+    invalidateOnComplete,
   } = options
 
   const [isConnected, setIsConnected] = useState(false)
@@ -41,13 +62,21 @@ export function useSSE<T>(options: SSEOptions<T>): SSEReturn {
   const retriesRef = useRef(0)
   const mountedRef = useRef(true)
 
-  // Refs estáveis para callbacks
+  // Refs estaveis para callbacks (atualizados via effect — React 19)
   const onMessageRef = useRef(onMessage)
   const onErrorRef = useRef(onError)
   const onCompleteRef = useRef(onComplete)
-  onMessageRef.current = onMessage
-  onErrorRef.current = onError
-  onCompleteRef.current = onComplete
+  const queryClientRef = useRef(queryClient)
+  const invalidateKeysRef = useRef(invalidateOnComplete)
+  const connectRef = useRef<() => void>(() => {})
+
+  useEffect(() => {
+    onMessageRef.current = onMessage
+    onErrorRef.current = onError
+    onCompleteRef.current = onComplete
+    queryClientRef.current = queryClient
+    invalidateKeysRef.current = invalidateOnComplete
+  })
 
   const disconnect = useCallback(() => {
     if (eventSourceRef.current) {
@@ -82,9 +111,17 @@ export function useSSE<T>(options: SSEOptions<T>): SSEReturn {
       if (!mountedRef.current) return
       setIsLoading(false)
 
-      // Verifica se e mensagem de finalizacao
+      // Mensagem de finalizacao
       if (event.data === '[DONE]') {
         onCompleteRef.current?.()
+
+        // Invalida queries relacionadas ao final do streaming
+        if (queryClientRef.current && invalidateKeysRef.current) {
+          for (const key of invalidateKeysRef.current) {
+            queryClientRef.current.invalidateQueries({ queryKey: key as unknown[] })
+          }
+        }
+
         disconnect()
         return
       }
@@ -106,12 +143,12 @@ export function useSSE<T>(options: SSEOptions<T>): SSEReturn {
 
       onErrorRef.current?.(event)
 
-      // Tenta reconectar se habilitado
+      // Tenta reconectar se habilitado via ref (evita referencia circular)
       if (reconnect && retriesRef.current < maxRetries) {
         retriesRef.current++
         const delay = Math.min(1000 * Math.pow(2, retriesRef.current), 30000)
         setTimeout(() => {
-          if (mountedRef.current) connect()
+          if (mountedRef.current) connectRef.current()
         }, delay)
       } else {
         setError('Conexao SSE perdida')
@@ -120,10 +157,15 @@ export function useSSE<T>(options: SSEOptions<T>): SSEReturn {
     }
   }, [url, customToken, disconnect, reconnect, maxRetries])
 
-  // Conecta automaticamente quando enabled
+  // Mantém ref atualizado para reconexao sem referencia circular
+  useEffect(() => {
+    connectRef.current = connect
+  })
+
+  // Conecta automaticamente quando enabled (setState no connect e intencional)
   useEffect(() => {
     if (enabled) {
-      connect()
+      connect() // eslint-disable-line react-hooks/set-state-in-effect -- SSE precisa setar loading ao conectar
     }
     return () => {
       disconnect()

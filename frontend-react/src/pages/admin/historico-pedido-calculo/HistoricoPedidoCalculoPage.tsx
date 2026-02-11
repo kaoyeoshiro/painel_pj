@@ -4,7 +4,7 @@
  * Exibe todas as geracoes de pedidos de calculo com logs de IA.
  */
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { DataTable } from '@/components/shared/DataTable'
 import type { ColumnDef } from '@/components/shared/DataTable'
 import {
@@ -21,10 +21,12 @@ import { Button } from '@/components/ui/button'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { useToast } from '@/components/ui/toast'
 import { pedidoCalculoAdminApi } from '@/lib/api'
-import { useApiQuery } from '@/hooks/useApiQuery'
+import { useQuery } from '@tanstack/react-query'
+import { queryKeys } from '@/lib/query-client'
 import { useMarkdown } from '@/hooks/useMarkdown'
-import { PageContainer, PageHeader } from '@/components/layout'
-import { History } from 'lucide-react'
+import { BreadcrumbBar } from '@/components/layout/BreadcrumbBar'
+import { C, FONT_UI } from '@/lib/designTokens'
+import { Calculator } from 'lucide-react'
 
 // ---------------------------------------------------------------------------
 // Tipos
@@ -365,18 +367,21 @@ export function HistoricoPedidoCalculoPage() {
   const { toast } = useToast()
 
   // Busca lista de geracoes
-  const { data: geracoes, isLoading } = useApiQuery<GeracaoResumo[]>(
-    () => pedidoCalculoAdminApi.get('/geracoes?limit=200&offset=0'),
-    {
-      onError: (err) => {
-        toast({
-          title: 'Erro ao carregar histórico',
-          description: err,
-          variant: 'destructive',
-        })
-      },
+  const { data: geracoes, isLoading, error: geracoesError } = useQuery<GeracaoResumo[]>({
+    queryKey: queryKeys.admin.pedidoCalculoGeracoes(),
+    queryFn: () => pedidoCalculoAdminApi.get<GeracaoResumo[]>('/geracoes?limit=200&offset=0'),
+  })
+
+  // Exibe toast ao ocorrer erro na query (exibe toast em caso de erro)
+  useEffect(() => {
+    if (geracoesError) {
+      toast({
+        title: 'Erro ao carregar histórico',
+        description: geracoesError instanceof Error ? geracoesError.message : 'Erro desconhecido',
+        variant: 'destructive',
+      })
     }
-  )
+  }, [geracoesError, toast])
 
   // Handler ao clicar numa linha
   const handleRowClick = async (row: GeracaoResumo) => {
@@ -445,26 +450,27 @@ export function HistoricoPedidoCalculoPage() {
   ]
 
   return (
-    <PageContainer wide className="space-y-6">
-      <PageHeader
-        title="Histórico - Pedido de Cálculo"
-        description="Todas as gerações de pedidos de cálculo com logs de IA"
-        icon={<History className="h-5 w-5" />}
-        backTo="/dashboard"
+    <div style={{ fontFamily: FONT_UI }}>
+      <BreadcrumbBar
+        title="Historico - Pedido de Calculo"
+        icon={<Calculator style={{ width: 14, height: 14 }} />}
       />
-
-      <DataTable
-        columns={columns}
-        data={geracoes || []}
-        isLoading={isLoading}
-        searchable
-        searchPlaceholder="Buscar por CNJ..."
-        pageSize={20}
-        onRowClick={handleRowClick}
-        emptyMessage="Nenhuma geracao encontrada"
-      />
+      <div style={{ maxWidth: 1350, margin: '0 auto', padding: '32px 40px' }}>
+        <div className="space-y-6">
+          <DataTable
+            columns={columns}
+            data={geracoes || []}
+            isLoading={isLoading}
+            searchable
+            searchPlaceholder="Buscar por CNJ..."
+            pageSize={20}
+            onRowClick={handleRowClick}
+            emptyMessage="Nenhuma geracao encontrada"
+          />
+        </div>
+      </div>
 
       <DetalhesModal geracao={selectedGeracao} onClose={() => setSelectedGeracao(null)} />
-    </PageContainer>
+    </div>
   )
 }

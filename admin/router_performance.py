@@ -14,7 +14,7 @@ Endpoints:
 - CRUD /admin/performance/route-maps - Mapeamento rota -> sistema
 """
 
-from fastapi import APIRouter, Depends, Query, HTTPException
+from fastapi import APIRouter, Depends, Query, HTTPException, Request
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from sqlalchemy import func, desc
@@ -573,7 +573,7 @@ class FrontendMetricsRequest(BaseModel):
 @router.post("/frontend-metrics")
 async def receive_frontend_metrics(
     metrics: FrontendMetricsRequest,
-    request: "Request",
+    request: Request,
     db: Session = Depends(get_db),
     current_user: Optional[User] = Depends(get_optional_user)
 ):

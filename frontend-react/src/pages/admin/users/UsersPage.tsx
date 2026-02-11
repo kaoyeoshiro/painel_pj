@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from 'react'
 import { usersApi } from '@/lib/api'
-import { PageContainer, PageHeader } from '@/components/layout'
+import { BreadcrumbBar } from '@/components/layout/BreadcrumbBar'
+import { C, FONT_UI } from '@/lib/designTokens'
 import { Users as UsersIcon, UserPlus, Users } from 'lucide-react'
 import { DataTable } from '@/components/shared/DataTable'
 import { Button } from '@/components/ui/button'
@@ -457,18 +458,18 @@ export function UsersPage() {
   ]
 
   return (
-    <PageContainer wide className="space-y-6">
-      <PageHeader
+    <div style={{ fontFamily: FONT_UI }}>
+      <BreadcrumbBar
         title="Gerenciamento de Usuarios"
-        description="Controle de acessos ao Portal PGE-MS"
-        icon={<UsersIcon className="h-5 w-5" />}
+        icon={<UsersIcon style={{ width: 14, height: 14 }} />}
         actions={
           <div className="flex items-center gap-2">
             <div
-              className="flex items-center gap-2 bg-white px-2 py-2 rounded-lg border border-gray-200"
+              className="flex items-center gap-2 px-2 py-2 rounded-lg border"
+              style={{ background: 'white', borderColor: C.gray200 }}
               data-testid="group-by-filter"
             >
-              <Label htmlFor="group-by-select" className="text-sm text-gray-600 whitespace-nowrap">
+              <Label htmlFor="group-by-select" className="text-sm whitespace-nowrap" style={{ color: C.text500 }}>
                 Agrupar por:
               </Label>
               <Select
@@ -480,7 +481,8 @@ export function UsersPage() {
               >
                 <SelectTrigger
                   id="group-by-select"
-                  className="h-8 w-[104px] min-w-0 border-gray-300 px-2 py-1 text-sm"
+                  className="h-8 w-[104px] min-w-0 px-2 py-1 text-sm"
+                  style={{ borderColor: C.gray300 }}
                   data-testid="group-by-select"
                 >
                   <SelectValue />
@@ -492,13 +494,15 @@ export function UsersPage() {
                 </SelectContent>
               </Select>
             </div>
-            <Button onClick={handleCreate} className="h-10 px-3">
+            <Button onClick={handleCreate} className="h-10 px-3" style={{ background: C.navy950, color: 'white' }}>
               <UserPlus className="h-4 w-4 mr-2" />
               Novo Usuario
             </Button>
           </div>
         }
       />
+      <div style={{ maxWidth: 1350, margin: '0 auto', padding: '32px 40px' }}>
+      <div className="space-y-6">
 
       {/* Tabela de usuarios — exibicao agrupada ou normal */}
       {groupBy === 'none' || !groupedUsers ? (
@@ -507,7 +511,7 @@ export function UsersPage() {
           columns={columns}
           isLoading={loading}
           emptyState={
-            <div className="flex flex-col items-center gap-2 text-[#98A2B3]">
+            <div className="flex flex-col items-center gap-2" style={{ color: C.text400 }}>
               <Users className="h-12 w-12" />
               <span>Nenhum usuario encontrado</span>
             </div>
@@ -518,7 +522,7 @@ export function UsersPage() {
           {groupedUsers.map(([groupName, groupUsers]) => {
             const isCollapsed = collapsedGroups.has(groupName)
             return (
-              <Card key={groupName} className="overflow-hidden">
+              <Card key={groupName} className="overflow-hidden rounded-2xl" style={{ borderColor: C.gray200 }}>
                 {/* Cabecalho do grupo — clicavel para colapsar/expandir */}
                 <button
                   type="button"
@@ -532,7 +536,7 @@ export function UsersPage() {
                     >
                       ▼
                     </span>
-                    <span className="font-semibold text-lg">{groupName}</span>
+                    <span className="font-semibold text-lg" style={{ color: C.text900 }}>{groupName}</span>
                     <Badge variant="secondary">{groupUsers.length}</Badge>
                   </div>
                 </button>
@@ -766,6 +770,8 @@ export function UsersPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </PageContainer>
+      </div>
+      </div>
+    </div>
   )
 }

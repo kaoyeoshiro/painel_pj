@@ -18,9 +18,10 @@ import {
   Save,
   PlayCircle,
   Download,
+  Zap,
 } from 'lucide-react'
-import { PageContainer } from '@/components/layout/PageContainer'
-import { PageHeader } from '@/components/layout'
+import { BreadcrumbBar } from '@/components/layout/BreadcrumbBar'
+import { C, FONT_UI } from '@/lib/designTokens'
 
 interface TipoPeca {
   slug: string
@@ -307,41 +308,39 @@ export function TesteAtivacaoPage() {
   }
 
   return (
-    <PageContainer fluid noPadding>
-      <div className="px-4 pt-4">
-        <PageHeader
-          title="Teste de Ativacao de Modulos"
-          description="Simule ativacao de prompts com variaveis de teste"
-          actions={
-            <div className="flex items-center gap-2 bg-amber-50 px-4 py-2 rounded-lg border-2 border-amber-300 shrink-0">
-              <FileText className="h-4 w-4 text-amber-600" />
-              <label className="text-sm font-medium text-amber-700">Tipo de Peca:</label>
-              <Select value={tipoPecaSelecionado || '__none__'} onValueChange={(v) => setTipoPecaSelecionado(v === '__none__' ? '' : v)}>
-                <SelectTrigger className="h-10 min-w-[200px] border-2 border-amber-400 bg-white font-semibold">
-                  <SelectValue placeholder="-- Selecione --" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none__">-- Selecione --</SelectItem>
-                  {tiposPeca.map((tipo) => (
-                    <SelectItem key={tipo.slug} value={tipo.slug}>
-                      {tipo.nome}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              {!tipoPecaSelecionado && <span className="text-xs text-red-600 font-medium animate-pulse">(obrigatorio)</span>}
-            </div>
-          }
-        />
-      </div>
+    <div style={{ fontFamily: FONT_UI }}>
+      <BreadcrumbBar
+        title="Teste de Ativacao de Modulos"
+        icon={<Zap style={{ width: 14, height: 14 }} />}
+        actions={
+          <div className="flex items-center gap-2 px-4 py-2 rounded-lg shrink-0" style={{ background: C.orange50, border: `2px solid ${C.orange400}` }}>
+            <FileText className="h-4 w-4" style={{ color: C.orange600 }} />
+            <label className="text-sm font-medium" style={{ color: C.text700 }}>Tipo de Peca:</label>
+            <Select value={tipoPecaSelecionado || '__none__'} onValueChange={(v) => setTipoPecaSelecionado(v === '__none__' ? '' : v)}>
+              <SelectTrigger className="h-10 min-w-[200px] bg-white font-semibold" style={{ border: `2px solid ${C.orange400}` }}>
+                <SelectValue placeholder="-- Selecione --" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">-- Selecione --</SelectItem>
+                {tiposPeca.map((tipo) => (
+                  <SelectItem key={tipo.slug} value={tipo.slug}>
+                    {tipo.nome}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {!tipoPecaSelecionado && <span className="text-xs font-medium animate-pulse" style={{ color: C.statusError }}>(obrigatorio)</span>}
+          </div>
+        }
+      />
 
       <div className="p-4">
         <div className="grid grid-cols-12 gap-4">
           <div className="col-span-12 lg:col-span-3 space-y-4">
-            <Card className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-              <div className="px-4 py-3 border-b border-gray-200 bg-gradient-to-r from-purple-50 to-indigo-50">
-                <h3 className="font-semibold text-gray-700 flex items-center gap-2">
-                  <Edit3 className="h-4 w-4 text-purple-500" />
+            <Card className="bg-white rounded-2xl shadow-sm overflow-hidden" style={{ borderColor: C.gray200 }}>
+              <div className="px-4 py-3 border-b" style={{ borderColor: C.gray200, background: C.navy50 }}>
+                <h3 className="font-semibold flex items-center gap-2" style={{ color: C.text700 }}>
+                  <Edit3 className="h-4 w-4" style={{ color: C.navy600 }} />
                   Descricao da Situacao
                 </h3>
               </div>
@@ -364,16 +363,16 @@ export function TesteAtivacaoPage() {
               </div>
             </Card>
 
-            <Card className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-              <div className="px-4 py-3 border-b border-gray-200 bg-gradient-to-r from-blue-50 to-cyan-50">
-                <h3 className="font-semibold text-gray-700 flex items-center gap-2">
-                  <Tags className="h-4 w-4 text-blue-500" />
+            <Card className="bg-white rounded-2xl shadow-sm overflow-hidden" style={{ borderColor: C.gray200 }}>
+              <div className="px-4 py-3 border-b" style={{ borderColor: C.gray200, background: C.navy50 }}>
+                <h3 className="font-semibold flex items-center gap-2" style={{ color: C.text700 }}>
+                  <Tags className="h-4 w-4" style={{ color: C.navy600 }} />
                   Categorias de Extracao
                 </h3>
               </div>
               <div className="p-4 max-h-[200px] overflow-y-auto space-y-2">
                 {categorias.length === 0 ? (
-                  <p className="text-center text-gray-400 text-sm py-4">{loading ? 'Carregando...' : 'Nenhuma categoria'}</p>
+                  <p className="text-center text-sm py-4" style={{ color: C.text400 }}>{loading ? 'Carregando...' : 'Nenhuma categoria'}</p>
                 ) : (
                   categorias.map((categoria) => (
                     <div key={categoria.id} className="flex items-center gap-2">
@@ -391,10 +390,10 @@ export function TesteAtivacaoPage() {
               </div>
             </Card>
 
-            <Card className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-              <div className="px-4 py-3 border-b border-gray-200 bg-gradient-to-r from-green-50 to-emerald-50 flex items-center justify-between">
-                <h3 className="font-semibold text-gray-700 flex items-center gap-2">
-                  <Bookmark className="h-4 w-4 text-green-500" />
+            <Card className="bg-white rounded-2xl shadow-sm overflow-hidden" style={{ borderColor: C.gray200 }}>
+              <div className="px-4 py-3 border-b flex items-center justify-between" style={{ borderColor: C.gray200, background: C.navy50 }}>
+                <h3 className="font-semibold flex items-center gap-2" style={{ color: C.text700 }}>
+                  <Bookmark className="h-4 w-4" style={{ color: C.navy600 }} />
                   Cenarios Salvos
                 </h3>
                 <button onClick={salvarCenario} className="text-green-600 hover:text-green-800 text-sm" title="Salvar cenário atual">
@@ -442,31 +441,40 @@ export function TesteAtivacaoPage() {
           </div>
 
           <div className="col-span-12 lg:col-span-9">
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 relative overflow-hidden">
-              <div className="flex border-b border-gray-200">
+            <div className="bg-white rounded-2xl shadow-sm relative overflow-hidden" style={{ border: `1px solid ${C.gray200}` }}>
+              <div className="flex border-b" style={{ borderColor: C.gray200 }}>
                 <button
                   onClick={() => setActiveTab('variaveis-extracao')}
-                  className={`flex-1 px-6 py-3 text-sm font-medium flex items-center justify-center gap-2 ${
-                    activeTab === 'variaveis-extracao' ? 'border-b-[3px] border-primary-600 text-primary-600 bg-primary-50' : 'text-gray-500'
-                  }`}
+                  className="flex-1 px-6 py-3 text-sm font-medium flex items-center justify-center gap-2"
+                  style={{
+                    borderBottom: activeTab === 'variaveis-extracao' ? `3px solid ${C.navy700}` : '3px solid transparent',
+                    color: activeTab === 'variaveis-extracao' ? C.navy700 : C.text500,
+                    background: activeTab === 'variaveis-extracao' ? C.navy50 : 'transparent',
+                  }}
                 >
                   <FileText className="h-4 w-4" />
                   Variaveis Extracao
                 </button>
                 <button
                   onClick={() => setActiveTab('variaveis-processo')}
-                  className={`flex-1 px-6 py-3 text-sm font-medium flex items-center justify-center gap-2 ${
-                    activeTab === 'variaveis-processo' ? 'border-b-[3px] border-primary-600 text-primary-600 bg-primary-50' : 'text-gray-500'
-                  }`}
+                  className="flex-1 px-6 py-3 text-sm font-medium flex items-center justify-center gap-2"
+                  style={{
+                    borderBottom: activeTab === 'variaveis-processo' ? `3px solid ${C.navy700}` : '3px solid transparent',
+                    color: activeTab === 'variaveis-processo' ? C.navy700 : C.text500,
+                    background: activeTab === 'variaveis-processo' ? C.navy50 : 'transparent',
+                  }}
                 >
                   <FileText className="h-4 w-4" />
                   Variaveis Processo
                 </button>
                 <button
                   onClick={() => setActiveTab('resultados')}
-                  className={`flex-1 px-6 py-3 text-sm font-medium flex items-center justify-center gap-2 ${
-                    activeTab === 'resultados' ? 'border-b-[3px] border-primary-600 text-primary-600 bg-primary-50' : 'text-gray-500'
-                  }`}
+                  className="flex-1 px-6 py-3 text-sm font-medium flex items-center justify-center gap-2"
+                  style={{
+                    borderBottom: activeTab === 'resultados' ? `3px solid ${C.navy700}` : '3px solid transparent',
+                    color: activeTab === 'resultados' ? C.navy700 : C.text500,
+                    background: activeTab === 'resultados' ? C.navy50 : 'transparent',
+                  }}
                 >
                   <FileText className="h-4 w-4" />
                   Resultados
@@ -476,7 +484,7 @@ export function TesteAtivacaoPage() {
               {activeTab === 'variaveis-extracao' && (
                 <div className="p-4 overflow-y-auto h-[calc(100vh-280px)] max-h-[calc(100vh-280px)]">
                   {categoriasSelecionadas.size === 0 ? (
-                    <p className="text-center text-gray-400 py-8">Selecione categorias para ver as variaveis</p>
+                    <p className="text-center py-8" style={{ color: C.text400 }}>Selecione categorias para ver as variaveis</p>
                   ) : (
                     <div className="space-y-4">{getVariaveisExtracao().map((v) => renderCampoVariavel(v))}</div>
                   )}
@@ -486,7 +494,7 @@ export function TesteAtivacaoPage() {
               {activeTab === 'variaveis-processo' && (
                 <div className="p-4 overflow-y-auto h-[calc(100vh-280px)] max-h-[calc(100vh-280px)]">
                   {variaveisDisponiveis.length === 0 ? (
-                    <p className="text-center text-gray-400 py-8">Carregando...</p>
+                    <p className="text-center py-8" style={{ color: C.text400 }}>Carregando...</p>
                   ) : (
                     <div className="space-y-4">{variaveisDisponiveis.map((v) => renderCampoVariavel(v))}</div>
                   )}
@@ -495,10 +503,10 @@ export function TesteAtivacaoPage() {
 
               {activeTab === 'resultados' && (
                 <div className="h-[calc(100vh-280px)] max-h-[calc(100vh-280px)]">
-                  <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 flex items-center gap-4">
-                    <span className="text-sm text-gray-600">
-                      <span className="font-bold text-green-600">{resultado?.totais.ativados ?? 0}</span> ativados |
-                      <span className="font-bold text-red-600 ml-1">{resultado?.totais.nao_ativados ?? 0}</span> nao ativados
+                  <div className="px-4 py-3 border-b flex items-center gap-4" style={{ borderColor: C.gray200, background: C.gray50 }}>
+                    <span className="text-sm" style={{ color: C.text500 }}>
+                      <span className="font-bold" style={{ color: C.statusSuccess }}>{resultado?.totais.ativados ?? 0}</span> ativados |
+                      <span className="font-bold ml-1" style={{ color: C.statusError }}>{resultado?.totais.nao_ativados ?? 0}</span> nao ativados
                     </span>
                     <div className="flex-1" />
                     <Button onClick={exportarJSON} variant="outline" size="sm" disabled={!resultado || exportandoJson}>
@@ -509,28 +517,28 @@ export function TesteAtivacaoPage() {
 
                   <div className="overflow-y-auto p-4 h-[calc(100%-52px)] space-y-3">
                     {!resultado ? (
-                      <div className="text-center py-12 text-gray-400">
+                      <div className="text-center py-12" style={{ color: C.text400 }}>
                         <p className="text-lg">Clique em "SIMULAR ATIVACAO" para ver os resultados</p>
                       </div>
                     ) : (
                       <>
                         {resultado.modulos_ativados.map((modulo) => (
-                          <Card key={`on-${modulo.id}`} className="p-4 border-l-4 border-l-green-500 bg-gradient-to-r from-green-50 to-white">
+                          <Card key={`on-${modulo.id}`} className="p-4" style={{ borderLeft: `4px solid ${C.statusSuccess}`, borderColor: C.gray200 }}>
                             <div className="flex items-center justify-between">
                               <div>
-                                <p className="font-semibold text-gray-800">{modulo.titulo}</p>
-                                <p className="text-xs text-gray-500 mt-1">{modulo.grupo}</p>
+                                <p className="font-semibold" style={{ color: C.text900 }}>{modulo.titulo}</p>
+                                <p className="text-xs mt-1" style={{ color: C.text500 }}>{modulo.grupo}</p>
                               </div>
                               <Badge variant="success">Ativado</Badge>
                             </div>
                           </Card>
                         ))}
                         {resultado.modulos_nao_ativados.map((modulo) => (
-                          <Card key={`off-${modulo.id}`} className="p-4 border-l-4 border-l-red-500 bg-gradient-to-r from-red-50 to-white">
+                          <Card key={`off-${modulo.id}`} className="p-4" style={{ borderLeft: `4px solid ${C.statusError}`, borderColor: C.gray200 }}>
                             <div className="flex items-center justify-between">
                               <div>
-                                <p className="font-semibold text-gray-800">{modulo.titulo}</p>
-                                <p className="text-xs text-gray-500 mt-1">{modulo.grupo}</p>
+                                <p className="font-semibold" style={{ color: C.text900 }}>{modulo.titulo}</p>
+                                <p className="text-xs mt-1" style={{ color: C.text500 }}>{modulo.grupo}</p>
                               </div>
                               <Badge variant="destructive">Não ativado</Badge>
                             </div>
@@ -547,7 +555,8 @@ export function TesteAtivacaoPage() {
               <Button
                 onClick={simularAtivacao}
                 disabled={simulando || loading || !tipoPecaSelecionado}
-                className="w-full py-4 bg-gradient-to-r from-primary-600 to-primary-700 hover:from-primary-700 hover:to-primary-800 text-white rounded-xl font-bold text-lg shadow-lg flex items-center justify-center gap-3"
+                className="w-full py-4 rounded-xl font-bold text-lg shadow-lg flex items-center justify-center gap-3"
+                style={{ background: C.navy950, color: 'white' }}
               >
                 <PlayCircle className="h-5 w-5" />
                 {simulando ? 'SIMULANDO...' : 'SIMULAR ATIVACAO'}
@@ -556,6 +565,6 @@ export function TesteAtivacaoPage() {
           </div>
         </div>
       </div>
-    </PageContainer>
+    </div>
   )
 }

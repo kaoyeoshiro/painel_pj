@@ -13,8 +13,9 @@ import {
 } from '@/components/ui/select'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useToast } from '@/components/ui/toast'
-import { PageContainer, PageHeader } from '@/components/layout'
-import { FileJson } from 'lucide-react'
+import { BreadcrumbBar } from '@/components/layout/BreadcrumbBar'
+import { C, FONT_UI } from '@/lib/designTokens'
+import { Layers } from 'lucide-react'
 
 interface PromptGroup {
   id: number
@@ -386,11 +387,10 @@ export function ModulosTipoPecaPage() {
   }
 
   return (
-    <PageContainer wide className="space-y-6">
-      <PageHeader
+    <div style={{ fontFamily: FONT_UI }}>
+      <BreadcrumbBar
         title="Módulos por Tipo de Peça"
-        icon={<FileJson className="h-5 w-5" />}
-        backTo="/dashboard"
+        icon={<Layers style={{ width: 14, height: 14 }} />}
         actions={
           <div className="flex items-center gap-4">
             {carregandoGrupos ? (
@@ -415,12 +415,15 @@ export function ModulosTipoPecaPage() {
             <Button
               onClick={salvarTodasAlteracoes}
               disabled={salvando || totalAlteracoesPendentes === 0}
+              style={{ background: C.navy950, color: 'white' }}
             >
               {salvando ? 'Salvando...' : 'Salvar Alterações'}
             </Button>
           </div>
         }
       />
+
+      <div style={{ maxWidth: 1350, margin: '0 auto', padding: '32px 40px' }} className="space-y-6">
 
       {/* Cards de estatísticas */}
       {carregandoTipos ? (
@@ -431,24 +434,24 @@ export function ModulosTipoPecaPage() {
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <Card className="p-4">
-            <div className="text-sm text-gray-600">Tipos de Peça</div>
-            <div className="text-2xl font-bold">{totalTipos}</div>
+          <Card className="p-4 rounded-2xl" style={{ borderColor: C.gray200 }}>
+            <div className="text-sm" style={{ color: C.text500 }}>Tipos de Peça</div>
+            <div className="text-2xl font-bold" style={{ color: C.text900 }}>{totalTipos}</div>
           </Card>
 
-          <Card className="p-4">
-            <div className="text-sm text-gray-600">Módulos Disponíveis</div>
-            <div className="text-2xl font-bold">{totalModulos}</div>
+          <Card className="p-4 rounded-2xl" style={{ borderColor: C.gray200 }}>
+            <div className="text-sm" style={{ color: C.text500 }}>Módulos Disponíveis</div>
+            <div className="text-2xl font-bold" style={{ color: C.text900 }}>{totalModulos}</div>
           </Card>
 
-          <Card className="p-4">
-            <div className="text-sm text-gray-600">Configurações Ativas</div>
-            <div className="text-2xl font-bold">{totalConfiguracoes}</div>
+          <Card className="p-4 rounded-2xl" style={{ borderColor: C.gray200 }}>
+            <div className="text-sm" style={{ color: C.text500 }}>Configurações Ativas</div>
+            <div className="text-2xl font-bold" style={{ color: C.text900 }}>{totalConfiguracoes}</div>
           </Card>
 
-          <Card className="p-4">
-            <div className="text-sm text-gray-600">Alterações Pendentes</div>
-            <div className="text-2xl font-bold text-amber-600">{totalAlteracoesPendentes}</div>
+          <Card className="p-4 rounded-2xl" style={{ borderColor: C.gray200 }}>
+            <div className="text-sm" style={{ color: C.text500 }}>Alterações Pendentes</div>
+            <div className="text-2xl font-bold" style={{ color: C.statusWarning }}>{totalAlteracoesPendentes}</div>
           </Card>
         </div>
       )}
@@ -486,10 +489,13 @@ export function ModulosTipoPecaPage() {
                                  alteracoesPendentes.get(categoria)!.size > 0
 
             return (
-              <Card key={tipoPeca.id} className="overflow-hidden">
+              <Card key={tipoPeca.id} className="overflow-hidden rounded-2xl" style={{ borderColor: C.gray200 }}>
                 {/* Header do card */}
                 <div
-                  className="p-4 cursor-pointer hover:bg-gray-50 flex items-center justify-between"
+                  className="p-4 cursor-pointer flex items-center justify-between transition-colors"
+                  style={{ background: 'white' }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = C.gray50 }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = 'white' }}
                   onClick={() => toggleTipoPeca(tipoPeca)}
                 >
                   <div className="flex items-center gap-3">
@@ -499,7 +505,7 @@ export function ModulosTipoPecaPage() {
                     <div>
                       <h3 className="font-semibold">{tipoPeca.titulo}</h3>
                       {resumoTipo && (
-                        <div className="text-sm text-gray-600 mt-1">
+                        <div className="text-sm mt-1" style={{ color: C.text500 }}>
                           <Badge variant="success" className="mr-2">
                             {resumoTipo.modulos_ativos} ativos
                           </Badge>
@@ -559,14 +565,14 @@ export function ModulosTipoPecaPage() {
                         ))}
                       </div>
                     ) : modulos.length === 0 ? (
-                      <div className="text-center text-gray-500 py-4">
+                      <div className="text-center py-4" style={{ color: C.text500 }}>
                         Nenhum módulo disponível
                       </div>
                     ) : (
                       <div className="space-y-4">
                         {Array.from(agruparModulosPorCategoria(modulos).entries()).map(([cat, mods]) => (
                           <div key={cat}>
-                            <h4 className="font-semibold text-sm text-gray-700 mb-2">
+                            <h4 className="font-semibold text-sm mb-2" style={{ color: C.text700 }}>
                               {cat}
                             </h4>
                             <div className="space-y-2">
@@ -590,7 +596,7 @@ export function ModulosTipoPecaPage() {
                                     <div className="flex-1">
                                       <div className="font-medium">{modulo.titulo}</div>
                                       {modulo.condicao_ativacao && (
-                                        <div className="text-sm text-gray-600 mt-1">
+                                        <div className="text-sm mt-1" style={{ color: C.text500 }}>
                                           Condição: {modulo.condicao_ativacao}
                                         </div>
                                       )}
@@ -610,6 +616,7 @@ export function ModulosTipoPecaPage() {
           })}
         </div>
       )}
-    </PageContainer>
+      </div>
+    </div>
   )
 }

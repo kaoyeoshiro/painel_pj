@@ -2,6 +2,10 @@
 
 const API_BASE = ''
 
+// ---------------------------------------------------------------------------
+// Token management
+// ---------------------------------------------------------------------------
+
 /** Busca token do localStorage */
 export function getToken(): string | null {
   return (
@@ -23,6 +27,53 @@ export function clearToken(): void {
   localStorage.removeItem('auth_token')
   sessionStorage.removeItem('auth_token')
 }
+
+// ---------------------------------------------------------------------------
+// ApiError — erro tipado para respostas HTTP
+// ---------------------------------------------------------------------------
+
+export interface ValidationError {
+  loc: (string | number)[]
+  msg: string
+  type: string
+}
+
+/**
+ * Erro estruturado da API. Captura status HTTP, mensagem e erros de validacao.
+ *
+ * Uso em catch:
+ * ```ts
+ * try { await apiRequest(...) }
+ * catch (e) {
+ *   if (e instanceof ApiError && e.status === 422) { ... }
+ * }
+ * ```
+ */
+export class ApiError extends Error {
+  readonly status: number
+  readonly detail: string
+  readonly validationErrors: ValidationError[]
+
+  constructor(
+    status: number,
+    detail: string,
+    validationErrors: ValidationError[] = [],
+  ) {
+    super(detail)
+    this.name = 'ApiError'
+    this.status = status
+    this.detail = detail
+    this.validationErrors = validationErrors
+  }
+
+  get isUnauthorized(): boolean { return this.status === 401 }
+  get isValidation(): boolean { return this.status === 422 }
+  get isServerError(): boolean { return this.status >= 500 }
+}
+
+// ---------------------------------------------------------------------------
+// Request
+// ---------------------------------------------------------------------------
 
 type ResponseType = 'json' | 'blob' | 'text'
 
@@ -72,16 +123,30 @@ export async function apiRequest<T>(
   if (response.status === 401) {
     clearToken()
     window.location.href = '/login'
-    throw new Error('Sessao expirada')
+    throw new ApiError(401, 'Sessao expirada')
   }
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({ detail: response.statusText }))
     const detail = errorData.detail
+
+    // 422 — erros de validacao (FastAPI retorna array em detail)
+    if (response.status === 422 && Array.isArray(detail)) {
+      const validationErrors: ValidationError[] = detail.map(
+        (d: { loc?: (string | number)[]; msg?: string; type?: string }) => ({
+          loc: d.loc ?? [],
+          msg: d.msg ?? String(d),
+          type: d.type ?? 'value_error',
+        }),
+      )
+      const message = validationErrors.map(v => v.msg).join('; ')
+      throw new ApiError(422, message, validationErrors)
+    }
+
     const message = Array.isArray(detail)
       ? detail.map((d: { msg?: string }) => d.msg || String(d)).join('; ')
       : detail || `Erro ${response.status}`
-    throw new Error(message)
+    throw new ApiError(response.status, message)
   }
 
   // Retorna conforme o tipo solicitado

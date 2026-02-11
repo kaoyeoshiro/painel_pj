@@ -1,7 +1,15 @@
 import { create } from 'zustand'
 import { getToken, setToken, clearToken, apiRequest } from '@/lib/api'
+import { assertSchema } from '@/lib/schema-validator'
+import { TokenSchema, UserMeSchema } from '@/types/generated/schemas.gen'
 
-// Tipos do usuario autenticado
+// ---------------------------------------------------------------------------
+// Tipos
+// ---------------------------------------------------------------------------
+
+/** Estado explicito de autenticacao — evita UI zombie/flicker */
+export type AuthStatus = 'unknown' | 'authenticated' | 'unauthenticated'
+
 interface User {
   id: number
   username: string
@@ -11,11 +19,14 @@ interface User {
 }
 
 interface AuthState {
+  status: AuthStatus
   token: string | null
   user: User | null
+  error: string | null
+
+  // Derivados (compat) — sempre em sincronia com `status`
   isAuthenticated: boolean
   isLoading: boolean
-  error: string | null
 
   // Acoes
   login: (username: string, password: string) => Promise<void>
@@ -24,18 +35,34 @@ interface AuthState {
   initialize: () => Promise<void>
 }
 
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function deriveFromStatus(status: AuthStatus) {
+  return {
+    isAuthenticated: status === 'authenticated',
+    isLoading: status === 'unknown',
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Store
+// ---------------------------------------------------------------------------
+
+let _initialized = false
+
 export const useAuthStore = create<AuthState>((set, get) => ({
+  status: 'unknown',
   token: getToken(),
   user: null,
-  isAuthenticated: false,
-  isLoading: true,
   error: null,
+  ...deriveFromStatus('unknown'),
 
   /** Faz login com username e senha */
   login: async (username: string, password: string) => {
-    set({ isLoading: true, error: null })
+    set({ status: 'unknown', error: null, ...deriveFromStatus('unknown') })
     try {
-      // O endpoint /auth/login espera FormData (x-www-form-urlencoded)
       const formData = new URLSearchParams()
       formData.append('username', username)
       formData.append('password', password)
@@ -46,14 +73,16 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         skipAuth: true,
       })
 
+      // Validacao runtime — garante que o backend retornou o shape esperado
+      assertSchema(response, TokenSchema, 'POST /auth/login')
+
       setToken(response.access_token)
       set({ token: response.access_token })
 
-      // Carrega dados do usuario apos login
       await get().loadUser()
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Erro ao fazer login'
-      set({ error: message, isLoading: false })
+      set({ error: message, status: 'unauthenticated', ...deriveFromStatus('unauthenticated') })
       throw error
     }
   },
@@ -61,11 +90,13 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   /** Faz logout, limpa estado e redireciona */
   logout: () => {
     clearToken()
+    _initialized = false
     set({
       token: null,
       user: null,
-      isAuthenticated: false,
+      status: 'unauthenticated',
       error: null,
+      ...deriveFromStatus('unauthenticated'),
     })
     window.location.href = '/login'
   },
@@ -74,32 +105,38 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   loadUser: async () => {
     try {
       const data = await apiRequest<{ id: number; username: string; full_name: string; role: string }>('/auth/me', { method: 'GET' })
+
+      // Validacao runtime — garante shape esperado da resposta de usuario
+      assertSchema(data, UserMeSchema, 'GET /auth/me')
+
       set({
         user: { ...data, is_admin: data.role === 'admin' },
-        isAuthenticated: true,
-        isLoading: false,
+        status: 'authenticated',
         error: null,
+        ...deriveFromStatus('authenticated'),
       })
     } catch {
-      // Token invalido — limpa tudo
       clearToken()
       set({
         token: null,
         user: null,
-        isAuthenticated: false,
-        isLoading: false,
+        status: 'unauthenticated',
+        ...deriveFromStatus('unauthenticated'),
       })
     }
   },
 
-  /** Inicializa o store — chamada no inicio do app */
+  /** Inicializa o store — chamada uma unica vez no boot do app */
   initialize: async () => {
+    if (_initialized) return
+    _initialized = true
+
     const token = getToken()
     if (!token) {
-      set({ isLoading: false })
+      set({ status: 'unauthenticated', ...deriveFromStatus('unauthenticated') })
       return
     }
-    set({ isLoading: true, token })
+    set({ status: 'unknown', token, ...deriveFromStatus('unknown') })
     await get().loadUser()
   },
 }))

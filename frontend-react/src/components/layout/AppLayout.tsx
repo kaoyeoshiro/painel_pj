@@ -3,20 +3,9 @@ import { Header } from './Header'
 import { Sidebar } from './Sidebar'
 
 const ALWAYS_LEGACY_FRAME_PREFIXES: string[] = []
-const ALWAYS_NATIVE_NO_SHELL_PREFIXES = [
-  '/prestacao-contas',
-  '/bert-training',
-  '/assistencia',
-  '/cumprimento-beta',
-  '/relatorio-cumprimento',
-  '/matriculas',
-]
+const ALWAYS_NATIVE_NO_SHELL_PREFIXES: string[] = []
 
 const MOBILE_INLINE_TOPBAR_PREFIXES = [
-  '/assistencia',
-  '/matriculas',
-  '/prestacao-contas',
-  '/relatorio-cumprimento',
   '/classificador',
 ]
 

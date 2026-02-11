@@ -10,7 +10,8 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/co
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { useToast } from '@/components/ui/toast'
-import { useApiQuery } from '@/hooks/useApiQuery'
+import { useQuery } from '@tanstack/react-query'
+import { queryKeys } from '@/lib/query-client'
 import { pedidoCalculoApi, getToken } from '@/lib/api'
 import { useMarkdown } from '@/hooks/useMarkdown'
 import {
@@ -124,8 +125,9 @@ export function PedidoCalculoPage() {
     data: historico,
     isLoading: isLoadingHistorico,
     refetch: refetchHistorico,
-  } = useApiQuery<HistoricoItem[]>(() => pedidoCalculoApi.get('/historico'), {
-    enabled: true,
+  } = useQuery<HistoricoItem[]>({
+    queryKey: queryKeys.pedidoCalculo.historico(),
+    queryFn: () => pedidoCalculoApi.get<HistoricoItem[]>('/historico'),
   })
 
   // Scroll automatico do chat

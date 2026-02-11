@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { Play, RotateCw, FlaskConical, MessageSquare, Send, User, Bot, Loader2, AlertCircle, Download } from 'lucide-react'
-import { SystemTopbar } from '@/components/layout/SystemTopbar'
+import { BreadcrumbBar } from '@/components/layout/BreadcrumbBar'
+import { C, FONT_UI } from '@/lib/designTokens'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -10,7 +11,8 @@ import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import { useAuthStore } from '@/stores/auth-store'
-import { useApiQuery } from '@/hooks/useApiQuery'
+import { useQuery } from '@tanstack/react-query'
+import { queryKeys } from '@/lib/query-client'
 import { useMarkdown } from '@/hooks/useMarkdown'
 import { cumprimentoBetaApi } from '@/lib/api'
 import type {
@@ -25,7 +27,7 @@ import type {
 export function CumprimentoBetaPage() {
   const user = useAuthStore((state) => state.user)
 
-  // Estado da sessão atual
+  // Estado da sessao atual
   const [numeroProcesso, setNumeroProcesso] = useState('')
   const [sessaoAtual, setSessaoAtual] = useState<SessionResponse | null>(null)
   const [consolidacao, setConsolidacao] = useState<ConsolidationResponse | null>(null)
@@ -44,11 +46,11 @@ export function CumprimentoBetaPage() {
   const chatScrollRef = useRef<HTMLDivElement>(null)
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null)
 
-  // Buscar lista de sessões para o histórico
-  const { data: sessoes, refetch: refetchSessoes } = useApiQuery<SessionListResponse>(
-    () => cumprimentoBetaApi.get('/sessoes?pagina=1&por_pagina=50'),
-    { enabled: true }
-  )
+  // Buscar lista de sessoes para o historico
+  const { data: sessoes, refetch: refetchSessoes } = useQuery<SessionListResponse>({
+    queryKey: queryKeys.cumprimentoBeta.sessoes(),
+    queryFn: () => cumprimentoBetaApi.get<SessionListResponse>('/sessoes?pagina=1&por_pagina=50'),
+  })
 
   // Auto-scroll do chat
   useEffect(() => {
@@ -66,10 +68,9 @@ export function CumprimentoBetaPage() {
     }
   }, [])
 
-  // Função para iniciar nova sessão
   const handleIniciarSessao = async () => {
     if (!numeroProcesso.trim()) {
-      setErro('Informe o número do processo')
+      setErro('Informe o numero do processo')
       return
     }
 
@@ -77,22 +78,14 @@ export function CumprimentoBetaPage() {
       setErro(null)
       setProcessando(true)
 
-      // Criar sessão
       const response = await cumprimentoBetaApi.post<{ sessao_id: number; numero_processo_formatado: string }>(
         '/sessoes',
         { numero_processo: numeroProcesso }
       )
 
-      // Iniciar processamento
       await cumprimentoBetaApi.post(`/sessoes/${response.sessao_id}/processar`)
-
-      // Carregar sessão criada
       await carregarSessao(response.sessao_id)
-
-      // Iniciar polling
       iniciarPolling(response.sessao_id)
-
-      // Atualizar histórico
       refetchSessoes()
     } catch (error) {
       const err = error as Error
@@ -101,7 +94,6 @@ export function CumprimentoBetaPage() {
     }
   }
 
-  // Função para carregar sessão existente
   const carregarSessao = async (sessaoId: number) => {
     try {
       setErro(null)
@@ -109,16 +101,11 @@ export function CumprimentoBetaPage() {
       setSessaoAtual(sessao)
       setNumeroProcesso(sessao.numero_processo_formatado)
 
-      // Se está consolidando mas não tem consolidação, executar
       if (sessao.status === 'consolidando' && !sessao.tem_consolidacao) {
         executarConsolidacao(sessaoId)
-      }
-      // Se já está no modo chatbot, carregar consolidação e mensagens
-      else if ((sessao.status === 'chatbot' || sessao.status === 'finalizado') && sessao.tem_consolidacao) {
+      } else if ((sessao.status === 'chatbot' || sessao.status === 'finalizado') && sessao.tem_consolidacao) {
         await carregarDadosCompletos(sessaoId)
-      }
-      // Se ainda está processando, iniciar polling
-      else if (['iniciado', 'baixando_docs', 'avaliando_relevancia', 'extraindo_json'].includes(sessao.status)) {
+      } else if (['iniciado', 'baixando_docs', 'avaliando_relevancia', 'extraindo_json'].includes(sessao.status)) {
         setProcessando(true)
         iniciarPolling(sessaoId)
       }
@@ -128,7 +115,6 @@ export function CumprimentoBetaPage() {
     }
   }
 
-  // Função para carregar consolidação e mensagens
   const carregarDadosCompletos = async (sessaoId: number) => {
     try {
       const [consolidacaoData, historicoChat, pecas] = await Promise.all([
@@ -145,7 +131,6 @@ export function CumprimentoBetaPage() {
     }
   }
 
-  // Polling do status da sessão
   const iniciarPolling = (sessaoId: number) => {
     if (pollingIntervalRef.current) {
       clearInterval(pollingIntervalRef.current)
@@ -156,7 +141,6 @@ export function CumprimentoBetaPage() {
         const sessao = await cumprimentoBetaApi.get<SessionResponse>(`/sessoes/${sessaoId}`)
         setSessaoAtual(sessao)
 
-        // Se terminou o processamento
         if (sessao.status === 'consolidando' && !sessao.tem_consolidacao) {
           pararPolling()
           setProcessando(false)
@@ -183,7 +167,6 @@ export function CumprimentoBetaPage() {
     }
   }
 
-  // Executar consolidação com streaming
   const executarConsolidacao = async (sessaoId: number) => {
     try {
       setConsolidando(true)
@@ -196,12 +179,12 @@ export function CumprimentoBetaPage() {
         },
       })
 
-      if (!response.ok) throw new Error('Erro ao iniciar consolidação')
+      if (!response.ok) throw new Error('Erro ao iniciar consolidacao')
 
       const reader = response.body?.getReader()
       const decoder = new TextDecoder()
 
-      if (!reader) throw new Error('Reader não disponível')
+      if (!reader) throw new Error('Reader nao disponivel')
 
       let buffer = ''
       while (true) {
@@ -222,13 +205,12 @@ export function CumprimentoBetaPage() {
               } else if (event.event === 'concluido') {
                 setConsolidando(false)
                 await carregarDadosCompletos(sessaoId)
-                // Adicionar mensagem inicial do assistente
                 setMensagens((prev) => [
                   ...prev,
                   {
                     id: Date.now(),
                     role: 'assistant',
-                    conteudo: 'Olá! Analisei o processo de cumprimento de sentença. Como posso ajudar?',
+                    conteudo: 'Ola! Analisei o processo de cumprimento de sentenca. Como posso ajudar?',
                     modelo_usado: null,
                     usou_busca_vetorial: false,
                     created_at: new Date().toISOString(),
@@ -251,7 +233,6 @@ export function CumprimentoBetaPage() {
     }
   }
 
-  // Enviar mensagem no chat
   const handleEnviarMensagem = async () => {
     if (!chatInput.trim() || !sessaoAtual) return
 
@@ -259,7 +240,6 @@ export function CumprimentoBetaPage() {
     setChatInput('')
     setEnviandoMensagem(true)
 
-    // Adicionar mensagem do usuário imediatamente
     const msgUsuario: ChatMessageResponse = {
       id: Date.now(),
       role: 'user',
@@ -285,12 +265,11 @@ export function CumprimentoBetaPage() {
       const reader = response.body?.getReader()
       const decoder = new TextDecoder()
 
-      if (!reader) throw new Error('Reader não disponível')
+      if (!reader) throw new Error('Reader nao disponivel')
 
       let respostaCompleta = ''
       let buffer = ''
 
-      // Criar mensagem temporária do assistente
       const msgIdAssistente = Date.now() + 1
       setMensagens((prev) => [
         ...prev,
@@ -318,7 +297,6 @@ export function CumprimentoBetaPage() {
               const data = JSON.parse(line.slice(6))
               if (data.chunk) {
                 respostaCompleta += data.chunk
-                // Atualizar mensagem do assistente
                 setMensagens((prev) =>
                   prev.map((msg) =>
                     msg.id === msgIdAssistente ? { ...msg, conteudo: respostaCompleta } : msg
@@ -340,7 +318,6 @@ export function CumprimentoBetaPage() {
     }
   }
 
-  // Renderizar status da sessão
   const getStatusBadge = (status: SessionResponse['status']) => {
     const statusMap = {
       iniciado: { label: 'Iniciado', variant: 'secondary' as const },
@@ -357,33 +334,49 @@ export function CumprimentoBetaPage() {
   }
 
   return (
-    <div className="flex flex-col h-screen bg-gray-50">
-      <SystemTopbar
-        title="Cumprimento de Sentença"
-        subtitle="Beta"
-        icon={<FlaskConical className="h-5 w-5" />}
+    <div style={{ fontFamily: FONT_UI }}>
+      <BreadcrumbBar
+        title="Cumprimento de Sentenca"
+        icon={<FlaskConical style={{ width: 14, height: 14 }} />}
         actions={
           <Sheet>
             <SheetTrigger asChild>
-              <button className="p-2 text-gray-400 hover:text-gray-600 transition-colors rounded-md hover:bg-gray-50" title="Histórico">
-                <RotateCw className="h-5 w-5" />
+              <button
+                className="flex h-8 w-8 items-center justify-center rounded-lg transition-colors"
+                style={{ color: C.text400 }}
+                onMouseEnter={(e) => {
+                  e.currentTarget.style.background = C.gray100
+                  e.currentTarget.style.color = C.text700
+                }}
+                onMouseLeave={(e) => {
+                  e.currentTarget.style.background = 'transparent'
+                  e.currentTarget.style.color = C.text400
+                }}
+                title="Historico"
+              >
+                <RotateCw style={{ width: 16, height: 16 }} />
               </button>
             </SheetTrigger>
             <SheetContent>
               <SheetHeader>
-                <SheetTitle>Sessões Anteriores</SheetTitle>
+                <SheetTitle>Sessoes Anteriores</SheetTitle>
               </SheetHeader>
               <ScrollArea className="h-[calc(100vh-8rem)] mt-4">
                 <div className="space-y-2">
                   {sessoes?.sessoes.map((sessao) => (
                     <Card
                       key={sessao.id}
-                      className="cursor-pointer hover:bg-accent transition-colors"
+                      className="cursor-pointer transition-colors"
+                      style={{ borderColor: C.gray200, borderRadius: 12 }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = C.gray50 }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
                       onClick={() => carregarSessao(sessao.id)}
                     >
                       <CardHeader className="p-4">
-                        <CardTitle className="text-sm">{sessao.numero_processo_formatado}</CardTitle>
-                        <CardDescription className="text-xs">
+                        <CardTitle className="text-sm" style={{ color: C.text900 }}>
+                          {sessao.numero_processo_formatado}
+                        </CardTitle>
+                        <CardDescription className="text-xs" style={{ color: C.text400 }}>
                           {new Date(sessao.created_at).toLocaleString('pt-BR')}
                         </CardDescription>
                       </CardHeader>
@@ -399,18 +392,18 @@ export function CumprimentoBetaPage() {
         }
       />
 
-      <main className="flex-1 overflow-y-auto">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
+      <div style={{ maxWidth: 1350, margin: '0 auto', padding: '32px 40px' }}>
+        <div className="space-y-6" style={{ maxWidth: 896, margin: '0 auto' }}>
         {/* Input de Processo */}
-        <Card>
+        <Card style={{ borderColor: C.gray200, borderRadius: 16 }}>
           <CardHeader>
-            <CardTitle>Número do Processo (CNJ)</CardTitle>
-            <CardDescription>Formato: NNNNNNN-DD.AAAA.J.TR.OOOO</CardDescription>
+            <CardTitle style={{ color: C.text900 }}>Numero do Processo (CNJ)</CardTitle>
+            <CardDescription style={{ color: C.text400 }}>Formato: NNNNNNN-DD.AAAA.J.TR.OOOO</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="flex gap-4">
               <div className="flex-1">
-                <Label htmlFor="numero-processo">Número do Processo</Label>
+                <Label htmlFor="numero-processo">Numero do Processo</Label>
                 <Input
                   id="numero-processo"
                   value={numeroProcesso}
@@ -423,7 +416,11 @@ export function CumprimentoBetaPage() {
                 />
               </div>
               <div className="flex items-end">
-                <Button onClick={handleIniciarSessao} disabled={processando || !numeroProcesso.trim()}>
+                <Button
+                  onClick={handleIniciarSessao}
+                  disabled={processando || !numeroProcesso.trim()}
+                  style={{ background: C.navy950 }}
+                >
                   {processando ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
@@ -440,10 +437,10 @@ export function CumprimentoBetaPage() {
             </div>
 
             {sessaoAtual && (
-              <div className="flex items-center gap-4 text-sm">
+              <div className="flex items-center gap-4 text-sm" style={{ color: C.text700 }}>
                 <div>Status: {getStatusBadge(sessaoAtual.status)}</div>
                 {sessaoAtual.total_documentos > 0 && (
-                  <div className="text-muted-foreground">
+                  <div style={{ color: C.text400 }}>
                     Documentos: {sessaoAtual.documentos_processados}/{sessaoAtual.total_documentos} (
                     {sessaoAtual.documentos_relevantes} relevantes)
                   </div>
@@ -476,10 +473,11 @@ export function CumprimentoBetaPage() {
 
         {/* Processamento em Andamento */}
         {processando && sessaoAtual && (
-          <Card>
+          <Card style={{ borderColor: C.gray200, borderRadius: 16, overflow: 'hidden' }}>
+            <div style={{ height: 4, background: `linear-gradient(135deg, ${C.navy950}, ${C.navy700})` }} />
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Loader2 className="h-5 w-5 animate-spin text-purple-600" />
+              <CardTitle className="flex items-center gap-2" style={{ color: C.text900 }}>
+                <Loader2 className="h-5 w-5 animate-spin" style={{ color: C.navy600 }} />
                 Processando Documentos
               </CardTitle>
             </CardHeader>
@@ -492,13 +490,13 @@ export function CumprimentoBetaPage() {
                   info={`${sessaoAtual.documentos_processados}/${sessaoAtual.total_documentos} documentos`}
                 />
                 <ProcessStep
-                  label="Avaliação de Relevância"
+                  label="Avaliacao de Relevancia"
                   active={sessaoAtual.status === 'avaliando_relevancia'}
                   completed={['extraindo_json', 'consolidando', 'chatbot', 'finalizado'].includes(sessaoAtual.status)}
                   info={`${sessaoAtual.documentos_relevantes} relevantes`}
                 />
                 <ProcessStep
-                  label="Extração de Informações"
+                  label="Extracao de Informacoes"
                   active={sessaoAtual.status === 'extraindo_json'}
                   completed={['consolidando', 'chatbot', 'finalizado'].includes(sessaoAtual.status)}
                 />
@@ -507,15 +505,16 @@ export function CumprimentoBetaPage() {
           </Card>
         )}
 
-        {/* Consolidação com Streaming */}
+        {/* Consolidacao com Streaming */}
         {(consolidando || consolidacao) && (
-          <Card>
+          <Card style={{ borderColor: C.gray200, borderRadius: 16, overflow: 'hidden' }}>
+            <div style={{ height: 4, background: `linear-gradient(135deg, ${C.navy950}, ${C.navy700})` }} />
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
+              <CardTitle className="flex items-center gap-2" style={{ color: C.text900 }}>
                 {consolidando ? (
                   <>
-                    <Loader2 className="h-5 w-5 animate-spin text-purple-600" />
-                    Consolidando Informações
+                    <Loader2 className="h-5 w-5 animate-spin" style={{ color: C.navy600 }} />
+                    Consolidando Informacoes
                   </>
                 ) : (
                   'Resumo Consolidado'
@@ -523,23 +522,26 @@ export function CumprimentoBetaPage() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <ScrollArea className="h-[400px] w-full rounded-md border p-4">
+              <ScrollArea className="h-[400px] w-full rounded-md p-4" style={{ border: `1px solid ${C.gray200}` }}>
                 <MarkdownContent content={consolidando ? streamContent : consolidacao?.resumo_consolidado || ''} />
               </ScrollArea>
 
               {consolidacao?.sugestoes_pecas && consolidacao.sugestoes_pecas.length > 0 && (
                 <div className="mt-4">
-                  <h3 className="text-sm font-semibold mb-2">Sugestões de Peças</h3>
+                  <h3 className="text-sm font-semibold mb-2" style={{ color: C.text900 }}>Sugestoes de Pecas</h3>
                   <div className="grid gap-2">
                     {consolidacao.sugestoes_pecas.map((sugestao, idx) => (
                       <div
                         key={idx}
-                        className="flex items-center justify-between p-3 border rounded-lg hover:bg-accent cursor-pointer"
+                        className="flex items-center justify-between p-3 rounded-lg cursor-pointer transition-colors"
+                        style={{ border: `1px solid ${C.gray200}` }}
+                        onMouseEnter={(e) => { e.currentTarget.style.background = C.gray50 }}
+                        onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
                         onClick={() => setChatInput(`Gere uma ${sugestao.tipo} para este processo`)}
                       >
                         <div>
-                          <div className="font-medium text-sm">{sugestao.tipo}</div>
-                          <div className="text-xs text-muted-foreground">{sugestao.descricao}</div>
+                          <div className="font-medium text-sm" style={{ color: C.text900 }}>{sugestao.tipo}</div>
+                          <div className="text-xs" style={{ color: C.text400 }}>{sugestao.descricao}</div>
                         </div>
                         <Badge
                           variant={
@@ -563,26 +565,30 @@ export function CumprimentoBetaPage() {
 
         {/* Chat */}
         {sessaoAtual && (sessaoAtual.status === 'chatbot' || sessaoAtual.status === 'finalizado') && consolidacao && (
-          <Card>
+          <Card style={{ borderColor: C.gray200, borderRadius: 16, overflow: 'hidden' }}>
+            <div style={{ height: 4, background: `linear-gradient(135deg, ${C.navy950}, ${C.navy700})` }} />
             <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <MessageSquare className="h-5 w-5 text-purple-600" />
+              <CardTitle className="flex items-center gap-2" style={{ color: C.text900 }}>
+                <MessageSquare className="h-5 w-5" style={{ color: C.navy600 }} />
                 Chat com IA
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <ScrollArea className="h-[400px] w-full rounded-md border p-4" ref={chatScrollRef}>
+              <ScrollArea className="h-[400px] w-full rounded-md p-4" style={{ border: `1px solid ${C.gray200}` }} ref={chatScrollRef}>
                 <div className="space-y-4">
                   {mensagens.map((msg) => (
                     <ChatMessage key={msg.id} message={msg} />
                   ))}
                   {enviandoMensagem && (
                     <div className="flex gap-3">
-                      <div className="w-8 h-8 rounded-lg bg-purple-100 flex items-center justify-center flex-shrink-0">
-                        <Bot className="h-4 w-4 text-purple-600" />
+                      <div
+                        className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+                        style={{ background: C.navy100 }}
+                      >
+                        <Bot className="h-4 w-4" style={{ color: C.navy700 }} />
                       </div>
                       <div className="flex-1">
-                        <Loader2 className="h-4 w-4 animate-spin" />
+                        <Loader2 className="h-4 w-4 animate-spin" style={{ color: C.navy600 }} />
                       </div>
                     </div>
                   )}
@@ -601,7 +607,11 @@ export function CumprimentoBetaPage() {
                   }}
                   disabled={enviandoMensagem}
                 />
-                <Button onClick={handleEnviarMensagem} disabled={enviandoMensagem || !chatInput.trim()}>
+                <Button
+                  onClick={handleEnviarMensagem}
+                  disabled={enviandoMensagem || !chatInput.trim()}
+                  style={{ background: C.navy950 }}
+                >
                   <Send className="h-4 w-4" />
                 </Button>
               </div>
@@ -609,19 +619,23 @@ export function CumprimentoBetaPage() {
           </Card>
         )}
 
-        {/* Peças Geradas */}
+        {/* Pecas Geradas */}
         {pecasGeradas.length > 0 && (
-          <Card>
+          <Card style={{ borderColor: C.gray200, borderRadius: 16 }}>
             <CardHeader>
-              <CardTitle>Peças Geradas</CardTitle>
+              <CardTitle style={{ color: C.text900 }}>Pecas Geradas</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="space-y-2">
                 {pecasGeradas.map((peca) => (
-                  <div key={peca.id} className="flex items-center justify-between p-3 border rounded-lg">
+                  <div
+                    key={peca.id}
+                    className="flex items-center justify-between p-3 rounded-lg"
+                    style={{ border: `1px solid ${C.gray200}` }}
+                  >
                     <div>
-                      <div className="font-medium text-sm">{peca.titulo}</div>
-                      <div className="text-xs text-muted-foreground">
+                      <div className="font-medium text-sm" style={{ color: C.text900 }}>{peca.titulo}</div>
+                      <div className="text-xs" style={{ color: C.text400 }}>
                         {new Date(peca.created_at).toLocaleString('pt-BR')}
                       </div>
                     </div>
@@ -640,7 +654,7 @@ export function CumprimentoBetaPage() {
           </Card>
         )}
         </div>
-      </main>
+      </div>
     </div>
   )
 }
@@ -657,20 +671,33 @@ function ProcessStep({
   completed: boolean
   info?: string
 }) {
+  function getStepStyle(): { bg: string; color: string } {
+    if (completed) return { bg: '#dcfce7', color: '#16a34a' }
+    if (active) return { bg: C.navy100, color: C.navy700 }
+    return { bg: C.gray100, color: C.text400 }
+  }
+
+  function getLabelColor(): string {
+    if (active) return C.navy700
+    if (completed) return '#16a34a'
+    return C.text500
+  }
+
+  const stepStyle = getStepStyle()
+
   return (
-    <div className="flex items-center gap-3 p-3 rounded-lg border">
+    <div className="flex items-center gap-3 p-3 rounded-lg" style={{ border: `1px solid ${C.gray200}` }}>
       <div
-        className={`w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0 ${
-          completed ? 'bg-green-100 text-green-600' : active ? 'bg-purple-100 text-purple-600' : 'bg-gray-100 text-gray-400'
-        }`}
+        className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
+        style={{ background: stepStyle.bg, color: stepStyle.color }}
       >
         {completed ? '✓' : active ? <Loader2 className="h-4 w-4 animate-spin" /> : '○'}
       </div>
       <div className="flex-1">
-        <div className={`font-medium text-sm ${active ? 'text-purple-600' : completed ? 'text-green-600' : 'text-gray-500'}`}>
+        <div className="font-medium text-sm" style={{ color: getLabelColor() }}>
           {label}
         </div>
-        {info && <div className="text-xs text-muted-foreground">{info}</div>}
+        {info && <div className="text-xs" style={{ color: C.text400 }}>{info}</div>}
       </div>
     </div>
   )
@@ -684,16 +711,20 @@ function ChatMessage({ message }: { message: ChatMessageResponse }) {
   return (
     <div className={`flex gap-3 ${isUser ? 'flex-row-reverse' : ''}`}>
       <div
-        className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${
-          isUser ? 'bg-slate-100' : 'bg-purple-100'
-        }`}
+        className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
+        style={{ background: isUser ? C.gray100 : C.navy100 }}
       >
-        {isUser ? <User className="h-4 w-4 text-slate-600" /> : <Bot className="h-4 w-4 text-purple-600" />}
+        {isUser
+          ? <User className="h-4 w-4" style={{ color: C.text500 }} />
+          : <Bot className="h-4 w-4" style={{ color: C.navy700 }} />
+        }
       </div>
       <div
-        className={`flex-1 max-w-[85%] rounded-lg p-3 ${
-          isUser ? 'bg-purple-600 text-white' : 'bg-slate-100 text-slate-900'
-        }`}
+        className="flex-1 max-w-[85%] rounded-lg p-3"
+        style={isUser
+          ? { background: C.navy950, color: 'white' }
+          : { background: C.gray100, color: C.text900 }
+        }
       >
         {isUser ? (
           <div className="text-sm">{message.conteudo}</div>

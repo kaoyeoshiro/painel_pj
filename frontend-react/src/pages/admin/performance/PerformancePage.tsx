@@ -7,6 +7,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Badge } from '@/components/ui/badge'
 import { useToast } from '@/hooks/use-toast'
 import {
+  Activity,
   Bot,
   ChevronDown,
   Code,
@@ -16,8 +17,8 @@ import {
   Server,
   CircleHelp,
 } from 'lucide-react'
-import { PageContainer } from '@/components/layout/PageContainer'
-import { PageHeader } from '@/components/layout'
+import { BreadcrumbBar } from '@/components/layout/BreadcrumbBar'
+import { C, FONT_UI } from '@/lib/designTokens'
 import {
   PieChart,
   Pie,
@@ -261,26 +262,27 @@ export function PerformancePage() {
   ]
 
   return (
-    <PageContainer wide>
-      <PageHeader
+    <div style={{ fontFamily: FONT_UI }}>
+      <BreadcrumbBar
         title="Performance & Logs"
-        description="Monitoramento de sistema e IA"
+        icon={<Activity style={{ width: 14, height: 14 }} />}
         actions={
-          <span className="text-xs text-green-600 flex items-center gap-1">
-            <span className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+          <span className="text-xs flex items-center gap-1" style={{ color: C.statusSuccess }}>
+            <span className="w-2 h-2 rounded-full animate-pulse" style={{ background: C.statusSuccess }} />
             Sempre ativo
           </span>
         }
       />
+      <div style={{ maxWidth: 1350, margin: '0 auto', padding: '32px 40px' }}>
 
-      <nav className="flex gap-8 overflow-x-auto border-b border-gray-200 mb-6">
-        <button onClick={() => setTab('sistema')} className={`py-4 px-1 font-medium whitespace-nowrap ${tab === 'sistema' ? 'border-b-[3px] border-primary-500 text-primary-500' : 'text-gray-500 hover:text-primary-600'}`}>
+      <nav className="flex gap-8 overflow-x-auto border-b mb-6" style={{ borderColor: C.gray200 }}>
+        <button onClick={() => setTab('sistema')} className="py-4 px-1 font-medium whitespace-nowrap" style={tab === 'sistema' ? { borderBottom: `3px solid ${C.navy700}`, color: C.navy700 } : { color: C.text500 }}>
           <Server className="h-4 w-4 inline mr-2" />Performance Sistema
         </button>
-        <button onClick={() => setTab('gemini')} className={`py-4 px-1 font-medium whitespace-nowrap ${tab === 'gemini' ? 'border-b-[3px] border-primary-500 text-primary-500' : 'text-gray-500 hover:text-primary-600'}`}>
+        <button onClick={() => setTab('gemini')} className="py-4 px-1 font-medium whitespace-nowrap" style={tab === 'gemini' ? { borderBottom: `3px solid ${C.navy700}`, color: C.navy700 } : { color: C.text500 }}>
           <Bot className="h-4 w-4 inline mr-2" />Logs Gemini API
         </button>
-        <button onClick={() => setTab('avancado')} className={`py-4 px-1 font-medium whitespace-nowrap ${tab === 'avancado' ? 'border-b-[3px] border-primary-500 text-primary-500' : 'text-gray-500 hover:text-primary-600'}`}>
+        <button onClick={() => setTab('avancado')} className="py-4 px-1 font-medium whitespace-nowrap" style={tab === 'avancado' ? { borderBottom: `3px solid ${C.navy700}`, color: C.navy700 } : { color: C.text500 }}>
           <Code className="h-4 w-4 inline mr-2" />Logs Avancados
         </button>
       </nav>
@@ -289,54 +291,54 @@ export function PerformancePage() {
         {tab === 'sistema' && (
           <div className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-              <div className="bg-white rounded-lg shadow-md p-4 border-l-4 border-purple-500">
+              <div className="bg-white rounded-2xl shadow-md p-4 border-l-4 border-purple-500" style={{ borderColor: C.gray200, borderLeftColor: undefined }}>
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="text-sm font-medium text-gray-500">Gargalo LLM</h3>
+                    <h3 className="text-sm font-medium" style={{ color: C.text500 }}>Gargalo LLM</h3>
                     <p className="text-3xl leading-none mt-1 font-bold text-purple-600">{summary?.bottleneck_summary.llm || 0}</p>
                   </div>
                   <Bot className="h-7 w-7 text-purple-300" />
                 </div>
-                <p className="text-xs text-gray-500 mt-2">avg: {(summary?.avg_times.llm || 0).toFixed(0)} ms</p>
+                <p className="text-xs mt-2" style={{ color: C.text500 }}>avg: {(summary?.avg_times.llm || 0).toFixed(0)} ms</p>
               </div>
 
-              <div className="bg-white rounded-lg shadow-md p-4 border-l-4 border-yellow-500">
+              <div className="bg-white rounded-2xl shadow-md p-4 border-l-4 border-yellow-500" style={{ borderColor: C.gray200, borderLeftColor: undefined }}>
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="text-sm font-medium text-gray-500">Gargalo DB</h3>
+                    <h3 className="text-sm font-medium" style={{ color: C.text500 }}>Gargalo DB</h3>
                     <p className="text-3xl leading-none mt-1 font-bold text-yellow-600">{summary?.bottleneck_summary.db || 0}</p>
                   </div>
                   <Database className="h-7 w-7 text-yellow-300" />
                 </div>
-                <p className="text-xs text-gray-500 mt-2">avg: {(summary?.avg_times.db || 0).toFixed(0)} ms</p>
+                <p className="text-xs mt-2" style={{ color: C.text500 }}>avg: {(summary?.avg_times.db || 0).toFixed(0)} ms</p>
               </div>
 
-              <div className="bg-white rounded-lg shadow-md p-4 border-l-4 border-blue-500">
+              <div className="bg-white rounded-2xl shadow-md p-4 border-l-4 border-blue-500" style={{ borderColor: C.gray200, borderLeftColor: undefined }}>
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="text-sm font-medium text-gray-500">Gargalo Parse</h3>
+                    <h3 className="text-sm font-medium" style={{ color: C.text500 }}>Gargalo Parse</h3>
                     <p className="text-3xl leading-none mt-1 font-bold text-blue-600">{summary?.bottleneck_summary.parse || 0}</p>
                   </div>
                   <Code className="h-7 w-7 text-blue-300" />
                 </div>
-                <p className="text-xs text-gray-500 mt-2">avg: {(summary?.avg_times.parse || 0).toFixed(0)} ms</p>
+                <p className="text-xs mt-2" style={{ color: C.text500 }}>avg: {(summary?.avg_times.parse || 0).toFixed(0)} ms</p>
               </div>
 
-              <div className="bg-white rounded-lg shadow-md p-4 border-l-4 border-gray-400">
+              <div className="bg-white rounded-2xl shadow-md p-4 border-l-4" style={{ borderColor: C.gray200, borderLeftColor: C.gray400 }}>
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="text-sm font-medium text-gray-500">Outro</h3>
-                    <p className="text-3xl leading-none mt-1 font-bold text-gray-600">{summary?.bottleneck_summary.network || 0}</p>
+                    <h3 className="text-sm font-medium" style={{ color: C.text500 }}>Outro</h3>
+                    <p className="text-3xl leading-none mt-1 font-bold" style={{ color: C.text700 }}>{summary?.bottleneck_summary.network || 0}</p>
                   </div>
-                  <CircleHelp className="h-7 w-7 text-gray-300" />
+                  <CircleHelp className="h-7 w-7" style={{ color: C.gray300 }} />
                 </div>
-                <p className="text-xs text-gray-500 mt-2">total avg: {(summary?.avg_times.total || 0).toFixed(0)} ms</p>
+                <p className="text-xs mt-2" style={{ color: C.text500 }}>total avg: {(summary?.avg_times.total || 0).toFixed(0)} ms</p>
               </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-              <div className="bg-white rounded-lg shadow-md p-4">
-                <h3 className="text-lg font-semibold text-gray-800 mb-4">Distribuicao de Gargalos</h3>
+              <div className="bg-white rounded-2xl shadow-md p-4 border" style={{ borderColor: C.gray200 }}>
+                <h3 className="text-lg font-semibold mb-4" style={{ color: C.text900 }}>Distribuicao de Gargalos</h3>
                 <div className="h-[220px]">
                   <ResponsiveContainer width="100%" height="100%">
                     <PieChart>
@@ -352,14 +354,14 @@ export function PerformancePage() {
                 </div>
               </div>
 
-              <div className="bg-white rounded-lg shadow-md p-4 lg:col-span-2">
-                <h3 className="text-lg font-semibold text-gray-800 mb-4">Top 3 Mais Lentas por Gargalo</h3>
+              <div className="bg-white rounded-2xl shadow-md p-4 lg:col-span-2 border" style={{ borderColor: C.gray200 }}>
+                <h3 className="text-lg font-semibold mb-4" style={{ color: C.text900 }}>Top 3 Mais Lentas por Gargalo</h3>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                   <div>
                     <h4 className="text-sm font-medium text-purple-600 mb-2"><Bot className="h-4 w-4 inline mr-1" />LLM</h4>
                     <div className="space-y-1 text-xs">
                       {topSlowest.filter((t) => (t.bottleneck || '').toLowerCase().includes('llm')).slice(0, 3).map((item) => (
-                        <div key={`${item.route}-llm`} className="text-gray-600">{item.route}</div>
+                        <div key={`${item.route}-llm`} style={{ color: C.text700 }}>{item.route}</div>
                       ))}
                     </div>
                   </div>
@@ -367,7 +369,7 @@ export function PerformancePage() {
                     <h4 className="text-sm font-medium text-yellow-600 mb-2"><Database className="h-4 w-4 inline mr-1" />DB</h4>
                     <div className="space-y-1 text-xs">
                       {topSlowest.filter((t) => (t.bottleneck || '').toLowerCase().includes('db')).slice(0, 3).map((item) => (
-                        <div key={`${item.route}-db`} className="text-gray-600">{item.route}</div>
+                        <div key={`${item.route}-db`} style={{ color: C.text700 }}>{item.route}</div>
                       ))}
                     </div>
                   </div>
@@ -375,7 +377,7 @@ export function PerformancePage() {
                     <h4 className="text-sm font-medium text-blue-600 mb-2"><Code className="h-4 w-4 inline mr-1" />Parse</h4>
                     <div className="space-y-1 text-xs">
                       {topSlowest.filter((t) => (t.bottleneck || '').toLowerCase().includes('parse')).slice(0, 3).map((item) => (
-                        <div key={`${item.route}-parse`} className="text-gray-600">{item.route}</div>
+                        <div key={`${item.route}-parse`} style={{ color: C.text700 }}>{item.route}</div>
                       ))}
                     </div>
                   </div>
@@ -383,10 +385,10 @@ export function PerformancePage() {
               </div>
             </div>
 
-            <div className="bg-white rounded-lg shadow-md p-4">
+            <div className="bg-white rounded-2xl shadow-md p-4 border" style={{ borderColor: C.gray200 }}>
               <div className="flex justify-between items-center">
-                <h3 className="text-lg font-semibold text-gray-800">Mapeamento Rota - Sistema</h3>
-                <button onClick={() => setRouteMapExpanded((v) => !v)} className="text-sm text-indigo-600 hover:text-indigo-800 flex items-center gap-1">
+                <h3 className="text-lg font-semibold" style={{ color: C.text900 }}>Mapeamento Rota - Sistema</h3>
+                <button onClick={() => setRouteMapExpanded((v) => !v)} className="text-sm flex items-center gap-1" style={{ color: C.navy700 }}>
                   <ChevronDown className={`h-4 w-4 transition-transform ${routeMapExpanded ? 'rotate-180' : ''}`} />
                   {routeMapExpanded ? 'Recolher' : 'Expandir'}
                 </button>
@@ -398,22 +400,22 @@ export function PerformancePage() {
               )}
             </div>
 
-            <div className="bg-white rounded-lg shadow-md p-4">
+            <div className="bg-white rounded-2xl shadow-md p-4 border" style={{ borderColor: C.gray200 }}>
               <div className="grid grid-cols-1 md:grid-cols-7 gap-4">
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Sistema</label>
+                  <label className="block text-sm font-medium mb-1" style={{ color: C.text700 }}>Sistema</label>
                   <Input value={filterSistema === 'all' ? 'Todos' : filterSistema} onChange={(e) => setFilterSistema(e.target.value || 'all')} />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Rota</label>
+                  <label className="block text-sm font-medium mb-1" style={{ color: C.text700 }}>Rota</label>
                   <Input value={filterRota} onChange={(e) => setFilterRota(e.target.value)} placeholder="/api/..." />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Action</label>
+                  <label className="block text-sm font-medium mb-1" style={{ color: C.text700 }}>Action</label>
                   <Input value={filterAction === 'all' ? 'Todas' : filterAction} onChange={(e) => setFilterAction(e.target.value || 'all')} />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Gargalo</label>
+                  <label className="block text-sm font-medium mb-1" style={{ color: C.text700 }}>Gargalo</label>
                   <Select value={filterGargalo} onValueChange={setFilterGargalo}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
@@ -426,7 +428,7 @@ export function PerformancePage() {
                   </Select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Status</label>
+                  <label className="block text-sm font-medium mb-1" style={{ color: C.text700 }}>Status</label>
                   <Select value={filterStatus} onValueChange={setFilterStatus}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
@@ -437,7 +439,7 @@ export function PerformancePage() {
                   </Select>
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Periodo</label>
+                  <label className="block text-sm font-medium mb-1" style={{ color: C.text700 }}>Periodo</label>
                   <Select value={timePeriod} onValueChange={setTimePeriod}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
@@ -449,7 +451,7 @@ export function PerformancePage() {
                   </Select>
                 </div>
                 <div className="flex items-end gap-2">
-                  <Button onClick={() => void loadData()} className="flex-1 bg-blue-600 hover:bg-blue-700">
+                  <Button onClick={() => void loadData()} className="flex-1" style={{ background: C.navy950, color: 'white' }}>
                     Filtrar
                   </Button>
                   <Button onClick={clearFilters} variant="outline">x</Button>
@@ -457,10 +459,10 @@ export function PerformancePage() {
               </div>
             </div>
 
-            <div className="bg-white rounded-lg shadow-md overflow-hidden">
-              <div className="p-4 border-b flex justify-between items-center">
-                <h2 className="text-lg font-semibold text-gray-800">Logs de Performance</h2>
-                <Button onClick={cleanupLogs} variant="ghost" className="text-sm text-red-600 hover:text-red-800" disabled={clearingLogs}>
+            <div className="bg-white rounded-2xl shadow-md overflow-hidden border" style={{ borderColor: C.gray200 }}>
+              <div className="p-4 border-b flex justify-between items-center" style={{ borderColor: C.gray200 }}>
+                <h2 className="text-lg font-semibold" style={{ color: C.text900 }}>Logs de Performance</h2>
+                <Button onClick={cleanupLogs} variant="ghost" className="text-sm" style={{ color: C.statusError }} disabled={clearingLogs}>
                   {clearingLogs ? 'Limpando...' : 'Limpar antigos'}
                 </Button>
               </div>
@@ -472,27 +474,27 @@ export function PerformancePage() {
         {tab === 'gemini' && (
           <div className="space-y-6">
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <div className="bg-white rounded-lg shadow-md p-4 border-l-4 border-green-500">
-                <p className="text-sm text-gray-500">Total Chamadas</p>
+              <div className="bg-white rounded-2xl shadow-md p-4 border-l-4 border-green-500" style={{ borderColor: C.gray200, borderLeftColor: undefined }}>
+                <p className="text-sm" style={{ color: C.text500 }}>Total Chamadas</p>
                 <p className="text-2xl font-bold text-green-600">{geminiSummary?.total_calls || 0}</p>
               </div>
-              <div className="bg-white rounded-lg shadow-md p-4 border-l-4 border-blue-500">
-                <p className="text-sm text-gray-500">Latencia Media</p>
+              <div className="bg-white rounded-2xl shadow-md p-4 border-l-4 border-blue-500" style={{ borderColor: C.gray200, borderLeftColor: undefined }}>
+                <p className="text-sm" style={{ color: C.text500 }}>Latencia Media</p>
                 <p className="text-2xl font-bold text-blue-600">{(geminiSummary?.stats.avg_latency_ms || 0).toFixed(0)} ms</p>
               </div>
-              <div className="bg-white rounded-lg shadow-md p-4 border-l-4 border-purple-500">
-                <p className="text-sm text-gray-500">Tokens Prompt</p>
+              <div className="bg-white rounded-2xl shadow-md p-4 border-l-4 border-purple-500" style={{ borderColor: C.gray200, borderLeftColor: undefined }}>
+                <p className="text-sm" style={{ color: C.text500 }}>Tokens Prompt</p>
                 <p className="text-2xl font-bold text-purple-600">{geminiSummary?.stats.total_prompt_tokens || 0}</p>
               </div>
-              <div className="bg-white rounded-lg shadow-md p-4 border-l-4 border-teal-500">
-                <p className="text-sm text-gray-500">Taxa Sucesso</p>
+              <div className="bg-white rounded-2xl shadow-md p-4 border-l-4 border-teal-500" style={{ borderColor: C.gray200, borderLeftColor: undefined }}>
+                <p className="text-sm" style={{ color: C.text500 }}>Taxa Sucesso</p>
                 <p className="text-2xl font-bold text-teal-600">{(geminiSummary?.stats.success_rate || 0).toFixed(1)}%</p>
               </div>
             </div>
 
-            <div className="bg-white rounded-lg shadow-md overflow-hidden">
-              <div className="p-4 border-b flex justify-between items-center">
-                <h2 className="text-lg font-semibold text-gray-800">Logs Gemini API</h2>
+            <div className="bg-white rounded-2xl shadow-md overflow-hidden border" style={{ borderColor: C.gray200 }}>
+              <div className="p-4 border-b flex justify-between items-center" style={{ borderColor: C.gray200 }}>
+                <h2 className="text-lg font-semibold" style={{ color: C.text900 }}>Logs Gemini API</h2>
                 <Button onClick={() => void loadData()} variant="outline" size="sm">
                   <RefreshCw className="h-4 w-4 mr-1" /> Atualizar
                 </Button>
@@ -504,9 +506,9 @@ export function PerformancePage() {
 
         {tab === 'avancado' && (
           <div className="space-y-6">
-            <div className="bg-white rounded-lg shadow-md overflow-hidden">
-              <div className="p-4 border-b flex justify-between items-center">
-                <h2 className="text-lg font-semibold text-gray-800">Logs Avancados</h2>
+            <div className="bg-white rounded-2xl shadow-md overflow-hidden border" style={{ borderColor: C.gray200 }}>
+              <div className="p-4 border-b flex justify-between items-center" style={{ borderColor: C.gray200 }}>
+                <h2 className="text-lg font-semibold" style={{ color: C.text900 }}>Logs Avancados</h2>
                 <Button onClick={() => {
                   const csv = [
                     'id,created_at,system_name,route,action,total_ms,bottleneck,status',
@@ -530,6 +532,7 @@ export function PerformancePage() {
           </div>
         )}
       </div>
-    </PageContainer>
+      </div>
+    </div>
   )
 }

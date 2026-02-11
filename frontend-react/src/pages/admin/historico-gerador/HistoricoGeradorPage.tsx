@@ -9,7 +9,8 @@ import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
 import { useToast } from '@/hooks/use-toast'
 import { useMarkdown } from '@/hooks/useMarkdown'
-import { PageContainer, PageHeader } from '@/components/layout'
+import { BreadcrumbBar } from '@/components/layout/BreadcrumbBar'
+import { C, FONT_UI } from '@/lib/designTokens'
 import { History } from 'lucide-react'
 
 interface Geracao {
@@ -186,24 +187,26 @@ export function HistoricoGeradorPage() {
 
   if (loading) {
     return (
-      <PageContainer wide className="space-y-4">
-        <PageHeader
+      <div style={{ fontFamily: FONT_UI }}>
+        <BreadcrumbBar
           title="Historico - Gerador de Pecas"
-          icon={<History className="h-5 w-5" />}
-          backTo="/dashboard"
+          icon={<History style={{ width: 14, height: 14 }} />}
         />
-        <Skeleton className="h-96 w-full" />
-      </PageContainer>
+        <div style={{ maxWidth: 1350, margin: '0 auto', padding: '32px 40px' }}>
+          <Skeleton className="h-96 w-full" />
+        </div>
+      </div>
     )
   }
 
   return (
-    <PageContainer wide className="space-y-4">
-      <PageHeader
+    <div style={{ fontFamily: FONT_UI }}>
+      <BreadcrumbBar
         title="Historico - Gerador de Pecas"
-        icon={<History className="h-5 w-5" />}
-        backTo="/dashboard"
+        icon={<History style={{ width: 14, height: 14 }} />}
       />
+      <div style={{ maxWidth: 1350, margin: '0 auto', padding: '32px 40px' }}>
+      <div className="space-y-4">
 
       <DataTable
         data={geracoes}
@@ -256,7 +259,7 @@ export function HistoricoGeradorPage() {
                 <TabsContent value="prompt">
                   <Card>
                     <CardContent className="pt-6">
-                      <pre className="whitespace-pre-wrap text-sm bg-gray-50 p-4 rounded">
+                      <pre className="whitespace-pre-wrap text-sm p-4 rounded" style={{ background: C.gray50 }}>
                         {selectedGeracao.prompt_enviado || 'Nenhum prompt disponivel'}
                       </pre>
                     </CardContent>
@@ -303,7 +306,7 @@ export function HistoricoGeradorPage() {
                           ))}
                         </div>
                       ) : (
-                        <div className="text-sm text-gray-500">Nenhum historico de chat disponivel</div>
+                        <div className="text-sm" style={{ color: C.text500 }}>Nenhum historico de chat disponivel</div>
                       )}
                     </CardContent>
                   </Card>
@@ -318,7 +321,7 @@ export function HistoricoGeradorPage() {
                             <div key={versao.id} className="border rounded-lg p-4">
                               <div className="flex justify-between items-center mb-2">
                                 <Badge variant="outline">Versão {versao.versao}</Badge>
-                                <span className="text-xs text-gray-500">
+                                <span className="text-xs" style={{ color: C.text500 }}>
                                   {formatData(versao.criado_em)}
                                 </span>
                               </div>
@@ -327,7 +330,7 @@ export function HistoricoGeradorPage() {
                           ))}
                         </div>
                       ) : (
-                        <div className="text-sm text-gray-500">Nenhuma versão disponível</div>
+                        <div className="text-sm" style={{ color: C.text500 }}>Nenhuma versão disponível</div>
                       )}
                     </CardContent>
                   </Card>
@@ -336,7 +339,7 @@ export function HistoricoGeradorPage() {
                 <TabsContent value="raw">
                   <Card>
                     <CardContent className="pt-6">
-                      <pre className="whitespace-pre-wrap text-sm bg-gray-50 p-4 rounded overflow-auto max-h-[500px]">
+                      <pre className="whitespace-pre-wrap text-sm p-4 rounded overflow-auto max-h-[500px]" style={{ background: C.gray50 }}>
                         {selectedGeracao.resultado_raw || 'Sem resultado bruto disponível'}
                       </pre>
                     </CardContent>
@@ -357,7 +360,7 @@ export function HistoricoGeradorPage() {
               )}
 
               <DialogFooter className="flex items-center justify-between">
-                <div className="text-sm text-gray-600">
+                <div className="text-sm" style={{ color: C.text500 }}>
                   Tempo: {formatTempo(selectedGeracao.tempo_processamento)} |
                   Modelo: {selectedGeracao.modelo_usado || 'N/A'}
                 </div>
@@ -366,7 +369,9 @@ export function HistoricoGeradorPage() {
           ) : null}
         </DialogContent>
       </Dialog>
-    </PageContainer>
+      </div>
+      </div>
+    </div>
   )
 }
 

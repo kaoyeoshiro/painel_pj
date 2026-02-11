@@ -46,7 +46,20 @@ import {
 } from '@/components/ui/select'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { useToast } from '@/components/ui/toast'
-import { useApiQuery } from '@/hooks/useApiQuery'
+import { 
+  useTiposPeca, 
+  useHistoricoGerador, 
+  useGruposDisponiveis,
+  useSubcategorias,
+  useExcluirGeracao,
+  useVersoesGeracao,
+  useRestaurarVersao,
+  useEnviarFeedback,
+  useUploadParecer,
+  useExportarDocx,
+  useAtualizarMinuta,
+  useInvalidateQueries,
+} from '@/hooks/useQueries'
 import { useMarkdown } from '@/hooks/useMarkdown'
 import { geradorApi, getToken } from '@/lib/api'
 import type {
@@ -204,24 +217,33 @@ export function GeradorPecasPage() {
   const {
     data: tiposPecaData,
     isLoading: isLoadingTipos,
-  } = useApiQuery<TipoPecaResponse>(
-    () => geradorApi.get<TipoPecaResponse>('/tipos-peca'),
-    { enabled: true }
-  )
+  } = useTiposPeca()
 
   const {
     data: historico,
     isLoading: isLoadingHistorico,
-    refetch: refetchHistorico,
-  } = useApiQuery<HistoricoItem[]>(
-    () => geradorApi.get<HistoricoItem[]>('/historico'),
-    { enabled: true }
-  )
+  } = useHistoricoGerador()
 
-  const { data: gruposData } = useApiQuery<{ grupos: Array<{ id: number; nome: string; slug: string }> }>(
-    () => geradorApi.get('/grupos-disponiveis'),
-    { enabled: true }
-  )
+  const { data: gruposData } = useGruposDisponiveis()
+  
+  const { data: subcategoriasData } = useSubcategorias(selectedGroupId)
+  
+  // --- Mutations ---
+  const { invalidateGeradorHistorico } = useInvalidateQueries()
+  const excluirGeracaoMutation = useExcluirGeracao()
+  const enviarFeedbackMutation = useEnviarFeedback()
+  const uploadParecerMutation = useUploadParecer()
+  const exportarDocxMutation = useExportarDocx()
+  const atualizarMinutaMutation = useAtualizarMinuta()
+  const restaurarVersaoMutation = useRestaurarVersao()
+  const { data: versoesData, refetch: refetchVersoes } = useVersoesGeracao(geracaoId)
+
+  // Sync version list when data changes
+  useEffect(() => {
+    if (versoesData?.versoes) {
+      setVersionList(versoesData.versoes)
+    }
+  }, [versoesData])
 
   // --- Rendered markdown ---
   const { html: minutaHtml } = useMarkdown(
@@ -242,17 +264,15 @@ export function GeradorPecasPage() {
     }
   }, [])
 
-  // Load subcategorias when group changes
+  // Update subcategorias when query data changes
   useEffect(() => {
-    if (selectedGroupId) {
-      geradorApi.get<Array<{ id: number; nome: string }>>(`/grupos/${selectedGroupId}/subcategorias`)
-        .then(setSubcategorias)
-        .catch(() => setSubcategorias([]))
-    } else {
+    if (subcategoriasData) {
+      setSubcategorias(subcategoriasData)
+    } else if (!selectedGroupId) {
       setSubcategorias([])
     }
     setSelectedSubcategorias([])
-  }, [selectedGroupId])
+  }, [subcategoriasData, selectedGroupId])
 
   // ============================================================
   // SSE Stream Reader (POST-based)
@@ -429,7 +449,7 @@ export function GeradorPecasPage() {
               setMinutaMarkdown(event.minuta_markdown || streamingContentRef.current)
               setTipoPecaResultado(event.tipo_peca)
               setPageState('resultado')
-              refetchHistorico()
+              invalidateGeradorHistorico()
               toast({ title: 'Sucesso', description: 'Peca juridica gerada com sucesso!' })
               break
 
@@ -450,7 +470,7 @@ export function GeradorPecasPage() {
       setPageState('erro')
       toast({ title: 'Erro', description: msg, variant: 'destructive' })
     }
-  }, [numeroCNJ, tipoPeca, observacao, selectedGroupId, selectedSubcategorias, parecerUploadId, toast, readSSEStream, refetchHistorico])
+  }, [numeroCNJ, tipoPeca, observacao, selectedGroupId, selectedSubcategorias, parecerUploadId, toast, readSSEStream, invalidateGeradorHistorico])
 
   // ============================================================
   // Processar - Modo PDF Upload
@@ -508,7 +528,7 @@ export function GeradorPecasPage() {
               setMinutaMarkdown(event.minuta_markdown || streamingContentRef.current)
               setTipoPecaResultado(event.tipo_peca)
               setPageState('resultado')
-              refetchHistorico()
+              invalidateGeradorHistorico()
               toast({ title: 'Sucesso', description: 'Peca juridica gerada com sucesso!' })
               break
             case 'erro':
@@ -528,7 +548,7 @@ export function GeradorPecasPage() {
       setPageState('erro')
       toast({ title: 'Erro', description: msg, variant: 'destructive' })
     }
-  }, [pdfFiles, tipoPeca, observacao, selectedGroupId, selectedSubcategorias, parecerUploadId, toast, readSSEStreamFormData, refetchHistorico])
+  }, [pdfFiles, tipoPeca, observacao, selectedGroupId, selectedSubcategorias, parecerUploadId, toast, readSSEStreamFormData, invalidateGeradorHistorico])
 
   // ============================================================
   // Processar - Modo Semi-Automatico (Curadoria)
@@ -641,7 +661,7 @@ export function GeradorPecasPage() {
               setTipoPecaResultado(event.tipo_peca)
               setAgentStatuses({ 1: 'concluido', 2: 'concluido', 3: 'concluido' })
               setPageState('resultado')
-              refetchHistorico()
+              invalidateGeradorHistorico()
               toast({ title: 'Sucesso', description: 'Peca gerada com sucesso!' })
               break
             case 'erro':
@@ -663,7 +683,7 @@ export function GeradorPecasPage() {
   }, [
     curadoriaSelected, curadoriaModulos, numeroCNJ, tipoPeca, observacao,
     curadoriaResumo, curadoriaDados, curadoriaTraces, curadoriaVariaveis,
-    curadoriaParecer, toast, readSSEStream, refetchHistorico,
+    curadoriaParecer, toast, readSSEStream, invalidateGeradorHistorico,
   ])
 
   // ============================================================
@@ -674,24 +694,26 @@ export function GeradorPecasPage() {
     if (!parecerFile) return
     setIsUploadingParecer(true)
 
-    try {
-      const formData = new FormData()
-      formData.append('arquivo', parecerFile)
-      formData.append('numero_cnj', numeroCNJ)
-      if (tipoPeca) formData.append('tipo_peca', tipoPeca)
+    const formData = new FormData()
+    formData.append('arquivo', parecerFile)
+    formData.append('numero_cnj', numeroCNJ)
+    if (tipoPeca) formData.append('tipo_peca', tipoPeca)
 
-      const result = await geradorApi.post<{ upload_id: string }>('/parecer/upload', formData)
-      setParecerUploadId(result.upload_id)
-      setShowParecerDialog(false)
-      setParecerFile(null)
-      toast({ title: 'Sucesso', description: 'Parecer NATJus anexado com sucesso' })
-      parecerResolveRef.current?.('uploaded')
-    } catch (error) {
-      toast({ title: 'Erro', description: (error as Error).message, variant: 'destructive' })
-    } finally {
-      setIsUploadingParecer(false)
-    }
-  }, [parecerFile, numeroCNJ, tipoPeca, toast])
+    uploadParecerMutation.mutate(formData, {
+      onSuccess: (result) => {
+        setParecerUploadId(result.upload_id)
+        setShowParecerDialog(false)
+        setParecerFile(null)
+        toast({ title: 'Sucesso', description: 'Parecer NATJus anexado com sucesso' })
+        parecerResolveRef.current?.('uploaded')
+        setIsUploadingParecer(false)
+      },
+      onError: (error) => {
+        toast({ title: 'Erro', description: (error as Error).message, variant: 'destructive' })
+        setIsUploadingParecer(false)
+      },
+    })
+  }, [parecerFile, numeroCNJ, tipoPeca, toast, uploadParecerMutation])
 
   const handleContinuarSemParecer = useCallback(() => {
     if (!window.confirm('Confirmar continuidade sem parecer NATJus? A ausencia sera registrada em auditoria.')) return
@@ -804,30 +826,31 @@ export function GeradorPecasPage() {
   // Export DOCX
   // ============================================================
 
-  const exportarDocx = useCallback(async () => {
+  const exportarDocx = useCallback(() => {
     if (!minutaMarkdown) return
 
-    try {
-      const result = await geradorApi.post<{ status: string; url_download?: string; filename?: string }>('/exportar-docx', {
-        markdown: minutaMarkdown,
-        numero_cnj: numeroCNJ || undefined,
-        tipo_peca: tipoPecaResultado || tipoPeca || undefined,
-      })
-
-      if (result.status === 'sucesso' && result.url_download) {
-        const downloadUrl = `${result.url_download}?token=${encodeURIComponent(getToken() || '')}`
-        const link = document.createElement('a')
-        link.href = downloadUrl
-        link.download = result.filename || 'peca_juridica.docx'
-        document.body.appendChild(link)
-        link.click()
-        document.body.removeChild(link)
-        toast({ title: 'Sucesso', description: 'Download iniciado!' })
-      }
-    } catch (error) {
-      toast({ title: 'Erro', description: (error as Error).message, variant: 'destructive' })
-    }
-  }, [minutaMarkdown, numeroCNJ, tipoPecaResultado, tipoPeca, toast])
+    exportarDocxMutation.mutate({
+      markdown: minutaMarkdown,
+      numero_cnj: numeroCNJ || undefined,
+      tipo_peca: tipoPecaResultado || tipoPeca || undefined,
+    }, {
+      onSuccess: (result) => {
+        if (result.status === 'sucesso' && result.url_download) {
+          const downloadUrl = `${result.url_download}?token=${encodeURIComponent(getToken() || '')}`
+          const link = document.createElement('a')
+          link.href = downloadUrl
+          link.download = result.filename || 'peca_juridica.docx'
+          document.body.appendChild(link)
+          link.click()
+          document.body.removeChild(link)
+          toast({ title: 'Sucesso', description: 'Download iniciado!' })
+        }
+      },
+      onError: (error) => {
+        toast({ title: 'Erro', description: (error as Error).message, variant: 'destructive' })
+      },
+    })
+  }, [minutaMarkdown, numeroCNJ, tipoPecaResultado, tipoPeca, toast, exportarDocxMutation])
 
   // ============================================================
   // Copy to clipboard
@@ -846,25 +869,25 @@ export function GeradorPecasPage() {
   // Feedback
   // ============================================================
 
-  const enviarFeedback = useCallback(async () => {
+  const enviarFeedback = useCallback(() => {
     if (!geracaoId || !feedbackNota) return
 
-    try {
-      await geradorApi.post('/feedback', {
-        geracao_id: geracaoId,
-        avaliacao: feedbackNota >= 4 ? 'correto' : feedbackNota >= 2 ? 'parcial' : 'incorreto',
-        nota: feedbackNota,
-        comentario: feedbackComentario || null,
-      })
-      toast({ title: 'Sucesso', description: 'Feedback enviado! Obrigado!' })
-    } catch {
-      // silently ignore
-    } finally {
-      setShowFeedback(false)
-      setFeedbackNota(null)
-      setFeedbackComentario('')
-    }
-  }, [geracaoId, feedbackNota, feedbackComentario, toast])
+    enviarFeedbackMutation.mutate({
+      geracao_id: geracaoId,
+      avaliacao: feedbackNota >= 4 ? 'correto' : feedbackNota >= 2 ? 'parcial' : 'incorreto',
+      nota: feedbackNota,
+      comentario: feedbackComentario || null,
+    }, {
+      onSuccess: () => {
+        toast({ title: 'Sucesso', description: 'Feedback enviado! Obrigado!' })
+      },
+      onSettled: () => {
+        setShowFeedback(false)
+        setFeedbackNota(null)
+        setFeedbackComentario('')
+      },
+    })
+  }, [geracaoId, feedbackNota, feedbackComentario, toast, enviarFeedbackMutation])
 
   // ============================================================
   // Historico - carregar geracao
@@ -899,38 +922,37 @@ export function GeradorPecasPage() {
   const excluirDoHistorico = useCallback(async (id: number, e: React.MouseEvent) => {
     e.stopPropagation()
     if (!window.confirm('Deseja excluir esta geracao do historico?')) return
-    try {
-      await geradorApi.delete(`/historico/${id}`)
-      toast({ title: 'Sucesso', description: 'Geracao excluida do historico' })
-      refetchHistorico()
-    } catch (error) {
-      toast({ title: 'Erro', description: (error as Error).message, variant: 'destructive' })
-    }
-  }, [toast, refetchHistorico])
+    excluirGeracaoMutation.mutate(id, {
+      onSuccess: () => {
+        toast({ title: 'Sucesso', description: 'Geracao excluida do historico' })
+      },
+      onError: (error) => {
+        toast({ title: 'Erro', description: (error as Error).message, variant: 'destructive' })
+      },
+    })
+  }, [toast, excluirGeracaoMutation])
 
-  const abrirHistoricoVersoes = useCallback(async () => {
+  const abrirHistoricoVersoes = useCallback(() => {
     if (!geracaoId) return
-    try {
-      const data = await geradorApi.get<{ versoes: Array<{ versao_id: number; numero_versao: number; linhas_adicionadas: number; linhas_removidas: number; descricao_alteracao: string; created_at: string }> }>(`/historico/${geracaoId}/versoes`)
-      setVersionList(data.versoes)
-      setShowVersionHistory(true)
-    } catch (error) {
-      toast({ title: 'Erro', description: (error as Error).message, variant: 'destructive' })
-    }
-  }, [geracaoId, toast])
+    refetchVersoes()
+    setShowVersionHistory(true)
+  }, [geracaoId, refetchVersoes])
 
-  const restaurarVersao = useCallback(async (versaoId: number) => {
+  const restaurarVersao = useCallback((versaoId: number) => {
     if (!geracaoId) return
     if (!window.confirm('Restaurar esta versao? A versao atual sera preservada no historico.')) return
-    try {
-      const data = await geradorApi.post<{ minuta_markdown: string }>(`/historico/${geracaoId}/versoes/${versaoId}/restaurar`)
-      setMinutaMarkdown(data.minuta_markdown)
-      setShowVersionHistory(false)
-      toast({ title: 'Sucesso', description: 'Versao restaurada com sucesso' })
-    } catch (error) {
-      toast({ title: 'Erro', description: (error as Error).message, variant: 'destructive' })
-    }
-  }, [geracaoId, toast])
+    
+    restaurarVersaoMutation.mutate({ geracaoId, versaoId }, {
+      onSuccess: (data) => {
+        setMinutaMarkdown(data.minuta_markdown)
+        setShowVersionHistory(false)
+        toast({ title: 'Sucesso', description: 'Versao restaurada com sucesso' })
+      },
+      onError: (error) => {
+        toast({ title: 'Erro', description: (error as Error).message, variant: 'destructive' })
+      },
+    })
+  }, [geracaoId, toast, restaurarVersaoMutation])
 
   // ============================================================
   // Reset

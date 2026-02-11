@@ -1,6 +1,4 @@
 import { useState, useEffect, useRef, useCallback } from 'react'
-import { Link } from '@tanstack/react-router'
-import { SystemTopbar } from '@/components/layout/SystemTopbar'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -13,9 +11,13 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/co
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { useToast } from '@/components/ui/toast'
-import { useApiQuery } from '@/hooks/useApiQuery'
+import { useQuery } from '@tanstack/react-query'
+import { queryKeys } from '@/lib/query-client'
 import { prestacaoContasApi, getToken } from '@/lib/api'
 import { useMarkdown } from '@/hooks/useMarkdown'
+import { BreadcrumbBar } from '@/components/layout/BreadcrumbBar'
+import { ContentDialog } from '@/components/layout/ContentDialog'
+import { C, FONT_UI, FONT_DOC } from '@/lib/designTokens'
 import {
   FileText,
   History,
@@ -38,13 +40,10 @@ import {
   XCircle,
   Clock,
   RotateCw,
-  MessageSquare,
   ChevronRight,
   Info,
-  LayoutGrid,
 } from 'lucide-react'
 import type {
-  GeracaoHistorico,
   GeracaoDetalhada,
   HistoricoResponse,
   VerificacaoExistente,
@@ -91,6 +90,9 @@ export function PrestacaoContasPage() {
   const [geracaoAtual, setGeracaoAtual] = useState<GeracaoDetalhada | null>(null)
   const [geracaoId, setGeracaoId] = useState<number | null>(null)
 
+  // Dialog do resultado (ContentDialog)
+  const [showResultDialog, setShowResultDialog] = useState(false)
+
   // Duvidas da IA
   const [perguntas, setPerguntas] = useState<string[]>([])
   const [respostas, setRespostas] = useState<Record<string, string>>({})
@@ -121,8 +123,9 @@ export function PrestacaoContasPage() {
     data: historicoData,
     isLoading: isLoadingHistorico,
     refetch: refetchHistorico,
-  } = useApiQuery<HistoricoResponse>(() => prestacaoContasApi.get('/historico'), {
-    enabled: true,
+  } = useQuery<HistoricoResponse>({
+    queryKey: queryKeys.prestacaoContas.historico(),
+    queryFn: () => prestacaoContasApi.get<HistoricoResponse>('/historico'),
   })
 
   // Cleanup ao desmontar
@@ -134,11 +137,17 @@ export function PrestacaoContasPage() {
     }
   }, [])
 
+  // Abre ContentDialog automaticamente quando resultado chega
+  useEffect(() => {
+    if (estadoPagina === 'resultado') {
+      setShowResultDialog(true)
+    }
+  }, [estadoPagina])
+
   // =====================================================
   // FUNCOES DE SSE
   // =====================================================
 
-  /** Processa um evento SSE recebido do backend */
   const processarEventoSSE = useCallback((evento: EventoSSE) => {
     switch (evento.tipo) {
       case 'inicio':
@@ -207,7 +216,6 @@ export function PrestacaoContasPage() {
           const irregularidades = dados.irregularidades as string[] | undefined
           const perguntasIA = dados.perguntas as string[] | undefined
 
-          // Monta objeto parcial para exibir resultado imediato
           setGeracaoAtual(prev => ({
             ...prev,
             id: idGeracao || prev?.id || 0,
@@ -225,7 +233,6 @@ export function PrestacaoContasPage() {
             criado_em: prev?.criado_em || new Date().toISOString(),
           }))
 
-          // Se tem duvidas, vai para estado de duvidas
           if (parecer === 'duvida' && perguntasIA && perguntasIA.length > 0) {
             setPerguntas(perguntasIA)
             setRespostas({})
@@ -257,12 +264,10 @@ export function PrestacaoContasPage() {
       }
 
       case 'fim':
-        // Evento final do stream, nao precisa fazer nada especial
         break
     }
   }, [numeroCNJ, toast, refetchHistorico])
 
-  /** Inicia leitura de stream SSE via POST */
   const iniciarStreamSSE = useCallback(async (url: string, body: Record<string, unknown>) => {
     const controller = new AbortController()
     abortControllerRef.current = controller
@@ -325,7 +330,6 @@ export function PrestacaoContasPage() {
   // ACOES PRINCIPAIS
   // =====================================================
 
-  /** Inicia analise de um processo */
   const iniciarAnalise = async (sobrescrever: boolean = false) => {
     const cnj = numeroCNJ.trim()
     if (!cnj) {
@@ -337,7 +341,6 @@ export function PrestacaoContasPage() {
       return
     }
 
-    // Verifica se ja existe (a nao ser que esteja sobrescrevendo)
     if (!sobrescrever) {
       try {
         setEstadoPagina('verificando')
@@ -356,7 +359,6 @@ export function PrestacaoContasPage() {
       }
     }
 
-    // Reseta estados
     setEstadoPagina('processando')
     setEtapas(ETAPAS_INICIAIS.map(e => ({ ...e, status: 'aguardando' })))
     setProgressoMensagem('Conectando ao servidor...')
@@ -382,7 +384,6 @@ export function PrestacaoContasPage() {
         mensagemErro = 'Erro de conexao com o servidor. Verifique sua internet e tente novamente.'
       }
 
-      // Somente atualiza se ainda estiver processando (evita sobrescrever resultado/duvidas)
       setEstadoPagina(prev => prev === 'processando' ? 'erro' : prev)
       toast({
         title: 'Erro',
@@ -392,7 +393,6 @@ export function PrestacaoContasPage() {
     }
   }
 
-  /** Carrega detalhes de uma analise do historico */
   const carregarDoHistorico = async (id: number) => {
     try {
       const detalhes = await prestacaoContasApi.get<GeracaoDetalhada>(`/historico/${id}`)
@@ -425,11 +425,9 @@ export function PrestacaoContasPage() {
     }
   }
 
-  /** Envia respostas das duvidas da IA */
   const enviarRespostas = async () => {
     if (!geracaoId) return
 
-    // Valida que todas as perguntas foram respondidas
     const semResposta = perguntas.filter(p => !respostas[p]?.trim())
     if (semResposta.length > 0) {
       toast({
@@ -448,7 +446,6 @@ export function PrestacaoContasPage() {
       )
 
       if (resultado.sucesso) {
-        // Atualiza o estado com novo resultado
         setGeracaoAtual(prev => prev ? {
           ...prev,
           parecer: resultado.parecer,
@@ -458,7 +455,6 @@ export function PrestacaoContasPage() {
           respostas_usuario: respostas,
         } : null)
 
-        // Se ainda tem duvidas, continua no fluxo de duvidas
         if (resultado.parecer === 'duvida' && resultado.perguntas && resultado.perguntas.length > 0) {
           setPerguntas(resultado.perguntas)
           setRespostas({})
@@ -487,7 +483,6 @@ export function PrestacaoContasPage() {
     }
   }
 
-  /** Envia documentos faltantes */
   const enviarDocumentos = async () => {
     if (!geracaoId || arquivosUpload.length === 0) return
 
@@ -515,7 +510,6 @@ export function PrestacaoContasPage() {
         setArquivosUpload([])
         refetchHistorico()
 
-        // Se nao expirou, usuario pode reprocessar
         if (!resultado.estado_expirado) {
           toast({
             title: 'Reprocessar',
@@ -534,7 +528,6 @@ export function PrestacaoContasPage() {
     }
   }
 
-  /** Reprocessa analise com documentos salvos */
   const reprocessarComDocumentos = async () => {
     if (!geracaoId) return
 
@@ -557,7 +550,6 @@ export function PrestacaoContasPage() {
     }
   }
 
-  /** Continua analise sem nota fiscal */
   const continuarSemNotaFiscal = async () => {
     if (!geracaoId) return
 
@@ -580,7 +572,6 @@ export function PrestacaoContasPage() {
     }
   }
 
-  /** Cancela analise por falta de documentos */
   const cancelarPorFalta = async () => {
     if (!geracaoId) return
 
@@ -606,7 +597,6 @@ export function PrestacaoContasPage() {
     }
   }
 
-  /** Exporta parecer para DOCX */
   const exportarDocx = async () => {
     if (!geracaoId) return
 
@@ -639,7 +629,6 @@ export function PrestacaoContasPage() {
     }
   }
 
-  /** Envia feedback sobre a analise */
   const enviarFeedback = async () => {
     if (!geracaoId || !avaliacaoSelecionada) return
 
@@ -669,7 +658,6 @@ export function PrestacaoContasPage() {
     }
   }
 
-  /** Reseta para o estado inicial */
   const resetarParaInicio = () => {
     setEstadoPagina('idle')
     setNumeroCNJ('')
@@ -682,13 +670,13 @@ export function PrestacaoContasPage() {
     setEtapas(ETAPAS_INICIAIS)
     setProgressoMensagem('')
     setProgressoPercent(0)
+    setShowResultDialog(false)
   }
 
   // =====================================================
   // HELPERS DE RENDERIZACAO
   // =====================================================
 
-  /** Retorna icone da etapa */
   const renderEtapaIcone = (etapa: EtapaPipeline) => {
     const iconClass = 'h-4 w-4'
     switch (etapa.numero) {
@@ -701,37 +689,15 @@ export function PrestacaoContasPage() {
     }
   }
 
-  /** Retorna cor do badge da etapa */
-  const etapaBadgeVariant = (status: EtapaPipeline['status']): 'default' | 'secondary' | 'destructive' | 'outline' => {
-    switch (status) {
-      case 'concluido': return 'default'
-      case 'ativo': return 'secondary'
-      case 'erro': return 'destructive'
-      default: return 'outline'
-    }
-  }
-
-  /** Retorna texto do badge da etapa */
-  const etapaBadgeTexto = (status: EtapaPipeline['status']): string => {
-    switch (status) {
-      case 'concluido': return 'Concluido'
-      case 'ativo': return 'Em andamento'
-      case 'erro': return 'Erro'
-      default: return 'Aguardando'
-    }
-  }
-
-  /** Retorna cor do badge do parecer */
-  const parecerBadgeClass = (parecer?: string): string => {
+  const parecerBadgeStyle = (parecer?: string): React.CSSProperties => {
     switch (parecer) {
-      case 'favoravel': return 'bg-green-100 text-green-800 border-green-200'
-      case 'desfavoravel': return 'bg-red-100 text-red-800 border-red-200'
-      case 'duvida': return 'bg-yellow-100 text-yellow-800 border-yellow-200'
-      default: return 'bg-gray-100 text-gray-800 border-gray-200'
+      case 'favoravel': return { background: '#dcfce7', color: '#166534', borderColor: '#bbf7d0' }
+      case 'desfavoravel': return { background: '#fee2e2', color: '#991b1b', borderColor: '#fecaca' }
+      case 'duvida': return { background: C.orange100, color: '#92400e', borderColor: C.orange200 }
+      default: return { background: C.gray100, color: C.text700, borderColor: C.gray200 }
     }
   }
 
-  /** Retorna texto do parecer */
   const parecerTexto = (parecer?: string): string => {
     switch (parecer) {
       case 'favoravel': return 'Favoravel'
@@ -741,23 +707,20 @@ export function PrestacaoContasPage() {
     }
   }
 
-  /** Retorna icone do parecer */
   const parecerIcone = (parecer?: string) => {
     switch (parecer) {
-      case 'favoravel': return <CheckCircle2 className="h-5 w-5 text-green-600" />
-      case 'desfavoravel': return <XCircle className="h-5 w-5 text-red-600" />
-      case 'duvida': return <HelpCircle className="h-5 w-5 text-yellow-600" />
-      default: return <Clock className="h-5 w-5 text-gray-400" />
+      case 'favoravel': return <CheckCircle2 className="h-5 w-5" style={{ color: C.statusSuccess }} />
+      case 'desfavoravel': return <XCircle className="h-5 w-5" style={{ color: C.statusError }} />
+      case 'duvida': return <HelpCircle className="h-5 w-5" style={{ color: C.statusWarning }} />
+      default: return <Clock className="h-5 w-5" style={{ color: C.gray400 }} />
     }
   }
 
-  /** Formata valor monetario */
   const formatarValor = (valor?: number): string => {
     if (valor === undefined || valor === null) return '-'
     return valor.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
   }
 
-  /** Formata data para exibicao */
   const formatarData = (data?: string): string => {
     if (!data) return '-'
     try {
@@ -777,16 +740,19 @@ export function PrestacaoContasPage() {
   // SECOES DA PAGINA
   // =====================================================
 
-  /** Formulario de entrada */
   const renderFormulario = () => (
-    <Card>
+    <Card className="overflow-hidden" style={{ borderRadius: 16, borderColor: C.gray200 }}>
+      <div style={{ height: 4, background: `linear-gradient(90deg, ${C.navy950}, ${C.navy500})` }} />
       <CardHeader>
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-sky-500 to-sky-600">
+          <div
+            className="flex h-10 w-10 items-center justify-center rounded-xl"
+            style={{ background: C.navy950 }}
+          >
             <FileText className="h-5 w-5 text-white" />
           </div>
           <div>
-            <CardTitle>Analisar Prestação de Contas</CardTitle>
+            <CardTitle style={{ color: C.text900 }}>Analisar Prestacao de Contas</CardTitle>
           </div>
         </div>
       </CardHeader>
@@ -799,22 +765,24 @@ export function PrestacaoContasPage() {
           className="space-y-4"
         >
           <div className="space-y-2">
-            <Label htmlFor="numero-cnj">Numero do Processo (CNJ)</Label>
+            <Label htmlFor="numero-cnj" style={{ color: C.text700 }}>Numero do Processo (CNJ)</Label>
             <Input
               id="numero-cnj"
               value={numeroCNJ}
               onChange={(e) => setNumeroCNJ(e.target.value)}
               placeholder="0000000-00.2024.8.12.0001"
               disabled={estadoPagina === 'processando' || estadoPagina === 'verificando'}
+              style={{ borderColor: C.gray200 }}
             />
-            <p className="text-xs text-muted-foreground">
+            <p className="text-xs" style={{ color: C.text400 }}>
               Digite o numero completo do processo no formato CNJ
             </p>
           </div>
 
           <Button
             type="submit"
-            className="w-full h-12 text-base bg-gradient-to-r from-sky-500 to-teal-500 hover:from-sky-600 hover:to-teal-600 text-white"
+            className="w-full h-12 text-base text-white"
+            style={{ background: C.navy950 }}
             disabled={estadoPagina === 'processando' || estadoPagina === 'verificando'}
           >
             {estadoPagina === 'verificando' ? (
@@ -822,7 +790,7 @@ export function PrestacaoContasPage() {
             ) : estadoPagina === 'processando' ? (
               <><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Processando...</>
             ) : (
-              <><Search className="mr-2 h-5 w-5" /> Analisar Prestação de Contas</>
+              <><Search className="mr-2 h-5 w-5" /> Analisar Prestacao de Contas</>
             )}
           </Button>
         </form>
@@ -830,63 +798,76 @@ export function PrestacaoContasPage() {
     </Card>
   )
 
-  /** Card informativo sobre o sistema */
   const renderInfoCard = () => (
-    <Alert className="border-blue-200 bg-blue-50">
-      <Info className="h-4 w-4 text-blue-600" />
+    <Alert style={{ borderColor: C.navy200, background: C.navy50 }}>
+      <Info className="h-4 w-4" style={{ color: C.navy700 }} />
       <AlertDescription>
-        <p className="font-medium text-blue-800 mb-1">Como funciona?</p>
-        <ul className="text-sm text-blue-700 space-y-1">
+        <p className="font-medium mb-1" style={{ color: C.navy950 }}>Como funciona?</p>
+        <ul className="text-sm space-y-1" style={{ color: C.navy700 }}>
           <li className="flex items-center gap-2">
-            <Check className="h-3 w-3 text-blue-500 flex-shrink-0" /> Sistema baixa o extrato da subconta automaticamente
+            <Check className="h-3 w-3 flex-shrink-0" style={{ color: C.navy500 }} /> Sistema baixa o extrato da subconta automaticamente
           </li>
           <li className="flex items-center gap-2">
-            <Check className="h-3 w-3 text-blue-500 flex-shrink-0" /> Identifica a peticao de prestacao de contas no processo
+            <Check className="h-3 w-3 flex-shrink-0" style={{ color: C.navy500 }} /> Identifica a peticao de prestacao de contas no processo
           </li>
           <li className="flex items-center gap-2">
-            <Check className="h-3 w-3 text-blue-500 flex-shrink-0" /> Analisa notas fiscais e comprovantes anexados
+            <Check className="h-3 w-3 flex-shrink-0" style={{ color: C.navy500 }} /> Analisa notas fiscais e comprovantes anexados
           </li>
           <li className="flex items-center gap-2">
-            <Check className="h-3 w-3 text-blue-500 flex-shrink-0" /> Emite parecer: Favoravel, Desfavoravel ou Duvida
+            <Check className="h-3 w-3 flex-shrink-0" style={{ color: C.navy500 }} /> Emite parecer: Favoravel, Desfavoravel ou Duvida
           </li>
         </ul>
       </AlertDescription>
     </Alert>
   )
 
-  /** Modal de progresso do processamento */
   const renderProgresso = () => (
-    <Card>
+    <Card className="overflow-hidden" style={{ borderRadius: 16, borderColor: C.gray200 }}>
+      <div style={{ height: 4, background: `linear-gradient(90deg, ${C.navy950}, ${C.navy500})` }} />
       <CardHeader>
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-sky-500 to-sky-600">
+          <div
+            className="flex h-10 w-10 items-center justify-center rounded-xl"
+            style={{ background: C.navy950 }}
+          >
             <Loader2 className="h-5 w-5 text-white animate-spin" />
           </div>
           <div>
-            <CardTitle>Analisando Prestacao de Contas</CardTitle>
-            <CardDescription>{progressoMensagem || 'Processando...'}</CardDescription>
+            <CardTitle style={{ color: C.text900 }}>Analisando Prestacao de Contas</CardTitle>
+            <CardDescription style={{ color: C.text500 }}>{progressoMensagem || 'Processando...'}</CardDescription>
           </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Etapas do pipeline */}
         <div className="space-y-3">
           {etapas.map(etapa => (
             <div
               key={etapa.numero}
-              className={`flex items-center gap-3 rounded-lg border p-3 transition-colors ${
-                etapa.status === 'ativo' ? 'border-sky-200 bg-sky-50' :
-                etapa.status === 'concluido' ? 'border-green-200 bg-green-50' :
-                etapa.status === 'erro' ? 'border-red-200 bg-red-50' :
-                'border-gray-100 bg-gray-50'
-              }`}
+              className="flex items-center gap-3 rounded-lg border p-3 transition-colors"
+              style={{
+                borderColor: etapa.status === 'ativo' ? C.navy200
+                  : etapa.status === 'concluido' ? '#bbf7d0'
+                  : etapa.status === 'erro' ? '#fecaca'
+                  : C.gray200,
+                background: etapa.status === 'ativo' ? C.navy50
+                  : etapa.status === 'concluido' ? '#f0fdf4'
+                  : etapa.status === 'erro' ? '#fef2f2'
+                  : C.gray50,
+              }}
             >
-              <div className={`flex h-8 w-8 items-center justify-center rounded-full ${
-                etapa.status === 'ativo' ? 'bg-sky-200 text-sky-700' :
-                etapa.status === 'concluido' ? 'bg-green-200 text-green-700' :
-                etapa.status === 'erro' ? 'bg-red-200 text-red-700' :
-                'bg-gray-200 text-gray-400'
-              }`}>
+              <div
+                className="flex h-8 w-8 items-center justify-center rounded-full"
+                style={{
+                  background: etapa.status === 'ativo' ? C.navy200
+                    : etapa.status === 'concluido' ? '#bbf7d0'
+                    : etapa.status === 'erro' ? '#fecaca'
+                    : C.gray200,
+                  color: etapa.status === 'ativo' ? C.navy700
+                    : etapa.status === 'concluido' ? '#15803d'
+                    : etapa.status === 'erro' ? '#b91c1c'
+                    : C.gray400,
+                }}
+              >
                 {etapa.status === 'ativo' ? (
                   <Loader2 className="h-4 w-4 animate-spin" />
                 ) : etapa.status === 'concluido' ? (
@@ -898,28 +879,41 @@ export function PrestacaoContasPage() {
                 )}
               </div>
               <div className="flex-1 min-w-0">
-                <p className="text-sm font-medium text-gray-700">
+                <p className="text-sm font-medium" style={{ color: C.text700 }}>
                   Etapa {etapa.numero}: {etapa.nome}
                 </p>
-                <p className="text-xs text-gray-500">{etapa.descricao}</p>
+                <p className="text-xs" style={{ color: C.text400 }}>{etapa.descricao}</p>
               </div>
-              <Badge variant={etapaBadgeVariant(etapa.status)}>
-                {etapaBadgeTexto(etapa.status)}
+              <Badge
+                variant="outline"
+                style={
+                  etapa.status === 'concluido' ? { background: '#dcfce7', color: '#166534', borderColor: '#bbf7d0' }
+                  : etapa.status === 'ativo' ? { background: C.navy100, color: C.navy700, borderColor: C.navy200 }
+                  : etapa.status === 'erro' ? { background: '#fee2e2', color: '#991b1b', borderColor: '#fecaca' }
+                  : { borderColor: C.gray300, color: C.text400 }
+                }
+              >
+                {etapa.status === 'concluido' ? 'Concluido'
+                  : etapa.status === 'ativo' ? 'Em andamento'
+                  : etapa.status === 'erro' ? 'Erro'
+                  : 'Aguardando'}
               </Badge>
             </div>
           ))}
         </div>
 
-        {/* Barra de progresso */}
         <div className="space-y-1">
-          <div className="flex justify-between text-xs text-muted-foreground">
+          <div className="flex justify-between text-xs" style={{ color: C.text400 }}>
             <span>Progresso</span>
             <span>{progressoPercent}%</span>
           </div>
-          <div className="h-2 rounded-full bg-gray-200 overflow-hidden">
+          <div className="h-2 rounded-full overflow-hidden" style={{ background: C.gray200 }}>
             <div
-              className="h-full bg-gradient-to-r from-sky-500 to-sky-600 transition-all duration-500"
-              style={{ width: `${progressoPercent}%` }}
+              className="h-full transition-all duration-500"
+              style={{
+                width: `${progressoPercent}%`,
+                background: `linear-gradient(90deg, ${C.navy950}, ${C.navy500})`,
+              }}
             />
           </div>
         </div>
@@ -927,150 +921,198 @@ export function PrestacaoContasPage() {
     </Card>
   )
 
-  /** Secao de resultado da analise */
-  const renderResultado = () => {
+  /** Conteudo do documento para o ContentDialog */
+  const renderDocumentContent = () => {
     if (!geracaoAtual) return null
-
     const fundamentacaoText = geracaoAtual.fundamentacao || ''
 
     return (
-      <div className="space-y-4">
-        {/* Header do resultado com parecer */}
-        <Card className={`border-2 ${
-          geracaoAtual.parecer === 'favoravel' ? 'border-green-300' :
-          geracaoAtual.parecer === 'desfavoravel' ? 'border-red-300' :
-          'border-yellow-300'
-        }`}>
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                {parecerIcone(geracaoAtual.parecer)}
-                <div>
-                  <CardTitle>Parecer: {parecerTexto(geracaoAtual.parecer)}</CardTitle>
-                  <CardDescription>
-                    {geracaoAtual.numero_cnj_formatado || geracaoAtual.numero_cnj}
-                  </CardDescription>
-                </div>
-              </div>
-              <Badge className={parecerBadgeClass(geracaoAtual.parecer)}>
-                {parecerTexto(geracaoAtual.parecer)}
-              </Badge>
+      <div className="space-y-6">
+        {/* Header do parecer */}
+        <div
+          className="flex items-center justify-between rounded-xl border p-4"
+          style={{
+            borderColor: geracaoAtual.parecer === 'favoravel' ? '#bbf7d0'
+              : geracaoAtual.parecer === 'desfavoravel' ? '#fecaca'
+              : C.orange200,
+            background: geracaoAtual.parecer === 'favoravel' ? '#f0fdf4'
+              : geracaoAtual.parecer === 'desfavoravel' ? '#fef2f2'
+              : C.orange50,
+          }}
+        >
+          <div className="flex items-center gap-3">
+            {parecerIcone(geracaoAtual.parecer)}
+            <div>
+              <p className="font-semibold" style={{ color: C.text900 }}>
+                Parecer: {parecerTexto(geracaoAtual.parecer)}
+              </p>
+              <p className="text-sm" style={{ color: C.text500 }}>
+                {geracaoAtual.numero_cnj_formatado || geracaoAtual.numero_cnj}
+              </p>
             </div>
-          </CardHeader>
-        </Card>
+          </div>
+          <Badge variant="outline" style={parecerBadgeStyle(geracaoAtual.parecer)}>
+            {parecerTexto(geracaoAtual.parecer)}
+          </Badge>
+        </div>
 
-        {/* Dados extraidos (valores) */}
+        {/* Dados extraidos */}
         {(geracaoAtual.valor_bloqueado !== undefined ||
           geracaoAtual.valor_utilizado !== undefined ||
           geracaoAtual.medicamento_pedido) && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-base">Dados Extraidos</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-2 gap-4 md:grid-cols-3">
-                {geracaoAtual.valor_bloqueado !== undefined && geracaoAtual.valor_bloqueado !== null && (
-                  <div className="rounded-lg border p-3">
-                    <p className="text-xs text-muted-foreground">Valor Bloqueado</p>
-                    <p className="text-sm font-semibold">{formatarValor(geracaoAtual.valor_bloqueado)}</p>
-                  </div>
-                )}
-                {geracaoAtual.valor_utilizado !== undefined && geracaoAtual.valor_utilizado !== null && (
-                  <div className="rounded-lg border p-3">
-                    <p className="text-xs text-muted-foreground">Valor Utilizado</p>
-                    <p className="text-sm font-semibold">{formatarValor(geracaoAtual.valor_utilizado)}</p>
-                  </div>
-                )}
-                {geracaoAtual.valor_devolvido !== undefined && geracaoAtual.valor_devolvido !== null && (
-                  <div className="rounded-lg border p-3">
-                    <p className="text-xs text-muted-foreground">Valor Devolvido</p>
-                    <p className="text-sm font-semibold">{formatarValor(geracaoAtual.valor_devolvido)}</p>
-                  </div>
-                )}
-                {geracaoAtual.medicamento_pedido && (
-                  <div className="rounded-lg border p-3">
-                    <p className="text-xs text-muted-foreground">Medicamento Pedido</p>
-                    <p className="text-sm font-semibold">{geracaoAtual.medicamento_pedido}</p>
-                  </div>
-                )}
-                {geracaoAtual.medicamento_comprado && (
-                  <div className="rounded-lg border p-3">
-                    <p className="text-xs text-muted-foreground">Medicamento Comprado</p>
-                    <p className="text-sm font-semibold">{geracaoAtual.medicamento_comprado}</p>
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
+          <div>
+            <p className="mb-3 text-xs font-bold uppercase tracking-wider" style={{ color: C.text400 }}>
+              Dados Extraidos
+            </p>
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-3">
+              {geracaoAtual.valor_bloqueado !== undefined && geracaoAtual.valor_bloqueado !== null && (
+                <div className="rounded-xl border p-3" style={{ borderColor: C.gray200 }}>
+                  <p className="text-xs" style={{ color: C.text400 }}>Valor Bloqueado</p>
+                  <p className="text-sm font-semibold" style={{ color: C.text900 }}>{formatarValor(geracaoAtual.valor_bloqueado)}</p>
+                </div>
+              )}
+              {geracaoAtual.valor_utilizado !== undefined && geracaoAtual.valor_utilizado !== null && (
+                <div className="rounded-xl border p-3" style={{ borderColor: C.gray200 }}>
+                  <p className="text-xs" style={{ color: C.text400 }}>Valor Utilizado</p>
+                  <p className="text-sm font-semibold" style={{ color: C.text900 }}>{formatarValor(geracaoAtual.valor_utilizado)}</p>
+                </div>
+              )}
+              {geracaoAtual.valor_devolvido !== undefined && geracaoAtual.valor_devolvido !== null && (
+                <div className="rounded-xl border p-3" style={{ borderColor: C.gray200 }}>
+                  <p className="text-xs" style={{ color: C.text400 }}>Valor Devolvido</p>
+                  <p className="text-sm font-semibold" style={{ color: C.text900 }}>{formatarValor(geracaoAtual.valor_devolvido)}</p>
+                </div>
+              )}
+              {geracaoAtual.medicamento_pedido && (
+                <div className="rounded-xl border p-3" style={{ borderColor: C.gray200 }}>
+                  <p className="text-xs" style={{ color: C.text400 }}>Medicamento Pedido</p>
+                  <p className="text-sm font-semibold" style={{ color: C.text900 }}>{geracaoAtual.medicamento_pedido}</p>
+                </div>
+              )}
+              {geracaoAtual.medicamento_comprado && (
+                <div className="rounded-xl border p-3" style={{ borderColor: C.gray200 }}>
+                  <p className="text-xs" style={{ color: C.text400 }}>Medicamento Comprado</p>
+                  <p className="text-sm font-semibold" style={{ color: C.text900 }}>{geracaoAtual.medicamento_comprado}</p>
+                </div>
+              )}
+            </div>
+          </div>
         )}
 
         {/* Fundamentacao */}
         {fundamentacaoText && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base">
-                <FileText className="h-4 w-4 text-sky-500" />
+          <div>
+            <div className="mb-3 flex items-center gap-2">
+              <FileText className="h-4 w-4" style={{ color: C.navy700 }} />
+              <p className="text-xs font-bold uppercase tracking-wider" style={{ color: C.text400 }}>
                 Fundamentacao
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <MarkdownContent text={fundamentacaoText} />
-            </CardContent>
-          </Card>
+              </p>
+            </div>
+            <MarkdownContent text={fundamentacaoText} />
+          </div>
         )}
 
-        {/* Irregularidades (se desfavoravel) */}
+        {/* Irregularidades */}
         {geracaoAtual.irregularidades && geracaoAtual.irregularidades.length > 0 && (
-          <Card className="border-red-200 bg-red-50">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-base text-red-800">
-                <AlertTriangle className="h-4 w-4 text-red-500" />
+          <div
+            className="rounded-xl border p-4"
+            style={{ borderColor: '#fecaca', background: '#fef2f2' }}
+          >
+            <div className="mb-3 flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4" style={{ color: C.statusError }} />
+              <p className="text-sm font-semibold" style={{ color: '#991b1b' }}>
                 Irregularidades Identificadas
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <ul className="space-y-2">
-                {geracaoAtual.irregularidades.map((irr, idx) => (
-                  <li key={idx} className="flex items-start gap-2 text-sm text-red-700">
-                    <XCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
-                    <span>{irr}</span>
-                  </li>
-                ))}
-              </ul>
-            </CardContent>
-          </Card>
+              </p>
+            </div>
+            <ul className="space-y-2">
+              {geracaoAtual.irregularidades.map((irr, idx) => (
+                <li key={idx} className="flex items-start gap-2 text-sm" style={{ color: '#b91c1c' }}>
+                  <XCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
+                  <span>{irr}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
         )}
-
-        {/* Botoes de acao */}
-        <div className="flex flex-wrap gap-2">
-          <Button onClick={exportarDocx} variant="outline">
-            <Download className="mr-2 h-4 w-4" />
-            Exportar DOCX
-          </Button>
-          <Button onClick={() => setShowFeedback(true)} variant="outline">
-            <MessageSquare className="mr-2 h-4 w-4" />
-            Avaliar Resultado
-          </Button>
-          <Button onClick={resetarParaInicio} variant="ghost">
-            <RotateCw className="mr-2 h-4 w-4" />
-            Nova Analise
-          </Button>
-        </div>
       </div>
     )
   }
 
-  /** Secao de duvidas (perguntas da IA) */
+  /** Feedback inline para o ContentDialog */
+  const renderFeedbackSection = () => (
+    <div
+      className="rounded-xl border p-4"
+      style={{ borderColor: C.gray200, background: 'white' }}
+    >
+      <p className="mb-3 text-sm font-medium" style={{ color: C.text700 }}>
+        Como voce avalia este parecer?
+      </p>
+      <div className="flex flex-wrap gap-2">
+        {([
+          { value: 'correto' as const, label: 'Correto', icon: Check, bg: '#dcfce7', color: '#166534', border: '#bbf7d0' },
+          { value: 'parcial' as const, label: 'Parcial', icon: AlertCircle, bg: C.orange100, color: '#92400e', border: C.orange200 },
+          { value: 'incorreto' as const, label: 'Incorreto', icon: X, bg: '#fee2e2', color: '#991b1b', border: '#fecaca' },
+        ]).map(opt => (
+          <Button
+            key={opt.value}
+            type="button"
+            variant="outline"
+            size="sm"
+            style={
+              avaliacaoSelecionada === opt.value
+                ? { background: opt.bg, color: opt.color, borderColor: opt.border }
+                : { borderColor: C.gray200, color: C.text500 }
+            }
+            onClick={() => setAvaliacaoSelecionada(opt.value)}
+          >
+            <opt.icon className="mr-1 h-3 w-3" />
+            {opt.label}
+          </Button>
+        ))}
+      </div>
+
+      {avaliacaoSelecionada && (
+        <div className="mt-3 space-y-2">
+          <Textarea
+            value={comentarioFeedback}
+            onChange={(e) => setComentarioFeedback(e.target.value)}
+            placeholder="Comentario opcional..."
+            rows={2}
+            className="text-sm"
+            style={{ borderColor: C.gray200 }}
+          />
+          <Button
+            size="sm"
+            onClick={enviarFeedback}
+            disabled={isEnviandoFeedback}
+            style={{ background: C.navy950 }}
+            className="text-white"
+          >
+            {isEnviandoFeedback ? (
+              <><Loader2 className="mr-2 h-3 w-3 animate-spin" /> Enviando...</>
+            ) : (
+              <><Star className="mr-2 h-3 w-3" /> Enviar Feedback</>
+            )}
+          </Button>
+        </div>
+      )}
+    </div>
+  )
+
   const renderDuvidas = () => (
-    <Card className="border-yellow-200 bg-yellow-50/50">
+    <Card className="overflow-hidden" style={{ borderRadius: 16, borderColor: C.orange200 }}>
+      <div style={{ height: 4, background: `linear-gradient(90deg, ${C.orange500}, ${C.orange400})` }} />
       <CardHeader>
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-yellow-400 to-yellow-500">
+          <div
+            className="flex h-10 w-10 items-center justify-center rounded-xl"
+            style={{ background: C.orange500 }}
+          >
             <HelpCircle className="h-5 w-5 text-white" />
           </div>
           <div>
-            <CardTitle>Esclarecimentos Necessarios</CardTitle>
-            <CardDescription>
+            <CardTitle style={{ color: C.text900 }}>Esclarecimentos Necessarios</CardTitle>
+            <CardDescription style={{ color: C.text500 }}>
               A IA precisa de mais informacoes para emitir o parecer. Responda as perguntas abaixo.
             </CardDescription>
           </div>
@@ -1079,7 +1121,7 @@ export function PrestacaoContasPage() {
       <CardContent className="space-y-4">
         {perguntas.map((pergunta, idx) => (
           <div key={idx} className="space-y-2">
-            <Label className="text-sm font-medium text-yellow-800">
+            <Label className="text-sm font-medium" style={{ color: C.text900 }}>
               {idx + 1}. {pergunta}
             </Label>
             <Textarea
@@ -1089,7 +1131,7 @@ export function PrestacaoContasPage() {
               }
               placeholder="Digite sua resposta..."
               rows={3}
-              className="bg-white"
+              style={{ borderColor: C.gray200, background: 'white' }}
             />
           </div>
         ))}
@@ -1098,7 +1140,8 @@ export function PrestacaoContasPage() {
           <Button
             onClick={enviarRespostas}
             disabled={isEnviandoRespostas}
-            className="flex-1"
+            className="flex-1 text-white"
+            style={{ background: C.navy950 }}
           >
             {isEnviandoRespostas ? (
               <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Enviando...</>
@@ -1106,7 +1149,7 @@ export function PrestacaoContasPage() {
               <><Send className="mr-2 h-4 w-4" /> Enviar Respostas</>
             )}
           </Button>
-          <Button onClick={resetarParaInicio} variant="ghost">
+          <Button onClick={resetarParaInicio} variant="ghost" style={{ color: C.text500 }}>
             Cancelar
           </Button>
         </div>
@@ -1114,28 +1157,30 @@ export function PrestacaoContasPage() {
     </Card>
   )
 
-  /** Secao de documentos faltantes */
   const renderDocumentosFaltantes = () => (
-    <Card className="border-amber-200 bg-amber-50/50">
+    <Card className="overflow-hidden" style={{ borderRadius: 16, borderColor: C.orange200 }}>
+      <div style={{ height: 4, background: `linear-gradient(90deg, ${C.orange500}, ${C.orange400})` }} />
       <CardHeader>
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-amber-400 to-amber-500">
+          <div
+            className="flex h-10 w-10 items-center justify-center rounded-xl"
+            style={{ background: C.orange500 }}
+          >
             <Upload className="h-5 w-5 text-white" />
           </div>
           <div>
-            <CardTitle>Documentos Pendentes</CardTitle>
-            <CardDescription>{mensagemDocsFaltantes}</CardDescription>
+            <CardTitle style={{ color: C.text900 }}>Documentos Pendentes</CardTitle>
+            <CardDescription style={{ color: C.text500 }}>{mensagemDocsFaltantes}</CardDescription>
           </div>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
-        {/* Lista de documentos faltantes */}
         {docsFaltantes.length > 0 && (
           <div className="space-y-2">
-            <p className="text-sm font-medium text-amber-800">Documentos necessarios:</p>
+            <p className="text-sm font-medium" style={{ color: C.text700 }}>Documentos necessarios:</p>
             <ul className="space-y-1">
               {docsFaltantes.map((doc, idx) => (
-                <li key={idx} className="flex items-center gap-2 text-sm text-amber-700">
+                <li key={idx} className="flex items-center gap-2 text-sm" style={{ color: C.orange600 }}>
                   <AlertCircle className="h-4 w-4 flex-shrink-0" />
                   <span>{doc === 'extrato_subconta' ? 'Extrato da Subconta' : doc === 'notas_fiscais' ? 'Notas Fiscais / Comprovantes' : doc}</span>
                 </li>
@@ -1144,12 +1189,14 @@ export function PrestacaoContasPage() {
           </div>
         )}
 
-        {/* Area de upload */}
         <div className="space-y-2">
-          <Label>Anexar documentos (PDF)</Label>
+          <Label style={{ color: C.text700 }}>Anexar documentos (PDF)</Label>
           <div
-            className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border-2 border-dashed border-amber-300 p-6 text-amber-600 transition-colors hover:border-amber-400 hover:bg-amber-100/50"
+            className="flex cursor-pointer items-center justify-center gap-2 rounded-xl border-2 border-dashed p-6 transition-colors"
+            style={{ borderColor: C.orange400, color: C.orange600 }}
             onClick={() => fileInputRef.current?.click()}
+            onMouseEnter={(e) => { e.currentTarget.style.background = C.orange50 }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
           >
             <Upload className="h-5 w-5" />
             <span className="text-sm">Clique para selecionar arquivos PDF</span>
@@ -1168,30 +1215,29 @@ export function PrestacaoContasPage() {
           />
         </div>
 
-        {/* Arquivos selecionados */}
         {arquivosUpload.length > 0 && (
-          <div className="rounded-lg border border-amber-200 bg-white p-3">
-            <p className="mb-2 text-xs font-medium uppercase text-gray-500">
+          <div className="rounded-xl border bg-white p-3" style={{ borderColor: C.gray200 }}>
+            <p className="mb-2 text-xs font-bold uppercase tracking-wider" style={{ color: C.text400 }}>
               Arquivos Selecionados ({arquivosUpload.length})
             </p>
             <ul className="space-y-1">
               {arquivosUpload.map((file, idx) => (
-                <li key={idx} className="flex items-center gap-2 text-sm text-gray-700">
-                  <FileText className="h-4 w-4 text-amber-500" />
+                <li key={idx} className="flex items-center gap-2 text-sm" style={{ color: C.text700 }}>
+                  <FileText className="h-4 w-4" style={{ color: C.orange500 }} />
                   <span className="flex-1 truncate">{file.name}</span>
-                  <span className="text-xs text-gray-400">{(file.size / 1024).toFixed(0)} KB</span>
+                  <span className="text-xs" style={{ color: C.text400 }}>{(file.size / 1024).toFixed(0)} KB</span>
                 </li>
               ))}
             </ul>
           </div>
         )}
 
-        {/* Botoes */}
         <div className="flex flex-wrap gap-2">
           <Button
             onClick={enviarDocumentos}
             disabled={isEnviandoDocs || arquivosUpload.length === 0}
-            className="flex-1"
+            className="flex-1 text-white"
+            style={{ background: C.navy950 }}
           >
             {isEnviandoDocs ? (
               <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Enviando...</>
@@ -1202,6 +1248,7 @@ export function PrestacaoContasPage() {
           <Button
             onClick={reprocessarComDocumentos}
             variant="outline"
+            style={{ borderColor: C.gray200, color: C.text700 }}
           >
             <RotateCw className="mr-2 h-4 w-4" />
             Reprocessar
@@ -1210,12 +1257,17 @@ export function PrestacaoContasPage() {
             <Button
               onClick={continuarSemNotaFiscal}
               variant="outline"
+              style={{ borderColor: C.gray200, color: C.text700 }}
             >
               <ChevronRight className="mr-2 h-4 w-4" />
               Continuar sem Nota Fiscal
             </Button>
           )}
-          <Button onClick={cancelarPorFalta} variant="ghost" className="text-red-600 hover:text-red-700">
+          <Button
+            onClick={cancelarPorFalta}
+            variant="ghost"
+            style={{ color: C.statusError }}
+          >
             <X className="mr-2 h-4 w-4" />
             Cancelar Analise
           </Button>
@@ -1224,34 +1276,41 @@ export function PrestacaoContasPage() {
     </Card>
   )
 
-  /** Secao de erro */
   const renderErro = () => (
     <Alert variant="destructive">
       <AlertCircle className="h-4 w-4" />
       <AlertDescription>
         <p className="font-medium">Erro na analise</p>
         <p className="text-sm mt-1">{geracaoAtual?.erro || progressoMensagem || 'Ocorreu um erro durante o processamento.'}</p>
-        <Button onClick={resetarParaInicio} variant="outline" size="sm" className="mt-3">
+        <Button
+          onClick={resetarParaInicio}
+          variant="outline"
+          size="sm"
+          className="mt-3"
+          style={{ borderColor: C.gray200 }}
+        >
           <RotateCw className="mr-2 h-4 w-4" /> Tentar novamente
         </Button>
       </AlertDescription>
     </Alert>
   )
 
-  /** Historico recente (inline) */
   const renderHistoricoRecente = () => {
     const geracoes = historicoData?.geracoes || []
 
     return (
-      <Card>
+      <Card className="overflow-hidden" style={{ borderRadius: 16, borderColor: C.gray200 }}>
+        <div style={{ height: 4, background: `linear-gradient(90deg, ${C.navy950}, ${C.navy500})` }} />
         <CardHeader>
           <div className="flex items-center justify-between">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <History className="h-4 w-4" />
-              Análises Recentes
+            <CardTitle className="flex items-center gap-2 text-base" style={{ color: C.text900 }}>
+              <History className="h-4 w-4" style={{ color: C.navy700 }} />
+              Analises Recentes
             </CardTitle>
             {geracoes.length > 0 && (
-              <Badge variant="secondary">{historicoData?.total || 0} total</Badge>
+              <Badge variant="outline" style={{ borderColor: C.gray300, color: C.text500 }}>
+                {historicoData?.total || 0} total
+              </Badge>
             )}
           </div>
         </CardHeader>
@@ -1270,7 +1329,7 @@ export function PrestacaoContasPage() {
             </div>
           ) : geracoes.length === 0 ? (
             <div className="py-8 text-center">
-              <p className="text-sm text-muted-foreground">Nenhuma analise realizada ainda</p>
+              <p className="text-sm" style={{ color: C.text400 }}>Nenhuma analise realizada ainda</p>
             </div>
           ) : (
             <div className="space-y-2">
@@ -1278,30 +1337,33 @@ export function PrestacaoContasPage() {
                 <button
                   key={g.id}
                   onClick={() => carregarDoHistorico(g.id)}
-                  className="flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-colors hover:bg-accent"
+                  className="flex w-full items-center gap-3 rounded-xl border p-3 text-left transition-all"
+                  style={{ borderColor: C.gray200 }}
+                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = C.navy300; e.currentTarget.style.background = C.navy50 }}
+                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = C.gray200; e.currentTarget.style.background = 'transparent' }}
                 >
                   {parecerIcone(g.parecer)}
                   <div className="flex-1 min-w-0">
-                    <p className="text-sm font-medium truncate">
+                    <p className="text-sm font-medium truncate" style={{ color: C.text900 }}>
                       {g.numero_cnj_formatado || g.numero_cnj}
                     </p>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-xs" style={{ color: C.text400 }}>
                       {formatarData(g.criado_em)}
                     </p>
                   </div>
                   <div className="flex items-center gap-2">
                     {g.status === 'erro' ? (
-                      <Badge variant="destructive" className="text-xs">Erro</Badge>
+                      <Badge variant="outline" style={{ background: '#fee2e2', color: '#991b1b', borderColor: '#fecaca' }} className="text-xs">Erro</Badge>
                     ) : g.parecer ? (
-                      <Badge className={`text-xs ${parecerBadgeClass(g.parecer)}`}>
+                      <Badge variant="outline" className="text-xs" style={parecerBadgeStyle(g.parecer)}>
                         {parecerTexto(g.parecer)}
                       </Badge>
                     ) : g.status === 'aguardando_documentos' || g.status === 'aguardando_nota_fiscal' ? (
-                      <Badge variant="outline" className="text-xs border-amber-300 text-amber-700">Pendente</Badge>
+                      <Badge variant="outline" className="text-xs" style={{ borderColor: C.orange200, color: C.orange600 }}>Pendente</Badge>
                     ) : (
-                      <Badge variant="outline" className="text-xs">{g.status}</Badge>
+                      <Badge variant="outline" className="text-xs" style={{ borderColor: C.gray300, color: C.text400 }}>{g.status}</Badge>
                     )}
-                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                    <ChevronRight className="h-4 w-4" style={{ color: C.text400 }} />
                   </div>
                 </button>
               ))}
@@ -1312,21 +1374,20 @@ export function PrestacaoContasPage() {
     )
   }
 
-  /** Historico completo (Sheet lateral) */
   const renderHistoricoSheet = () => {
     const geracoes = historicoData?.geracoes || []
 
     return (
       <Sheet>
         <SheetTrigger asChild>
-          <Button variant="ghost" size="icon" title="Historico completo" className="h-8 w-8 text-gray-500">
+          <Button variant="ghost" size="icon" title="Historico completo" className="h-8 w-8" style={{ color: C.text500 }}>
             <History className="h-4 w-4" />
           </Button>
         </SheetTrigger>
         <SheetContent className="w-[400px] sm:w-[500px]">
           <SheetHeader>
-            <SheetTitle className="flex items-center gap-2">
-              <History className="h-5 w-5" />
+            <SheetTitle className="flex items-center gap-2" style={{ color: C.text900 }}>
+              <History className="h-5 w-5" style={{ color: C.navy700 }} />
               Historico de Analises
             </SheetTitle>
           </SheetHeader>
@@ -1345,8 +1406,8 @@ export function PrestacaoContasPage() {
               </div>
             ) : geracoes.length === 0 ? (
               <div className="py-12 text-center">
-                <FileText className="mx-auto h-10 w-10 text-muted-foreground/50" />
-                <p className="mt-3 text-muted-foreground">Nenhuma analise encontrada</p>
+                <FileText className="mx-auto h-10 w-10" style={{ color: C.gray300 }} />
+                <p className="mt-3" style={{ color: C.text400 }}>Nenhuma analise encontrada</p>
               </div>
             ) : (
               <div className="space-y-2">
@@ -1354,35 +1415,38 @@ export function PrestacaoContasPage() {
                   <button
                     key={g.id}
                     onClick={() => carregarDoHistorico(g.id)}
-                    className="flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-colors hover:bg-accent"
+                    className="flex w-full items-center gap-3 rounded-xl border p-3 text-left transition-all"
+                    style={{ borderColor: C.gray200 }}
+                    onMouseEnter={(e) => { e.currentTarget.style.borderColor = C.navy300; e.currentTarget.style.background = C.navy50 }}
+                    onMouseLeave={(e) => { e.currentTarget.style.borderColor = C.gray200; e.currentTarget.style.background = 'transparent' }}
                   >
                     {parecerIcone(g.parecer)}
                     <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium truncate">
+                      <p className="text-sm font-medium truncate" style={{ color: C.text900 }}>
                         {g.numero_cnj_formatado || g.numero_cnj}
                       </p>
-                      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <div className="flex items-center gap-2 text-xs" style={{ color: C.text400 }}>
                         <span>{formatarData(g.criado_em)}</span>
                         {g.tempo_processamento_ms && (
                           <span>({(g.tempo_processamento_ms / 1000).toFixed(0)}s)</span>
                         )}
                       </div>
                       {g.erro && (
-                        <p className="text-xs text-red-500 truncate mt-0.5">{g.erro}</p>
+                        <p className="text-xs truncate mt-0.5" style={{ color: C.statusError }}>{g.erro}</p>
                       )}
                     </div>
                     <div className="flex flex-col items-end gap-1">
                       {g.status === 'erro' ? (
-                        <Badge variant="destructive" className="text-xs">Erro</Badge>
+                        <Badge variant="outline" className="text-xs" style={{ background: '#fee2e2', color: '#991b1b', borderColor: '#fecaca' }}>Erro</Badge>
                       ) : g.parecer ? (
-                        <Badge className={`text-xs ${parecerBadgeClass(g.parecer)}`}>
+                        <Badge variant="outline" className="text-xs" style={parecerBadgeStyle(g.parecer)}>
                           {parecerTexto(g.parecer)}
                         </Badge>
                       ) : (
-                        <Badge variant="outline" className="text-xs">{g.status}</Badge>
+                        <Badge variant="outline" className="text-xs" style={{ borderColor: C.gray300, color: C.text400 }}>{g.status}</Badge>
                       )}
                       {g.permite_anexar && (
-                        <Badge variant="outline" className="text-xs border-amber-300 text-amber-700">
+                        <Badge variant="outline" className="text-xs" style={{ borderColor: C.orange200, color: C.orange600 }}>
                           Docs pendentes
                         </Badge>
                       )}
@@ -1397,95 +1461,71 @@ export function PrestacaoContasPage() {
     )
   }
 
-  /** Modal de feedback */
-  const renderFeedbackDialog = () => (
-    <Dialog open={showFeedback} onOpenChange={setShowFeedback}>
-      <DialogContent>
-        <DialogHeader>
-          <DialogTitle>Avaliar Analise</DialogTitle>
-        </DialogHeader>
-        <div className="space-y-4 pt-2">
-          <div className="space-y-2">
-            <Label>O parecer esta correto?</Label>
+  /** Card resumo quando ContentDialog esta fechado */
+  const renderResumoResultado = () => {
+    if (!geracaoAtual) return null
+
+    return (
+      <Card className="overflow-hidden" style={{ borderRadius: 16, borderColor: C.gray200 }}>
+        <div style={{ height: 4, background: `linear-gradient(90deg, ${C.navy950}, ${C.navy500})` }} />
+        <CardContent className="p-6">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              {parecerIcone(geracaoAtual.parecer)}
+              <div>
+                <p className="font-semibold" style={{ color: C.text900 }}>
+                  Parecer: {parecerTexto(geracaoAtual.parecer)}
+                </p>
+                <p className="text-sm" style={{ color: C.text500 }}>
+                  {geracaoAtual.numero_cnj_formatado || geracaoAtual.numero_cnj}
+                </p>
+              </div>
+            </div>
             <div className="flex gap-2">
-              {([
-                { value: 'correto' as const, label: 'Correto', icon: Check, color: 'hover:border-green-500 hover:bg-green-50' },
-                { value: 'parcial' as const, label: 'Parcial', icon: AlertCircle, color: 'hover:border-yellow-500 hover:bg-yellow-50' },
-                { value: 'incorreto' as const, label: 'Incorreto', icon: X, color: 'hover:border-red-500 hover:bg-red-50' },
-              ]).map(opt => (
-                <Button
-                  key={opt.value}
-                  type="button"
-                  variant={avaliacaoSelecionada === opt.value ? 'default' : 'outline'}
-                  className={`flex-1 ${avaliacaoSelecionada !== opt.value ? opt.color : ''}`}
-                  onClick={() => setAvaliacaoSelecionada(opt.value)}
-                >
-                  <opt.icon className="mr-1 h-4 w-4" />
-                  {opt.label}
-                </Button>
-              ))}
+              <Button
+                onClick={() => setShowResultDialog(true)}
+                className="text-white"
+                style={{ background: C.navy950 }}
+              >
+                Ver Parecer
+              </Button>
+              <Button
+                onClick={resetarParaInicio}
+                variant="ghost"
+                style={{ color: C.text500 }}
+              >
+                <RotateCw className="mr-2 h-4 w-4" />
+                Nova Analise
+              </Button>
             </div>
           </div>
+        </CardContent>
+      </Card>
+    )
+  }
 
-          <div className="space-y-2">
-            <Label htmlFor="feedback-comentario">Comentario (opcional)</Label>
-            <Textarea
-              id="feedback-comentario"
-              value={comentarioFeedback}
-              onChange={(e) => setComentarioFeedback(e.target.value)}
-              placeholder="Descreva o que pode ser melhorado..."
-              rows={3}
-            />
-          </div>
-
-          <div className="flex gap-2">
-            <Button
-              variant="outline"
-              className="flex-1"
-              onClick={() => setShowFeedback(false)}
-            >
-              Cancelar
-            </Button>
-            <Button
-              className="flex-1"
-              onClick={enviarFeedback}
-              disabled={!avaliacaoSelecionada || isEnviandoFeedback}
-            >
-              {isEnviandoFeedback ? (
-                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Enviando...</>
-              ) : (
-                <><Star className="mr-2 h-4 w-4" /> Enviar Feedback</>
-              )}
-            </Button>
-          </div>
-        </div>
-      </DialogContent>
-    </Dialog>
-  )
-
-  /** Modal de confirmacao de sobrescrita */
   const renderConfirmacaoDialog = () => (
     <Dialog open={showConfirmacao} onOpenChange={setShowConfirmacao}>
       <DialogContent>
         <DialogHeader>
-          <DialogTitle>Processo ja analisado</DialogTitle>
+          <DialogTitle style={{ color: C.text900 }}>Processo ja analisado</DialogTitle>
         </DialogHeader>
         <div className="space-y-4 pt-2">
-          <p className="text-sm text-muted-foreground">
+          <p className="text-sm" style={{ color: C.text500 }}>
             Este processo ja possui uma analise registrada.
           </p>
           {verificacaoExistente && (
-            <div className="rounded-lg border p-3 space-y-1">
-              <p className="text-sm">
+            <div className="rounded-xl border p-3 space-y-1" style={{ borderColor: C.gray200 }}>
+              <p className="text-sm" style={{ color: C.text700 }}>
                 <strong>Processo:</strong> {verificacaoExistente.numero_cnj_formatado}
               </p>
-              <p className="text-sm">
+              <p className="text-sm" style={{ color: C.text700 }}>
                 <strong>Analisado em:</strong> {verificacaoExistente.criado_em}
               </p>
               {verificacaoExistente.parecer && (
-                <p className="text-sm">
+                <p className="text-sm" style={{ color: C.text700 }}>
                   <strong>Parecer:</strong>{' '}
-                  <Badge className={`text-xs ${parecerBadgeClass(verificacaoExistente.parecer)}`}>
+                  <Badge variant="outline" className="text-xs" style={parecerBadgeStyle(verificacaoExistente.parecer)}>
                     {parecerTexto(verificacaoExistente.parecer)}
                   </Badge>
                 </p>
@@ -1501,12 +1541,15 @@ export function PrestacaoContasPage() {
                   void carregarDoHistorico(verificacaoExistente.geracao_id)
                 }
               }}
+              className="text-white"
+              style={{ background: C.navy950 }}
             >
               <FileText className="mr-2 h-4 w-4" />
               Ver analise existente
             </Button>
             <Button
               variant="outline"
+              style={{ borderColor: C.gray200, color: C.text700 }}
               onClick={() => {
                 setShowConfirmacao(false)
                 void iniciarAnalise(true)
@@ -1517,6 +1560,7 @@ export function PrestacaoContasPage() {
             </Button>
             <Button
               variant="ghost"
+              style={{ color: C.text500 }}
               onClick={() => setShowConfirmacao(false)}
             >
               Cancelar
@@ -1532,27 +1576,15 @@ export function PrestacaoContasPage() {
   // =====================================================
 
   return (
-    <div className="flex flex-col h-screen bg-gray-50">
-      <SystemTopbar
-        title="Análise de Prestação de Contas"
-        subtitle="Processos de Medicamentos"
-        actions={
-          <>
-            {renderHistoricoSheet()}
-            <Link
-              to="/dashboard"
-              className="p-2 text-gray-400 hover:text-gray-600 transition-colors rounded-md hover:bg-gray-50"
-              title="Dashboard"
-            >
-              <LayoutGrid className="h-5 w-5" />
-            </Link>
-          </>
-        }
+    <div style={{ fontFamily: FONT_UI }}>
+      <BreadcrumbBar
+        title="Prestacao de Contas"
+        icon={<Building2 style={{ width: 14, height: 14 }} />}
+        actions={renderHistoricoSheet()}
       />
 
-      <main className="flex-1 overflow-y-auto">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-6">
-          {/* Conteudo principal baseado no estado */}
+      <div style={{ maxWidth: 1350, margin: '0 auto', padding: '32px 40px' }}>
+        <div className="max-w-4xl mx-auto space-y-6">
           {estadoPagina === 'idle' && (
             <>
               {renderFormulario()}
@@ -1570,7 +1602,7 @@ export function PrestacaoContasPage() {
 
           {estadoPagina === 'processando' && renderProgresso()}
 
-          {estadoPagina === 'resultado' && renderResultado()}
+          {estadoPagina === 'resultado' && !showResultDialog && renderResumoResultado()}
 
           {estadoPagina === 'duvidas' && renderDuvidas()}
 
@@ -1583,10 +1615,41 @@ export function PrestacaoContasPage() {
             </>
           )}
         </div>
-      </main>
+      </div>
 
-      {/* Dialogs */}
-      {renderFeedbackDialog()}
+      {/* ContentDialog para resultado */}
+      {geracaoAtual && estadoPagina === 'resultado' && (
+        <ContentDialog
+          open={showResultDialog}
+          onOpenChange={setShowResultDialog}
+          title="Parecer de Prestacao de Contas"
+          subtitle={geracaoAtual.numero_cnj_formatado || geracaoAtual.numero_cnj}
+          icon={<Building2 className="h-5 w-5 text-white" />}
+          headerActions={
+            <>
+              <Button
+                onClick={exportarDocx}
+                size="sm"
+                className="text-white/70 hover:text-white"
+                style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.15)' }}
+              >
+                <Download className="mr-2 h-4 w-4" /> DOCX
+              </Button>
+              <Button
+                onClick={() => { setShowResultDialog(false); resetarParaInicio() }}
+                size="sm"
+                className="text-white/70 hover:text-white"
+                style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.15)' }}
+              >
+                <RotateCw className="mr-2 h-4 w-4" /> Nova Analise
+              </Button>
+            </>
+          }
+          documentContent={renderDocumentContent()}
+          feedbackSection={renderFeedbackSection()}
+        />
+      )}
+
       {renderConfirmacaoDialog()}
     </div>
   )
@@ -1596,7 +1659,8 @@ function MarkdownContent({ text }: { text: string }) {
   const { html } = useMarkdown(text)
   return (
     <div
-      className="prose prose-sm max-w-none text-gray-700"
+      className="prose prose-sm max-w-none"
+      style={{ color: C.text700, fontFamily: FONT_DOC }}
       dangerouslySetInnerHTML={{ __html: html }}
     />
   )

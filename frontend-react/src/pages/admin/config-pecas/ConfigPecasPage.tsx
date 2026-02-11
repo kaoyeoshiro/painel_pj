@@ -11,7 +11,9 @@ import { Checkbox } from '@/components/ui/checkbox'
 import { Textarea } from '@/components/ui/textarea'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { useToast } from '@/hooks/use-toast'
-import { PageContainer, PageHeader, AdminSubNav } from '@/components/layout'
+import { BreadcrumbBar } from '@/components/layout/BreadcrumbBar'
+import { AdminSubNav } from '@/components/layout'
+import { C, FONT_UI } from '@/lib/designTokens'
 import { Settings as SettingsIcon } from 'lucide-react'
 
 // Interfaces
@@ -604,12 +606,10 @@ export function ConfigPecasPage() {
   }
 
   return (
-    <PageContainer wide className="space-y-6">
-      <PageHeader
+    <div style={{ fontFamily: FONT_UI }}>
+      <BreadcrumbBar
         title="Configuração de Peças"
-        description="Gerencie categorias de documentos e tipos de peças jurídicas"
-        icon={<SettingsIcon className="h-5 w-5" />}
-        backTo="/dashboard"
+        icon={<SettingsIcon style={{ width: 14, height: 14 }} />}
         actions={
           <div className="flex gap-2" data-testid="admin-actions">
             <Button
@@ -632,6 +632,7 @@ export function ConfigPecasPage() {
         }
       />
 
+      <div style={{ maxWidth: 1350, margin: '0 auto', padding: '32px 40px' }} className="space-y-6">
       <AdminSubNav />
 
       <Tabs defaultValue="categorias" className="w-full">
@@ -642,29 +643,29 @@ export function ConfigPecasPage() {
 
         <TabsContent value="categorias" className="space-y-4">
           <div className="flex justify-between items-center">
-            <h2 className="text-xl font-semibold">Categorias de Documentos</h2>
-            <Button onClick={() => abrirDialogCategoria()}>Nova Categoria</Button>
+            <h2 className="text-xl font-semibold" style={{ color: C.text900 }}>Categorias de Documentos</h2>
+            <Button onClick={() => abrirDialogCategoria()} style={{ background: C.navy950, color: 'white' }}>Nova Categoria</Button>
           </div>
 
           {loadingCategorias ? (
-            <div className="text-center py-8">Carregando categorias...</div>
+            <div className="text-center py-8" style={{ color: C.text500 }}>Carregando categorias...</div>
           ) : (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {categorias.map(categoria => (
-                <Card key={categoria.id}>
+                <Card key={categoria.id} className="rounded-2xl" style={{ borderColor: C.gray200 }}>
                   <CardHeader>
                     <div className="flex items-center gap-2">
                       <div
                         className="w-4 h-4 rounded-full"
                         style={{ backgroundColor: categoria.cor }}
                       />
-                      <CardTitle className="text-lg">{categoria.titulo}</CardTitle>
+                      <CardTitle className="text-lg" style={{ color: C.text900 }}>{categoria.titulo}</CardTitle>
                     </div>
-                    <CardDescription>{categoria.nome}</CardDescription>
+                    <CardDescription style={{ color: C.text500 }}>{categoria.nome}</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-2">
                     {categoria.descricao && (
-                      <p className="text-sm text-muted-foreground">{categoria.descricao}</p>
+                      <p className="text-sm" style={{ color: C.text500 }}>{categoria.descricao}</p>
                     )}
 
                     <div className="flex flex-wrap gap-1">
@@ -709,26 +710,26 @@ export function ConfigPecasPage() {
 
         <TabsContent value="tipos" className="space-y-4">
           <div className="flex justify-between items-center">
-            <h2 className="text-xl font-semibold">Tipos de Peça</h2>
-            <Button onClick={() => abrirDialogTipo()}>Novo Tipo</Button>
+            <h2 className="text-xl font-semibold" style={{ color: C.text900 }}>Tipos de Peça</h2>
+            <Button onClick={() => abrirDialogTipo()} style={{ background: C.navy950, color: 'white' }}>Novo Tipo</Button>
           </div>
 
           {loadingTipos ? (
-            <div className="text-center py-8">Carregando tipos...</div>
+            <div className="text-center py-8" style={{ color: C.text500 }}>Carregando tipos...</div>
           ) : (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {tiposPeca.map(tipo => (
-                <Card key={tipo.id}>
+                <Card key={tipo.id} className="rounded-2xl" style={{ borderColor: C.gray200 }}>
                   <CardHeader>
                     <div className="flex items-center gap-2">
                       {tipo.icone && <span className="text-2xl">{tipo.icone}</span>}
-                      <CardTitle className="text-lg">{tipo.titulo}</CardTitle>
+                      <CardTitle className="text-lg" style={{ color: C.text900 }}>{tipo.titulo}</CardTitle>
                     </div>
-                    <CardDescription>{tipo.nome}</CardDescription>
+                    <CardDescription style={{ color: C.text500 }}>{tipo.nome}</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-2">
                     {tipo.descricao && (
-                      <p className="text-sm text-muted-foreground">{tipo.descricao}</p>
+                      <p className="text-sm" style={{ color: C.text500 }}>{tipo.descricao}</p>
                     )}
 
                     <div className="flex flex-wrap gap-1">
@@ -869,7 +870,7 @@ export function ConfigPecasPage() {
             <Button variant="outline" onClick={() => setDialogCategoriaOpen(false)}>
               Cancelar
             </Button>
-            <Button onClick={salvarCategoria}>Salvar</Button>
+            <Button onClick={salvarCategoria} style={{ background: C.navy950, color: 'white' }}>Salvar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
@@ -962,10 +963,11 @@ export function ConfigPecasPage() {
             <Button variant="outline" onClick={() => setDialogTipoOpen(false)}>
               Cancelar
             </Button>
-            <Button onClick={salvarTipo}>Salvar</Button>
+            <Button onClick={salvarTipo} style={{ background: C.navy950, color: 'white' }}>Salvar</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </PageContainer>
+      </div>
+    </div>
   )
 }

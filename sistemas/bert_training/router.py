@@ -17,7 +17,7 @@ from datetime import datetime
 from pathlib import Path
 from typing import List, Optional
 
-from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
+from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, Request, UploadFile, status
 from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
@@ -559,7 +559,7 @@ async def download_dataset_for_worker(
 @router.post("/api/runs", response_model=RunResponse, status_code=status.HTTP_201_CREATED)
 async def create_run(
     run_data: RunCreate,
-    request: "Request" = None,
+    request: Request = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
@@ -573,7 +573,6 @@ async def create_run(
 
     Se nenhum preset/hyperparameters for fornecido, usa preset "equilibrado".
     """
-    from fastapi import Request
 
     if not current_user.pode_acessar_sistema("bert_training"):
         raise HTTPException(status_code=403, detail="Acesso negado")
@@ -643,7 +642,7 @@ async def create_run(
 @router.post("/api/runs/simple", response_model=RunResponse, status_code=status.HTTP_201_CREATED)
 async def create_run_simple(
     run_data: RunCreateSimple,
-    request: "Request" = None,
+    request: Request = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
@@ -657,7 +656,6 @@ async def create_run_simple(
 
     O sistema cuida do resto!
     """
-    from fastapi import Request
 
     if not current_user.pode_acessar_sistema("bert_training"):
         raise HTTPException(status_code=403, detail="Acesso negado")

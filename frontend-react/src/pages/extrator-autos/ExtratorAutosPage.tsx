@@ -1,14 +1,12 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { Skeleton } from '@/components/ui/skeleton'
-import { PageContainer } from '@/components/layout/PageContainer'
-import { PageHeader } from '@/components/layout/PageHeader'
-import { FolderSearch } from 'lucide-react'
+import { BreadcrumbBar } from '@/components/layout/BreadcrumbBar'
+import { FolderSearch, Clock } from 'lucide-react'
 import { Textarea } from '@/components/ui/textarea'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import {
@@ -29,9 +27,11 @@ import {
   TableRow,
 } from '@/components/ui/table'
 import { extratorApi, getToken } from '@/lib/api'
-import { useApiQuery } from '@/hooks/useApiQuery'
+import { useQuery } from '@tanstack/react-query'
+import { queryKeys } from '@/lib/query-client'
 import { useToast } from '@/components/ui/toast'
 import { cn } from '@/lib/utils'
+import { C, FONT_UI } from '@/lib/designTokens'
 import type {
   ProcessoInfo,
   CategoriaDocumento,
@@ -60,6 +60,24 @@ function formatarData(iso: string | undefined): string {
 
 function timestamp(): string {
   return new Date().toLocaleTimeString('pt-BR')
+}
+
+// ---------------------------------------------------------------------------
+// Badge de status do historico com tokens
+// ---------------------------------------------------------------------------
+
+function statusBadgeStyle(status: string): React.CSSProperties {
+  if (status === 'concluido') {
+    return { background: '#dcfce7', color: C.statusSuccess, border: 'none' }
+  }
+  if (status === 'erro') {
+    return { background: '#fef2f2', color: C.statusError, border: 'none' }
+  }
+  if (status === 'processando') {
+    return { background: C.navy100, color: C.navy700, border: 'none' }
+  }
+  // pendente ou outros
+  return { background: C.gray100, color: C.text500, border: 'none' }
 }
 
 // ---------------------------------------------------------------------------
@@ -112,20 +130,21 @@ export function ExtratorAutosPage() {
   const [historicoAberto, setHistoricoAberto] = useState(false)
 
   // -- BERT --
-  const { data: bertStatus } = useApiQuery<BertStatus>(
-    () => extratorApi.get<BertStatus>('/bert/health'),
-    { enabled: true },
-  )
+  const { data: bertStatus } = useQuery<BertStatus>({
+    queryKey: queryKeys.extrator.bertHealth(),
+    queryFn: () => extratorApi.get<BertStatus>('/bert/health'),
+  })
 
   // -- Historico query --
   const {
     data: historico,
     isLoading: isLoadingHistorico,
     refetch: refetchHistorico,
-  } = useApiQuery<HistoricoDownload[]>(
-    () => extratorApi.get<HistoricoDownload[]>('/historico'),
-    { enabled: historicoAberto },
-  )
+  } = useQuery<HistoricoDownload[]>({
+    queryKey: queryKeys.extrator.historico(),
+    queryFn: () => extratorApi.get<HistoricoDownload[]>('/historico'),
+    enabled: historicoAberto,
+  })
 
   // Scroll automatico nos logs
   useEffect(() => {
@@ -156,7 +175,6 @@ export function ExtratorAutosPage() {
     try {
       const info = await extratorApi.post<ProcessoInfo>('/consultar', { numero_cnj: cnj })
       setProcessoInfo(info)
-      // Buscar categorias
       const cats = await extratorApi.get<CategoriaDocumento[]>('/categorias')
       setCategorias(cats)
       setCategoriasSelec(new Set())
@@ -455,14 +473,26 @@ export function ExtratorAutosPage() {
     if (!doc.resolucao_especial) return null
     const { metodo } = doc.resolucao_especial
     if (metodo === 'primeiro_cronologico') {
-      return <Badge className="bg-blue-100 text-blue-700 hover:bg-blue-200">1o Doc</Badge>
+      return (
+        <Badge style={{ background: C.navy100, color: C.navy700, border: 'none' }}>
+          1o Doc
+        </Badge>
+      )
     }
     if (metodo === 'codigo') {
-      return <Badge className="bg-green-100 text-green-700 hover:bg-green-200">codigo direto</Badge>
+      return (
+        <Badge style={{ background: '#dcfce7', color: C.statusSuccess, border: 'none' }}>
+          codigo direto
+        </Badge>
+      )
     }
     if (metodo === 'bert') {
       const status = doc.resolucao_especial.bert_status ?? 'Candidato'
-      return <Badge className="bg-amber-100 text-amber-700 hover:bg-amber-200">BERT: {status}</Badge>
+      return (
+        <Badge style={{ background: '#fef3c7', color: '#92400e', border: 'none' }}>
+          BERT: {status}
+        </Badge>
+      )
     }
     return null
   }
@@ -472,25 +502,27 @@ export function ExtratorAutosPage() {
   // ---------------------------------------------------------------------------
 
   return (
-    <PageContainer>
-      <PageHeader
+    <div style={{ fontFamily: FONT_UI }}>
+      {/* ============================================================ */}
+      {/* BREADCRUMB BAR                                               */}
+      {/* ============================================================ */}
+      <BreadcrumbBar
         title="Extrator de Autos"
-        subtitle="Download de documentos processuais"
-        icon={<FolderSearch className="h-5 w-5" />}
-        backTo="/dashboard"
+        icon={<FolderSearch style={{ width: 14, height: 14 }} />}
         actions={
           <Dialog>
             <DialogTrigger asChild>
               <button
                 type="button"
-                className="flex items-center gap-2 rounded-md border px-3 py-1.5 text-xs hover:bg-gray-50"
+                className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-medium transition-colors"
+                style={{ color: C.text500, fontSize: 13 }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = C.gray100 }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
                 data-testid="bert-status"
               >
                 <span
-                  className={cn(
-                    'inline-block h-2 w-2 rounded-full',
-                    bertStatus?.available ? 'bg-green-500' : 'bg-red-400',
-                  )}
+                  className="inline-block h-2 w-2 rounded-full"
+                  style={{ background: bertStatus?.available ? C.statusSuccess : C.statusError }}
                 />
                 BERT {bertStatus?.available ? 'Online' : 'Offline'}
               </button>
@@ -502,21 +534,31 @@ export function ExtratorAutosPage() {
               </DialogHeader>
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
-                  <span className="text-gray-500">Disponivel:</span>
-                  <Badge variant={bertStatus?.available ? 'default' : 'destructive'}>
+                  <span style={{ color: C.text400 }}>Disponivel:</span>
+                  <Badge
+                    style={bertStatus?.available
+                      ? { background: '#dcfce7', color: C.statusSuccess, border: 'none' }
+                      : { background: '#fef2f2', color: C.statusError, border: 'none' }
+                    }
+                  >
                     {bertStatus?.available ? 'Sim' : 'Nao'}
                   </Badge>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-500">Modo:</span>
-                  <span>{bertStatus?.mode ?? '-'}</span>
+                  <span style={{ color: C.text400 }}>Modo:</span>
+                  <span style={{ color: C.text700 }}>{bertStatus?.mode ?? '-'}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span className="text-gray-500">Endpoint:</span>
-                  <span className="truncate max-w-[200px]">{bertStatus?.endpoint ?? '-'}</span>
+                  <span style={{ color: C.text400 }}>Endpoint:</span>
+                  <span className="max-w-[200px] truncate" style={{ color: C.text700 }}>
+                    {bertStatus?.endpoint ?? '-'}
+                  </span>
                 </div>
                 {bertStatus?.error && (
-                  <div className="mt-2 rounded bg-red-50 p-2 text-xs text-red-600">
+                  <div
+                    className="mt-2 rounded p-2 text-xs"
+                    style={{ background: '#fef2f2', color: C.statusError }}
+                  >
                     {bertStatus.error}
                   </div>
                 )}
@@ -526,106 +568,130 @@ export function ExtratorAutosPage() {
         }
       />
 
-      <div className="space-y-6">
+      {/* ============================================================ */}
+      {/* MAIN CONTENT                                                 */}
+      {/* ============================================================ */}
+      <div className="mx-auto max-w-[1350px] px-4 py-8 sm:px-6 lg:px-10">
+        <div className="space-y-6">
+
           {/* ===== Secao 1: Input ===== */}
           {(pageState === 'idle' || pageState === 'erro') && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Consultar Processo</CardTitle>
-                <CardDescription>
+            <div className="overflow-hidden rounded-2xl border bg-white shadow-sm" style={{ borderColor: C.gray200 }}>
+              <div className="h-1" style={{ background: `linear-gradient(90deg, ${C.navy950}, ${C.navy500})` }} />
+              <div className="p-6">
+                <h3 className="font-bold" style={{ fontSize: 17, color: C.text900 }}>
+                  Consultar Processo
+                </h3>
+                <p className="mt-1" style={{ fontSize: 14, color: C.text500 }}>
                   Informe o numero CNJ para buscar documentos do processo
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {/* Toggle Modo Lote */}
-                <div className="flex items-center gap-3">
-                  <Label htmlFor="modo-lote" className="text-sm">Modo Lote</Label>
-                  <button
-                    id="modo-lote"
-                    role="switch"
-                    type="button"
-                    aria-checked={modoLote}
-                    onClick={() => setModoLote(!modoLote)}
-                    className={cn(
-                      'relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors',
-                      modoLote ? 'bg-primary' : 'bg-gray-200',
-                    )}
-                  >
-                    <span
-                      className={cn(
-                        'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition-transform',
-                        modoLote ? 'translate-x-5' : 'translate-x-0',
-                      )}
-                    />
-                  </button>
-                  <span className="text-xs text-gray-500">
-                    {modoLote ? 'Varios processos' : 'Processo individual'}
-                  </span>
-                </div>
+                </p>
 
-                {!modoLote ? (
-                  /* Input individual */
-                  <div className="space-y-2">
-                    <Label htmlFor="cnj-input">Numero CNJ</Label>
-                    <div className="flex gap-2">
-                      <Input
-                        id="cnj-input"
-                        value={cnjInput}
-                        onChange={(e) => setCnjInput(e.target.value)}
-                        onKeyDown={handleCnjKeyDown}
-                        placeholder="0000000-00.0000.0.00.0000"
-                        className="flex-1"
+                <div className="mt-5 space-y-4">
+                  {/* Toggle Modo Lote */}
+                  <div className="flex items-center gap-3">
+                    <Label htmlFor="modo-lote" className="text-sm" style={{ color: C.text700 }}>
+                      Modo Lote
+                    </Label>
+                    <button
+                      id="modo-lote"
+                      role="switch"
+                      type="button"
+                      aria-checked={modoLote}
+                      onClick={() => setModoLote(!modoLote)}
+                      className="relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors"
+                      style={{ background: modoLote ? C.navy950 : C.gray300 }}
+                    >
+                      <span
+                        className={cn(
+                          'pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition-transform',
+                          modoLote ? 'translate-x-5' : 'translate-x-0',
+                        )}
                       />
-                      <Button onClick={consultarProcesso} disabled={!cnjInput.trim() || pageState === 'consultando'}>
-                        Consultar
-                      </Button>
-                    </div>
+                    </button>
+                    <span style={{ fontSize: 12, color: C.text400 }}>
+                      {modoLote ? 'Varios processos' : 'Processo individual'}
+                    </span>
                   </div>
-                ) : (
-                  /* Textarea lote */
-                  <div className="space-y-2">
-                    <Label htmlFor="lote-input">Numeros CNJ (um por linha)</Label>
-                    <Textarea
-                      id="lote-input"
-                      value={loteCnjInput}
-                      onChange={(e) => setLoteCnjInput(e.target.value)}
-                      placeholder={'0000000-00.0000.0.00.0000\n1111111-11.2024.8.12.0001'}
-                      rows={6}
-                      data-testid="lote-textarea"
-                    />
-                    <div className="flex items-center justify-between">
-                      <span className="text-xs text-gray-500">
-                        {contarProcessosLote()} processo(s) informado(s)
-                      </span>
-                      <Button
-                        onClick={consultarLote}
-                        disabled={contarProcessosLote() === 0 || pageState === 'consultando'}
-                      >
-                        Consultar Lote
-                      </Button>
-                    </div>
-                  </div>
-                )}
 
-                {/* Erro */}
-                {pageState === 'erro' && erroMensagem && (
-                  <div className="rounded-md bg-red-50 p-3 text-sm text-red-600">
-                    {erroMensagem}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+                  {!modoLote ? (
+                    /* Input individual */
+                    <div className="space-y-2">
+                      <Label htmlFor="cnj-input" style={{ color: C.text700 }}>Numero CNJ</Label>
+                      <div className="flex gap-2">
+                        <Input
+                          id="cnj-input"
+                          value={cnjInput}
+                          onChange={(e) => setCnjInput(e.target.value)}
+                          onKeyDown={handleCnjKeyDown}
+                          placeholder="0000000-00.0000.0.00.0000"
+                          className="flex-1"
+                          style={{ borderColor: C.gray200 }}
+                        />
+                        <Button
+                          onClick={consultarProcesso}
+                          disabled={!cnjInput.trim() || pageState === 'consultando'}
+                          style={{ background: C.navy950, color: '#fff' }}
+                        >
+                          Consultar
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    /* Textarea lote */
+                    <div className="space-y-2">
+                      <Label htmlFor="lote-input" style={{ color: C.text700 }}>
+                        Numeros CNJ (um por linha)
+                      </Label>
+                      <Textarea
+                        id="lote-input"
+                        value={loteCnjInput}
+                        onChange={(e) => setLoteCnjInput(e.target.value)}
+                        placeholder={'0000000-00.0000.0.00.0000\n1111111-11.2024.8.12.0001'}
+                        rows={6}
+                        data-testid="lote-textarea"
+                        style={{ borderColor: C.gray200 }}
+                      />
+                      <div className="flex items-center justify-between">
+                        <span style={{ fontSize: 12, color: C.text400 }}>
+                          {contarProcessosLote()} processo(s) informado(s)
+                        </span>
+                        <Button
+                          onClick={consultarLote}
+                          disabled={contarProcessosLote() === 0 || pageState === 'consultando'}
+                          style={{ background: C.navy950, color: '#fff' }}
+                        >
+                          Consultar Lote
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Erro */}
+                  {pageState === 'erro' && erroMensagem && (
+                    <div
+                      className="rounded-lg p-3 text-sm"
+                      style={{ background: '#fef2f2', color: C.statusError }}
+                    >
+                      {erroMensagem}
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
           )}
 
           {/* ===== Loading ===== */}
           {pageState === 'consultando' && (
-            <Card>
-              <CardContent className="flex flex-col items-center justify-center py-12">
-                <div className="mb-4 h-10 w-10 animate-spin rounded-full border-4 border-gray-200 border-t-primary" />
-                <p className="font-medium text-gray-600">Consultando processo...</p>
-                <p className="mt-1 text-sm text-gray-400">Isso pode levar alguns segundos</p>
-              </CardContent>
-            </Card>
+            <div className="overflow-hidden rounded-2xl border bg-white shadow-sm" style={{ borderColor: C.gray200 }}>
+              <div className="flex flex-col items-center justify-center py-12">
+                <div
+                  className="mb-4 h-10 w-10 animate-spin rounded-full border-4"
+                  style={{ borderColor: C.gray200, borderTopColor: C.navy700 }}
+                />
+                <p className="font-medium" style={{ color: C.text700 }}>Consultando processo...</p>
+                <p className="mt-1 text-sm" style={{ color: C.text400 }}>Isso pode levar alguns segundos</p>
+              </div>
+            </div>
           )}
 
           {/* ===== Secao 2: Selecao ===== */}
@@ -633,505 +699,622 @@ export function ExtratorAutosPage() {
             <>
               {/* Info do processo */}
               {processoInfo && !modoLote && (
-                <Card>
-                  <CardContent className="grid grid-cols-2 gap-4 p-4 md:grid-cols-4">
+                <div className="overflow-hidden rounded-2xl border bg-white shadow-sm" style={{ borderColor: C.gray200 }}>
+                  <div className="grid grid-cols-2 gap-4 p-5 md:grid-cols-4">
                     <div>
-                      <span className="text-xs text-gray-500">Classe Processual</span>
-                      <p className="text-sm font-medium">{processoInfo.classe_processual || '-'}</p>
+                      <span style={{ fontSize: 12, color: C.text400 }}>Classe Processual</span>
+                      <p className="font-medium" style={{ fontSize: 14, color: C.text900 }}>
+                        {processoInfo.classe_processual || '-'}
+                      </p>
                     </div>
                     <div>
-                      <span className="text-xs text-gray-500">Comarca</span>
-                      <p className="text-sm font-medium">{processoInfo.comarca || '-'}</p>
+                      <span style={{ fontSize: 12, color: C.text400 }}>Comarca</span>
+                      <p className="font-medium" style={{ fontSize: 14, color: C.text900 }}>
+                        {processoInfo.comarca || '-'}
+                      </p>
                     </div>
                     <div>
-                      <span className="text-xs text-gray-500">Vara</span>
-                      <p className="text-sm font-medium">{processoInfo.vara || '-'}</p>
+                      <span style={{ fontSize: 12, color: C.text400 }}>Vara</span>
+                      <p className="font-medium" style={{ fontSize: 14, color: C.text900 }}>
+                        {processoInfo.vara || '-'}
+                      </p>
                     </div>
                     <div>
-                      <span className="text-xs text-gray-500">Total de Documentos</span>
-                      <p className="text-sm font-medium">{processoInfo.total_documentos}</p>
+                      <span style={{ fontSize: 12, color: C.text400 }}>Total de Documentos</span>
+                      <p className="font-medium" style={{ fontSize: 14, color: C.text900 }}>
+                        {processoInfo.total_documentos}
+                      </p>
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
               )}
 
               {/* Resumo lote */}
               {modoLote && loteResultados && (
-                <Card>
-                  <CardContent className="grid grid-cols-3 gap-4 p-4">
+                <div className="overflow-hidden rounded-2xl border bg-white shadow-sm" style={{ borderColor: C.gray200 }}>
+                  <div className="grid grid-cols-3 gap-4 p-5">
                     <div>
-                      <span className="text-xs text-gray-500">Total Processos</span>
-                      <p className="text-sm font-medium">{loteResultados.total_processos}</p>
+                      <span style={{ fontSize: 12, color: C.text400 }}>Total Processos</span>
+                      <p className="font-medium" style={{ fontSize: 14, color: C.text900 }}>
+                        {loteResultados.total_processos}
+                      </p>
                     </div>
                     <div>
-                      <span className="text-xs text-gray-500">Consultados</span>
-                      <p className="text-sm font-medium">{loteResultados.consultados}</p>
+                      <span style={{ fontSize: 12, color: C.text400 }}>Consultados</span>
+                      <p className="font-medium" style={{ fontSize: 14, color: C.text900 }}>
+                        {loteResultados.consultados}
+                      </p>
                     </div>
                     <div>
-                      <span className="text-xs text-gray-500">Com Erro</span>
-                      <p className="text-sm font-medium text-red-500">{loteResultados.com_erro}</p>
+                      <span style={{ fontSize: 12, color: C.text400 }}>Com Erro</span>
+                      <p className="font-medium" style={{ fontSize: 14, color: C.statusError }}>
+                        {loteResultados.com_erro}
+                      </p>
                     </div>
-                  </CardContent>
-                </Card>
+                  </div>
+                </div>
               )}
 
               {/* Tabs de selecao */}
-              <Card>
-                <CardHeader>
-                  <CardTitle>Selecao de Documentos</CardTitle>
-                  <CardDescription>
+              <div className="overflow-hidden rounded-2xl border bg-white shadow-sm" style={{ borderColor: C.gray200 }}>
+                <div className="h-1" style={{ background: `linear-gradient(90deg, ${C.navy950}, ${C.navy500})` }} />
+                <div className="p-6">
+                  <h3 className="font-bold" style={{ fontSize: 17, color: C.text900 }}>
+                    Selecao de Documentos
+                  </h3>
+                  <p className="mt-1" style={{ fontSize: 14, color: C.text500 }}>
                     Escolha as categorias ou codigos dos documentos que deseja extrair
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <Tabs
-                    value={modoSelecao}
-                    onValueChange={(v) => setModoSelecao(v as ModoSelecao)}
-                  >
-                    <TabsList>
-                      <TabsTrigger value="categoria">Categorias</TabsTrigger>
-                      <TabsTrigger value="manual">Manual</TabsTrigger>
-                      <TabsTrigger value="hibrido">Hibrido</TabsTrigger>
-                    </TabsList>
+                  </p>
 
-                    {/* Tab Categorias */}
-                    <TabsContent value="categoria" className="mt-4">
-                      {categorias.length === 0 ? (
-                        <div className="space-y-2">
-                          <Skeleton className="h-20 w-full" />
-                          <Skeleton className="h-20 w-full" />
-                        </div>
-                      ) : (
-                        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                          {categorias.map((cat) => (
-                            <button
-                              key={cat.id}
-                              type="button"
-                              onClick={() => toggleCategoria(cat.id)}
-                              className={cn(
-                                'rounded-lg border-2 p-3 text-left transition-colors',
-                                categoriasSelec.has(cat.id)
-                                  ? 'border-primary bg-primary/5'
-                                  : 'border-gray-200 hover:border-gray-300',
-                              )}
-                            >
-                              <div className="flex items-center justify-between">
-                                <span className="text-sm font-medium">{cat.nome}</span>
-                                {categoriasSelec.has(cat.id) && (
-                                  <Badge variant="default" className="text-xs">
-                                    Selecionada
-                                  </Badge>
-                                )}
-                              </div>
-                              <p className="mt-1 text-xs text-gray-500">{cat.descricao}</p>
-                              <p className="mt-1 text-xs text-gray-400">
-                                {cat.codigos.length} codigo(s)
-                              </p>
-                            </button>
-                          ))}
-                        </div>
-                      )}
-                    </TabsContent>
+                  <div className="mt-5">
+                    <Tabs
+                      value={modoSelecao}
+                      onValueChange={(v) => setModoSelecao(v as ModoSelecao)}
+                    >
+                      <TabsList className="rounded-lg p-1" style={{ background: C.gray100 }}>
+                        <TabsTrigger
+                          value="categoria"
+                          className="rounded-md px-4 py-1.5 text-sm font-medium transition-colors data-[state=active]:bg-white data-[state=active]:shadow-sm"
+                          style={{ color: modoSelecao === 'categoria' ? C.navy700 : C.text500 }}
+                        >
+                          Categorias
+                        </TabsTrigger>
+                        <TabsTrigger
+                          value="manual"
+                          className="rounded-md px-4 py-1.5 text-sm font-medium transition-colors data-[state=active]:bg-white data-[state=active]:shadow-sm"
+                          style={{ color: modoSelecao === 'manual' ? C.navy700 : C.text500 }}
+                        >
+                          Manual
+                        </TabsTrigger>
+                        <TabsTrigger
+                          value="hibrido"
+                          className="rounded-md px-4 py-1.5 text-sm font-medium transition-colors data-[state=active]:bg-white data-[state=active]:shadow-sm"
+                          style={{ color: modoSelecao === 'hibrido' ? C.navy700 : C.text500 }}
+                        >
+                          Hibrido
+                        </TabsTrigger>
+                      </TabsList>
 
-                    {/* Tab Manual */}
-                    <TabsContent value="manual" className="mt-4 space-y-4">
-                      <div className="flex gap-2">
-                        <Input
-                          value={codigoInput}
-                          onChange={(e) => setCodigoInput(e.target.value)}
-                          placeholder="Codigo do tipo (ex: 60)"
-                          className="w-48"
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') adicionarCodigoManual()
-                          }}
-                        />
-                        <Button variant="outline" onClick={adicionarCodigoManual}>
-                          Adicionar
-                        </Button>
-                      </div>
-                      {codigosManuais.length > 0 && (
-                        <div className="flex flex-wrap gap-2">
-                          {codigosManuais.map((cod) => (
-                            <Badge
-                              key={cod}
-                              variant="secondary"
-                              className="cursor-pointer gap-1"
-                              onClick={() => removerCodigoManual(cod)}
-                            >
-                              {cod} x
-                            </Badge>
-                          ))}
-                        </div>
-                      )}
-                      {codigosManuais.length === 0 && (
-                        <p className="text-sm text-gray-400">
-                          Nenhum codigo adicionado. Digite o codigo do tipo de documento acima.
-                        </p>
-                      )}
-                    </TabsContent>
+                      {/* Tab Categorias */}
+                      <TabsContent value="categoria" className="mt-4">
+                        {categorias.length === 0 ? (
+                          <div className="space-y-2">
+                            <Skeleton className="h-20 w-full" />
+                            <Skeleton className="h-20 w-full" />
+                          </div>
+                        ) : (
+                          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                            {categorias.map((cat) => (
+                              <button
+                                key={cat.id}
+                                type="button"
+                                onClick={() => toggleCategoria(cat.id)}
+                                className="rounded-xl border-2 p-3 text-left transition-colors"
+                                style={{
+                                  borderColor: categoriasSelec.has(cat.id) ? C.navy500 : C.gray200,
+                                  background: categoriasSelec.has(cat.id) ? C.navy50 : '#fff',
+                                }}
+                              >
+                                <div className="flex items-center justify-between">
+                                  <span className="font-medium" style={{ fontSize: 14, color: C.text900 }}>
+                                    {cat.nome}
+                                  </span>
+                                  {categoriasSelec.has(cat.id) && (
+                                    <Badge style={{ background: C.navy950, color: '#fff', border: 'none', fontSize: 11 }}>
+                                      Selecionada
+                                    </Badge>
+                                  )}
+                                </div>
+                                <p className="mt-1" style={{ fontSize: 12, color: C.text500 }}>{cat.descricao}</p>
+                                <p className="mt-1" style={{ fontSize: 12, color: C.text400 }}>
+                                  {cat.codigos.length} codigo(s)
+                                </p>
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </TabsContent>
 
-                    {/* Tab Hibrido */}
-                    <TabsContent value="hibrido" className="mt-4 space-y-4">
-                      {/* Categorias como chips */}
-                      <div>
-                        <Label className="mb-2 block text-sm">Categorias</Label>
-                        <div className="flex flex-wrap gap-2">
-                          {categorias.map((cat) => (
-                            <Badge
-                              key={cat.id}
-                              variant={categoriasSelec.has(cat.id) ? 'default' : 'outline'}
-                              className="cursor-pointer"
-                              onClick={() => toggleCategoria(cat.id)}
-                            >
-                              {cat.nome}
-                            </Badge>
-                          ))}
-                        </div>
-                      </div>
-                      <Separator />
-                      {/* Codigos manuais */}
-                      <div>
-                        <Label className="mb-2 block text-sm">Codigos adicionais</Label>
+                      {/* Tab Manual */}
+                      <TabsContent value="manual" className="mt-4 space-y-4">
                         <div className="flex gap-2">
                           <Input
                             value={codigoInput}
                             onChange={(e) => setCodigoInput(e.target.value)}
-                            placeholder="Codigo (ex: 60)"
+                            placeholder="Codigo do tipo (ex: 60)"
                             className="w-48"
+                            style={{ borderColor: C.gray200 }}
                             onKeyDown={(e) => {
                               if (e.key === 'Enter') adicionarCodigoManual()
                             }}
                           />
-                          <Button variant="outline" size="sm" onClick={adicionarCodigoManual}>
+                          <Button
+                            variant="outline"
+                            onClick={adicionarCodigoManual}
+                            style={{ borderColor: C.gray200, color: C.text500 }}
+                          >
                             Adicionar
                           </Button>
                         </div>
                         {codigosManuais.length > 0 && (
-                          <div className="mt-2 flex flex-wrap gap-2">
+                          <div className="flex flex-wrap gap-2">
                             {codigosManuais.map((cod) => (
                               <Badge
                                 key={cod}
-                                variant="secondary"
                                 className="cursor-pointer gap-1"
                                 onClick={() => removerCodigoManual(cod)}
+                                style={{ background: C.gray100, color: C.text700, border: 'none' }}
                               >
                                 {cod} x
                               </Badge>
                             ))}
                           </div>
                         )}
-                      </div>
-                    </TabsContent>
-                  </Tabs>
+                        {codigosManuais.length === 0 && (
+                          <p style={{ fontSize: 14, color: C.text400 }}>
+                            Nenhum codigo adicionado. Digite o codigo do tipo de documento acima.
+                          </p>
+                        )}
+                      </TabsContent>
 
-                  <Separator className="my-4" />
+                      {/* Tab Hibrido */}
+                      <TabsContent value="hibrido" className="mt-4 space-y-4">
+                        {/* Categorias como chips */}
+                        <div>
+                          <Label className="mb-2 block text-sm" style={{ color: C.text700 }}>Categorias</Label>
+                          <div className="flex flex-wrap gap-2">
+                            {categorias.map((cat) => (
+                              <Badge
+                                key={cat.id}
+                                className="cursor-pointer"
+                                onClick={() => toggleCategoria(cat.id)}
+                                style={categoriasSelec.has(cat.id)
+                                  ? { background: C.navy950, color: '#fff', border: 'none' }
+                                  : { background: 'transparent', color: C.text500, border: `1px solid ${C.gray200}` }
+                                }
+                              >
+                                {cat.nome}
+                              </Badge>
+                            ))}
+                          </div>
+                        </div>
+                        <Separator style={{ background: C.gray200 }} />
+                        {/* Codigos manuais */}
+                        <div>
+                          <Label className="mb-2 block text-sm" style={{ color: C.text700 }}>
+                            Codigos adicionais
+                          </Label>
+                          <div className="flex gap-2">
+                            <Input
+                              value={codigoInput}
+                              onChange={(e) => setCodigoInput(e.target.value)}
+                              placeholder="Codigo (ex: 60)"
+                              className="w-48"
+                              style={{ borderColor: C.gray200 }}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') adicionarCodigoManual()
+                              }}
+                            />
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={adicionarCodigoManual}
+                              style={{ borderColor: C.gray200, color: C.text500 }}
+                            >
+                              Adicionar
+                            </Button>
+                          </div>
+                          {codigosManuais.length > 0 && (
+                            <div className="mt-2 flex flex-wrap gap-2">
+                              {codigosManuais.map((cod) => (
+                                <Badge
+                                  key={cod}
+                                  className="cursor-pointer gap-1"
+                                  onClick={() => removerCodigoManual(cod)}
+                                  style={{ background: C.gray100, color: C.text700, border: 'none' }}
+                                >
+                                  {cod} x
+                                </Badge>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      </TabsContent>
+                    </Tabs>
 
-                  <div className="flex justify-end">
-                    {!modoLote ? (
-                      <Button onClick={visualizarDocumentos}>Visualizar Documentos</Button>
-                    ) : (
-                      <Button
-                        onClick={() => {
-                          // Em modo lote, pula direto para opcoes de download
-                          setPageState('preview')
-                        }}
-                      >
-                        Resumo do Lote
-                      </Button>
-                    )}
+                    <Separator className="my-4" style={{ background: C.gray200 }} />
+
+                    <div className="flex justify-end">
+                      {!modoLote ? (
+                        <Button
+                          onClick={visualizarDocumentos}
+                          style={{ background: C.navy950, color: '#fff' }}
+                        >
+                          Visualizar Documentos
+                        </Button>
+                      ) : (
+                        <Button
+                          onClick={() => {
+                            // Em modo lote, pula direto para opcoes de download
+                            setPageState('preview')
+                          }}
+                          style={{ background: C.navy950, color: '#fff' }}
+                        >
+                          Resumo do Lote
+                        </Button>
+                      )}
+                    </div>
                   </div>
-                </CardContent>
-              </Card>
+                </div>
+              </div>
             </>
           )}
 
           {/* ===== Secao 3: Preview (modo individual) ===== */}
           {pageState === 'preview' && !modoLote && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Preview de Documentos</CardTitle>
-                <CardDescription>
+            <div className="overflow-hidden rounded-2xl border bg-white shadow-sm" style={{ borderColor: C.gray200 }}>
+              <div className="h-1" style={{ background: `linear-gradient(90deg, ${C.navy950}, ${C.navy500})` }} />
+              <div className="p-6">
+                <h3 className="font-bold" style={{ fontSize: 17, color: C.text900 }}>
+                  Preview de Documentos
+                </h3>
+                <p className="mt-1" style={{ fontSize: 14, color: C.text500 }}>
                   {previewContadores().selecionados} selecionados de {previewContadores().total} encontrados
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead className="w-[50px]">
-                        <input
-                          type="checkbox"
-                          checked={previewDocs.length > 0 && previewDocs.every((d) => d.selecionado)}
-                          onChange={toggleTodosPreview}
-                          className="h-4 w-4 rounded border-gray-300"
-                        />
-                      </TableHead>
-                      <TableHead>Codigo</TableHead>
-                      <TableHead>Tipo</TableHead>
-                      <TableHead>Descricao</TableHead>
-                      <TableHead>Data</TableHead>
-                      <TableHead>Resolucao</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {previewDocs.map((doc) => (
-                      <TableRow key={doc.id}>
-                        <TableCell>
+                </p>
+
+                <div className="mt-4 overflow-hidden rounded-lg border" style={{ borderColor: C.gray200 }}>
+                  <Table>
+                    <TableHeader>
+                      <TableRow style={{ background: C.navy100 }}>
+                        <TableHead className="w-[50px]" style={{ color: C.text700 }}>
                           <input
                             type="checkbox"
-                            checked={doc.selecionado}
-                            onChange={() => toggleDocPreview(doc.id)}
-                            className="h-4 w-4 rounded border-gray-300"
+                            checked={previewDocs.length > 0 && previewDocs.every((d) => d.selecionado)}
+                            onChange={toggleTodosPreview}
+                            className="h-4 w-4 rounded"
+                            style={{ borderColor: C.gray300 }}
                           />
-                        </TableCell>
-                        <TableCell className="font-mono text-xs">{doc.tipo_codigo}</TableCell>
-                        <TableCell className="text-sm">{doc.tipo_descricao}</TableCell>
-                        <TableCell className="max-w-[200px] truncate text-sm">{doc.descricao}</TableCell>
-                        <TableCell className="text-xs">{formatarData(doc.data_juntada)}</TableCell>
-                        <TableCell>{resolucaoBadge(doc)}</TableCell>
+                        </TableHead>
+                        <TableHead style={{ color: C.text700 }}>Codigo</TableHead>
+                        <TableHead style={{ color: C.text700 }}>Tipo</TableHead>
+                        <TableHead style={{ color: C.text700 }}>Descricao</TableHead>
+                        <TableHead style={{ color: C.text700 }}>Data</TableHead>
+                        <TableHead style={{ color: C.text700 }}>Resolucao</TableHead>
                       </TableRow>
-                    ))}
-                    {previewDocs.length === 0 && (
-                      <TableRow>
-                        <TableCell colSpan={6} className="py-8 text-center text-gray-400">
-                          Nenhum documento encontrado
-                        </TableCell>
-                      </TableRow>
-                    )}
-                  </TableBody>
-                </Table>
-              </CardContent>
-            </Card>
+                    </TableHeader>
+                    <TableBody>
+                      {previewDocs.map((doc) => (
+                        <TableRow key={doc.id} className="hover:bg-gray-50">
+                          <TableCell>
+                            <input
+                              type="checkbox"
+                              checked={doc.selecionado}
+                              onChange={() => toggleDocPreview(doc.id)}
+                              className="h-4 w-4 rounded"
+                              style={{ borderColor: C.gray300 }}
+                            />
+                          </TableCell>
+                          <TableCell className="font-mono" style={{ fontSize: 12, color: C.text700 }}>
+                            {doc.tipo_codigo}
+                          </TableCell>
+                          <TableCell style={{ fontSize: 14, color: C.text700 }}>{doc.tipo_descricao}</TableCell>
+                          <TableCell className="max-w-[200px] truncate" style={{ fontSize: 14, color: C.text700 }}>
+                            {doc.descricao}
+                          </TableCell>
+                          <TableCell style={{ fontSize: 12, color: C.text500 }}>
+                            {formatarData(doc.data_juntada)}
+                          </TableCell>
+                          <TableCell>{resolucaoBadge(doc)}</TableCell>
+                        </TableRow>
+                      ))}
+                      {previewDocs.length === 0 && (
+                        <TableRow>
+                          <TableCell colSpan={6} className="py-8 text-center" style={{ color: C.text400 }}>
+                            Nenhum documento encontrado
+                          </TableCell>
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+                </div>
+              </div>
+            </div>
           )}
 
           {/* ===== Secao 4: Opcoes de Download ===== */}
           {(pageState === 'preview' || (pageState === 'selecionando' && modoLote)) && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Opcoes de Download</CardTitle>
-                <CardDescription>Configure o formato e opcoes de saida</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {/* Formato */}
-                <div className="space-y-2">
-                  <Label className="text-sm font-medium">Formato de Saida</Label>
-                  <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-                    {([
-                      { value: 'pdf_txt', label: 'PDF + TXT' },
-                      { value: 'pdf', label: 'Somente PDF' },
-                      { value: 'txt', label: 'Somente TXT' },
-                      { value: 'xml_only', label: 'Somente XML' },
-                    ] as const).map((fmt) => (
-                      <button
-                        key={fmt.value}
-                        type="button"
-                        onClick={() => setDownloadOpcoes((prev) => ({ ...prev, formato: fmt.value }))}
-                        className={cn(
-                          'rounded-md border px-3 py-2 text-sm transition-colors',
-                          downloadOpcoes.formato === fmt.value
-                            ? 'border-primary bg-primary/10 font-medium text-primary'
-                            : 'border-gray-200 text-gray-600 hover:border-gray-300',
-                        )}
-                      >
-                        {fmt.label}
-                      </button>
-                    ))}
+            <div className="overflow-hidden rounded-2xl border bg-white shadow-sm" style={{ borderColor: C.gray200 }}>
+              <div className="p-6">
+                <h3 className="font-bold" style={{ fontSize: 17, color: C.text900 }}>
+                  Opcoes de Download
+                </h3>
+                <p className="mt-1" style={{ fontSize: 14, color: C.text500 }}>
+                  Configure o formato e opcoes de saida
+                </p>
+
+                <div className="mt-5 space-y-6">
+                  {/* Formato */}
+                  <div className="space-y-2">
+                    <Label className="font-medium" style={{ fontSize: 14, color: C.text700 }}>
+                      Formato de Saida
+                    </Label>
+                    <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+                      {([
+                        { value: 'pdf_txt', label: 'PDF + TXT' },
+                        { value: 'pdf', label: 'Somente PDF' },
+                        { value: 'txt', label: 'Somente TXT' },
+                        { value: 'xml_only', label: 'Somente XML' },
+                      ] as const).map((fmt) => (
+                        <button
+                          key={fmt.value}
+                          type="button"
+                          onClick={() => setDownloadOpcoes((prev) => ({ ...prev, formato: fmt.value }))}
+                          className="rounded-lg border px-3 py-2 text-sm transition-colors"
+                          style={{
+                            borderColor: downloadOpcoes.formato === fmt.value ? C.navy500 : C.gray200,
+                            background: downloadOpcoes.formato === fmt.value ? C.navy50 : '#fff',
+                            color: downloadOpcoes.formato === fmt.value ? C.navy700 : C.text500,
+                            fontWeight: downloadOpcoes.formato === fmt.value ? 600 : 400,
+                          }}
+                        >
+                          {fmt.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Checkboxes */}
+                  <div className="space-y-3">
+                    <label className="flex items-center gap-2 text-sm" style={{ color: C.text700 }}>
+                      <input
+                        type="checkbox"
+                        checked={downloadOpcoes.mesclar_pdfs}
+                        onChange={(e) =>
+                          setDownloadOpcoes((prev) => ({ ...prev, mesclar_pdfs: e.target.checked }))
+                        }
+                        className="h-4 w-4 rounded"
+                        style={{ borderColor: C.gray300 }}
+                      />
+                      Mesclar PDFs
+                    </label>
+                    <label className="flex items-center gap-2 text-sm" style={{ color: C.text700 }}>
+                      <input
+                        type="checkbox"
+                        checked={downloadOpcoes.salvar_xml}
+                        onChange={(e) =>
+                          setDownloadOpcoes((prev) => ({ ...prev, salvar_xml: e.target.checked }))
+                        }
+                        className="h-4 w-4 rounded"
+                        style={{ borderColor: C.gray300 }}
+                      />
+                      Salvar XML completo
+                    </label>
+
+                    {/* Opcoes exclusivas do lote */}
+                    {modoLote && (
+                      <>
+                        <label className="flex items-center gap-2 text-sm" style={{ color: C.text700 }}>
+                          <input
+                            type="checkbox"
+                            checked={downloadOpcoes.pasta_unica}
+                            onChange={(e) =>
+                              setDownloadOpcoes((prev) => ({ ...prev, pasta_unica: e.target.checked }))
+                            }
+                            className="h-4 w-4 rounded"
+                            style={{ borderColor: C.gray300 }}
+                          />
+                          Pasta unica
+                        </label>
+                        <div className="flex items-center gap-3">
+                          <Label style={{ fontSize: 14, color: C.text700 }}>Processos simultaneos:</Label>
+                          <select
+                            value={downloadOpcoes.processos_paralelos}
+                            onChange={(e) =>
+                              setDownloadOpcoes((prev) => ({
+                                ...prev,
+                                processos_paralelos: parseInt(e.target.value, 10),
+                              }))
+                            }
+                            className="rounded-lg border px-2 py-1 text-sm"
+                            style={{ borderColor: C.gray200, color: C.text700 }}
+                          >
+                            {[1, 2, 3, 4, 5].map((n) => (
+                              <option key={n} value={n}>
+                                {n}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </>
+                    )}
+                  </div>
+
+                  <Separator style={{ background: C.gray200 }} />
+
+                  <div className="flex justify-end">
+                    <Button
+                      onClick={iniciarDownload}
+                      style={{ background: C.navy950, color: '#fff' }}
+                    >
+                      Baixar Documentos
+                    </Button>
                   </div>
                 </div>
-
-                {/* Checkboxes */}
-                <div className="space-y-3">
-                  <label className="flex items-center gap-2 text-sm">
-                    <input
-                      type="checkbox"
-                      checked={downloadOpcoes.mesclar_pdfs}
-                      onChange={(e) =>
-                        setDownloadOpcoes((prev) => ({ ...prev, mesclar_pdfs: e.target.checked }))
-                      }
-                      className="h-4 w-4 rounded border-gray-300"
-                    />
-                    Mesclar PDFs
-                  </label>
-                  <label className="flex items-center gap-2 text-sm">
-                    <input
-                      type="checkbox"
-                      checked={downloadOpcoes.salvar_xml}
-                      onChange={(e) =>
-                        setDownloadOpcoes((prev) => ({ ...prev, salvar_xml: e.target.checked }))
-                      }
-                      className="h-4 w-4 rounded border-gray-300"
-                    />
-                    Salvar XML completo
-                  </label>
-
-                  {/* Opcoes exclusivas do lote */}
-                  {modoLote && (
-                    <>
-                      <label className="flex items-center gap-2 text-sm">
-                        <input
-                          type="checkbox"
-                          checked={downloadOpcoes.pasta_unica}
-                          onChange={(e) =>
-                            setDownloadOpcoes((prev) => ({ ...prev, pasta_unica: e.target.checked }))
-                          }
-                          className="h-4 w-4 rounded border-gray-300"
-                        />
-                        Pasta unica
-                      </label>
-                      <div className="flex items-center gap-3">
-                        <Label className="text-sm">Processos simultaneos:</Label>
-                        <select
-                          value={downloadOpcoes.processos_paralelos}
-                          onChange={(e) =>
-                            setDownloadOpcoes((prev) => ({
-                              ...prev,
-                              processos_paralelos: parseInt(e.target.value, 10),
-                            }))
-                          }
-                          className="rounded-md border px-2 py-1 text-sm"
-                        >
-                          {[1, 2, 3, 4, 5].map((n) => (
-                            <option key={n} value={n}>
-                              {n}
-                            </option>
-                          ))}
-                        </select>
-                      </div>
-                    </>
-                  )}
-                </div>
-
-                <Separator />
-
-                <div className="flex justify-end">
-                  <Button onClick={iniciarDownload}>Baixar Documentos</Button>
-                </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           )}
 
           {/* ===== Secao 5: Progresso do Download ===== */}
           {pageState === 'baixando' && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Baixando Documentos</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
+            <div className="overflow-hidden rounded-2xl border bg-white shadow-sm" style={{ borderColor: C.gray200 }}>
+              <div className="h-1" style={{ background: `linear-gradient(90deg, ${C.navy950}, ${C.navy500})` }} />
+              <div className="p-6 space-y-4">
+                <h3 className="font-bold" style={{ fontSize: 17, color: C.text900 }}>
+                  Baixando Documentos
+                </h3>
+
                 {/* Barra de progresso */}
                 <div className="space-y-2">
                   <div className="flex items-center justify-between text-sm">
-                    <span className="text-gray-600">{downloadMensagem}</span>
-                    <span className="font-medium">{downloadPercentual}%</span>
+                    <span style={{ color: C.text500 }}>{downloadMensagem}</span>
+                    <span className="font-medium" style={{ color: C.text900 }}>{downloadPercentual}%</span>
                   </div>
-                  <div className="h-3 w-full overflow-hidden rounded-full bg-gray-200">
+                  <div className="h-3 w-full overflow-hidden rounded-full" style={{ background: C.gray200 }}>
                     <div
-                      className="h-full rounded-full bg-primary transition-all duration-300"
-                      style={{ width: `${downloadPercentual}%` }}
+                      className="h-full rounded-full transition-all duration-300"
+                      style={{
+                        width: `${downloadPercentual}%`,
+                        background: `linear-gradient(90deg, ${C.navy950}, ${C.navy500})`,
+                      }}
                     />
                   </div>
                 </div>
 
                 {/* Logs */}
-                <ScrollArea className="h-48 rounded-md border bg-gray-900 p-3">
-                  <div className="space-y-1 font-mono text-xs text-gray-300">
+                <ScrollArea className="h-48 rounded-lg border p-3" style={{ background: '#0f172a', borderColor: C.gray200 }}>
+                  <div className="space-y-1 font-mono text-xs" style={{ color: C.gray400 }}>
                     {downloadLogs.map((log, i) => (
                       <div key={i}>{log}</div>
                     ))}
                     <div ref={logsEndRef} />
                   </div>
                 </ScrollArea>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           )}
 
           {/* ===== Secao 6: Download Concluido ===== */}
           {pageState === 'concluido' && (
-            <Card className="border-green-200 bg-green-50">
-              <CardContent className="flex flex-col items-center justify-center py-10">
-                <div className="mb-4 flex h-16 w-16 items-center justify-center rounded-full bg-green-100">
-                  <span className="text-2xl text-green-600">&#10003;</span>
+            <div
+              className="overflow-hidden rounded-2xl border bg-white shadow-sm"
+              style={{ borderColor: '#bbf7d0' }}
+            >
+              <div className="h-1" style={{ background: `linear-gradient(90deg, ${C.statusSuccess}, #34d399)` }} />
+              <div className="flex flex-col items-center justify-center py-10" style={{ background: '#f0fdf4' }}>
+                <div
+                  className="mb-4 flex h-16 w-16 items-center justify-center rounded-full"
+                  style={{ background: '#dcfce7' }}
+                >
+                  <span className="text-2xl" style={{ color: C.statusSuccess }}>&#10003;</span>
                 </div>
-                <h2 className="mb-2 text-xl font-semibold text-green-700">Download concluido!</h2>
-                <p className="mb-6 text-sm text-green-600">{downloadMensagem}</p>
+                <h2 className="mb-2 text-xl font-semibold" style={{ color: '#15803d' }}>
+                  Download concluido!
+                </h2>
+                <p className="mb-6 text-sm" style={{ color: C.statusSuccess }}>{downloadMensagem}</p>
                 <div className="flex gap-3">
                   {jobId && (
-                    <Button onClick={baixarZip} className="bg-green-600 hover:bg-green-700">
+                    <Button
+                      onClick={baixarZip}
+                      style={{ background: C.statusSuccess, color: '#fff' }}
+                    >
                       Baixar ZIP
                     </Button>
                   )}
-                  <Button variant="outline" onClick={novaConsulta}>
+                  <Button
+                    variant="outline"
+                    onClick={novaConsulta}
+                    style={{ borderColor: C.gray200, color: C.text500 }}
+                  >
                     Nova Consulta
                   </Button>
                 </div>
-              </CardContent>
-            </Card>
+              </div>
+            </div>
           )}
 
           {/* ===== Secao 7: Historico (colapsavel) ===== */}
-          <Card>
-            <CardHeader
-              className="cursor-pointer"
+          <div className="overflow-hidden rounded-2xl border bg-white shadow-sm" style={{ borderColor: C.gray200 }}>
+            <div
+              className="flex cursor-pointer items-center justify-between p-5"
               onClick={() => {
                 const next = !historicoAberto
                 setHistoricoAberto(next)
                 if (next) refetchHistorico()
               }}
             >
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-base">Historico de Downloads</CardTitle>
-                <span className="text-sm text-gray-400">{historicoAberto ? '▲' : '▼'}</span>
+              <div className="flex items-center gap-2">
+                <Clock style={{ width: 16, height: 16, color: C.text400 }} />
+                <h3 className="font-bold" style={{ fontSize: 15, color: C.text900 }}>
+                  Historico de Downloads
+                </h3>
               </div>
-            </CardHeader>
+              <span style={{ fontSize: 14, color: C.text400 }}>{historicoAberto ? '\u25B2' : '\u25BC'}</span>
+            </div>
 
             {historicoAberto && (
-              <CardContent>
+              <div className="border-t px-5 pb-5" style={{ borderColor: C.gray200 }}>
                 {isLoadingHistorico ? (
-                  <div className="space-y-2">
+                  <div className="space-y-2 pt-4">
                     <Skeleton className="h-10 w-full" />
                     <Skeleton className="h-10 w-full" />
                     <Skeleton className="h-10 w-full" />
                   </div>
                 ) : !historico || historico.length === 0 ? (
-                  <p className="py-4 text-center text-sm text-gray-400">
+                  <p className="py-4 text-center text-sm" style={{ color: C.text400 }}>
                     Nenhum download registrado
                   </p>
                 ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Processo</TableHead>
-                        <TableHead>Modo</TableHead>
-                        <TableHead>Formato</TableHead>
-                        <TableHead>Docs</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Data</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {historico.map((item) => (
-                        <TableRow key={item.id}>
-                          <TableCell className="font-mono text-xs">{item.numero_cnj}</TableCell>
-                          <TableCell className="text-sm">{item.modo}</TableCell>
-                          <TableCell className="text-sm">{item.formato}</TableCell>
-                          <TableCell className="text-sm">{item.total_docs}</TableCell>
-                          <TableCell>
-                            <Badge
-                              variant={item.status === 'concluido' ? 'default' : 'secondary'}
-                              className="text-xs"
-                            >
-                              {item.status}
-                            </Badge>
-                          </TableCell>
-                          <TableCell className="text-xs">{formatarData(item.criado_em)}</TableCell>
+                  <div className="mt-4 overflow-hidden rounded-lg border" style={{ borderColor: C.gray200 }}>
+                    <Table>
+                      <TableHeader>
+                        <TableRow style={{ background: C.navy100 }}>
+                          <TableHead style={{ color: C.text700 }}>Processo</TableHead>
+                          <TableHead style={{ color: C.text700 }}>Modo</TableHead>
+                          <TableHead style={{ color: C.text700 }}>Formato</TableHead>
+                          <TableHead style={{ color: C.text700 }}>Docs</TableHead>
+                          <TableHead style={{ color: C.text700 }}>Status</TableHead>
+                          <TableHead style={{ color: C.text700 }}>Data</TableHead>
                         </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
+                      </TableHeader>
+                      <TableBody>
+                        {historico.map((item) => (
+                          <TableRow key={item.id} className="hover:bg-gray-50">
+                            <TableCell className="font-mono" style={{ fontSize: 12, color: C.text700 }}>
+                              {item.numero_cnj}
+                            </TableCell>
+                            <TableCell style={{ fontSize: 14, color: C.text700 }}>{item.modo}</TableCell>
+                            <TableCell style={{ fontSize: 14, color: C.text700 }}>{item.formato}</TableCell>
+                            <TableCell style={{ fontSize: 14, color: C.text700 }}>{item.total_docs}</TableCell>
+                            <TableCell>
+                              <Badge style={statusBadgeStyle(item.status)} className="text-xs">
+                                {item.status}
+                              </Badge>
+                            </TableCell>
+                            <TableCell style={{ fontSize: 12, color: C.text500 }}>
+                              {formatarData(item.criado_em)}
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
                 )}
-              </CardContent>
+              </div>
             )}
-          </Card>
+          </div>
+
         </div>
-    </PageContainer>
+      </div>
+    </div>
   )
 }

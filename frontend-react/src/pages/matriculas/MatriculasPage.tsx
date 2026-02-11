@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useApiQuery } from '@/hooks/useApiQuery'
+import { useQuery } from '@tanstack/react-query'
+import { queryKeys } from '@/lib/query-client'
 import { useMarkdown } from '@/hooks/useMarkdown'
 import { matriculasApi } from '@/lib/api'
 import type {
@@ -13,14 +14,14 @@ import type {
   BatchStatusResponse,
   FeedbackRequest,
 } from '@/types/matriculas'
-import { SystemTopbar } from '@/components/layout/SystemTopbar'
+import { BreadcrumbBar } from '@/components/layout/BreadcrumbBar'
+import { C, FONT_UI } from '@/lib/designTokens'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
 import { useToast } from '@/components/ui/toast'
 import {
   FileText,
@@ -34,7 +35,6 @@ import {
   Copy,
   FileDown,
   Trash2,
-  FileUp,
   FolderOpen,
   CheckCircle,
   AlertCircle,
@@ -44,6 +44,22 @@ import {
   ZoomIn,
   ZoomOut,
 } from 'lucide-react'
+
+// ============================================================
+// Helpers de confianca
+// ============================================================
+
+function getConfidencePercent(confidence: number | null | undefined): number {
+  if (!confidence) return 0
+  return Math.round(confidence <= 1 ? confidence * 100 : confidence)
+}
+
+function getConfidenceColor(confidence: number | null | undefined): string {
+  const raw = confidence ?? 0
+  if (raw >= 0.8 || raw >= 80) return C.statusSuccess
+  if (raw >= 0.6 || raw >= 60) return C.statusWarning
+  return C.statusError
+}
 
 export default function MatriculasPage() {
   const { toast } = useToast()
@@ -69,9 +85,18 @@ export default function MatriculasPage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Queries
-  const { data: files, refetch: refetchFiles } = useApiQuery(() => matriculasApi.get<FileInfo[]>('/files'))
-  const { data: config } = useApiQuery(() => matriculasApi.get<ConfigResponse>('/config'))
-  const { data: logs, refetch: refetchLogs } = useApiQuery(() => matriculasApi.get<LogEntry[]>('/logs'))
+  const { data: files, refetch: refetchFiles } = useQuery<FileInfo[]>({
+    queryKey: queryKeys.matriculas.files(),
+    queryFn: () => matriculasApi.get<FileInfo[]>('/files'),
+  })
+  const { data: config } = useQuery<ConfigResponse>({
+    queryKey: queryKeys.matriculas.config(),
+    queryFn: () => matriculasApi.get<ConfigResponse>('/config'),
+  })
+  const { data: logs, refetch: refetchLogs } = useQuery<LogEntry[]>({
+    queryKey: queryKeys.matriculas.logs(),
+    queryFn: () => matriculasApi.get<LogEntry[]>('/logs'),
+  })
 
   // Limpa polling ao desmontar
   useEffect(() => {
@@ -127,8 +152,7 @@ export default function MatriculasPage() {
           if (index === -1) {
             return [...prev, fileId]
           } else {
-            const newIds = prev.filter((id) => id !== fileId)
-            return newIds
+            return prev.filter((id) => id !== fileId)
           }
         })
       } else {
@@ -159,7 +183,6 @@ export default function MatriculasPage() {
           toast({ title: 'Arquivo importado', description: `${file.name} foi importado com sucesso` })
           refetchFiles()
         } else if (result.error === 'duplicate') {
-          // Confirma substituicao
           if (window.confirm(result.message || 'Arquivo ja existe. Substituir?')) {
             const replaceResult = await matriculasApi.post<{ success: boolean }>(
               '/files/upload?replace=true',
@@ -469,25 +492,86 @@ export default function MatriculasPage() {
     }
   }
 
-  // renderMarkdown removido — usar componente MarkdownContent com sanitização
+  // Status da analise (texto informativo)
+  function renderAnalysisStatus(): React.ReactNode {
+    if (isAnalyzing || isBatchAnalyzing) {
+      return (
+        <span className="flex items-center justify-center gap-2">
+          <Loader2 className="h-4 w-4 animate-spin" />
+          Analisando...
+        </span>
+      )
+    }
+    if (selectedFileId) {
+      return (
+        <span className="flex items-center justify-center gap-2">
+          <Info className="h-4 w-4" />
+          Pronto para analisar
+        </span>
+      )
+    }
+    return (
+      <span className="flex items-center justify-center gap-2">
+        <Info className="h-4 w-4" />
+        Selecione um documento
+      </span>
+    )
+  }
+
+  // Confrontacao texto
+  function renderConfrontacao(): React.ReactNode {
+    if (documentDetails?.confrontacao_completa === true) {
+      return <span style={{ color: C.statusSuccess, fontWeight: 500 }}>{'\u2713'} Completa</span>
+    }
+    if (documentDetails?.confrontacao_completa === false) {
+      return <span style={{ color: C.statusError, fontWeight: 500 }}>{'\u2717'} Incompleta</span>
+    }
+    return <span style={{ color: C.text400 }}>N/A</span>
+  }
 
   return (
-    <div className="flex h-screen flex-col bg-gray-50">
-      <SystemTopbar
-        title="Matrículas Confrontantes"
-        subtitle="Sistema de Análise Documental"
-        icon={<FileSignature className="h-5 w-5" />}
+    <div style={{ fontFamily: FONT_UI }}>
+      {/* Breadcrumb Bar */}
+      <BreadcrumbBar
+        title="Matriculas Confrontantes"
+        icon={<FileSignature style={{ width: 14, height: 14 }} />}
+        actions={
+          <>
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-medium text-white transition-colors"
+              style={{ background: C.navy700, fontSize: 13 }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = C.navy600 }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = C.navy700 }}
+            >
+              <Upload style={{ width: 14, height: 14 }} />
+              <span className="hidden sm:inline">Importar</span>
+            </button>
+            <button
+              onClick={() => setShowBatchHelp(true)}
+              className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-medium transition-colors"
+              style={{ color: C.text500, fontSize: 13 }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = C.gray100 }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
+            >
+              <HelpCircle style={{ width: 14, height: 14 }} />
+              <span className="hidden sm:inline">Ajuda</span>
+            </button>
+          </>
+        }
       />
 
-      {/* Main Content */}
-      <div className="flex flex-1 overflow-hidden">
-        {/* Left Sidebar - File Manager */}
-        <aside className="flex w-64 flex-shrink-0 flex-col border-r bg-white">
-          {/* AI Actions */}
-          <div className="border-b bg-gradient-to-r from-sky-50 to-green-50 p-3">
+      {/* Layout principal: 3 paineis */}
+      <div className="flex overflow-hidden" style={{ height: 'calc(100vh - 112px)' }}>
+        {/* Painel esquerdo: gerenciador de arquivos */}
+        <aside className="flex w-64 flex-shrink-0 flex-col border-r" style={{ borderColor: C.gray200, background: '#fff' }}>
+          {/* Acoes de IA */}
+          <div className="border-b p-3" style={{ borderColor: C.gray200, background: C.navy50 }}>
+            <div className="h-1 -mx-3 -mt-3 mb-3 rounded-t" style={{ background: `linear-gradient(90deg, ${C.navy950}, ${C.navy500})` }} />
+
             <div className="mb-3">
-              <label className="mb-1 block text-xs font-medium text-gray-700">
-                Matricula Principal <span className="text-red-500">*</span>
+              <label className="mb-1 block text-xs font-medium" style={{ color: C.text700 }}>
+                Matricula Principal <span style={{ color: C.statusError }}>*</span>
               </label>
               <Input
                 value={matriculaPrincipal}
@@ -501,7 +585,10 @@ export default function MatriculasPage() {
               <button
                 onClick={() => handleAnalyze()}
                 disabled={isAnalyzing}
-                className="flex-1 rounded-lg bg-green-500 px-3 py-2 text-sm font-medium text-white shadow-md transition-colors hover:bg-green-600 disabled:cursor-not-allowed disabled:opacity-50 flex items-center justify-center gap-2"
+                className="flex flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-white shadow-md transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+                style={{ background: C.navy950 }}
+                onMouseEnter={(e) => { if (!e.currentTarget.disabled) e.currentTarget.style.background = C.navy900 }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = C.navy950 }}
               >
                 <Brain className="h-4 w-4" />
                 Analisar
@@ -509,7 +596,10 @@ export default function MatriculasPage() {
               <button
                 onClick={() => handleAnalyze(true)}
                 disabled={isAnalyzing}
-                className="rounded-lg border border-orange-300 bg-orange-50 px-3 py-2 text-sm text-orange-600 transition-colors hover:bg-orange-100 disabled:cursor-not-allowed disabled:opacity-50 flex items-center justify-center gap-1"
+                className="flex items-center justify-center gap-1 rounded-lg px-3 py-2 text-sm transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+                style={{ background: C.orange100, color: C.orange600, border: `1px solid ${C.orange200}` }}
+                onMouseEnter={(e) => { if (!e.currentTarget.disabled) e.currentTarget.style.background = C.orange200 }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = C.orange100 }}
                 title="Forcar nova analise"
               >
                 <RefreshCw className="h-4 w-4" />
@@ -520,52 +610,46 @@ export default function MatriculasPage() {
               <button
                 onClick={handleBatchAnalyze}
                 disabled={isBatchAnalyzing || selectedFileIds.length < 2}
-                className="flex-1 rounded-lg bg-purple-500 px-3 py-2 text-sm font-medium text-white shadow-md transition-colors hover:bg-purple-600 disabled:cursor-not-allowed disabled:opacity-50 flex items-center justify-center gap-2"
+                className="flex flex-1 items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm font-medium text-white shadow-md transition-colors disabled:cursor-not-allowed disabled:opacity-50"
+                style={{ background: C.navy700 }}
+                onMouseEnter={(e) => { if (!e.currentTarget.disabled) e.currentTarget.style.background = C.navy600 }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = C.navy700 }}
               >
                 <Layers className="h-4 w-4" />
                 Analise em Lote
               </button>
               <button
                 onClick={() => setShowBatchHelp(true)}
-                className="rounded-full p-2 text-gray-400 transition-colors hover:bg-purple-50 hover:text-purple-500"
+                className="rounded-full p-2 transition-colors"
+                style={{ color: C.text400 }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = C.navy50; e.currentTarget.style.color = C.navy700 }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = C.text400 }}
                 title="Ajuda"
               >
                 <HelpCircle className="h-4 w-4" />
               </button>
             </div>
 
-            <div className="text-center text-xs text-gray-600">
-              {isAnalyzing || isBatchAnalyzing ? (
-                <span className="flex items-center justify-center gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Analisando...
-                </span>
-              ) : selectedFileId ? (
-                <span className="flex items-center justify-center gap-2">
-                  <Info className="h-4 w-4" />
-                  Pronto para analisar
-                </span>
-              ) : (
-                <span className="flex items-center justify-center gap-2">
-                  <Info className="h-4 w-4" />
-                  Selecione um documento
-                </span>
-              )}
+            <div className="text-center text-xs" style={{ color: C.text500 }}>
+              {renderAnalysisStatus()}
             </div>
           </div>
 
-          {/* Files Header */}
-          <div className="border-b p-3">
+          {/* Cabecalho da lista de arquivos */}
+          <div className="border-b p-3" style={{ borderColor: C.gray200 }}>
             <div className="mb-2 flex items-center justify-between">
-              <h2 className="flex items-center gap-2 text-sm font-semibold text-gray-700">
-                <FolderOpen className="h-4 w-4 text-sky-500" />
+              <h2 className="flex items-center gap-2 text-sm font-semibold" style={{ color: C.text700 }}>
+                <FolderOpen className="h-4 w-4" style={{ color: C.navy500 }} />
                 Matriculas
               </h2>
             </div>
 
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="flex w-full items-center justify-center gap-2 rounded-lg bg-sky-600 px-3 py-2 text-sm text-white transition-colors hover:bg-sky-700"
+              className="flex w-full items-center justify-center gap-2 rounded-lg px-3 py-2 text-sm text-white transition-colors"
+              style={{ background: C.navy700 }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = C.navy600 }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = C.navy700 }}
             >
               <Upload className="h-4 w-4" />
               Importar
@@ -579,57 +663,68 @@ export default function MatriculasPage() {
               onChange={(e) => handleFileUpload(e.target.files)}
             />
 
-            <p className="mt-2 text-center text-xs text-gray-400">Ctrl+Click para selecao multipla</p>
+            <p className="mt-2 text-center text-xs" style={{ color: C.text400 }}>Ctrl+Click para selecao multipla</p>
           </div>
 
-          {/* File List */}
+          {/* Lista de arquivos */}
           <div className="flex-1 overflow-y-auto p-2">
             {!files || files.length === 0 ? (
-              <div className="h-full" aria-label="lista-vazia-matriculas">
-                {/* No legado, a lista vazia permanece em branco sem card de estado vazio. */}
-              </div>
+              <div className="h-full" aria-label="lista-vazia-matriculas" />
             ) : (
               files.map((file) => {
                 const isSelected = selectedFileIds.includes(file.id)
                 const isMultiSelect = selectedFileIds.length > 1
 
+                const cardStyle: React.CSSProperties = isSelected
+                  ? isMultiSelect
+                    ? { borderColor: C.navy700, background: C.navy50 }
+                    : { borderColor: C.navy500, background: C.navy50 }
+                  : { borderColor: 'transparent' }
+
                 return (
                   <div
                     key={file.id}
                     onClick={(e) => handleSelectFile(file.id, e.ctrlKey)}
-                    className={`group mb-2 cursor-pointer rounded-lg border p-3 transition-all ${
-                      isSelected
-                        ? isMultiSelect
-                          ? 'border-purple-200 bg-purple-50'
-                          : 'border-primary bg-primary/10'
-                        : 'border-transparent hover:bg-gray-50'
-                    }`}
+                    className="group mb-2 cursor-pointer rounded-lg border p-3 transition-all"
+                    style={cardStyle}
+                    onMouseEnter={(e) => {
+                      if (!isSelected) e.currentTarget.style.background = C.gray50
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!isSelected) e.currentTarget.style.background = 'transparent'
+                    }}
                   >
                     <div className="flex items-start gap-3">
                       <div
-                        className={`relative flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg ${
-                          file.type === 'pdf' ? 'bg-red-100' : 'bg-blue-100'
-                        }`}
+                        className="relative flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg"
+                        style={{ background: file.type === 'pdf' ? '#fef2f2' : C.navy50 }}
                       >
                         <FileText
-                          className={`h-5 w-5 ${file.type === 'pdf' ? 'text-red-500' : 'text-blue-500'}`}
+                          className="h-5 w-5"
+                          style={{ color: file.type === 'pdf' ? C.statusError : C.navy500 }}
                         />
                         {file.analyzed && (
-                          <CheckCircle className="absolute -right-1 -top-1 h-4 w-4 rounded-full bg-white text-green-500" />
+                          <CheckCircle
+                            className="absolute -right-1 -top-1 h-4 w-4 rounded-full"
+                            style={{ color: C.statusSuccess, background: '#fff' }}
+                          />
                         )}
                         {isSelected && isMultiSelect && (
-                          <Badge className="absolute -bottom-1 -left-1 h-5 w-5 rounded-full p-0 text-xs">
+                          <Badge
+                            className="absolute -bottom-1 -left-1 h-5 w-5 rounded-full p-0 text-xs"
+                            style={{ background: C.navy700 }}
+                          >
                             {selectedFileIds.indexOf(file.id) + 1}
                           </Badge>
                         )}
                       </div>
                       <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium text-gray-800">{file.name}</p>
-                        <p className="text-xs text-gray-500">
+                        <p className="truncate text-sm font-medium" style={{ color: C.text900 }}>{file.name}</p>
+                        <p className="text-xs" style={{ color: C.text500 }}>
                           {file.size} - {file.date}
                         </p>
                         {file.analyzed && (
-                          <span className="text-xs text-green-600">
+                          <span className="text-xs" style={{ color: C.statusSuccess }}>
                             <CheckCircle className="mr-1 inline h-3 w-3" />
                             Analisado
                           </span>
@@ -644,7 +739,7 @@ export default function MatriculasPage() {
                           handleDeleteFile(file.id)
                         }}
                       >
-                        <Trash2 className="h-4 w-4 text-red-500" />
+                        <Trash2 className="h-4 w-4" style={{ color: C.statusError }} />
                       </Button>
                     </div>
                   </div>
@@ -654,34 +749,44 @@ export default function MatriculasPage() {
           </div>
         </aside>
 
-        {/* Center - Report & Data */}
+        {/* Painel central: relatorio e dados */}
         <main className="flex flex-1 flex-col overflow-hidden" style={{ width: '60%' }}>
-          {/* Report Section */}
-          <section className="flex flex-col border-b bg-white" style={{ height: '65%' }}>
-            <div className="flex items-center justify-between border-b p-3">
-              <h2 className="flex items-center gap-2 text-sm font-semibold text-gray-800">
-                <FileText className="h-4 w-4 text-green-500" />
+          {/* Secao de relatorio */}
+          <section className="flex flex-col border-b" style={{ height: '65%', background: '#fff', borderColor: C.gray200 }}>
+            <div className="h-1" style={{ background: `linear-gradient(90deg, ${C.navy950}, ${C.navy500})` }} />
+            <div className="flex items-center justify-between border-b p-3" style={{ borderColor: C.gray200 }}>
+              <h2 className="flex items-center gap-2 text-sm font-semibold" style={{ color: C.text900 }}>
+                <FileText className="h-4 w-4" style={{ color: C.navy500 }} />
                 Relatorio da Analise
               </h2>
               {reportText && (
                 <div className="flex gap-2">
                   <button
                     onClick={handleDownloadDocx}
-                    className="flex items-center gap-1 rounded bg-blue-50 px-3 py-1.5 text-xs text-blue-600 transition-colors hover:bg-blue-100"
+                    className="flex items-center gap-1 rounded px-3 py-1.5 text-xs transition-colors"
+                    style={{ background: C.navy50, color: C.navy700 }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = C.navy100 }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = C.navy50 }}
                   >
                     <Download className="h-3.5 w-3.5" />
                     Word
                   </button>
                   <button
                     onClick={() => window.print()}
-                    className="flex items-center gap-1 rounded bg-red-50 px-3 py-1.5 text-xs text-red-600 transition-colors hover:bg-red-100"
+                    className="flex items-center gap-1 rounded px-3 py-1.5 text-xs transition-colors"
+                    style={{ background: '#fef2f2', color: C.statusError }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = '#fee2e2' }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = '#fef2f2' }}
                   >
                     <Printer className="h-3.5 w-3.5" />
                     PDF
                   </button>
                   <button
                     onClick={handleCopyReport}
-                    className="flex items-center gap-1 rounded bg-gray-50 px-3 py-1.5 text-xs text-gray-600 transition-colors hover:bg-gray-100"
+                    className="flex items-center gap-1 rounded px-3 py-1.5 text-xs transition-colors"
+                    style={{ background: C.gray50, color: C.text500 }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = C.gray100 }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = C.gray50 }}
                   >
                     <Copy className="h-3.5 w-3.5" />
                     Copiar
@@ -689,7 +794,10 @@ export default function MatriculasPage() {
                   <button
                     onClick={handleExportJSON}
                     disabled={!documentDetails}
-                    className="flex items-center gap-1 rounded bg-green-50 px-3 py-1.5 text-xs text-green-600 transition-colors hover:bg-green-100 disabled:opacity-50"
+                    className="flex items-center gap-1 rounded px-3 py-1.5 text-xs transition-colors disabled:opacity-50"
+                    style={{ background: C.navy50, color: C.navy700 }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = C.navy100 }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = C.navy50 }}
                   >
                     <FileDown className="h-3.5 w-3.5" />
                     JSON
@@ -700,40 +808,36 @@ export default function MatriculasPage() {
             <div className="flex-1 overflow-y-auto p-4">
               {isGeneratingReport ? (
                 <div className="flex flex-col items-center justify-center py-12">
-                  <Loader2 className="mb-4 h-10 w-10 animate-spin text-primary" />
-                  <p className="text-lg">Gerando Relatorio...</p>
-                  <p className="mt-2 text-sm text-gray-500">Aguarde enquanto a IA processa os dados</p>
+                  <Loader2 className="mb-4 h-10 w-10 animate-spin" style={{ color: C.navy500 }} />
+                  <p className="text-lg" style={{ color: C.text700 }}>Gerando Relatorio...</p>
+                  <p className="mt-2 text-sm" style={{ color: C.text500 }}>Aguarde enquanto a IA processa os dados</p>
                 </div>
               ) : reportText ? (
                 <div>
                   <MarkdownContent text={reportText} />
 
-                  {/* Feedback Section */}
+                  {/* Feedback */}
                   <Card className="mt-6">
                     <CardHeader>
                       <CardTitle className="text-sm">Avalie a Analise da IA</CardTitle>
                     </CardHeader>
                     <CardContent>
-                      <p className="mb-4 text-sm text-gray-600">Sua avaliacao nos ajuda a melhorar o sistema.</p>
+                      <p className="mb-4 text-sm" style={{ color: C.text500 }}>Sua avaliacao nos ajuda a melhorar o sistema.</p>
                       <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
                         <Button variant="outline" onClick={() => handleFeedback('correto')} className="flex-col py-3">
-                          <CheckCircle className="mb-1 h-5 w-5 text-green-600" />
+                          <CheckCircle className="mb-1 h-5 w-5" style={{ color: C.statusSuccess }} />
                           <span className="text-xs">Correta</span>
                         </Button>
                         <Button variant="outline" onClick={() => handleFeedback('parcial')} className="flex-col py-3">
-                          <AlertCircle className="mb-1 h-5 w-5 text-yellow-600" />
+                          <AlertCircle className="mb-1 h-5 w-5" style={{ color: C.statusWarning }} />
                           <span className="text-xs">Parcialmente</span>
                         </Button>
-                        <Button
-                          variant="outline"
-                          onClick={() => handleFeedback('incorreto')}
-                          className="flex-col py-3"
-                        >
-                          <AlertCircle className="mb-1 h-5 w-5 text-red-600" />
+                        <Button variant="outline" onClick={() => handleFeedback('incorreto')} className="flex-col py-3">
+                          <AlertCircle className="mb-1 h-5 w-5" style={{ color: C.statusError }} />
                           <span className="text-xs">Incorreta</span>
                         </Button>
                         <Button variant="outline" onClick={() => handleFeedback('erro_ia')} className="flex-col py-3">
-                          <AlertCircle className="mb-1 h-5 w-5 text-gray-600" />
+                          <AlertCircle className="mb-1 h-5 w-5" style={{ color: C.text500 }} />
                           <span className="text-xs">Erro/Nao gerou</span>
                         </Button>
                       </div>
@@ -741,7 +845,7 @@ export default function MatriculasPage() {
                   </Card>
                 </div>
               ) : (
-                <div className="flex flex-col items-center justify-center py-12 text-gray-400">
+                <div className="flex flex-col items-center justify-center py-12" style={{ color: C.text400 }}>
                   <FileText className="mb-4 h-16 w-16" />
                   <p className="text-lg">Relatorio de Analise</p>
                   <p className="mt-2 text-sm">Analise um documento para gerar o relatorio automaticamente</p>
@@ -750,17 +854,17 @@ export default function MatriculasPage() {
             </div>
           </section>
 
-          {/* Extracted Data Section */}
-          <section className="flex flex-col bg-white" style={{ height: '35%' }}>
-            <div className="border-b p-2">
-              <h2 className="flex items-center gap-2 text-xs font-semibold text-gray-800">
-                <FileText className="h-4 w-4 text-purple-500" />
+          {/* Secao de dados extraidos */}
+          <section className="flex flex-col" style={{ height: '35%', background: '#fff' }}>
+            <div className="border-b p-2" style={{ borderColor: C.gray200 }}>
+              <h2 className="flex items-center gap-2 text-xs font-semibold" style={{ color: C.text900 }}>
+                <FileText className="h-4 w-4" style={{ color: C.navy700 }} />
                 Dados Extraidos
               </h2>
             </div>
             <div className="flex-1 overflow-auto p-3">
               {!documentDetails || !documentDetails.matriculas_encontradas ? (
-                <div className="flex flex-col items-center justify-center py-8 text-gray-400">
+                <div className="flex flex-col items-center justify-center py-8" style={{ color: C.text400 }}>
                   <FileText className="mb-2 h-8 w-8" />
                   <p className="text-sm">Selecione e analise um documento para ver os dados extraidos</p>
                 </div>
@@ -769,78 +873,47 @@ export default function MatriculasPage() {
                   {/* Resumo compacto */}
                   <div className="flex items-center gap-4 text-xs">
                     <div className="flex items-center gap-2">
-                      <span className="text-gray-500">Matricula:</span>
-                      <span className="font-semibold text-sky-700">
+                      <span style={{ color: C.text500 }}>Matricula:</span>
+                      <span className="font-semibold" style={{ color: C.navy700 }}>
                         {documentDetails.matricula_principal || 'N/A'}
                       </span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-gray-500">Confianca:</span>
+                      <span style={{ color: C.text500 }}>Confianca:</span>
                       <div className="flex items-center gap-1">
-                        <div className="h-1.5 w-12 overflow-hidden rounded-full bg-gray-200">
+                        <div className="h-1.5 w-12 overflow-hidden rounded-full" style={{ background: C.gray200 }}>
                           <div
-                            className={`h-full rounded-full ${
-                              (documentDetails.confidence ?? 0) >= 0.8 || (documentDetails.confidence ?? 0) >= 80
-                                ? 'bg-green-500'
-                                : (documentDetails.confidence ?? 0) >= 0.6 || (documentDetails.confidence ?? 0) >= 60
-                                  ? 'bg-yellow-500'
-                                  : 'bg-red-500'
-                            }`}
+                            className="h-full rounded-full"
                             style={{
-                              width: `${documentDetails.confidence
-                                ? Math.round(documentDetails.confidence <= 1 ? documentDetails.confidence * 100 : documentDetails.confidence)
-                                : 0}%`,
+                              background: getConfidenceColor(documentDetails.confidence),
+                              width: `${getConfidencePercent(documentDetails.confidence)}%`,
                             }}
                           />
                         </div>
-                        <span
-                          className={`font-medium ${
-                            (documentDetails.confidence ?? 0) >= 0.8 || (documentDetails.confidence ?? 0) >= 80
-                              ? 'text-green-600'
-                              : (documentDetails.confidence ?? 0) >= 0.6 || (documentDetails.confidence ?? 0) >= 60
-                                ? 'text-yellow-600'
-                                : 'text-red-600'
-                          }`}
-                        >
-                          {documentDetails.confidence
-                            ? Math.round(documentDetails.confidence <= 1 ? documentDetails.confidence * 100 : documentDetails.confidence)
-                            : 0}%
+                        <span className="font-medium" style={{ color: getConfidenceColor(documentDetails.confidence) }}>
+                          {getConfidencePercent(documentDetails.confidence)}%
                         </span>
                       </div>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="text-gray-500">Confrontacao:</span>
-                      <span
-                        className={`font-medium ${
-                          documentDetails.confrontacao_completa === true
-                            ? 'text-green-600'
-                            : documentDetails.confrontacao_completa === false
-                              ? 'text-red-600'
-                              : 'text-gray-400'
-                        }`}
-                      >
-                        {documentDetails.confrontacao_completa === true
-                          ? '\u2713 Completa'
-                          : documentDetails.confrontacao_completa === false
-                            ? '\u2717 Incompleta'
-                            : 'N/A'}
-                      </span>
+                      <span style={{ color: C.text500 }}>Confrontacao:</span>
+                      {renderConfrontacao()}
                     </div>
                   </div>
 
                   {/* Tabelas lado a lado */}
                   <div className="grid grid-cols-2 gap-3">
                     {/* Matriculas */}
-                    <div className="overflow-hidden rounded-lg bg-gray-50">
-                      <div className="border-b border-gray-200 bg-gray-100 px-2 py-1.5">
-                        <h4 className="flex items-center gap-1 text-xs font-medium text-gray-700">
-                          <FileText className="h-3 w-3 text-sky-500" />
+                    <div className="overflow-hidden rounded-lg" style={{ background: C.gray50 }}>
+                      <div className="border-b px-2 py-1.5" style={{ borderColor: C.gray200, background: C.navy100 }}>
+                        <h4 className="flex items-center gap-1 text-xs font-medium" style={{ color: C.text700 }}>
+                          <FileText className="h-3 w-3" style={{ color: C.navy500 }} />
                           Matriculas ({documentDetails.matriculas_encontradas?.length || 0})
                         </h4>
                       </div>
                       <div className="max-h-32 overflow-auto">
                         <table className="w-full">
-                          <thead className="sticky top-0 bg-gray-100 text-xs text-gray-600">
+                          <thead className="sticky top-0 text-xs" style={{ background: C.navy100, color: C.text700 }}>
                             <tr>
                               <th className="px-2 py-1 text-left font-medium">N</th>
                               <th className="px-2 py-1 text-left font-medium">Lote</th>
@@ -851,8 +924,14 @@ export default function MatriculasPage() {
                           <tbody>
                             {documentDetails.matriculas_encontradas?.length ? (
                               documentDetails.matriculas_encontradas.map((mat, idx) => (
-                                <tr key={idx} className="border-b border-gray-100 text-xs hover:bg-gray-50">
-                                  <td className="px-2 py-1.5 font-medium text-sky-600">{mat.numero || 'N/A'}</td>
+                                <tr
+                                  key={idx}
+                                  className="text-xs"
+                                  style={{ borderBottom: `1px solid ${C.gray100}` }}
+                                  onMouseEnter={(e) => { e.currentTarget.style.background = C.gray50 }}
+                                  onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
+                                >
+                                  <td className="px-2 py-1.5 font-medium" style={{ color: C.navy700 }}>{mat.numero || 'N/A'}</td>
                                   <td className="px-2 py-1.5">{mat.lote || '-'}</td>
                                   <td className="px-2 py-1.5">{mat.quadra || '-'}</td>
                                   <td className="max-w-[150px] truncate px-2 py-1.5" title={mat.proprietarios?.join(', ') || ''}>
@@ -862,7 +941,7 @@ export default function MatriculasPage() {
                               ))
                             ) : (
                               <tr>
-                                <td colSpan={4} className="px-2 py-3 text-center text-xs text-gray-400">Nenhuma matricula</td>
+                                <td colSpan={4} className="px-2 py-3 text-center text-xs" style={{ color: C.text400 }}>Nenhuma matricula</td>
                               </tr>
                             )}
                           </tbody>
@@ -871,16 +950,16 @@ export default function MatriculasPage() {
                     </div>
 
                     {/* Confrontantes */}
-                    <div className="overflow-hidden rounded-lg bg-gray-50">
-                      <div className="border-b border-gray-200 bg-gray-100 px-2 py-1.5">
-                        <h4 className="flex items-center gap-1 text-xs font-medium text-gray-700">
-                          <FileText className="h-3 w-3 text-green-500" />
+                    <div className="overflow-hidden rounded-lg" style={{ background: C.gray50 }}>
+                      <div className="border-b px-2 py-1.5" style={{ borderColor: C.gray200, background: C.navy100 }}>
+                        <h4 className="flex items-center gap-1 text-xs font-medium" style={{ color: C.text700 }}>
+                          <FileText className="h-3 w-3" style={{ color: C.statusSuccess }} />
                           Confrontantes ({documentDetails.lotes_confrontantes?.length || 0})
                         </h4>
                       </div>
                       <div className="max-h-32 overflow-auto">
                         <table className="w-full">
-                          <thead className="sticky top-0 bg-gray-100 text-xs text-gray-600">
+                          <thead className="sticky top-0 text-xs" style={{ background: C.navy100, color: C.text700 }}>
                             <tr>
                               <th className="px-2 py-1 text-left font-medium">Identificador</th>
                               <th className="px-2 py-1 text-left font-medium">Direcao</th>
@@ -891,7 +970,13 @@ export default function MatriculasPage() {
                           <tbody>
                             {documentDetails.lotes_confrontantes?.length ? (
                               documentDetails.lotes_confrontantes.map((lote, idx) => (
-                                <tr key={idx} className="border-b border-gray-100 text-xs hover:bg-gray-50">
+                                <tr
+                                  key={idx}
+                                  className="text-xs"
+                                  style={{ borderBottom: `1px solid ${C.gray100}` }}
+                                  onMouseEnter={(e) => { e.currentTarget.style.background = C.gray50 }}
+                                  onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
+                                >
                                   <td className="px-2 py-1.5">{lote.identificador || 'N/A'}</td>
                                   <td className="px-2 py-1.5">{lote.direcao?.toUpperCase() || '-'}</td>
                                   <td className="px-2 py-1.5">{lote.tipo || '-'}</td>
@@ -900,7 +985,7 @@ export default function MatriculasPage() {
                               ))
                             ) : (
                               <tr>
-                                <td colSpan={4} className="px-2 py-3 text-center text-xs text-gray-400">Nenhum confrontante</td>
+                                <td colSpan={4} className="px-2 py-3 text-center text-xs" style={{ color: C.text400 }}>Nenhum confrontante</td>
                               </tr>
                             )}
                           </tbody>
@@ -914,24 +999,36 @@ export default function MatriculasPage() {
           </section>
         </main>
 
-        {/* Right Sidebar - PDF Viewer */}
-        <aside className="flex flex-shrink-0 flex-col border-l bg-gray-100" style={{ width: '40%' }}>
-          <div className="flex items-center justify-between border-b bg-white px-4 py-2">
+        {/* Painel direito: visualizador de PDF */}
+        <aside className="flex flex-shrink-0 flex-col border-l" style={{ width: '40%', borderColor: C.gray200, background: C.gray100 }}>
+          <div className="flex items-center justify-between border-b px-4 py-2" style={{ background: '#fff', borderColor: C.gray200 }}>
             <div className="flex items-center gap-3">
-              <span className="flex items-center gap-2 text-sm font-medium text-gray-700">
-                <FileText className="h-4 w-4 text-red-500" />
+              <span className="flex items-center gap-2 text-sm font-medium" style={{ color: C.text700 }}>
+                <FileText className="h-4 w-4" style={{ color: C.statusError }} />
                 Visualizador
               </span>
-              <span className="max-w-[200px] truncate text-xs text-gray-500">
+              <span className="max-w-[200px] truncate text-xs" style={{ color: C.text500 }}>
                 {selectedFileId && files?.find(f => f.id === selectedFileId)?.name || 'Nenhum documento'}
               </span>
             </div>
             <div className="flex items-center gap-1">
-              <button className="rounded p-1.5 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700" title="Diminuir Zoom">
+              <button
+                className="rounded p-1.5 transition-colors"
+                style={{ color: C.text500 }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = C.gray100; e.currentTarget.style.color = C.text700 }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = C.text500 }}
+                title="Diminuir Zoom"
+              >
                 <ZoomOut className="h-4 w-4" />
               </button>
-              <span className="px-2 text-xs text-gray-600">100%</span>
-              <button className="rounded p-1.5 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-700" title="Aumentar Zoom">
+              <span className="px-2 text-xs" style={{ color: C.text500 }}>100%</span>
+              <button
+                className="rounded p-1.5 transition-colors"
+                style={{ color: C.text500 }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = C.gray100; e.currentTarget.style.color = C.text700 }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = C.text500 }}
+                title="Aumentar Zoom"
+              >
                 <ZoomIn className="h-4 w-4" />
               </button>
             </div>
@@ -939,14 +1036,14 @@ export default function MatriculasPage() {
           <div className="flex flex-1 items-center justify-center overflow-auto p-4">
             {pdfViewerUrl ? (
               <object data={pdfViewerUrl} type="application/pdf" className="h-full w-full">
-                <div className="flex flex-col items-center justify-center py-20 text-gray-400">
-                  <FileText className="mb-4 h-16 w-16 text-red-400" />
+                <div className="flex flex-col items-center justify-center py-20" style={{ color: C.text400 }}>
+                  <FileText className="mb-4 h-16 w-16" style={{ color: C.statusError }} />
                   <p className="mb-4 text-lg">Nao foi possivel exibir o PDF no navegador</p>
                   <Button onClick={() => window.open(pdfViewerUrl, '_blank')}>Abrir em nova aba</Button>
                 </div>
               </object>
             ) : (
-              <div className="flex flex-col items-center justify-center py-20 text-gray-400">
+              <div className="flex flex-col items-center justify-center py-20" style={{ color: C.text400 }}>
                 <FileText className="mb-4 h-16 w-16" />
                 <p className="text-lg">Visualizacao do Documento</p>
                 <p className="mt-2 text-sm">Selecione um arquivo para visualizar</p>
@@ -956,16 +1053,16 @@ export default function MatriculasPage() {
         </aside>
       </div>
 
-      {/* Processing Modal */}
+      {/* Modal de processamento */}
       <Dialog open={showProcessingModal} onOpenChange={setShowProcessingModal}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Analise em Andamento</DialogTitle>
           </DialogHeader>
           <div className="flex flex-col items-center text-center">
-            <Loader2 className="mb-6 h-20 w-20 animate-spin text-primary" />
-            <h3 className="mb-2 text-lg font-medium text-gray-800">Processando Documento</h3>
-            <p className="mb-4 text-sm text-gray-500">Enviando para analise da IA...</p>
+            <Loader2 className="mb-6 h-20 w-20 animate-spin" style={{ color: C.navy500 }} />
+            <h3 className="mb-2 text-lg font-medium" style={{ color: C.text900 }}>Processando Documento</h3>
+            <p className="mb-4 text-sm" style={{ color: C.text500 }}>Enviando para analise da IA...</p>
             <Alert>
               <Info className="h-4 w-4" />
               <AlertDescription>
@@ -976,7 +1073,7 @@ export default function MatriculasPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Batch Help Modal */}
+      {/* Modal de ajuda do lote */}
       <Dialog open={showBatchHelp} onOpenChange={setShowBatchHelp}>
         <DialogContent className="max-w-md">
           <DialogHeader>
@@ -987,12 +1084,15 @@ export default function MatriculasPage() {
           </DialogHeader>
           <div className="space-y-4">
             <div className="flex items-start gap-3">
-              <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-purple-100">
-                <HelpCircle className="h-4 w-4 text-purple-600" />
+              <div
+                className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full"
+                style={{ background: C.navy100 }}
+              >
+                <HelpCircle className="h-4 w-4" style={{ color: C.navy700 }} />
               </div>
               <div>
-                <h4 className="font-semibold text-gray-800">Quando usar?</h4>
-                <p className="mt-1 text-sm text-gray-600">
+                <h4 className="font-semibold" style={{ color: C.text900 }}>Quando usar?</h4>
+                <p className="mt-1 text-sm" style={{ color: C.text500 }}>
                   Use quando tiver <strong>multiplas matriculas</strong> que fazem parte do{' '}
                   <strong>mesmo processo de usucapiao</strong>.
                 </p>
@@ -1000,24 +1100,30 @@ export default function MatriculasPage() {
             </div>
 
             <div className="flex items-start gap-3">
-              <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-blue-100">
-                <FileText className="h-4 w-4 text-blue-600" />
+              <div
+                className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full"
+                style={{ background: C.navy50 }}
+              >
+                <FileText className="h-4 w-4" style={{ color: C.navy600 }} />
               </div>
               <div>
-                <h4 className="font-semibold text-gray-800">Exemplo</h4>
-                <p className="mt-1 text-sm text-gray-600">
+                <h4 className="font-semibold" style={{ color: C.text900 }}>Exemplo</h4>
+                <p className="mt-1 text-sm" style={{ color: C.text500 }}>
                   A matricula principal do imovel + matriculas dos confrontantes anexadas ao processo.
                 </p>
               </div>
             </div>
 
             <div className="flex items-start gap-3">
-              <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-green-100">
-                <Brain className="h-4 w-4 text-green-600" />
+              <div
+                className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full"
+                style={{ background: C.navy100 }}
+              >
+                <Brain className="h-4 w-4" style={{ color: C.navy700 }} />
               </div>
               <div>
-                <h4 className="font-semibold text-gray-800">O que a IA faz?</h4>
-                <p className="mt-1 text-sm text-gray-600">
+                <h4 className="font-semibold" style={{ color: C.text900 }}>O que a IA faz?</h4>
+                <p className="mt-1 text-sm" style={{ color: C.text500 }}>
                   Analisa todos os documentos em conjunto, cruzando informacoes para identificar a matricula principal e
                   validar as confrontacoes.
                 </p>
@@ -1029,7 +1135,7 @@ export default function MatriculasPage() {
               <AlertDescription>
                 <strong>Como selecionar multiplos arquivos:</strong>
                 <br />
-                Segure <kbd className="rounded bg-gray-200 px-2 py-1 text-xs font-mono">Ctrl</kbd> e clique nos
+                Segure <kbd className="rounded px-2 py-1 text-xs font-mono" style={{ background: C.gray200 }}>Ctrl</kbd> e clique nos
                 arquivos desejados.
               </AlertDescription>
             </Alert>

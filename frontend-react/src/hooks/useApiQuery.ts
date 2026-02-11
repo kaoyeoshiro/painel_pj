@@ -1,6 +1,10 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 
-// Hook generico para chamadas API com estado de loading/error/data
+/**
+ * @deprecated Use useQuery do @tanstack/react-query com queryKeys de @/lib/query-client.
+ * Este hook sera removido em versao futura.
+ */
+// Hook generico legado para chamadas API com estado de loading/error/data
 interface UseApiQueryOptions<T> {
   enabled?: boolean
   refetchInterval?: number
@@ -15,6 +19,10 @@ interface UseApiQueryReturn<T> {
   refetch: () => void
 }
 
+/**
+ * @deprecated Use `useQuery` do `@tanstack/react-query` com `queryKeys` de `@/lib/query-client`.
+ * Este hook sera removido em versao futura.
+ */
 export function useApiQuery<T>(
   queryFn: () => Promise<T>,
   options: UseApiQueryOptions<T> = {}

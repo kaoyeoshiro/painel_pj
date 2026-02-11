@@ -7,11 +7,13 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { PageContainer, PageHeader, SectionCard, AdminSubNav } from '@/components/layout'
+import { BreadcrumbBar } from '@/components/layout/BreadcrumbBar'
+import { AdminSubNav } from '@/components/layout'
+import { C, FONT_UI } from '@/lib/designTokens'
 import {
   ChevronDown, ChevronRight, Edit2, Trash2, ToggleLeft, ToggleRight,
   Plus, Search, Download, Upload, History, Settings, RotateCcw,
-  FileText, Lightbulb, X,
+  FileText, FileJson, Lightbulb, X,
 } from 'lucide-react'
 
 // ---- Interfaces ----
@@ -172,15 +174,18 @@ function ModuloItem({ modulo, showCategoria, showSubcategoria = true, showModoBa
 
   return (
     <li
-      className={`flex items-start gap-3 px-4 py-3 hover:bg-gray-50 transition-colors ${
+      className={`flex items-start gap-3 px-4 py-3 transition-colors ${
         !modulo.ativo ? 'opacity-50' : ''
       }`}
+      style={{ cursor: 'default' }}
+      onMouseEnter={(e) => { e.currentTarget.style.background = C.gray50 }}
+      onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
     >
-      {/* Conteúdo principal */}
+      {/* Conteudo principal */}
       <div className="flex-1 min-w-0">
-        {/* Linha 1: Título + badges */}
+        {/* Linha 1: Titulo + badges */}
         <div className="flex items-center gap-2 flex-wrap">
-          <span className="font-medium text-gray-800">{modulo.titulo}</span>
+          <span className="font-medium" style={{ color: C.text900 }}>{modulo.titulo}</span>
 
           {/* Badge de subcategoria (campo texto) */}
           {showSubcategoria && modulo.subcategoria && (
@@ -193,7 +198,7 @@ function ModuloItem({ modulo, showCategoria, showSubcategoria = true, showModoBa
           {modulo.ativo ? (
             <span className="px-2 py-0.5 text-xs bg-green-100 text-green-700 rounded-full">Ativo</span>
           ) : (
-            <span className="px-2 py-0.5 text-xs bg-gray-100 text-gray-500 rounded-full">Inativo</span>
+            <span className="px-2 py-0.5 text-xs rounded-full" style={{ background: C.gray100, color: C.text400 }}>Inativo</span>
           )}
 
           {/* Badge de modo de ativação */}
@@ -205,19 +210,19 @@ function ModuloItem({ modulo, showCategoria, showSubcategoria = true, showModoBa
 
           {/* Badge de categoria (para base/peca) */}
           {showCategoria && modulo.categoria && (
-            <span className="px-2 py-0.5 text-xs bg-gray-100 text-gray-600 rounded">
+            <span className="px-2 py-0.5 text-xs rounded" style={{ background: C.gray100, color: C.text500 }}>
               {modulo.categoria}
             </span>
           )}
 
           {/* Versão */}
-          <span className="text-xs text-gray-400">v{modulo.versao}</span>
+          <span className="text-xs" style={{ color: C.text400 }}>v{modulo.versao}</span>
         </div>
 
         {/* Linha 2: Código (nome) + subcategorias M2M */}
         <div className="flex items-center gap-2 mt-0.5 flex-wrap">
           {modulo.nome && (
-            <code className="text-xs bg-gray-100 px-1.5 py-0.5 rounded font-mono text-gray-600">
+            <code className="text-xs px-1.5 py-0.5 rounded font-mono" style={{ background: C.gray100, color: C.text500 }}>
               {modulo.nome}
             </code>
           )}
@@ -233,43 +238,55 @@ function ModuloItem({ modulo, showCategoria, showSubcategoria = true, showModoBa
         </div>
       </div>
 
-      {/* Ações */}
+      {/* Acoes */}
       <div className="flex items-center gap-1 flex-shrink-0 pt-0.5">
         <button
           type="button"
           onClick={() => onToggle(modulo)}
           title={modulo.ativo ? 'Desativar' : 'Ativar'}
-          className="p-1.5 rounded-md hover:bg-gray-200 transition-colors"
+          className="p-1.5 rounded-md transition-colors"
+          style={{ color: modulo.ativo ? C.statusSuccess : C.text400 }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = C.gray200 }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
         >
           {modulo.ativo ? (
-            <ToggleRight className="h-4 w-4 text-green-600" />
+            <ToggleRight className="h-4 w-4" />
           ) : (
-            <ToggleLeft className="h-4 w-4 text-gray-400" />
+            <ToggleLeft className="h-4 w-4" />
           )}
         </button>
         <button
           type="button"
           onClick={() => onHistory(modulo)}
-          title="Histórico"
-          className="p-1.5 rounded-md hover:bg-gray-200 transition-colors"
+          title="Historico"
+          className="p-1.5 rounded-md transition-colors"
+          style={{ color: C.text500 }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = C.gray200 }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
         >
-          <History className="h-4 w-4 text-gray-500" />
+          <History className="h-4 w-4" />
         </button>
         <button
           type="button"
           onClick={() => onEdit(modulo)}
           title="Editar"
-          className="p-1.5 rounded-md hover:bg-gray-200 transition-colors"
+          className="p-1.5 rounded-md transition-colors"
+          style={{ color: C.navy700 }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = C.gray200 }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
         >
-          <Edit2 className="h-4 w-4 text-blue-600" />
+          <Edit2 className="h-4 w-4" />
         </button>
         <button
           type="button"
           onClick={() => onDelete(modulo)}
           title="Excluir"
-          className="p-1.5 rounded-md hover:bg-red-100 transition-colors"
+          className="p-1.5 rounded-md transition-colors"
+          style={{ color: C.statusError }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = '#fef2f2' }}
+          onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
         >
-          <Trash2 className="h-4 w-4 text-red-500" />
+          <Trash2 className="h-4 w-4" />
         </button>
       </div>
     </li>
@@ -292,7 +309,7 @@ function TipoSection({ tipo, modulos, onEdit, onDelete, onToggle, onHistory }: T
   const { Icon } = config
 
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+    <div className="bg-white rounded-2xl shadow-sm overflow-hidden" style={{ border: `1px solid ${C.gray200}` }}>
       {/* Header do tipo */}
       <div className={`flex items-center gap-3 px-4 py-3 ${config.bgHeader} border-b ${config.borderHeader}`}>
         <div className={`flex items-center justify-center w-8 h-8 ${config.iconBg} rounded-lg`}>
@@ -304,8 +321,8 @@ function TipoSection({ tipo, modulos, onEdit, onDelete, onToggle, onHistory }: T
         </span>
       </div>
 
-      {/* Lista de módulos */}
-      <ul className="divide-y divide-gray-100">
+      {/* Lista de modulos */}
+      <ul className="divide-y" style={{ borderColor: C.gray100 }}>
         {modulos
           .sort((a, b) => a.ordem - b.ordem)
           .map((modulo) => (
@@ -342,19 +359,22 @@ function CategoriaGroup({ categoria, modulos, subcategoriasNomes, onEdit, onDele
   const [aberto, setAberto] = useState(true)
 
   return (
-    <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
-      {/* Cabeçalho da categoria — clicável para colapsar */}
+    <div className="bg-white rounded-2xl overflow-hidden" style={{ border: `1px solid ${C.gray200}` }}>
+      {/* Cabecalho da categoria — clicavel para colapsar */}
       <button
         type="button"
         onClick={() => setAberto(!aberto)}
-        className="w-full flex items-center gap-2 px-4 py-3 bg-gray-50 hover:bg-gray-100 transition-colors text-left"
+        className="w-full flex items-center gap-2 px-4 py-3 transition-colors text-left"
+        style={{ background: C.gray50 }}
+        onMouseEnter={(e) => { e.currentTarget.style.background = C.gray100 }}
+        onMouseLeave={(e) => { e.currentTarget.style.background = C.gray50 }}
       >
         {aberto ? (
-          <ChevronDown className="h-4 w-4 text-gray-500 flex-shrink-0" />
+          <ChevronDown className="h-4 w-4 flex-shrink-0" style={{ color: C.text500 }} />
         ) : (
-          <ChevronRight className="h-4 w-4 text-gray-500 flex-shrink-0" />
+          <ChevronRight className="h-4 w-4 flex-shrink-0" style={{ color: C.text500 }} />
         )}
-        <span className="font-semibold text-gray-800">=== {categoria} ===</span>
+        <span className="font-semibold" style={{ color: C.text900 }}>=== {categoria} ===</span>
         <Badge variant="secondary" className="text-xs">
           {modulos.length} módulo{modulos.length !== 1 ? 's' : ''}
         </Badge>
@@ -370,9 +390,9 @@ function CategoriaGroup({ categoria, modulos, subcategoriasNomes, onEdit, onDele
         )}
       </button>
 
-      {/* Lista de módulos */}
+      {/* Lista de modulos */}
       {aberto && (
-        <ul className="divide-y divide-gray-100">
+        <ul className="divide-y" style={{ borderColor: C.gray100 }}>
           {modulos
             .sort((a, b) => a.ordem - b.ordem)
             .map((modulo) => (
@@ -434,18 +454,19 @@ function AssuntoMultiSelect({ subcategorias, selected, onChange }: AssuntoMultiS
       <button
         type="button"
         onClick={() => setOpen(!open)}
-        className="w-[170px] px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white text-left flex items-center justify-between"
+        className="w-[170px] px-3 py-2 rounded-lg text-sm bg-white text-left flex items-center justify-between"
+        style={{ border: `1px solid ${C.gray300}` }}
       >
         <span className="truncate">
           {selected.length > 0
             ? `${selected.length} assunto(s)`
             : 'Todos os assuntos'}
         </span>
-        <ChevronDown className="h-3.5 w-3.5 text-gray-400 flex-shrink-0" />
+        <ChevronDown className="h-3.5 w-3.5 flex-shrink-0" style={{ color: C.text400 }} />
       </button>
 
       {open && (
-        <div className="absolute z-50 top-full left-0 mt-1 w-64 bg-white border border-gray-200 rounded-lg shadow-lg max-h-64 overflow-hidden">
+        <div className="absolute z-50 top-full left-0 mt-1 w-64 bg-white rounded-lg shadow-lg max-h-64 overflow-hidden" style={{ border: `1px solid ${C.gray200}` }}>
           {/* Busca */}
           <div className="p-2 border-b">
             <Input
@@ -472,12 +493,14 @@ function AssuntoMultiSelect({ subcategorias, selected, onChange }: AssuntoMultiS
           {/* Lista */}
           <div className="overflow-y-auto max-h-44">
             {filtered.length === 0 ? (
-              <div className="px-3 py-2 text-xs text-gray-400">Nenhum assunto encontrado</div>
+              <div className="px-3 py-2 text-xs" style={{ color: C.text400 }}>Nenhum assunto encontrado</div>
             ) : (
               filtered.map(s => (
                 <label
                   key={s.id}
-                  className="flex items-center gap-2 px-3 py-1.5 hover:bg-gray-50 cursor-pointer text-sm"
+                  className="flex items-center gap-2 px-3 py-1.5 cursor-pointer text-sm transition-colors"
+                  onMouseEnter={(e) => { e.currentTarget.style.background = C.gray50 }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
                 >
                   <input
                     type="checkbox"
@@ -1014,13 +1037,10 @@ export function PromptsModulosPage() {
   // ========== Render ==========
 
   return (
-    <PageContainer wide className="space-y-6">
-      {/* Header */}
-      <PageHeader
-        title="Módulos de Prompts"
-        description={`${totalFiltrados} módulo(s) encontrado(s)`}
-        backTo="/dashboard"
-        icon={<Lightbulb className="h-5 w-5" />}
+    <div style={{ fontFamily: FONT_UI }}>
+      <BreadcrumbBar
+        title="Modulos de Prompts"
+        icon={<FileJson style={{ width: 14, height: 14 }} />}
         actions={
           <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" onClick={() => setDialogGrupos(true)} className="gap-1.5">
@@ -1042,22 +1062,23 @@ export function PromptsModulosPage() {
               className="hidden"
               onChange={handleFileImport}
             />
-            <Button onClick={abrirDialogNovo} disabled={grupoSelecionado === null} className="gap-1.5">
+            <Button onClick={abrirDialogNovo} disabled={grupoSelecionado === null} className="gap-1.5" style={{ background: C.navy950, color: 'white' }}>
               <Plus className="h-4 w-4" />
-              Novo Módulo
+              Novo Modulo
             </Button>
           </div>
         }
       />
 
+      <div style={{ maxWidth: 1350, margin: '0 auto', padding: '32px 40px' }} className="space-y-6">
       <AdminSubNav />
 
       {/* Filtros */}
-      <SectionCard>
+      <div className="bg-white rounded-2xl shadow-sm p-6" style={{ border: `1px solid ${C.gray200}` }}>
         <div className="flex flex-wrap gap-3 items-center">
           {/* Busca */}
           <div className="flex-1 min-w-[200px] relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4" style={{ color: C.text400 }} />
             <Input
               placeholder="Buscar por título ou conteúdo..."
               value={busca}
@@ -1068,7 +1089,8 @@ export function PromptsModulosPage() {
 
           {/* Tipo de prompt */}
           <select
-            className="flex-shrink-0 w-[150px] px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white"
+            className="flex-shrink-0 w-[150px] px-3 py-2 rounded-lg text-sm bg-white"
+            style={{ border: `1px solid ${C.gray300}` }}
             value={tipoFiltro || ''}
             onChange={(e) => setTipoFiltro((e.target.value || null) as TipoFiltro)}
           >
@@ -1078,9 +1100,10 @@ export function PromptsModulosPage() {
             <option value="conteudo">Conteúdo</option>
           </select>
 
-          {/* Modo de ativação */}
+          {/* Modo de ativacao */}
           <select
-            className="flex-shrink-0 w-[170px] px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white"
+            className="flex-shrink-0 w-[170px] px-3 py-2 rounded-lg text-sm bg-white"
+            style={{ border: `1px solid ${C.gray300}` }}
             value={modoFiltro || ''}
             onChange={(e) => setModoFiltro((e.target.value || null) as ModoFiltro)}
           >
@@ -1091,7 +1114,8 @@ export function PromptsModulosPage() {
 
           {/* Grupo */}
           <select
-            className="flex-shrink-0 w-[160px] px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white"
+            className="flex-shrink-0 w-[160px] px-3 py-2 rounded-lg text-sm bg-white"
+            style={{ border: `1px solid ${C.gray300}` }}
             value={grupoSelecionado?.toString() || ''}
             onChange={(e) => setGrupoSelecionado(e.target.value ? Number(e.target.value) : null)}
           >
@@ -1105,7 +1129,8 @@ export function PromptsModulosPage() {
 
           {/* Subgrupo */}
           <select
-            className="flex-shrink-0 w-[160px] px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white disabled:opacity-50"
+            className="flex-shrink-0 w-[160px] px-3 py-2 rounded-lg text-sm bg-white disabled:opacity-50"
+            style={{ border: `1px solid ${C.gray300}` }}
             value={subgrupoFiltro?.toString() || ''}
             onChange={(e) => setSubgrupoFiltro(e.target.value ? Number(e.target.value) : null)}
             disabled={grupoSelecionado === null || filterSubgrupos.length === 0}
@@ -1120,7 +1145,8 @@ export function PromptsModulosPage() {
 
           {/* Categoria */}
           <select
-            className="flex-shrink-0 w-[160px] px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white disabled:opacity-50"
+            className="flex-shrink-0 w-[160px] px-3 py-2 rounded-lg text-sm bg-white disabled:opacity-50"
+            style={{ border: `1px solid ${C.gray300}` }}
             value={categoriaFiltro || ''}
             onChange={(e) => setCategoriaFiltro(e.target.value || null)}
             disabled={categoriasDisponiveis.length === 0}
@@ -1143,7 +1169,7 @@ export function PromptsModulosPage() {
           )}
 
           {/* Apenas ativos */}
-          <label className="flex-shrink-0 flex items-center gap-2 text-sm text-gray-600 whitespace-nowrap">
+          <label className="flex-shrink-0 flex items-center gap-2 text-sm whitespace-nowrap" style={{ color: C.text500 }}>
             <input
               type="checkbox"
               checked={apenasAtivos}
@@ -1166,7 +1192,10 @@ export function PromptsModulosPage() {
                 setAssuntosFiltro([])
                 setApenasAtivos(true)
               }}
-              className="flex-shrink-0 flex items-center gap-1 text-xs text-gray-500 hover:text-gray-700 px-2 py-1 rounded hover:bg-gray-100"
+              className="flex-shrink-0 flex items-center gap-1 text-xs px-2 py-1 rounded transition-colors"
+              style={{ color: C.text500 }}
+              onMouseEnter={(e) => { e.currentTarget.style.background = C.gray100; e.currentTarget.style.color = C.text700 }}
+              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = C.text500 }}
               title="Limpar todos os filtros"
             >
               <X className="h-3 w-3" />
@@ -1174,13 +1203,13 @@ export function PromptsModulosPage() {
             </button>
           )}
         </div>
-      </SectionCard>
+      </div>
 
       {/* Lista de módulos organizada por tipo */}
       {loading ? (
-        <div className="text-center py-12 text-gray-400">Carregando módulos...</div>
+        <div className="text-center py-12" style={{ color: C.text400 }}>Carregando modulos...</div>
       ) : !temResultados ? (
-        <div className="text-center py-12 text-gray-400">Nenhum módulo encontrado</div>
+        <div className="text-center py-12" style={{ color: C.text400 }}>Nenhum modulo encontrado</div>
       ) : (
         <div className="space-y-6">
           {/* ---- Base (Prompt do Sistema) ---- */}
@@ -1411,7 +1440,7 @@ export function PromptsModulosPage() {
               <Button variant="outline" onClick={() => setDialogAberto(false)}>
                 Cancelar
               </Button>
-              <Button onClick={salvarModulo}>
+              <Button onClick={salvarModulo} style={{ background: C.navy950, color: 'white' }}>
                 {moduloEditando ? 'Salvar' : 'Criar'}
               </Button>
             </DialogFooter>
@@ -1446,21 +1475,21 @@ export function PromptsModulosPage() {
             <DialogDescription>Versões anteriores deste módulo</DialogDescription>
           </DialogHeader>
           {loadingHistorico ? (
-            <div className="text-center py-8 text-gray-400">Carregando histórico...</div>
+            <div className="text-center py-8" style={{ color: C.text400 }}>Carregando historico...</div>
           ) : versoes.length === 0 ? (
-            <div className="text-center py-8 text-gray-400">Nenhuma versão anterior encontrada</div>
+            <div className="text-center py-8" style={{ color: C.text400 }}>Nenhuma versao anterior encontrada</div>
           ) : (
             <div className="space-y-3">
               {versoes.map((versao) => (
-                <div key={versao.versao} className="border rounded-lg p-4">
+                <div key={versao.versao} className="rounded-lg p-4" style={{ border: `1px solid ${C.gray200}` }}>
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center gap-2">
                       <Badge variant="secondary">v{versao.versao}</Badge>
-                      <span className="text-sm text-gray-500">
+                      <span className="text-sm" style={{ color: C.text500 }}>
                         {new Date(versao.atualizado_em).toLocaleString('pt-BR')}
                       </span>
                       {versao.atualizado_por && (
-                        <span className="text-xs text-gray-400">por {versao.atualizado_por}</span>
+                        <span className="text-xs" style={{ color: C.text400 }}>por {versao.atualizado_por}</span>
                       )}
                     </div>
                     <Button
@@ -1475,9 +1504,9 @@ export function PromptsModulosPage() {
                   </div>
                   <div className="text-sm">
                     <span className="font-medium">{versao.titulo}</span>
-                    <span className="text-gray-400 ml-2">({versao.categoria})</span>
+                    <span className="ml-2" style={{ color: C.text400 }}>({versao.categoria})</span>
                   </div>
-                  <pre className="mt-2 text-xs text-gray-600 bg-gray-50 p-2 rounded max-h-32 overflow-y-auto whitespace-pre-wrap">
+                  <pre className="mt-2 text-xs p-2 rounded max-h-32 overflow-y-auto whitespace-pre-wrap" style={{ color: C.text500, background: C.gray50 }}>
                     {versao.conteudo.slice(0, 500)}{versao.conteudo.length > 500 ? '...' : ''}
                   </pre>
                 </div>
@@ -1506,7 +1535,7 @@ export function PromptsModulosPage() {
             <Button variant="outline" onClick={() => { setDialogImportar(false); setImportData('') }}>
               Cancelar
             </Button>
-            <Button onClick={importarModulos} disabled={importando || !importData.trim()}>
+            <Button onClick={importarModulos} disabled={importando || !importData.trim()} style={{ background: C.navy950, color: 'white' }}>
               {importando ? 'Importando...' : 'Importar'}
             </Button>
           </DialogFooter>
@@ -1524,11 +1553,11 @@ export function PromptsModulosPage() {
           {/* Lista de grupos existentes */}
           <div className="space-y-2">
             {grupos.map(grupo => (
-              <div key={grupo.id} className="flex items-center justify-between p-3 border rounded-lg">
+              <div key={grupo.id} className="flex items-center justify-between p-3 rounded-lg" style={{ border: `1px solid ${C.gray200}` }}>
                 <div>
-                  <span className="font-medium">{grupo.nome}</span>
+                  <span className="font-medium" style={{ color: C.text900 }}>{grupo.nome}</span>
                   {grupo.descricao && (
-                    <p className="text-xs text-gray-500 mt-0.5">{grupo.descricao}</p>
+                    <p className="text-xs mt-0.5" style={{ color: C.text500 }}>{grupo.descricao}</p>
                   )}
                 </div>
                 <Badge variant={grupo.ativo ? 'default' : 'secondary'}>
@@ -1539,8 +1568,8 @@ export function PromptsModulosPage() {
           </div>
 
           {/* Formulário de novo grupo */}
-          <div className="border-t pt-4 mt-4 space-y-3">
-            <h4 className="font-medium text-sm">Novo Grupo</h4>
+          <div className="pt-4 mt-4 space-y-3" style={{ borderTop: `1px solid ${C.gray200}` }}>
+            <h4 className="font-medium text-sm" style={{ color: C.text900 }}>Novo Grupo</h4>
             <div>
               <Label htmlFor="novo-grupo-nome">Nome</Label>
               <Input
@@ -1559,13 +1588,14 @@ export function PromptsModulosPage() {
                 placeholder="Descrição do grupo"
               />
             </div>
-            <Button onClick={criarGrupo} disabled={!novoGrupoNome.trim()} className="gap-1.5">
+            <Button onClick={criarGrupo} disabled={!novoGrupoNome.trim()} className="gap-1.5" style={{ background: C.navy950, color: 'white' }}>
               <Plus className="h-4 w-4" />
               Criar Grupo
             </Button>
           </div>
         </DialogContent>
       </Dialog>
-    </PageContainer>
+    </div>
+    </div>
   )
 }

@@ -1,15 +1,14 @@
-import { useState, useCallback } from 'react'
-import { Search, Scale, Trash2, FileText, FileDown, RotateCw, Database, Wand2 } from 'lucide-react'
+import { useState, useCallback, useEffect } from 'react'
+import { Search, Scale, Trash2, FileText, FileDown, RotateCw, Database, Clock } from 'lucide-react'
 import { useMarkdown } from '@/hooks/useMarkdown'
-import { SystemTopbar } from '@/components/layout/SystemTopbar'
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Badge } from '@/components/ui/badge'
+import { BreadcrumbBar } from '@/components/layout/BreadcrumbBar'
+import { C, FONT_UI, FONT_DOC } from '@/lib/designTokens'
+import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Skeleton } from '@/components/ui/skeleton'
 import { assistenciaApi } from '@/lib/api'
-import { useApiQuery } from '@/hooks/useApiQuery'
+import { useQuery } from '@tanstack/react-query'
+import { queryKeys } from '@/lib/query-client'
 import { useToast } from '@/components/ui/toast'
 import type {
   ConsultaRequest,
@@ -22,13 +21,13 @@ import type {
 /** Tipo para o estado da tela */
 type ViewState = 'inicial' | 'loading' | 'resultado' | 'erro'
 
-/** Tipo para a avaliação de feedback */
+/** Tipo para a avaliacao de feedback */
 type TipoAvaliacao = 'correto' | 'parcial' | 'incorreto' | 'erro_ia'
 
 export function AssistenciaPage() {
   const { toast } = useToast()
 
-  // Estados da aplicação
+  // Estados da aplicacao
   const [viewState, setViewState] = useState<ViewState>('inicial')
   const [cnjInput, setCnjInput] = useState('')
   const [erroMensagem, setErroMensagem] = useState('')
@@ -36,16 +35,25 @@ export function AssistenciaPage() {
   const [feedbackEnviado, setFeedbackEnviado] = useState(false)
   const [feedbackTipo, setFeedbackTipo] = useState('')
 
-  // Query do histórico
+  // Query do historico
   const {
     data: historico,
     isLoading: isLoadingHistorico,
     refetch: refetchHistorico,
-  } = useApiQuery<HistoricoItem[]>(() => assistenciaApi.get('/historico'), {
-    onError: (error) => console.error('Erro ao carregar histórico:', error),
+    error: historicoError,
+  } = useQuery<HistoricoItem[]>({
+    queryKey: queryKeys.assistencia.historico(),
+    queryFn: () => assistenciaApi.get<HistoricoItem[]>('/historico'),
   })
 
-  /** Verifica se já existe feedback para a consulta atual */
+  // Log de erro no historico
+  useEffect(() => {
+    if (historicoError) {
+      console.error('Erro ao carregar historico:', historicoError.message)
+    }
+  }, [historicoError])
+
+  /** Verifica se ja existe feedback para a consulta atual */
   const verificarFeedback = useCallback(async (consultaId: number) => {
     try {
       const feedback = await assistenciaApi.get<FeedbackResponse>(`/feedback/${consultaId}`)
@@ -53,9 +61,9 @@ export function AssistenciaPage() {
       if (feedback.has_feedback) {
         setFeedbackEnviado(true)
         const tipoTexto: Record<string, string> = {
-          correto: 'Análise marcada como correta',
-          parcial: 'Análise marcada como parcialmente correta',
-          incorreto: 'Análise marcada como incorreta',
+          correto: 'Analise marcada como correta',
+          parcial: 'Analise marcada como parcialmente correta',
+          incorreto: 'Analise marcada como incorreta',
           erro_ia: 'Reportado como erro da IA',
         }
         setFeedbackTipo(tipoTexto[feedback.avaliacao || ''] || '')
@@ -74,8 +82,8 @@ export function AssistenciaPage() {
     async (cnj: string, forceRefresh = false) => {
       if (!cnj.trim()) {
         toast({
-          title: 'Campo obrigatório',
-          description: 'Digite o número do processo',
+          title: 'Campo obrigatorio',
+          description: 'Digite o numero do processo',
           variant: 'destructive',
         })
         return
@@ -104,7 +112,7 @@ export function AssistenciaPage() {
         if (result.cached) {
           toast({
             title: 'Consulta em cache',
-            description: 'Dados recuperados do histórico',
+            description: 'Dados recuperados do historico',
           })
         } else {
           toast({
@@ -126,7 +134,7 @@ export function AssistenciaPage() {
     [toast, refetchHistorico, verificarFeedback]
   )
 
-  /** Reconsultar processo (força refresh) */
+  /** Reconsultar processo (forca refresh) */
   const reconsultarProcesso = useCallback(() => {
     if (!consultaAtual) return
 
@@ -134,7 +142,7 @@ export function AssistenciaPage() {
 
     if (
       confirm(
-        'Deseja reconsultar este processo? Isso irá buscar dados atualizados do TJ-MS e gerar um novo relatório.'
+        'Deseja reconsultar este processo? Isso ira buscar dados atualizados do TJ-MS e gerar um novo relatorio.'
       )
     ) {
       consultarProcesso(cnj, true)
@@ -169,9 +177,9 @@ export function AssistenciaPage() {
         await assistenciaApi.post('/feedback', request)
 
         const tipoTexto: Record<string, string> = {
-          correto: 'Análise marcada como correta',
-          parcial: 'Análise marcada como parcialmente correta',
-          incorreto: 'Análise marcada como incorreta',
+          correto: 'Analise marcada como correta',
+          parcial: 'Analise marcada como parcialmente correta',
+          incorreto: 'Analise marcada como incorreta',
           erro_ia: 'Reportado como erro da IA',
         }
 
@@ -180,7 +188,7 @@ export function AssistenciaPage() {
 
         toast({
           title: 'Feedback registrado',
-          description: 'Obrigado pela sua avaliação!',
+          description: 'Obrigado pela sua avaliacao!',
         })
       } catch (error) {
         toast({
@@ -193,7 +201,7 @@ export function AssistenciaPage() {
     [consultaAtual, toast]
   )
 
-  /** Excluir item do histórico */
+  /** Excluir item do historico */
   const excluirDoHistorico = useCallback(
     async (id: number, e: React.MouseEvent) => {
       e.stopPropagation()
@@ -203,7 +211,7 @@ export function AssistenciaPage() {
         refetchHistorico()
         toast({
           title: 'Removido',
-          description: 'Item removido do histórico',
+          description: 'Item removido do historico',
         })
       } catch (error) {
         toast({
@@ -222,7 +230,7 @@ export function AssistenciaPage() {
       if (!consultaAtual?.relatorio) {
         toast({
           title: 'Erro',
-          description: 'Nenhum relatório disponível para download',
+          description: 'Nenhum relatorio disponivel para download',
           variant: 'destructive',
         })
         return
@@ -271,15 +279,8 @@ export function AssistenciaPage() {
     setFeedbackTipo('')
   }, [])
 
-  /** Handler para Enter no input */
-  const handleKeyPress = (e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Enter') {
-      consultarProcesso(cnjInput)
-    }
-  }
-
-  /** Formata data em português */
-  const formatarData = (dataStr: string | undefined) => {
+  /** Formata data em portugues */
+  const formatarData = (dataStr: string | undefined): string => {
     if (!dataStr) return '-'
     try {
       const data = new Date(dataStr)
@@ -289,297 +290,473 @@ export function AssistenciaPage() {
     }
   }
 
-  return (
-    <div className="flex flex-col h-screen bg-gray-50">
-      {/* Topbar matching legacy */}
-      <SystemTopbar
-        title="Assistência Judiciária"
-        subtitle="Consulta de Processos TJ-MS"
-        icon={<Wand2 className="h-5 w-5" />}
-      />
+  // =====================================================
+  // RENDER: Historico Sheet (painel lateral)
+  // =====================================================
 
-      <div className="flex flex-1 overflow-hidden">
-        {/* Sidebar - Consulta e Histórico */}
-        <aside className="w-80 flex-shrink-0 border-r border-gray-200 bg-white flex flex-col">
-          {/* Formulário de consulta */}
-          <div className="border-b border-gray-200 p-4">
-            <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-gray-700">
-              <Search className="h-4 w-4 text-primary-600" />
-              Consultar Processo
-            </h2>
-            <div className="space-y-3">
-              <div>
-                <label className="mb-1 block text-xs font-medium text-primary-600">
-                  Número CNJ
-                </label>
-                <Input
-                  value={cnjInput}
-                  onChange={(e) => setCnjInput(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === 'Enter') consultarProcesso(cnjInput) }}
-                  placeholder="0000000-00.0000.0.00.0000"
-                  className="text-sm"
-                />
-                <p className="mt-1 text-xs text-gray-400">
-                  Ex: 0800123-45.2024.8.12.0001
-                </p>
+  function renderHistoricoSheet(): React.ReactNode {
+    return (
+      <Sheet>
+        <SheetTrigger asChild>
+          <button
+            className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-medium transition-colors"
+            style={{ color: C.text500, fontSize: 13 }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = C.gray100 }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
+          >
+            <Clock style={{ width: 14, height: 14 }} />
+            <span className="hidden sm:inline">Historico</span>
+          </button>
+        </SheetTrigger>
+        <SheetContent className="w-[400px] sm:w-[440px]">
+          <SheetHeader>
+            <SheetTitle className="flex items-center gap-2" style={{ color: C.text900 }}>
+              <Clock className="h-5 w-5" style={{ color: C.navy700 }} />
+              Historico de Consultas
+            </SheetTitle>
+          </SheetHeader>
+          <ScrollArea className="mt-4 h-[calc(100vh-100px)] pr-4">
+            {isLoadingHistorico ? (
+              <div className="space-y-3">
+                {[1, 2, 3, 4, 5].map(i => (
+                  <div key={i} className="flex items-center gap-3 p-3">
+                    <Skeleton className="h-10 w-10 rounded-lg" />
+                    <div className="flex-1 space-y-1">
+                      <Skeleton className="h-4 w-3/4" />
+                      <Skeleton className="h-3 w-1/2" />
+                    </div>
+                  </div>
+                ))}
               </div>
-              <Button
-                onClick={() => consultarProcesso(cnjInput)}
-                className="w-full"
-                disabled={viewState === 'loading'}
-              >
-                <Search className="mr-2 h-4 w-4" />
-                Consultar
-              </Button>
-            </div>
-          </div>
-
-          {/* Histórico */}
-          <div className="flex-1 overflow-hidden p-4">
-            <h3 className="mb-3 text-xs font-semibold uppercase tracking-wider text-gray-400">
-              Histórico Recente
-            </h3>
-            <ScrollArea className="h-[calc(100vh-280px)]">
-              {isLoadingHistorico ? (
-                <div className="space-y-2">
-                  {[...Array(5)].map((_, i) => (
-                    <Skeleton key={i} className="h-14 w-full" />
-                  ))}
-                </div>
-              ) : !historico || historico.length === 0 ? (
-                <p className="text-sm italic text-gray-400">Nenhuma consulta ainda</p>
-              ) : (
-                <div className="space-y-1">
-                  {historico.slice(0, 10).map((item) => (
-                    <div
-                      key={item.id}
-                      className="group flex items-center justify-between rounded-lg p-2 transition-colors hover:bg-gray-50 cursor-pointer"
+            ) : !historico || historico.length === 0 ? (
+              <div className="py-12 text-center">
+                <Scale className="mx-auto h-10 w-10" style={{ color: C.gray300 }} />
+                <p className="mt-3" style={{ color: C.text400 }}>Nenhuma consulta ainda</p>
+              </div>
+            ) : (
+              <div className="space-y-1">
+                {historico.slice(0, 15).map((item) => (
+                  <div
+                    key={item.id}
+                    className="group flex items-center gap-3 rounded-xl px-3 py-3 transition-colors cursor-pointer"
+                    style={{ background: 'transparent' }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = C.gray50 }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
+                  >
+                    <button
+                      onClick={() => {
+                        setCnjInput(item.cnj)
+                        consultarProcesso(item.cnj)
+                      }}
+                      className="flex-1 min-w-0 text-left"
                     >
-                      <button
-                        onClick={() => {
-                          setCnjInput(item.cnj)
-                          consultarProcesso(item.cnj)
-                        }}
-                        className="flex-1 text-left"
+                      <p
+                        className="text-sm font-semibold truncate"
+                        style={{ fontFamily: 'monospace', color: C.text900 }}
                       >
-                        <div className="font-mono text-sm font-semibold text-gray-700 group-hover:text-primary-600">
-                          {item.cnj}
-                        </div>
-                        <div className="truncate text-xs text-gray-400 italic">
-                          {item.classe || 'Processo'}
-                        </div>
-                      </button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-6 w-6 opacity-0 transition-opacity group-hover:opacity-100"
-                        onClick={(e) => excluirDoHistorico(item.id, e)}
+                        {item.cnj}
+                      </p>
+                      <p
+                        className="text-xs truncate mt-0.5"
+                        style={{ color: C.text400, fontStyle: 'italic' }}
                       >
-                        <Trash2 className="h-3 w-3 text-red-500" />
-                      </Button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </ScrollArea>
-          </div>
-        </aside>
-
-        {/* Main Content */}
-        <main className="flex flex-1 flex-col overflow-hidden bg-gray-50">
-          <ScrollArea className="flex-1 p-6">
-            {/* Estado Inicial */}
-            {viewState === 'inicial' && (
-              <div className="flex h-full items-center justify-center">
-                <div className="max-w-md text-center">
-                  <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-2xl bg-sky-100">
-                    <Scale className="h-10 w-10 text-primary-500" />
+                        {item.classe || 'Processo'}
+                      </p>
+                    </button>
+                    <button
+                      onClick={(e) => excluirDoHistorico(item.id, e)}
+                      className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg opacity-0 transition-all group-hover:opacity-100"
+                      style={{ color: C.statusError }}
+                      onMouseEnter={(e) => { e.currentTarget.style.background = C.statusError + '15' }}
+                      onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
+                    >
+                      <Trash2 style={{ width: 14, height: 14 }} />
+                    </button>
                   </div>
-                  <h2 className="mb-2 text-xl font-semibold text-gray-700">
-                    Consulta de Processos
-                  </h2>
-                  <p className="text-gray-500 leading-relaxed">
-                    Digite o número CNJ do processo para consultar informações
-                    no TJ-MS e gerar um relatório automático com análise por IA.
-                  </p>
-                </div>
-              </div>
-            )}
-
-            {/* Loading */}
-            {viewState === 'loading' && (
-              <div className="flex h-full items-center justify-center">
-                <div className="text-center">
-                  <div className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full border-4 border-gray-200 border-t-primary" />
-                  <p className="font-medium text-gray-600">Consultando processo...</p>
-                  <p className="mt-1 text-sm text-gray-400">Isso pode levar alguns segundos</p>
-                </div>
-              </div>
-            )}
-
-            {/* Erro */}
-            {viewState === 'erro' && (
-              <div className="flex h-full items-center justify-center">
-                <div className="max-w-md text-center">
-                  <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-2xl bg-red-100">
-                    <Scale className="h-10 w-10 text-red-600" />
-                  </div>
-                  <h2 className="mb-2 text-xl font-semibold text-gray-700">Erro na Consulta</h2>
-                  <p className="text-gray-500">{erroMensagem}</p>
-                  <Button onClick={voltarInicio} variant="outline" className="mt-4">
-                    Tentar novamente
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            {/* Resultado */}
-            {viewState === 'resultado' && consultaAtual && (
-              <div className="space-y-4">
-                {/* Header do resultado */}
-                <Card>
-                  <CardContent className="p-4">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                          <Scale className="h-5 w-5 text-primary" />
-                        </div>
-                        <div>
-                          <div className="flex items-center gap-2">
-                            <h3 className="font-mono text-lg font-bold">
-                              {consultaAtual.dados.numeroProcesso || cnjInput}
-                            </h3>
-                            {consultaAtual.cached && (
-                              <Badge variant="secondary" className="gap-1">
-                                <Database className="h-3 w-3" />
-                                Cache{' '}
-                                {consultaAtual.consultado_em &&
-                                  `(${formatarData(consultaAtual.consultado_em)})`}
-                              </Badge>
-                            )}
-                          </div>
-                          <p className="text-xs text-gray-500">Número do Processo</p>
-                        </div>
-                      </div>
-                      <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={reconsultarProcesso}
-                          className="gap-1"
-                        >
-                          <RotateCw className="h-4 w-4" />
-                          Reanalisar
-                        </Button>
-                        <Button
-                          variant="default"
-                          size="sm"
-                          onClick={() => downloadDocumento('docx')}
-                          className="gap-1 bg-blue-600 hover:bg-blue-700"
-                        >
-                          <FileText className="h-4 w-4" />
-                          DOCX
-                        </Button>
-                        <Button
-                          variant="default"
-                          size="sm"
-                          onClick={() => downloadDocumento('pdf')}
-                          className="gap-1 bg-red-600 hover:bg-red-700"
-                        >
-                          <FileDown className="h-4 w-4" />
-                          PDF
-                        </Button>
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                {/* Relatório IA */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2 text-base">
-                      <Scale className="h-5 w-5 text-green-500" />
-                      Análise por IA
-                    </CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    {consultaAtual.relatorio ? (
-                      <MarkdownContent text={consultaAtual.relatorio} />
-                    ) : (
-                      <p className="italic text-gray-400">Relatório não disponível</p>
-                    )}
-                  </CardContent>
-                </Card>
-
-                {/* Feedback */}
-                <Card className="bg-gradient-to-r from-blue-50 to-indigo-50">
-                  <CardHeader>
-                    <CardTitle className="text-base">Avalie a Análise da IA</CardTitle>
-                    <CardDescription>
-                      Sua avaliação nos ajuda a melhorar o sistema. Por favor, indique se a análise
-                      está correta.
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    {!feedbackEnviado ? (
-                      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-                        <Button
-                          variant="outline"
-                          onClick={() => enviarFeedback('correto')}
-                          className="flex h-auto flex-col gap-1 border-2 border-transparent bg-green-100 py-3 text-green-700 hover:border-green-400 hover:bg-green-200"
-                        >
-                          <span className="text-xl">✓</span>
-                          <span className="text-sm font-medium">Correta</span>
-                        </Button>
-                        <Button
-                          variant="outline"
-                          onClick={() => enviarFeedback('parcial')}
-                          className="flex h-auto flex-col gap-1 border-2 border-transparent bg-yellow-100 py-3 text-yellow-700 hover:border-yellow-400 hover:bg-yellow-200"
-                        >
-                          <span className="text-xl">◐</span>
-                          <span className="text-sm font-medium">Parcialmente</span>
-                        </Button>
-                        <Button
-                          variant="outline"
-                          onClick={() => enviarFeedback('incorreto')}
-                          className="flex h-auto flex-col gap-1 border-2 border-transparent bg-red-100 py-3 text-red-700 hover:border-red-400 hover:bg-red-200"
-                        >
-                          <span className="text-xl">✗</span>
-                          <span className="text-sm font-medium">Incorreta</span>
-                        </Button>
-                        <Button
-                          variant="outline"
-                          onClick={() => enviarFeedback('erro_ia')}
-                          className="flex h-auto flex-col gap-1 border-2 border-transparent bg-gray-100 py-3 text-gray-700 hover:border-gray-400 hover:bg-gray-200"
-                        >
-                          <span className="text-xl">⚠</span>
-                          <span className="text-sm font-medium">Erro/Não gerou</span>
-                        </Button>
-                      </div>
-                    ) : (
-                      <div className="py-4 text-center">
-                        <div className="mx-auto mb-2 text-3xl text-green-500">✓</div>
-                        <p className="font-medium text-green-700">Obrigado pelo seu feedback!</p>
-                        <p className="text-sm text-gray-500">{feedbackTipo}</p>
-                      </div>
-                    )}
-                  </CardContent>
-                </Card>
+                ))}
               </div>
             )}
           </ScrollArea>
-        </main>
+        </SheetContent>
+      </Sheet>
+    )
+  }
+
+  // =====================================================
+  // RENDER: Estado Inicial
+  // =====================================================
+
+  function renderEstadoInicial(): React.ReactNode {
+    return (
+      <div className="flex items-center justify-center" style={{ minHeight: 400 }}>
+        <div className="max-w-md text-center">
+          <div
+            className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-2xl"
+            style={{ background: C.navy100, color: C.navy700 }}
+          >
+            <Scale style={{ width: 40, height: 40 }} />
+          </div>
+          <h2
+            className="mb-2 text-xl font-semibold"
+            style={{ color: C.text900 }}
+          >
+            Consulta de Processos
+          </h2>
+          <p style={{ color: C.text500, lineHeight: 1.7 }}>
+            Digite o numero CNJ do processo para consultar informacoes
+            no TJ-MS e gerar um relatorio automatico com analise por IA.
+          </p>
+        </div>
+      </div>
+    )
+  }
+
+  // =====================================================
+  // RENDER: Loading
+  // =====================================================
+
+  function renderLoading(): React.ReactNode {
+    return (
+      <div className="flex items-center justify-center" style={{ minHeight: 400 }}>
+        <div className="text-center">
+          <div
+            className="mx-auto mb-4 h-12 w-12 animate-spin rounded-full"
+            style={{
+              border: `4px solid ${C.gray200}`,
+              borderTopColor: C.navy950,
+            }}
+          />
+          <p className="font-medium" style={{ color: C.text700 }}>Consultando processo...</p>
+          <p className="mt-1 text-sm" style={{ color: C.text400 }}>Isso pode levar alguns segundos</p>
+        </div>
+      </div>
+    )
+  }
+
+  // =====================================================
+  // RENDER: Erro
+  // =====================================================
+
+  function renderErro(): React.ReactNode {
+    return (
+      <div className="flex items-center justify-center" style={{ minHeight: 400 }}>
+        <div className="max-w-md text-center">
+          <div
+            className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-2xl"
+            style={{ background: C.statusError + '15', color: C.statusError }}
+          >
+            <Scale style={{ width: 40, height: 40 }} />
+          </div>
+          <h2 className="mb-2 text-xl font-semibold" style={{ color: C.text900 }}>
+            Erro na Consulta
+          </h2>
+          <p style={{ color: C.text500 }}>{erroMensagem}</p>
+          <button
+            onClick={voltarInicio}
+            className="mt-4 inline-flex items-center gap-2 rounded-xl px-5 py-2.5 text-sm font-medium transition-colors"
+            style={{ border: `1px solid ${C.gray200}`, color: C.text700 }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = C.gray50 }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
+          >
+            Tentar novamente
+          </button>
+        </div>
+      </div>
+    )
+  }
+
+  // =====================================================
+  // RENDER: Resultado
+  // =====================================================
+
+  function renderResultado(): React.ReactNode {
+    if (!consultaAtual) return null
+
+    return (
+      <div className="space-y-5">
+        {/* Card header do resultado */}
+        <div
+          className="overflow-hidden rounded-2xl border bg-white shadow-sm"
+          style={{ borderColor: C.gray200 }}
+        >
+          <div
+            className="h-1"
+            style={{ background: `linear-gradient(90deg, ${C.navy950}, ${C.navy500})` }}
+          />
+          <div className="p-5">
+            <div className="flex items-center justify-between flex-wrap gap-4">
+              <div className="flex items-center gap-3">
+                <div
+                  className="flex h-10 w-10 items-center justify-center rounded-xl"
+                  style={{ background: C.navy100, color: C.navy700 }}
+                >
+                  <Scale style={{ width: 20, height: 20 }} />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3
+                      className="text-lg font-bold"
+                      style={{ fontFamily: 'monospace', color: C.text900 }}
+                    >
+                      {consultaAtual.dados.numeroProcesso || cnjInput}
+                    </h3>
+                    {consultaAtual.cached && (
+                      <span
+                        className="inline-flex items-center gap-1 rounded-full px-2.5 py-0.5 text-xs font-medium"
+                        style={{ background: C.navy50, color: C.navy700 }}
+                      >
+                        <Database style={{ width: 12, height: 12 }} />
+                        Cache{' '}
+                        {consultaAtual.consultado_em &&
+                          `(${formatarData(consultaAtual.consultado_em)})`}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs" style={{ color: C.text400 }}>Numero do Processo</p>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={reconsultarProcesso}
+                  className="inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-medium transition-colors"
+                  style={{ border: `1px solid ${C.gray200}`, color: C.text700 }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = C.gray50 }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
+                >
+                  <RotateCw style={{ width: 14, height: 14 }} />
+                  Reanalisar
+                </button>
+                <button
+                  onClick={() => downloadDocumento('docx')}
+                  className="inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90"
+                  style={{ background: C.navy950 }}
+                >
+                  <FileText style={{ width: 14, height: 14 }} />
+                  DOCX
+                </button>
+                <button
+                  onClick={() => downloadDocumento('pdf')}
+                  className="inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90"
+                  style={{ background: C.statusError }}
+                >
+                  <FileDown style={{ width: 14, height: 14 }} />
+                  PDF
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Card do relatorio IA */}
+        <div
+          className="overflow-hidden rounded-2xl border bg-white shadow-sm"
+          style={{ borderColor: C.gray200 }}
+        >
+          <div
+            className="h-1"
+            style={{ background: `linear-gradient(135deg, ${C.navy950}, ${C.navy700})` }}
+          />
+          <div className="p-6">
+            <div className="mb-4 flex items-center gap-2">
+              <Scale style={{ width: 18, height: 18, color: C.statusSuccess }} />
+              <h3 className="text-base font-semibold" style={{ color: C.text900 }}>
+                Analise por IA
+              </h3>
+            </div>
+            {consultaAtual.relatorio ? (
+              <MarkdownContent text={consultaAtual.relatorio} />
+            ) : (
+              <p style={{ color: C.text400, fontStyle: 'italic' }}>Relatorio nao disponivel</p>
+            )}
+          </div>
+        </div>
+
+        {/* Card de feedback */}
+        <div
+          className="overflow-hidden rounded-2xl border bg-white shadow-sm"
+          style={{ borderColor: C.gray200 }}
+        >
+          <div className="p-6">
+            <h3 className="text-base font-semibold mb-1" style={{ color: C.text900 }}>
+              Avalie a Analise da IA
+            </h3>
+            <p className="text-sm mb-4" style={{ color: C.text400 }}>
+              Sua avaliacao nos ajuda a melhorar o sistema. Por favor, indique se a analise esta correta.
+            </p>
+
+            {!feedbackEnviado ? (
+              <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+                <button
+                  onClick={() => enviarFeedback('correto')}
+                  className="flex h-auto flex-col items-center gap-1.5 rounded-xl py-4 text-center font-medium transition-all"
+                  style={{
+                    background: C.statusSuccess + '15',
+                    color: C.statusSuccess,
+                    border: '2px solid transparent',
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = C.statusSuccess }}
+                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'transparent' }}
+                >
+                  <span className="text-xl">&#10003;</span>
+                  <span className="text-sm">Correta</span>
+                </button>
+                <button
+                  onClick={() => enviarFeedback('parcial')}
+                  className="flex h-auto flex-col items-center gap-1.5 rounded-xl py-4 text-center font-medium transition-all"
+                  style={{
+                    background: C.statusWarning + '15',
+                    color: C.statusWarning,
+                    border: '2px solid transparent',
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = C.statusWarning }}
+                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'transparent' }}
+                >
+                  <span className="text-xl">&#9680;</span>
+                  <span className="text-sm">Parcialmente</span>
+                </button>
+                <button
+                  onClick={() => enviarFeedback('incorreto')}
+                  className="flex h-auto flex-col items-center gap-1.5 rounded-xl py-4 text-center font-medium transition-all"
+                  style={{
+                    background: C.statusError + '15',
+                    color: C.statusError,
+                    border: '2px solid transparent',
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = C.statusError }}
+                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'transparent' }}
+                >
+                  <span className="text-xl">&#10007;</span>
+                  <span className="text-sm">Incorreta</span>
+                </button>
+                <button
+                  onClick={() => enviarFeedback('erro_ia')}
+                  className="flex h-auto flex-col items-center gap-1.5 rounded-xl py-4 text-center font-medium transition-all"
+                  style={{
+                    background: C.gray100,
+                    color: C.text500,
+                    border: '2px solid transparent',
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = C.gray500 }}
+                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'transparent' }}
+                >
+                  <span className="text-xl">&#9888;</span>
+                  <span className="text-sm">Erro/Nao gerou</span>
+                </button>
+              </div>
+            ) : (
+              <div className="py-4 text-center">
+                <div className="mx-auto mb-2 text-3xl" style={{ color: C.statusSuccess }}>&#10003;</div>
+                <p className="font-medium" style={{ color: C.statusSuccess }}>Obrigado pelo seu feedback!</p>
+                <p className="text-sm mt-1" style={{ color: C.text400 }}>{feedbackTipo}</p>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
+  // =====================================================
+  // RENDER PRINCIPAL
+  // =====================================================
+
+  return (
+    <div style={{ fontFamily: FONT_UI }}>
+      <BreadcrumbBar
+        title="Assistencia Judiciaria"
+        icon={<Scale style={{ width: 14, height: 14 }} />}
+        actions={renderHistoricoSheet()}
+      />
+
+      <div style={{ maxWidth: 1350, margin: '0 auto', padding: '32px 40px' }}>
+        <div className="mx-auto max-w-4xl space-y-6">
+          {/* Formulario de consulta */}
+          <div
+            className="overflow-hidden rounded-2xl border bg-white shadow-sm"
+            style={{ borderColor: C.gray200 }}
+          >
+            <div
+              className="h-1"
+              style={{ background: `linear-gradient(90deg, ${C.navy950}, ${C.navy500})` }}
+            />
+            <div className="p-6">
+              <div className="mb-5 flex items-center gap-3">
+                <div
+                  className="flex h-10 w-10 items-center justify-center rounded-xl"
+                  style={{ background: C.navy100, color: C.navy700 }}
+                >
+                  <Search style={{ width: 20, height: 20 }} />
+                </div>
+                <div>
+                  <h2 className="font-bold" style={{ color: C.text900, fontSize: 17 }}>
+                    Consultar Processo
+                  </h2>
+                </div>
+              </div>
+
+              <div className="space-y-4">
+                <div>
+                  <label
+                    className="mb-1.5 block text-sm font-medium"
+                    style={{ color: C.text500 }}
+                  >
+                    Numero CNJ
+                  </label>
+                  <input
+                    value={cnjInput}
+                    onChange={(e) => setCnjInput(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === 'Enter') consultarProcesso(cnjInput) }}
+                    placeholder="0000000-00.0000.0.00.0000"
+                    className="w-full rounded-xl px-4 py-2.5 text-sm font-mono tracking-wide transition-colors outline-none"
+                    style={{
+                      border: `1px solid ${C.gray200}`,
+                      color: C.text900,
+                      background: C.gray50,
+                    }}
+                    onFocus={(e) => {
+                      e.currentTarget.style.borderColor = C.navy500
+                      e.currentTarget.style.background = '#fff'
+                    }}
+                    onBlur={(e) => {
+                      e.currentTarget.style.borderColor = C.gray200
+                      e.currentTarget.style.background = C.gray50
+                    }}
+                  />
+                  <p className="mt-1.5 text-xs" style={{ color: C.text400 }}>
+                    Ex: 0800123-45.2024.8.12.0001
+                  </p>
+                </div>
+                <button
+                  onClick={() => consultarProcesso(cnjInput)}
+                  disabled={viewState === 'loading'}
+                  className="flex w-full items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-medium text-white shadow-sm transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-50"
+                  style={{ background: C.navy950 }}
+                >
+                  <Search style={{ width: 16, height: 16 }} />
+                  Consultar
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Estados condicionais */}
+          {viewState === 'inicial' && renderEstadoInicial()}
+          {viewState === 'loading' && renderLoading()}
+          {viewState === 'erro' && renderErro()}
+          {viewState === 'resultado' && renderResultado()}
+        </div>
       </div>
     </div>
   )
 }
 
-// Componente para renderizar markdown com sanitização DOMPurify
-function MarkdownContent({ text }: { text: string }) {
+/** Componente para renderizar markdown com sanitizacao DOMPurify */
+function MarkdownContent({ text }: { text: string }): React.ReactNode {
   const { html } = useMarkdown(text)
   return (
     <div
-      className="prose prose-sm max-w-none text-gray-700"
+      className="prose prose-sm max-w-none"
+      style={{ fontFamily: FONT_DOC, color: C.text700 }}
       dangerouslySetInnerHTML={{ __html: html }}
     />
   )

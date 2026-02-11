@@ -16,9 +16,10 @@ import {
   Trash2,
   Download,
   RotateCcw,
+  FlaskConical,
 } from 'lucide-react'
-import { PageContainer } from '@/components/layout/PageContainer'
-import { PageHeader } from '@/components/layout'
+import { BreadcrumbBar } from '@/components/layout/BreadcrumbBar'
+import { C, FONT_UI } from '@/lib/designTokens'
 
 interface Categoria {
   id: number
@@ -227,40 +228,38 @@ export function TesteCategoriasPage() {
   const pendentes = processosValidados.filter((p) => p.valido).length
 
   return (
-    <PageContainer fluid noPadding>
-      <div className="px-4 pt-4">
-        <PageHeader
-          title="Ambiente de Teste de Categorias"
-          description="Teste e valide a extracao de JSON por categoria"
-          actions={
-            <div className="flex items-center gap-2 bg-amber-50 px-4 py-2 rounded-lg border-2 border-amber-300 shrink-0">
-              <Tags className="h-4 w-4 text-amber-600" />
-              <label className="text-sm font-medium text-amber-700 whitespace-nowrap">Categoria:</label>
-              <Select value={categoriaId || '__none__'} onValueChange={(v) => setCategoriaId(v === '__none__' ? '' : v)} disabled={loadingCategorias}>
-                <SelectTrigger className="h-10 min-w-[240px] border-2 border-amber-400 bg-white font-semibold">
-                  <SelectValue placeholder="-- Selecione uma categoria --" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="__none__">-- Selecione uma categoria --</SelectItem>
-                  {categorias.map((cat) => (
-                    <SelectItem key={cat.id} value={String(cat.id)}>
-                      {cat.nome}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          }
-        />
-      </div>
+    <div style={{ fontFamily: FONT_UI }}>
+      <BreadcrumbBar
+        title="Ambiente de Teste de Categorias"
+        icon={<FlaskConical style={{ width: 14, height: 14 }} />}
+        actions={
+          <div className="flex items-center gap-2 px-4 py-2 rounded-lg shrink-0" style={{ background: C.orange50, border: `2px solid ${C.orange400}` }}>
+            <Tags className="h-4 w-4" style={{ color: C.orange600 }} />
+            <label className="text-sm font-medium whitespace-nowrap" style={{ color: C.text700 }}>Categoria:</label>
+            <Select value={categoriaId || '__none__'} onValueChange={(v) => setCategoriaId(v === '__none__' ? '' : v)} disabled={loadingCategorias}>
+              <SelectTrigger className="h-10 min-w-[240px] bg-white font-semibold" style={{ border: `2px solid ${C.orange400}` }}>
+                <SelectValue placeholder="-- Selecione uma categoria --" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="__none__">-- Selecione uma categoria --</SelectItem>
+                {categorias.map((cat) => (
+                  <SelectItem key={cat.id} value={String(cat.id)}>
+                    {cat.nome}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        }
+      />
 
       <div className="p-4">
         <div className="grid grid-cols-12 gap-4">
           <div className="col-span-12 lg:col-span-3 space-y-4">
-            <Card className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-              <div className="px-4 py-3 border-b border-gray-200 bg-gradient-to-r from-primary-50 to-blue-50">
-                <h3 className="font-semibold text-gray-700 flex items-center gap-2">
-                  <Plus className="h-4 w-4 text-primary-500" />
+            <Card className="bg-white rounded-2xl shadow-sm overflow-hidden" style={{ borderColor: C.gray200 }}>
+              <div className="px-4 py-3 border-b" style={{ borderColor: C.gray200, background: C.navy50 }}>
+                <h3 className="font-semibold flex items-center gap-2" style={{ color: C.text700 }}>
+                  <Plus className="h-4 w-4" style={{ color: C.navy600 }} />
                   Adicionar Processos
                 </h3>
               </div>
@@ -277,7 +276,8 @@ export function TesteCategoriasPage() {
                   <Button
                     onClick={adicionarProcessos}
                     disabled={loadingValidar}
-                    className="flex-1 bg-primary-600 hover:bg-primary-700 text-white"
+                    className="flex-1 text-white"
+                    style={{ background: C.navy950 }}
                   >
                     <Plus className="h-4 w-4 mr-1" />
                     {loadingValidar ? 'Adicionando...' : 'Adicionar'}
@@ -288,10 +288,10 @@ export function TesteCategoriasPage() {
                 </div>
               </div>
 
-              <div className="border-t border-gray-200">
-                <div className="px-4 py-2 bg-gray-50 flex items-center justify-between">
-                  <span className="text-sm font-medium text-gray-600 flex items-center gap-1">
-                    <AlertTriangle className="h-4 w-4 text-amber-500" />
+              <div className="border-t" style={{ borderColor: C.gray200 }}>
+                <div className="px-4 py-2 flex items-center justify-between" style={{ background: C.gray50 }}>
+                  <span className="text-sm font-medium flex items-center gap-1" style={{ color: C.text500 }}>
+                    <AlertTriangle className="h-4 w-4" style={{ color: C.statusWarning }} />
                     Pendentes ({pendentes})
                   </span>
                   <Button variant="default" size="sm" onClick={handleDownloadAll} disabled={loadingExportAll}>
@@ -301,10 +301,10 @@ export function TesteCategoriasPage() {
                 </div>
                 <div className="max-h-[200px] overflow-y-auto p-2 space-y-1">
                   {processosValidados.length === 0 ? (
-                    <p className="text-center text-gray-400 text-sm py-4">Selecione uma categoria</p>
+                    <p className="text-center text-sm py-4" style={{ color: C.text400 }}>Selecione uma categoria</p>
                   ) : (
                     processosValidados.map((p, idx) => (
-                      <div key={`${p.original}-${idx}`} className="text-xs px-2 py-1 rounded bg-gray-50 border border-gray-200">
+                      <div key={`${p.original}-${idx}`} className="text-xs px-2 py-1 rounded" style={{ background: C.gray50, border: `1px solid ${C.gray200}` }}>
                         {p.normalizado || p.original}
                       </div>
                     ))
@@ -313,10 +313,10 @@ export function TesteCategoriasPage() {
               </div>
             </Card>
 
-            <Card className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-              <div className="px-4 py-3 border-b border-gray-200 bg-gradient-to-r from-amber-50 to-orange-50">
-                <h3 className="font-semibold text-gray-700 flex items-center gap-2">
-                  <List className="h-4 w-4 text-amber-500" />
+            <Card className="bg-white rounded-2xl shadow-sm overflow-hidden" style={{ borderColor: C.gray200 }}>
+              <div className="px-4 py-3 border-b" style={{ borderColor: C.gray200, background: C.navy50 }}>
+                <h3 className="font-semibold flex items-center gap-2" style={{ color: C.text700 }}>
+                  <List className="h-4 w-4" style={{ color: C.navy600 }} />
                   Observacoes
                 </h3>
               </div>
@@ -333,31 +333,40 @@ export function TesteCategoriasPage() {
           </div>
 
           <div className="col-span-12 lg:col-span-9">
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden h-[calc(100vh-140px)] min-h-[560px]">
-              <div className="flex border-b border-gray-200">
+            <div className="bg-white rounded-2xl shadow-sm overflow-hidden h-[calc(100vh-140px)] min-h-[560px]" style={{ border: `1px solid ${C.gray200}` }}>
+              <div className="flex border-b" style={{ borderColor: C.gray200 }}>
                 <button
                   onClick={() => setActiveTab('resultados')}
-                  className={`flex-1 px-6 py-3 text-sm font-medium flex items-center justify-center gap-2 ${
-                    activeTab === 'resultados' ? 'border-b-[3px] border-primary-600 text-primary-600 bg-primary-50' : 'text-gray-500'
-                  }`}
+                  className="flex-1 px-6 py-3 text-sm font-medium flex items-center justify-center gap-2"
+                  style={{
+                    borderBottom: activeTab === 'resultados' ? `3px solid ${C.navy700}` : '3px solid transparent',
+                    color: activeTab === 'resultados' ? C.navy700 : C.text500,
+                    background: activeTab === 'resultados' ? C.navy50 : 'transparent',
+                  }}
                 >
                   <List className="h-4 w-4" />
                   Resultados ({resultados.length})
                 </button>
                 <button
                   onClick={() => setActiveTab('visualizacao')}
-                  className={`flex-1 px-6 py-3 text-sm font-medium flex items-center justify-center gap-2 ${
-                    activeTab === 'visualizacao' ? 'border-b-[3px] border-primary-600 text-primary-600 bg-primary-50' : 'text-gray-500'
-                  }`}
+                  className="flex-1 px-6 py-3 text-sm font-medium flex items-center justify-center gap-2"
+                  style={{
+                    borderBottom: activeTab === 'visualizacao' ? `3px solid ${C.navy700}` : '3px solid transparent',
+                    color: activeTab === 'visualizacao' ? C.navy700 : C.text500,
+                    background: activeTab === 'visualizacao' ? C.navy50 : 'transparent',
+                  }}
                 >
                   <Eye className="h-4 w-4" />
                   Visualizacao
                 </button>
                 <button
                   onClick={() => setActiveTab('progresso')}
-                  className={`flex-1 px-6 py-3 text-sm font-medium flex items-center justify-center gap-2 ${
-                    activeTab === 'progresso' ? 'border-b-[3px] border-primary-600 text-primary-600 bg-primary-50' : 'text-gray-500'
-                  }`}
+                  className="flex-1 px-6 py-3 text-sm font-medium flex items-center justify-center gap-2"
+                  style={{
+                    borderBottom: activeTab === 'progresso' ? `3px solid ${C.navy700}` : '3px solid transparent',
+                    color: activeTab === 'progresso' ? C.navy700 : C.text500,
+                    background: activeTab === 'progresso' ? C.navy50 : 'transparent',
+                  }}
                 >
                   <List className="h-4 w-4" />
                   Progresso
@@ -366,9 +375,9 @@ export function TesteCategoriasPage() {
 
               {activeTab === 'resultados' && (
                 <div className="h-full overflow-hidden flex flex-col">
-                  <div className="px-4 py-3 border-b border-gray-200 bg-gray-50 flex items-center gap-4 flex-wrap">
+                  <div className="px-4 py-3 border-b flex items-center gap-4 flex-wrap" style={{ borderColor: C.gray200, background: C.gray50 }}>
                     <div className="flex items-center gap-2">
-                      <label className="text-sm text-gray-600">Status:</label>
+                      <label className="text-sm" style={{ color: C.text500 }}>Status:</label>
                       <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as StatusFilter)}>
                         <SelectTrigger className="h-9 w-[140px]">
                           <SelectValue />
@@ -406,26 +415,26 @@ export function TesteCategoriasPage() {
 
                   <div className="flex-1 overflow-y-auto p-4">
                     {!categoriaId ? (
-                      <div className="h-full flex items-center justify-center text-gray-400">
+                      <div className="h-full flex items-center justify-center" style={{ color: C.text400 }}>
                         <div className="text-center">
-                          <AlertTriangle className="h-14 w-14 mx-auto mb-3 text-amber-500" />
-                          <p className="text-2xl text-amber-500">Selecione uma categoria</p>
+                          <AlertTriangle className="h-14 w-14 mx-auto mb-3" style={{ color: C.statusWarning }} />
+                          <p className="text-2xl" style={{ color: C.statusWarning }}>Selecione uma categoria</p>
                           <p className="text-sm mt-1">Os resultados sao exibidos por categoria</p>
                         </div>
                       </div>
                     ) : filteredResults.length === 0 ? (
-                      <div className="h-full flex items-center justify-center text-gray-400">
+                      <div className="h-full flex items-center justify-center" style={{ color: C.text400 }}>
                         <p className="text-xl">Nenhum resultado ainda. Selecione uma categoria e classifique os processos.</p>
                       </div>
                     ) : (
                       <div className="space-y-3">
                         {filteredResults.map((res, idx) => (
-                          <Card key={`${res.processo}-${idx}`} className="p-4 border border-gray-200">
+                          <Card key={`${res.processo}-${idx}`} className="p-4 rounded-2xl" style={{ borderColor: C.gray200 }}>
                             <div className="flex items-center justify-between mb-2">
-                              <h3 className="font-mono text-sm font-semibold">{res.processo}</h3>
+                              <h3 className="font-mono text-sm font-semibold" style={{ color: C.text900 }}>{res.processo}</h3>
                               <Badge variant={res.status === 'ok' ? 'success' : 'destructive'}>{res.status}</Badge>
                             </div>
-                            <p className="text-xs text-gray-500">Modelo: {res.modelo_usado} | Tokens: {res.tokens_usados}</p>
+                            <p className="text-xs" style={{ color: C.text500 }}>Modelo: {res.modelo_usado} | Tokens: {res.tokens_usados}</p>
                           </Card>
                         ))}
                       </div>
@@ -435,7 +444,7 @@ export function TesteCategoriasPage() {
               )}
 
               {activeTab === 'visualizacao' && (
-                <div className="h-full flex items-center justify-center text-gray-400">
+                <div className="h-full flex items-center justify-center" style={{ color: C.text400 }}>
                   <div className="text-center">
                     <Eye className="h-14 w-14 mx-auto mb-3" />
                     <p className="text-lg">Selecione um item na aba Resultados</p>
@@ -446,17 +455,17 @@ export function TesteCategoriasPage() {
               {activeTab === 'progresso' && (
                 <div className="h-full overflow-y-auto p-6">
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <Card className="p-4 text-center">
-                      <p className="text-sm text-gray-500">Total</p>
-                      <p className="text-3xl font-bold text-gray-800">{progressStats.total}</p>
+                    <Card className="p-4 text-center rounded-2xl" style={{ borderColor: C.gray200 }}>
+                      <p className="text-sm" style={{ color: C.text500 }}>Total</p>
+                      <p className="text-3xl font-bold" style={{ color: C.text900 }}>{progressStats.total}</p>
                     </Card>
-                    <Card className="p-4 text-center">
-                      <p className="text-sm text-gray-500">Sucesso</p>
-                      <p className="text-3xl font-bold text-green-600">{progressStats.ok}</p>
+                    <Card className="p-4 text-center rounded-2xl" style={{ borderColor: C.gray200 }}>
+                      <p className="text-sm" style={{ color: C.text500 }}>Sucesso</p>
+                      <p className="text-3xl font-bold" style={{ color: C.statusSuccess }}>{progressStats.ok}</p>
                     </Card>
-                    <Card className="p-4 text-center">
-                      <p className="text-sm text-gray-500">Erros</p>
-                      <p className="text-3xl font-bold text-red-600">{progressStats.erros}</p>
+                    <Card className="p-4 text-center rounded-2xl" style={{ borderColor: C.gray200 }}>
+                      <p className="text-sm" style={{ color: C.text500 }}>Erros</p>
+                      <p className="text-3xl font-bold" style={{ color: C.statusError }}>{progressStats.erros}</p>
                     </Card>
                   </div>
                 </div>
@@ -465,6 +474,6 @@ export function TesteCategoriasPage() {
           </div>
         </div>
       </div>
-    </PageContainer>
+    </div>
   )
 }

@@ -10,7 +10,9 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { useToast } from '@/hooks/use-toast'
-import { PageContainer, PageHeader, AdminSubNav } from '@/components/layout'
+import { BreadcrumbBar } from '@/components/layout/BreadcrumbBar'
+import { AdminSubNav } from '@/components/layout'
+import { C, FONT_UI } from '@/lib/designTokens'
 import { RotateCcw, Plus, FileEdit, ChevronDown, ChevronRight } from 'lucide-react'
 
 interface Prompt {
@@ -343,21 +345,21 @@ export function PromptsPage() {
   }, [filteredPrompts])
 
   return (
-    <PageContainer wide className="space-y-6">
-      <PageHeader
+    <div style={{ fontFamily: FONT_UI }}>
+      <BreadcrumbBar
         title="Gerenciamento de Prompts e IA"
-        description="Configure modelos de IA e gerencie prompts dos sistemas"
-        icon={<FileEdit className="h-5 w-5" />}
-        backTo="/dashboard"
+        icon={<FileEdit style={{ width: 14, height: 14 }} />}
       />
 
+      <div style={{ maxWidth: 1350, margin: '0 auto', padding: '32px 40px' }} className="space-y-6">
       <AdminSubNav />
 
       {/* Seção 1: Configurações de IA — color-coded */}
-      <Card>
+      <Card className="rounded-2xl" style={{ border: `1px solid ${C.gray200}` }}>
+        <div style={{ height: 4, background: `linear-gradient(135deg, ${C.navy950}, ${C.navy700})`, borderRadius: '16px 16px 0 0' }} />
         <CardHeader>
-          <CardTitle>Configurações de IA</CardTitle>
-          <CardDescription>Configure modelos e parâmetros de IA por sistema</CardDescription>
+          <CardTitle style={{ color: C.text900 }}>Configurações de IA</CardTitle>
+          <CardDescription style={{ color: C.text500 }}>Configure modelos e parâmetros de IA por sistema</CardDescription>
         </CardHeader>
         <CardContent>
           {isLoadingConfigs ? (
@@ -392,7 +394,7 @@ export function PromptsPage() {
                               <div className="grid gap-3">
                                 {configs.map(config => (
                                   <div key={`${config.sistema}-${config.chave}`} className="grid gap-1.5">
-                                    <Label htmlFor={`${config.sistema}-${config.chave}`} className="text-xs font-medium text-gray-600">
+                                    <Label htmlFor={`${config.sistema}-${config.chave}`} className="text-xs font-medium" style={{ color: C.text500 }}>
                                       {config.chave}
                                     </Label>
                                     <Input
@@ -411,6 +413,7 @@ export function PromptsPage() {
                         <Button
                           onClick={() => saveConfigSistema(sistema.value)}
                           disabled={isSavingConfig === sistema.value}
+                          style={{ background: C.navy950, color: 'white' }}
                         >
                           {isSavingConfig === sistema.value ? 'Salvando...' : 'Salvar'}
                         </Button>
@@ -429,10 +432,11 @@ export function PromptsPage() {
       </Card>
 
       {/* Seção 2: Prompts — agrupados por tipo */}
-      <Card>
+      <Card className="rounded-2xl" style={{ border: `1px solid ${C.gray200}` }}>
+        <div style={{ height: 4, background: `linear-gradient(135deg, ${C.navy950}, ${C.navy700})`, borderRadius: '16px 16px 0 0' }} />
         <CardHeader>
-          <CardTitle>Prompts</CardTitle>
-          <CardDescription>Gerencie prompts utilizados pelos sistemas de IA</CardDescription>
+          <CardTitle style={{ color: C.text900 }}>Prompts</CardTitle>
+          <CardDescription style={{ color: C.text500 }}>Gerencie prompts utilizados pelos sistemas de IA</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           {/* Filtro por sistema */}
@@ -474,7 +478,7 @@ export function PromptsPage() {
             <div className="space-y-6">
               {promptsByType.map(({ tipo, label, prompts: groupPrompts }) => (
                 <div key={tipo}>
-                  <h3 className="text-sm font-semibold text-gray-500 uppercase tracking-wider mb-3">
+                  <h3 className="text-sm font-semibold uppercase tracking-wider mb-3" style={{ color: C.text500 }}>
                     {label} ({groupPrompts.length})
                   </h3>
                   <div className="grid gap-3">
@@ -483,13 +487,14 @@ export function PromptsPage() {
                       const isExpanded = expandedPrompts.has(prompt.id)
 
                       return (
-                        <Card key={prompt.id} className="shadow-sm">
+                        <Card key={prompt.id} className="shadow-sm rounded-2xl" style={{ border: `1px solid ${C.gray200}` }}>
                           <CardHeader className="py-3 px-4">
                             <div className="flex items-start justify-between">
                               <div className="flex items-center gap-2 min-w-0">
                                 <button
                                   onClick={() => togglePromptExpanded(prompt.id)}
-                                  className="text-gray-400 hover:text-gray-600 flex-shrink-0"
+                                  className="flex-shrink-0"
+                                  style={{ color: C.text400 }}
                                 >
                                   {isExpanded
                                     ? <ChevronDown className="h-4 w-4" />
@@ -513,8 +518,8 @@ export function PromptsPage() {
 
                           {/* Preview colapsável */}
                           <CardContent className="py-0 px-4 pb-3">
-                            <div className="bg-muted/60 p-3 rounded-md">
-                              <p className="text-xs font-mono whitespace-pre-wrap text-gray-600">
+                            <div className="p-3 rounded-md" style={{ background: C.gray50 }}>
+                              <p className="text-xs font-mono whitespace-pre-wrap" style={{ color: C.text500 }}>
                                 {isExpanded
                                   ? prompt.conteudo
                                   : prompt.conteudo.length > 400
@@ -522,7 +527,7 @@ export function PromptsPage() {
                                     : prompt.conteudo}
                               </p>
                             </div>
-                            <div className="flex items-center justify-between text-xs text-muted-foreground mt-2">
+                            <div className="flex items-center justify-between text-xs mt-2" style={{ color: C.text400 }}>
                               <div>
                                 Atualizado em {formatDate(prompt.updated_at)}
                                 {prompt.updated_by && ` por ${prompt.updated_by}`}
@@ -603,7 +608,7 @@ export function PromptsPage() {
           )}
           <DialogFooter>
             <Button variant="outline" onClick={closeEditDialog} disabled={isSavingPrompt}>Cancelar</Button>
-            <Button onClick={savePrompt} disabled={isSavingPrompt}>
+            <Button onClick={savePrompt} disabled={isSavingPrompt} style={{ background: C.navy950, color: 'white' }}>
               {isSavingPrompt ? 'Salvando...' : 'Salvar'}
             </Button>
           </DialogFooter>
@@ -629,12 +634,14 @@ export function PromptsPage() {
             <Button
               onClick={() => { if (restoreConfirmPromptId !== null) restoreDefaultPrompt(restoreConfirmPromptId) }}
               disabled={isRestoringDefault}
+              style={{ background: C.navy950, color: 'white' }}
             >
               {isRestoringDefault ? 'Restaurando...' : 'Restaurar Padrão'}
             </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </PageContainer>
+    </div>
+    </div>
   )
 }

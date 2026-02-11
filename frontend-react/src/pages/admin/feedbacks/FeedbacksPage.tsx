@@ -29,8 +29,8 @@ import {
   Clock3,
   ChartNoAxesColumn,
 } from 'lucide-react'
-import { PageContainer } from '@/components/layout/PageContainer'
-import { PageHeader } from '@/components/layout'
+import { BreadcrumbBar } from '@/components/layout/BreadcrumbBar'
+import { C, FONT_UI } from '@/lib/designTokens'
 
 interface DashboardData {
   total_consultas: number
@@ -177,27 +177,28 @@ export function FeedbacksPage() {
   const filtroInfo = ano ? `Filtro: ${ano}` : 'Filtro: todos'
 
   return (
-    <PageContainer wide>
-      <PageHeader
+    <div style={{ fontFamily: FONT_UI }}>
+      <BreadcrumbBar
         title="Dashboard de Feedbacks"
-        description="Avaliações das análises de IA"
+        icon={<MessageSquare style={{ width: 14, height: 14 }} />}
         actions={
           <Button
             onClick={exportarDados}
             disabled={exportando}
-            className="bg-green-600 hover:bg-green-700 text-white"
+            className="text-white"
+            style={{ background: C.statusSuccess }}
           >
             <Download className="h-4 w-4 mr-2" />
             {exportando ? 'Exportando...' : 'Exportar'}
           </Button>
         }
       />
-
+      <div style={{ maxWidth: 1350, margin: '0 auto', padding: '32px 40px' }}>
       <div className="space-y-6">
-        <div className="bg-white rounded-xl shadow-sm p-4 border border-gray-200">
+        <div className="bg-white rounded-2xl shadow-sm p-4 border" style={{ borderColor: C.gray200 }}>
           <div className="flex flex-wrap items-center gap-4">
             <div className="flex items-center gap-2">
-              <label className="text-sm font-medium text-gray-700">Período:</label>
+              <label className="text-sm font-medium" style={{ color: C.text700 }}>Período:</label>
               <Select value={mes || '__all_months__'} onValueChange={(v) => setMes(v === '__all_months__' ? '' : v)}>
                 <SelectTrigger className="w-[170px] h-10">
                   <SelectValue />
@@ -225,7 +226,7 @@ export function FeedbacksPage() {
             </div>
 
             <div className="flex items-center gap-2">
-              <label className="text-sm font-medium text-gray-700">Sistema:</label>
+              <label className="text-sm font-medium" style={{ color: C.text700 }}>Sistema:</label>
               <Select value={sistema || '__all_systems__'} onValueChange={(v) => setSistema(v === '__all_systems__' ? '' : v)}>
                 <SelectTrigger className="w-[220px] h-10">
                   <SelectValue />
@@ -248,63 +249,63 @@ export function FeedbacksPage() {
               Limpar filtros
             </button>
 
-            <span className="text-xs text-gray-500 ml-auto">{filtroInfo}</span>
+            <span className="text-xs ml-auto" style={{ color: C.text500 }}>{filtroInfo}</span>
           </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
+          <div className="bg-white rounded-2xl shadow-sm p-6 border" style={{ borderColor: C.gray200 }}>
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-500">Total de Consultas</p>
-                <p className="text-4xl leading-none mt-1 font-bold text-gray-900">{dashboard?.total_consultas ?? 0}</p>
+                <p className="text-sm" style={{ color: C.text500 }}>Total de Consultas</p>
+                <p className="text-4xl leading-none mt-1 font-bold" style={{ color: C.text900 }}>{dashboard?.total_consultas ?? 0}</p>
               </div>
-              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
-                <Search className="h-6 w-6 text-blue-600" />
+              <div className="w-12 h-12 rounded-lg flex items-center justify-center" style={{ background: C.navy100 }}>
+                <Search className="h-6 w-6" style={{ color: C.navy600 }} />
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
+          <div className="bg-white rounded-2xl shadow-sm p-6 border" style={{ borderColor: C.gray200 }}>
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-500">Feedbacks Recebidos</p>
-                <p className="text-4xl leading-none mt-1 font-bold text-gray-900">{dashboard?.total_feedbacks ?? 0}</p>
+                <p className="text-sm" style={{ color: C.text500 }}>Feedbacks Recebidos</p>
+                <p className="text-4xl leading-none mt-1 font-bold" style={{ color: C.text900 }}>{dashboard?.total_feedbacks ?? 0}</p>
               </div>
-              <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
-                <MessageSquare className="h-6 w-6 text-purple-600" />
+              <div className="w-12 h-12 rounded-lg flex items-center justify-center" style={{ background: C.navy100 }}>
+                <MessageSquare className="h-6 w-6" style={{ color: C.navy600 }} />
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
+          <div className="bg-white rounded-2xl shadow-sm p-6 border" style={{ borderColor: C.gray200 }}>
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-500">Taxa de Acerto</p>
-                <p className="text-4xl leading-none mt-1 font-bold text-green-600">{(dashboard?.taxa_acerto ?? 0).toFixed(0)}%</p>
+                <p className="text-sm" style={{ color: C.text500 }}>Taxa de Acerto</p>
+                <p className="text-4xl leading-none mt-1 font-bold" style={{ color: C.statusSuccess }}>{(dashboard?.taxa_acerto ?? 0).toFixed(0)}%</p>
               </div>
-              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
-                <CheckCircle2 className="h-6 w-6 text-green-600" />
+              <div className="w-12 h-12 rounded-lg flex items-center justify-center" style={{ background: '#d1fae5' }}>
+                <CheckCircle2 className="h-6 w-6" style={{ color: C.statusSuccess }} />
               </div>
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
+          <div className="bg-white rounded-2xl shadow-sm p-6 border" style={{ borderColor: C.gray200 }}>
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm text-gray-500">Sem Avaliação</p>
-                <p className="text-4xl leading-none mt-1 font-bold text-orange-600">{dashboard?.consultas_sem_feedback ?? 0}</p>
+                <p className="text-sm" style={{ color: C.text500 }}>Sem Avaliação</p>
+                <p className="text-4xl leading-none mt-1 font-bold" style={{ color: C.orange600 }}>{dashboard?.consultas_sem_feedback ?? 0}</p>
               </div>
-              <div className="w-12 h-12 bg-orange-100 rounded-lg flex items-center justify-center">
-                <Clock3 className="h-6 w-6 text-orange-600" />
+              <div className="w-12 h-12 rounded-lg flex items-center justify-center" style={{ background: C.orange100 }}>
+                <Clock3 className="h-6 w-6" style={{ color: C.orange600 }} />
               </div>
             </div>
           </div>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
-            <h3 className="text-3 font-semibold text-gray-800 mb-4">Distribuição de Avaliações</h3>
+          <div className="bg-white rounded-2xl shadow-sm p-6 border" style={{ borderColor: C.gray200 }}>
+            <h3 className="text-3 font-semibold mb-4" style={{ color: C.text900 }}>Distribuição de Avaliações</h3>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -317,7 +318,7 @@ export function FeedbacksPage() {
                 </PieChart>
               </ResponsiveContainer>
             </div>
-            <div className="mt-2 flex flex-wrap items-center gap-4 text-xs text-gray-600">
+            <div className="mt-2 flex flex-wrap items-center gap-4 text-xs" style={{ color: C.text500 }}>
               <div className="flex items-center gap-1"><span className="h-2.5 w-10 bg-[#22c55e]" />Corretas</div>
               <div className="flex items-center gap-1"><span className="h-2.5 w-10 bg-[#eab308]" />Parciais</div>
               <div className="flex items-center gap-1"><span className="h-2.5 w-10 bg-[#ef4444]" />Incorretas</div>
@@ -325,8 +326,8 @@ export function FeedbacksPage() {
             </div>
           </div>
 
-          <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
-            <h3 className="text-3 font-semibold text-gray-800 mb-4">Feedbacks do Período</h3>
+          <div className="bg-white rounded-2xl shadow-sm p-6 border" style={{ borderColor: C.gray200 }}>
+            <h3 className="text-3 font-semibold mb-4" style={{ color: C.text900 }}>Feedbacks do Período</h3>
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={lineData}>
@@ -341,15 +342,15 @@ export function FeedbacksPage() {
           </div>
         </div>
 
-        <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-200">
+        <div className="bg-white rounded-2xl shadow-sm p-6 border" style={{ borderColor: C.gray200 }}>
           <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-            <h3 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-              <ChartNoAxesColumn className="h-5 w-5 text-blue-500" />
+            <h3 className="text-lg font-semibold flex items-center gap-2" style={{ color: C.text900 }}>
+              <ChartNoAxesColumn className="h-5 w-5" style={{ color: C.navy500 }} />
               Evolução da Taxa de Acerto por Sistema
             </h3>
             <div className="flex flex-wrap items-center gap-3">
               <div className="flex items-center gap-2">
-                <label className="text-xs text-gray-500">Sistema:</label>
+                <label className="text-xs" style={{ color: C.text500 }}>Sistema:</label>
                 <Select value="__all_systems__" onValueChange={() => undefined}>
                   <SelectTrigger className="h-8 w-[150px] text-xs"><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -358,7 +359,7 @@ export function FeedbacksPage() {
                 </Select>
               </div>
               <div className="flex items-center gap-2">
-                <label className="text-xs text-gray-500">Período:</label>
+                <label className="text-xs" style={{ color: C.text500 }}>Período:</label>
                 <Select value="12" onValueChange={() => undefined}>
                   <SelectTrigger className="h-8 w-[150px] text-xs"><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -369,7 +370,7 @@ export function FeedbacksPage() {
                 </Select>
               </div>
               <div className="flex items-center gap-2">
-                <label className="text-xs text-gray-500">Métrica:</label>
+                <label className="text-xs" style={{ color: C.text500 }}>Métrica:</label>
                 <Select value="taxa" onValueChange={() => undefined}>
                   <SelectTrigger className="h-8 w-[160px] text-xs"><SelectValue /></SelectTrigger>
                   <SelectContent>
@@ -381,11 +382,12 @@ export function FeedbacksPage() {
             </div>
           </div>
 
-          <div className="h-28 flex items-center justify-center text-gray-500 text-lg">
+          <div className="h-28 flex items-center justify-center text-lg" style={{ color: C.text500 }}>
             {loading ? 'Carregando dados...' : 'Nenhum dado de evolução disponível no período'}
           </div>
         </div>
       </div>
-    </PageContainer>
+      </div>
+    </div>
   )
 }

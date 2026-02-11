@@ -10,8 +10,9 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { useToast } from '@/hooks/use-toast'
 import { useMarkdown } from '@/hooks/useMarkdown'
-import { PageContainer, PageHeader } from '@/components/layout'
-import { History } from 'lucide-react'
+import { BreadcrumbBar } from '@/components/layout/BreadcrumbBar'
+import { C, FONT_UI } from '@/lib/designTokens'
+import { Building2 } from 'lucide-react'
 
 // Interfaces
 interface GeracaoAdmin {
@@ -328,27 +329,26 @@ export function HistoricoPrestacaoContasPage() {
   ]
 
   return (
-    <PageContainer wide>
-      <PageHeader
-        title="Histórico - Prestação de Contas"
-        description="Visualize todas as prestações de contas geradas"
-        icon={<History className="h-5 w-5" />}
-        backTo="/dashboard"
+    <div style={{ fontFamily: FONT_UI }}>
+      <BreadcrumbBar
+        title="Historico - Prestacao de Contas"
+        icon={<Building2 style={{ width: 14, height: 14 }} />}
       />
-
-      {loading ? (
-        <div className="space-y-3">
-          <Skeleton className="h-12 w-full" />
-          <Skeleton className="h-64 w-full" />
-        </div>
-      ) : (
-        <DataTable
-          columns={columns}
-          data={geracoes}
-          isLoading={loading}
-          onRowClick={(row) => loadDetalhes(row.id)}
-        />
-      )}
+      <div style={{ maxWidth: 1350, margin: '0 auto', padding: '32px 40px' }}>
+        {loading ? (
+          <div className="space-y-3">
+            <Skeleton className="h-12 w-full" />
+            <Skeleton className="h-64 w-full" />
+          </div>
+        ) : (
+          <DataTable
+            columns={columns}
+            data={geracoes}
+            isLoading={loading}
+            onRowClick={(row) => loadDetalhes(row.id)}
+          />
+        )}
+      </div>
 
       {/* Dialog de Detalhes */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -636,6 +636,6 @@ export function HistoricoPrestacaoContasPage() {
           </Dialog>
         </DialogContent>
       </Dialog>
-    </PageContainer>
+    </div>
   )
 }

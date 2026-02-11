@@ -28,9 +28,8 @@ import {
   Info,
   X,
 } from 'lucide-react'
-import { SystemTopbar } from '@/components/layout/SystemTopbar'
-import { LayoutGrid } from 'lucide-react'
-import { Link } from '@tanstack/react-router'
+import { BreadcrumbBar } from '@/components/layout/BreadcrumbBar'
+import { C, FONT_UI } from '@/lib/designTokens'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -63,7 +62,6 @@ import {
   DialogFooter,
   DialogHeader,
   DialogTitle,
-  DialogTrigger,
 } from '@/components/ui/dialog'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import {
@@ -894,33 +892,32 @@ export function BertTrainingPage() {
   // ========================================================================
 
   return (
-    <div className="flex flex-col h-screen bg-gray-50">
-      <SystemTopbar
+    <div style={{ fontFamily: FONT_UI }}>
+      <BreadcrumbBar
         title="Treinamento de IA"
-        subtitle="Ensine o computador a classificar documentos"
+        icon={<Brain style={{ width: 14, height: 14 }} />}
         actions={
-          <>
-            <button
-              className="p-2 text-gray-400 hover:text-gray-600 transition-colors rounded-md hover:bg-gray-50"
-              onClick={() => setShowHelpDialog(true)}
-              title="Ajuda"
-              data-testid="btn-ajuda-onboarding"
-            >
-              <HelpCircle className="h-5 w-5" />
-            </button>
-            <Link
-              to="/dashboard"
-              className="p-2 text-gray-400 hover:text-gray-600 transition-colors rounded-md hover:bg-gray-50"
-              title="Dashboard"
-            >
-              <LayoutGrid className="h-5 w-5" />
-            </Link>
-          </>
+          <button
+            className="flex h-7 w-7 items-center justify-center rounded-lg transition-colors"
+            style={{ color: C.text400 }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.background = C.gray100
+              e.currentTarget.style.color = C.text700
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.background = 'transparent'
+              e.currentTarget.style.color = C.text400
+            }}
+            onClick={() => setShowHelpDialog(true)}
+            title="Ajuda"
+            data-testid="btn-ajuda-onboarding"
+          >
+            <HelpCircle style={{ width: 16, height: 16 }} />
+          </button>
         }
       />
 
-      <main className="flex-1 overflow-y-auto">
-        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-0">
+      <div style={{ maxWidth: 1350, margin: '0 auto', padding: '32px 40px' }}>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
           <TabsList className="grid w-full grid-cols-4">
@@ -981,7 +978,8 @@ export function BertTrainingPage() {
 
             <div className="grid gap-6 md:grid-cols-2">
               {/* Selecao de dataset com botao de upload (12.26) */}
-              <Card>
+              <Card className="overflow-hidden">
+                <div className="h-1" style={{ background: `linear-gradient(90deg, ${C.navy950}, ${C.navy500})` }} />
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <div>
@@ -1040,7 +1038,7 @@ export function BertTrainingPage() {
                         const ds = datasets.find((d) => d.id === Number(selectedDataset))
                         if (!ds) return null
                         return (
-                          <div className="rounded-lg border bg-gray-50 p-3 text-sm">
+                          <div className="rounded-lg border p-3 text-sm" style={{ background: C.gray50, borderColor: C.gray200 }}>
                             <p><strong>Nome:</strong> {ds.nome}</p>
                             {ds.descricao && <p><strong>Descricao:</strong> {ds.descricao}</p>}
                             <p><strong>Exemplos:</strong> {ds.total_exemplos}</p>
@@ -1054,7 +1052,8 @@ export function BertTrainingPage() {
               </Card>
 
               {/* Hiperparametros */}
-              <Card>
+              <Card className="overflow-hidden">
+                <div className="h-1" style={{ background: `linear-gradient(90deg, ${C.navy950}, ${C.navy500})` }} />
                 <CardHeader>
                   <CardTitle>Hiperparametros</CardTitle>
                   <CardDescription>Configure os parametros de treinamento</CardDescription>
@@ -1142,7 +1141,8 @@ export function BertTrainingPage() {
                   <Button
                     onClick={iniciarTreinamento}
                     disabled={startingTraining || !selectedDataset}
-                    className="w-full h-12 text-base bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white"
+                    className="w-full h-12 text-base text-white"
+                    style={{ background: C.navy950 }}
                     data-testid="btn-iniciar-treinamento"
                   >
                     {startingTraining ? (
@@ -1162,7 +1162,8 @@ export function BertTrainingPage() {
             </div>
 
             {/* 12.22 - Secao de informacoes de GPU do Worker */}
-            <Card className="mt-6" data-testid="worker-gpu-info-card">
+            <Card className="mt-6 overflow-hidden" data-testid="worker-gpu-info-card">
+              <div className="h-1" style={{ background: `linear-gradient(90deg, ${C.navy950}, ${C.navy500})` }} />
               <CardHeader>
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
@@ -1183,33 +1184,33 @@ export function BertTrainingPage() {
                   </div>
                 ) : gpuInfo ? (
                   <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                    <div className="rounded-lg border p-3 text-center" data-testid="gpu-name">
-                      <p className="text-xs text-muted-foreground">GPU</p>
-                      <p className="text-sm font-semibold">{gpuInfo.gpu_name}</p>
+                    <div className="rounded-lg border p-3 text-center" style={{ borderColor: C.gray200 }} data-testid="gpu-name">
+                      <p className="text-xs" style={{ color: C.text500 }}>GPU</p>
+                      <p className="text-sm font-semibold" style={{ color: C.text900 }}>{gpuInfo.gpu_name}</p>
                     </div>
-                    <div className="rounded-lg border p-3 text-center" data-testid="gpu-memory-total">
-                      <p className="text-xs text-muted-foreground">Memoria Total</p>
-                      <p className="text-sm font-semibold">{gpuInfo.gpu_memory_total}</p>
+                    <div className="rounded-lg border p-3 text-center" style={{ borderColor: C.gray200 }} data-testid="gpu-memory-total">
+                      <p className="text-xs" style={{ color: C.text500 }}>Memoria Total</p>
+                      <p className="text-sm font-semibold" style={{ color: C.text900 }}>{gpuInfo.gpu_memory_total}</p>
                     </div>
-                    <div className="rounded-lg border p-3 text-center" data-testid="gpu-memory-used">
-                      <p className="text-xs text-muted-foreground">Memoria em Uso</p>
-                      <p className="text-sm font-semibold">{gpuInfo.gpu_memory_used}</p>
+                    <div className="rounded-lg border p-3 text-center" style={{ borderColor: C.gray200 }} data-testid="gpu-memory-used">
+                      <p className="text-xs" style={{ color: C.text500 }}>Memoria em Uso</p>
+                      <p className="text-sm font-semibold" style={{ color: C.text900 }}>{gpuInfo.gpu_memory_used}</p>
                     </div>
-                    <div className="rounded-lg border p-3 text-center" data-testid="gpu-utilization">
-                      <p className="text-xs text-muted-foreground">Utilizacao GPU</p>
-                      <p className="text-sm font-semibold">{gpuInfo.gpu_utilization}</p>
+                    <div className="rounded-lg border p-3 text-center" style={{ borderColor: C.gray200 }} data-testid="gpu-utilization">
+                      <p className="text-xs" style={{ color: C.text500 }}>Utilizacao GPU</p>
+                      <p className="text-sm font-semibold" style={{ color: C.text900 }}>{gpuInfo.gpu_utilization}</p>
                     </div>
-                    <div className="rounded-lg border p-3 text-center" data-testid="gpu-memory-free">
-                      <p className="text-xs text-muted-foreground">Memoria Livre</p>
-                      <p className="text-sm font-semibold">{gpuInfo.gpu_memory_free}</p>
+                    <div className="rounded-lg border p-3 text-center" style={{ borderColor: C.gray200 }} data-testid="gpu-memory-free">
+                      <p className="text-xs" style={{ color: C.text500 }}>Memoria Livre</p>
+                      <p className="text-sm font-semibold" style={{ color: C.text900 }}>{gpuInfo.gpu_memory_free}</p>
                     </div>
-                    <div className="rounded-lg border p-3 text-center" data-testid="gpu-cuda-version">
-                      <p className="text-xs text-muted-foreground">CUDA</p>
-                      <p className="text-sm font-semibold">{gpuInfo.cuda_version}</p>
+                    <div className="rounded-lg border p-3 text-center" style={{ borderColor: C.gray200 }} data-testid="gpu-cuda-version">
+                      <p className="text-xs" style={{ color: C.text500 }}>CUDA</p>
+                      <p className="text-sm font-semibold" style={{ color: C.text900 }}>{gpuInfo.cuda_version}</p>
                     </div>
-                    <div className="rounded-lg border p-3 text-center" data-testid="gpu-driver-version">
-                      <p className="text-xs text-muted-foreground">Driver</p>
-                      <p className="text-sm font-semibold">{gpuInfo.driver_version}</p>
+                    <div className="rounded-lg border p-3 text-center" style={{ borderColor: C.gray200 }} data-testid="gpu-driver-version">
+                      <p className="text-xs" style={{ color: C.text500 }}>Driver</p>
+                      <p className="text-sm font-semibold" style={{ color: C.text900 }}>{gpuInfo.driver_version}</p>
                     </div>
                   </div>
                 ) : (
@@ -1254,7 +1255,8 @@ export function BertTrainingPage() {
 
             <div className="grid gap-6 lg:grid-cols-3">
               {/* Lista de jobs */}
-              <Card className="lg:col-span-1">
+              <Card className="lg:col-span-1 overflow-hidden">
+                <div className="h-1" style={{ background: `linear-gradient(90deg, ${C.navy950}, ${C.navy500})` }} />
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                   <CardTitle className="text-base">Jobs de Treinamento</CardTitle>
                   <Button variant="ghost" size="icon" onClick={fetchJobs} disabled={loadingJobs} data-testid="btn-refresh-jobs">
@@ -1279,9 +1281,16 @@ export function BertTrainingPage() {
                           key={job.id}
                           onClick={() => selecionarJob(job)}
                           className={cn(
-                            'w-full rounded-lg border p-3 text-left transition-colors hover:bg-gray-50',
+                            'w-full rounded-lg border p-3 text-left transition-colors',
                             selectedJob?.id === job.id && 'border-primary bg-primary/5'
                           )}
+                          style={{ borderColor: selectedJob?.id === job.id ? undefined : C.gray200 }}
+                          onMouseEnter={(e) => {
+                            if (selectedJob?.id !== job.id) e.currentTarget.style.background = C.gray50
+                          }}
+                          onMouseLeave={(e) => {
+                            if (selectedJob?.id !== job.id) e.currentTarget.style.background = 'transparent'
+                          }}
                           data-testid={`job-item-${job.id}`}
                         >
                           <div className="flex items-center justify-between">
@@ -1297,10 +1306,10 @@ export function BertTrainingPage() {
                                 <span>Epoca {job.epoca_atual}/{job.total_epocas}</span>
                                 <span>{job.progresso}%</span>
                               </div>
-                              <div className="h-1.5 w-full rounded-full bg-gray-200">
+                              <div className="h-1.5 w-full rounded-full" style={{ background: C.gray200 }}>
                                 <div
-                                  className="h-1.5 rounded-full bg-primary transition-all"
-                                  style={{ width: `${job.progresso}%` }}
+                                  className="h-1.5 rounded-full transition-all"
+                                  style={{ width: `${job.progresso}%`, background: C.navy700 }}
                                 />
                               </div>
                             </div>
@@ -1330,7 +1339,8 @@ export function BertTrainingPage() {
               </Card>
 
               {/* Detalhes do job selecionado */}
-              <Card className="lg:col-span-2">
+              <Card className="lg:col-span-2 overflow-hidden">
+                <div className="h-1" style={{ background: `linear-gradient(90deg, ${C.navy950}, ${C.navy500})` }} />
                 <CardHeader>
                   <CardTitle>
                     {selectedJob ? `Detalhes - Job #${selectedJob.id}` : 'Detalhes do Job'}
@@ -1385,27 +1395,27 @@ export function BertTrainingPage() {
                       {/* Metricas numericas */}
                       {jobMetrics && (
                         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-                          <div className="rounded-lg border p-3 text-center">
-                            <p className="text-xs text-muted-foreground">Accuracy</p>
-                            <p className="text-lg font-bold text-green-600">
+                          <div className="rounded-lg border p-3 text-center" style={{ borderColor: C.gray200 }}>
+                            <p className="text-xs" style={{ color: C.text500 }}>Accuracy</p>
+                            <p className="text-lg font-bold" style={{ color: C.statusSuccess }}>
                               {formatarPct(jobMetrics.accuracy)}
                             </p>
                           </div>
-                          <div className="rounded-lg border p-3 text-center">
-                            <p className="text-xs text-muted-foreground">F1 Score</p>
-                            <p className="text-lg font-bold text-blue-600">
+                          <div className="rounded-lg border p-3 text-center" style={{ borderColor: C.gray200 }}>
+                            <p className="text-xs" style={{ color: C.text500 }}>F1 Score</p>
+                            <p className="text-lg font-bold" style={{ color: C.statusInfo }}>
                               {formatarPct(jobMetrics.f1_score)}
                             </p>
                           </div>
-                          <div className="rounded-lg border p-3 text-center">
-                            <p className="text-xs text-muted-foreground">Precision</p>
-                            <p className="text-lg font-bold text-purple-600">
+                          <div className="rounded-lg border p-3 text-center" style={{ borderColor: C.gray200 }}>
+                            <p className="text-xs" style={{ color: C.text500 }}>Precision</p>
+                            <p className="text-lg font-bold" style={{ color: C.navy700 }}>
                               {formatarPct(jobMetrics.precision)}
                             </p>
                           </div>
-                          <div className="rounded-lg border p-3 text-center">
-                            <p className="text-xs text-muted-foreground">Recall</p>
-                            <p className="text-lg font-bold text-orange-600">
+                          <div className="rounded-lg border p-3 text-center" style={{ borderColor: C.gray200 }}>
+                            <p className="text-xs" style={{ color: C.text500 }}>Recall</p>
+                            <p className="text-lg font-bold" style={{ color: C.orange600 }}>
                               {formatarPct(jobMetrics.recall)}
                             </p>
                           </div>
@@ -1419,7 +1429,7 @@ export function BertTrainingPage() {
                         <div className="space-y-4">
                           {/* Grafico de Loss */}
                           <div>
-                            <h4 className="mb-2 text-sm font-medium">Curva de Loss</h4>
+                            <h4 className="mb-2 text-sm font-medium" style={{ color: C.text900 }}>Curva de Loss</h4>
                             <ResponsiveContainer width="100%" height={250}>
                               <LineChart data={chartData}>
                                 <CartesianGrid strokeDasharray="3 3" />
@@ -1430,7 +1440,7 @@ export function BertTrainingPage() {
                                 <Line
                                   type="monotone"
                                   dataKey="loss"
-                                  stroke="#ef4444"
+                                  stroke={C.statusError}
                                   name="Loss (treino)"
                                   strokeWidth={2}
                                   dot={{ r: 3 }}
@@ -1439,7 +1449,7 @@ export function BertTrainingPage() {
                                   <Line
                                     type="monotone"
                                     dataKey="val_loss"
-                                    stroke="#f97316"
+                                    stroke={C.orange500}
                                     name="Loss (validacao)"
                                     strokeWidth={2}
                                     strokeDasharray="5 5"
@@ -1452,7 +1462,7 @@ export function BertTrainingPage() {
 
                           {/* Grafico de Accuracy */}
                           <div>
-                            <h4 className="mb-2 text-sm font-medium">Curva de Accuracy</h4>
+                            <h4 className="mb-2 text-sm font-medium" style={{ color: C.text900 }}>Curva de Accuracy</h4>
                             <ResponsiveContainer width="100%" height={250}>
                               <LineChart data={chartData}>
                                 <CartesianGrid strokeDasharray="3 3" />
@@ -1463,7 +1473,7 @@ export function BertTrainingPage() {
                                 <Line
                                   type="monotone"
                                   dataKey="accuracy"
-                                  stroke="#22c55e"
+                                  stroke={C.statusSuccess}
                                   name="Accuracy (treino)"
                                   strokeWidth={2}
                                   dot={{ r: 3 }}
@@ -1472,7 +1482,7 @@ export function BertTrainingPage() {
                                   <Line
                                     type="monotone"
                                     dataKey="val_accuracy"
-                                    stroke="#3b82f6"
+                                    stroke={C.statusInfo}
                                     name="Accuracy (validacao)"
                                     strokeWidth={2}
                                     strokeDasharray="5 5"
@@ -1493,7 +1503,7 @@ export function BertTrainingPage() {
                       {/* Matriz de confusao */}
                       {jobMetrics?.confusion_matrix && jobMetrics.labels && (
                         <div>
-                          <h4 className="mb-2 text-sm font-medium">Matriz de Confusao</h4>
+                          <h4 className="mb-2 text-sm font-medium" style={{ color: C.text900 }}>Matriz de Confusao</h4>
                           <div className="overflow-x-auto">
                             <Table>
                               <TableHeader>
@@ -1548,7 +1558,7 @@ export function BertTrainingPage() {
                           <div className="mb-2 flex items-center justify-between">
                             <div className="flex items-center gap-2">
                               <Terminal className="h-4 w-4 text-muted-foreground" />
-                              <h4 className="text-sm font-medium">Logs em Tempo Real</h4>
+                              <h4 className="text-sm font-medium" style={{ color: C.text900 }}>Logs em Tempo Real</h4>
                             </div>
                             <Button
                               variant="ghost"
@@ -1561,7 +1571,8 @@ export function BertTrainingPage() {
                           </div>
                           <div
                             ref={logContainerRef}
-                            className="h-64 overflow-y-auto rounded-lg border bg-gray-900 p-3 font-mono text-xs"
+                            className="h-64 overflow-y-auto rounded-lg border p-3 font-mono text-xs"
+                            style={{ background: '#111827', borderColor: C.gray200 }}
                             data-testid="logs-container"
                           >
                             {realtimeLogs.length === 0 ? (
@@ -1595,7 +1606,7 @@ export function BertTrainingPage() {
           <TabsContent value="testar">
             {/* 12.8 - Barra de acoes do teste com botao Limpar Historico */}
             <div className="mb-4 flex items-center justify-between">
-              <h3 className="text-lg font-semibold">Testes de Classificacao</h3>
+              <h3 className="text-lg font-semibold" style={{ color: C.text900 }}>Testes de Classificacao</h3>
               <div className="flex items-center gap-2">
                 {testHistory.length > 0 && (
                   <Badge variant="secondary" data-testid="badge-historico-count">
@@ -1617,7 +1628,8 @@ export function BertTrainingPage() {
 
             <div className="grid gap-6 md:grid-cols-2">
               {/* Predicao individual */}
-              <Card>
+              <Card className="overflow-hidden">
+                <div className="h-1" style={{ background: `linear-gradient(90deg, ${C.navy950}, ${C.navy500})` }} />
                 <CardHeader>
                   <CardTitle>Predicao Individual</CardTitle>
                   <CardDescription>Classifique um texto usando o modelo treinado</CardDescription>
@@ -1681,16 +1693,16 @@ export function BertTrainingPage() {
 
                   {/* Resultado da predicao */}
                   {prediction && (
-                    <div className="space-y-3 rounded-lg border bg-gray-50 p-4" data-testid="resultado-predicao">
+                    <div className="space-y-3 rounded-lg border p-4" style={{ background: C.gray50, borderColor: C.gray200 }} data-testid="resultado-predicao">
                       <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">Categoria predita:</span>
+                        <span className="text-sm font-medium" style={{ color: C.text700 }}>Categoria predita:</span>
                         <Badge variant="default" className="text-sm">
                           {prediction.categoria_predita}
                         </Badge>
                       </div>
                       <div className="flex items-center justify-between">
-                        <span className="text-sm font-medium">Confianca:</span>
-                        <span className="text-sm font-bold text-green-600">
+                        <span className="text-sm font-medium" style={{ color: C.text700 }}>Confianca:</span>
+                        <span className="text-sm font-bold" style={{ color: C.statusSuccess }}>
                           {formatarPct(prediction.confianca)}
                         </span>
                       </div>
@@ -1705,14 +1717,14 @@ export function BertTrainingPage() {
                           .slice(0, 5)
                           .map((cat) => (
                             <div key={cat.categoria} className="flex items-center gap-2">
-                              <span className="w-28 truncate text-xs">{cat.categoria}</span>
-                              <div className="h-2 flex-1 rounded-full bg-gray-200">
+                              <span className="w-28 truncate text-xs" style={{ color: C.text700 }}>{cat.categoria}</span>
+                              <div className="h-2 flex-1 rounded-full" style={{ background: C.gray200 }}>
                                 <div
-                                  className="h-2 rounded-full bg-primary"
-                                  style={{ width: `${cat.probabilidade * 100}%` }}
+                                  className="h-2 rounded-full"
+                                  style={{ width: `${cat.probabilidade * 100}%`, background: C.navy700 }}
                                 />
                               </div>
-                              <span className="w-14 text-right text-xs text-muted-foreground">
+                              <span className="w-14 text-right text-xs" style={{ color: C.text500 }}>
                                 {formatarPct(cat.probabilidade)}
                               </span>
                             </div>
@@ -1724,7 +1736,8 @@ export function BertTrainingPage() {
               </Card>
 
               {/* Predicao em lote */}
-              <Card>
+              <Card className="overflow-hidden">
+                <div className="h-1" style={{ background: `linear-gradient(90deg, ${C.navy950}, ${C.navy500})` }} />
                 <CardHeader>
                   <CardTitle>Predicao em Lote</CardTitle>
                   <CardDescription>Classifique multiplos textos de uma vez (um por linha)</CardDescription>
@@ -1797,7 +1810,8 @@ export function BertTrainingPage() {
             </div>
 
             {/* 12.7 - Classificar PDF (teste) */}
-            <Card className="mt-6" data-testid="classificar-pdf-card">
+            <Card className="mt-6 overflow-hidden" data-testid="classificar-pdf-card">
+              <div className="h-1" style={{ background: `linear-gradient(90deg, ${C.navy950}, ${C.navy500})` }} />
               <CardHeader>
                 <div className="flex items-center gap-2">
                   <FileText className="h-5 w-5 text-muted-foreground" />
@@ -1815,8 +1829,15 @@ export function BertTrainingPage() {
                   <div
                     className={cn(
                       'flex-1 cursor-pointer rounded-lg border-2 border-dashed p-6 text-center transition-colors',
-                      pdfFile ? 'border-green-300 bg-green-50' : 'border-gray-300 hover:border-primary hover:bg-gray-50'
+                      pdfFile ? 'border-green-300 bg-green-50' : 'hover:border-primary'
                     )}
+                    style={pdfFile ? undefined : { borderColor: C.gray300 }}
+                    onMouseEnter={(e) => {
+                      if (!pdfFile) e.currentTarget.style.background = C.gray50
+                    }}
+                    onMouseLeave={(e) => {
+                      if (!pdfFile) e.currentTarget.style.background = 'transparent'
+                    }}
                     onClick={() => pdfInputRef.current?.click()}
                     data-testid="pdf-upload-zone"
                   >
@@ -1852,8 +1873,8 @@ export function BertTrainingPage() {
                       </div>
                     ) : (
                       <div>
-                        <Upload className="mx-auto mb-2 h-8 w-8 text-gray-400" />
-                        <p className="text-sm text-muted-foreground">
+                        <Upload className="mx-auto mb-2 h-8 w-8" style={{ color: C.text400 }} />
+                        <p className="text-sm" style={{ color: C.text500 }}>
                           Clique para selecionar um arquivo PDF
                         </p>
                       </div>
@@ -1927,7 +1948,8 @@ export function BertTrainingPage() {
           {/* ABA 4: Comparar BERT vs LLM                                  */}
           {/* ============================================================ */}
           <TabsContent value="comparar">
-            <Card>
+            <Card className="overflow-hidden">
+              <div className="h-1" style={{ background: `linear-gradient(90deg, ${C.navy950}, ${C.navy500})` }} />
               <CardHeader>
                 <CardTitle>Comparacao BERT vs LLM</CardTitle>
                 <CardDescription>
@@ -2056,27 +2078,27 @@ export function BertTrainingPage() {
               </div>
             ) : workerStatus ? (
               <>
-                <div className="flex items-center justify-between rounded-lg border p-3">
-                  <span className="text-sm font-medium">Status</span>
+                <div className="flex items-center justify-between rounded-lg border p-3" style={{ borderColor: C.gray200 }}>
+                  <span className="text-sm font-medium" style={{ color: C.text700 }}>Status</span>
                   <Badge variant={workerStatus.connected ? 'success' : 'destructive'}>
                     {workerStatus.connected ? 'Conectado' : 'Desconectado'}
                   </Badge>
                 </div>
-                <div className="flex items-center justify-between rounded-lg border p-3">
-                  <span className="text-sm font-medium">URL</span>
-                  <span className="text-sm font-mono text-muted-foreground">{workerStatus.url}</span>
+                <div className="flex items-center justify-between rounded-lg border p-3" style={{ borderColor: C.gray200 }}>
+                  <span className="text-sm font-medium" style={{ color: C.text700 }}>URL</span>
+                  <span className="text-sm font-mono" style={{ color: C.text500 }}>{workerStatus.url}</span>
                 </div>
-                <div className="flex items-center justify-between rounded-lg border p-3">
-                  <span className="text-sm font-medium">Latencia</span>
-                  <span className="text-sm font-mono">{workerStatus.latency_ms}ms</span>
+                <div className="flex items-center justify-between rounded-lg border p-3" style={{ borderColor: C.gray200 }}>
+                  <span className="text-sm font-medium" style={{ color: C.text700 }}>Latencia</span>
+                  <span className="text-sm font-mono" style={{ color: C.text900 }}>{workerStatus.latency_ms}ms</span>
                 </div>
-                <div className="flex items-center justify-between rounded-lg border p-3">
-                  <span className="text-sm font-medium">Versao</span>
-                  <span className="text-sm font-mono">{workerStatus.version}</span>
+                <div className="flex items-center justify-between rounded-lg border p-3" style={{ borderColor: C.gray200 }}>
+                  <span className="text-sm font-medium" style={{ color: C.text700 }}>Versao</span>
+                  <span className="text-sm font-mono" style={{ color: C.text900 }}>{workerStatus.version}</span>
                 </div>
-                <div className="flex items-center justify-between rounded-lg border p-3">
-                  <span className="text-sm font-medium">Uptime</span>
-                  <span className="text-sm font-mono">{workerStatus.uptime}</span>
+                <div className="flex items-center justify-between rounded-lg border p-3" style={{ borderColor: C.gray200 }}>
+                  <span className="text-sm font-medium" style={{ color: C.text700 }}>Uptime</span>
+                  <span className="text-sm font-mono" style={{ color: C.text900 }}>{workerStatus.uptime}</span>
                 </div>
                 {workerStatus.error && (
                   <Alert variant="destructive">
@@ -2116,7 +2138,7 @@ export function BertTrainingPage() {
             <div className="space-y-6">
               {/* Visao geral */}
               <div>
-                <h3 className="mb-2 text-sm font-semibold">O que e este sistema?</h3>
+                <h3 className="mb-2 text-sm font-semibold" style={{ color: C.text900 }}>O que e este sistema?</h3>
                 <p className="text-sm text-muted-foreground">
                   O sistema de Treinamento BERT permite treinar modelos de classificacao de documentos
                   juridicos usando aprendizado de maquina. Voce pode criar datasets, treinar modelos
@@ -2126,42 +2148,42 @@ export function BertTrainingPage() {
 
               {/* Fluxo de trabalho */}
               <div>
-                <h3 className="mb-2 text-sm font-semibold">Fluxo de Trabalho</h3>
+                <h3 className="mb-2 text-sm font-semibold" style={{ color: C.text900 }}>Fluxo de Trabalho</h3>
                 <div className="space-y-3">
-                  <div className="flex items-start gap-3 rounded-lg border p-3">
+                  <div className="flex items-start gap-3 rounded-lg border p-3" style={{ borderColor: C.gray200 }}>
                     <Badge className="mt-0.5 shrink-0">1</Badge>
                     <div>
-                      <p className="text-sm font-medium">Preparar Dataset</p>
+                      <p className="text-sm font-medium" style={{ color: C.text900 }}>Preparar Dataset</p>
                       <p className="text-xs text-muted-foreground">
                         Faca upload de um CSV com colunas 'texto' e 'categoria'. O sistema validara
                         automaticamente o formato e a distribuicao das categorias.
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-start gap-3 rounded-lg border p-3">
+                  <div className="flex items-start gap-3 rounded-lg border p-3" style={{ borderColor: C.gray200 }}>
                     <Badge className="mt-0.5 shrink-0">2</Badge>
                     <div>
-                      <p className="text-sm font-medium">Configurar e Iniciar Treinamento</p>
+                      <p className="text-sm font-medium" style={{ color: C.text900 }}>Configurar e Iniciar Treinamento</p>
                       <p className="text-xs text-muted-foreground">
                         Escolha um preset (Rapido, Padrao ou Completo) ou ajuste os hiperparametros
                         manualmente. Selecione o dataset e inicie o treinamento.
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-start gap-3 rounded-lg border p-3">
+                  <div className="flex items-start gap-3 rounded-lg border p-3" style={{ borderColor: C.gray200 }}>
                     <Badge className="mt-0.5 shrink-0">3</Badge>
                     <div>
-                      <p className="text-sm font-medium">Monitorar</p>
+                      <p className="text-sm font-medium" style={{ color: C.text900 }}>Monitorar</p>
                       <p className="text-xs text-muted-foreground">
                         Acompanhe o progresso na aba Monitorar. Veja metricas em tempo real,
                         graficos de loss/accuracy e logs do treinamento.
                       </p>
                     </div>
                   </div>
-                  <div className="flex items-start gap-3 rounded-lg border p-3">
+                  <div className="flex items-start gap-3 rounded-lg border p-3" style={{ borderColor: C.gray200 }}>
                     <Badge className="mt-0.5 shrink-0">4</Badge>
                     <div>
-                      <p className="text-sm font-medium">Testar e Comparar</p>
+                      <p className="text-sm font-medium" style={{ color: C.text900 }}>Testar e Comparar</p>
                       <p className="text-xs text-muted-foreground">
                         Teste o modelo treinado com textos individuais, em lote ou com PDFs.
                         Compare os resultados com a LLM para validar a qualidade.
@@ -2173,7 +2195,7 @@ export function BertTrainingPage() {
 
               {/* Dicas */}
               <div>
-                <h3 className="mb-2 text-sm font-semibold">Dicas Importantes</h3>
+                <h3 className="mb-2 text-sm font-semibold" style={{ color: C.text900 }}>Dicas Importantes</h3>
                 <ul className="space-y-2 text-sm text-muted-foreground">
                   <li className="flex items-start gap-2">
                     <Info className="mt-0.5 h-4 w-4 shrink-0 text-blue-500" />
@@ -2196,7 +2218,7 @@ export function BertTrainingPage() {
 
               {/* Presets */}
               <div>
-                <h3 className="mb-2 text-sm font-semibold">Presets de Treinamento</h3>
+                <h3 className="mb-2 text-sm font-semibold" style={{ color: C.text900 }}>Presets de Treinamento</h3>
                 <div className="space-y-2">
                   <div className="rounded-lg border bg-blue-50 p-3">
                     <p className="text-sm font-medium text-blue-800">Padrao</p>
@@ -2251,16 +2273,24 @@ export function BertTrainingPage() {
                   className={cn(
                     'flex h-8 w-8 items-center justify-center rounded-full text-xs font-semibold transition-colors',
                     step === uploadStep
-                      ? 'bg-primary text-primary-foreground'
+                      ? 'text-white'
                       : step < uploadStep
-                        ? 'bg-green-100 text-green-700'
-                        : 'bg-gray-100 text-gray-400'
+                        ? 'text-green-700'
+                        : ''
                   )}
+                  style={{
+                    background: step === uploadStep
+                      ? C.navy950
+                      : step < uploadStep
+                        ? '#dcfce7'
+                        : C.gray100,
+                    color: step > uploadStep ? C.text400 : undefined,
+                  }}
                 >
                   {step < uploadStep ? <CheckCircle2 className="h-4 w-4" /> : step}
                 </div>
                 {step < 4 && (
-                  <div className={cn('h-0.5 w-8', step < uploadStep ? 'bg-green-300' : 'bg-gray-200')} />
+                  <div className="h-0.5 w-8" style={{ background: step < uploadStep ? '#86efac' : C.gray200 }} />
                 )}
               </div>
             ))}
@@ -2272,8 +2302,15 @@ export function BertTrainingPage() {
               <div
                 className={cn(
                   'cursor-pointer rounded-lg border-2 border-dashed p-8 text-center transition-colors',
-                  uploadFile ? 'border-green-300 bg-green-50' : 'border-gray-300 hover:border-primary hover:bg-gray-50'
+                  uploadFile ? 'border-green-300 bg-green-50' : 'hover:border-primary'
                 )}
+                style={uploadFile ? undefined : { borderColor: C.gray300 }}
+                onMouseEnter={(e) => {
+                  if (!uploadFile) e.currentTarget.style.background = C.gray50
+                }}
+                onMouseLeave={(e) => {
+                  if (!uploadFile) e.currentTarget.style.background = 'transparent'
+                }}
                 onClick={() => uploadInputRef.current?.click()}
               >
                 <input
@@ -2284,9 +2321,9 @@ export function BertTrainingPage() {
                   onChange={handleUploadFileSelect}
                   data-testid="upload-file-input"
                 />
-                <Upload className="mx-auto mb-3 h-10 w-10 text-gray-400" />
-                <p className="text-sm font-medium">Clique para selecionar um arquivo</p>
-                <p className="mt-1 text-xs text-muted-foreground">
+                <Upload className="mx-auto mb-3 h-10 w-10" style={{ color: C.text400 }} />
+                <p className="text-sm font-medium" style={{ color: C.text700 }}>Clique para selecionar um arquivo</p>
+                <p className="mt-1 text-xs" style={{ color: C.text500 }}>
                   Formatos aceitos: CSV, Excel (.xlsx, .xls)
                 </p>
               </div>
@@ -2304,10 +2341,10 @@ export function BertTrainingPage() {
                 </span>
               </div>
               {uploadPreview.length > 0 && (
-                <div className="overflow-x-auto rounded-lg border">
+                <div className="overflow-x-auto rounded-lg border" style={{ borderColor: C.gray200 }}>
                   <table className="w-full text-xs">
                     <thead>
-                      <tr className="border-b bg-gray-50">
+                      <tr className="border-b" style={{ background: C.gray50 }}>
                         {uploadPreview[0]?.map((header, i) => (
                           <th key={i} className="px-3 py-2 text-left font-medium">
                             {header}
@@ -2439,8 +2476,8 @@ export function BertTrainingPage() {
           {/* Passo 4: Confirmar e enviar */}
           {uploadStep === 4 && (
             <div className="space-y-4 py-4" data-testid="upload-step-4">
-              <div className="rounded-lg border bg-gray-50 p-4">
-                <h4 className="mb-3 text-sm font-medium">Resumo do Upload</h4>
+              <div className="rounded-lg border p-4" style={{ background: C.gray50, borderColor: C.gray200 }}>
+                <h4 className="mb-3 text-sm font-medium" style={{ color: C.text900 }}>Resumo do Upload</h4>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Arquivo:</span>
@@ -2565,7 +2602,7 @@ export function BertTrainingPage() {
               return (
                 <div className="space-y-4">
                   {/* Informacoes do job */}
-                  <div className="flex items-center gap-4 rounded-lg border bg-gray-50 p-3">
+                  <div className="flex items-center gap-4 rounded-lg border p-3" style={{ background: C.gray50, borderColor: C.gray200 }}>
                     <StatusBadge status={job.status} />
                     <div className="text-sm">
                       <span className="font-medium">{job.dataset_nome}</span>
@@ -2578,21 +2615,21 @@ export function BertTrainingPage() {
                   {/* Metricas resumidas */}
                   {job.metricas && (
                     <div className="grid grid-cols-4 gap-2">
-                      <div className="rounded border p-2 text-center">
-                        <p className="text-xs text-muted-foreground">Accuracy</p>
-                        <p className="text-sm font-bold text-green-600">{formatarPct(job.metricas.accuracy)}</p>
+                      <div className="rounded border p-2 text-center" style={{ borderColor: C.gray200 }}>
+                        <p className="text-xs" style={{ color: C.text500 }}>Accuracy</p>
+                        <p className="text-sm font-bold" style={{ color: C.statusSuccess }}>{formatarPct(job.metricas.accuracy)}</p>
                       </div>
-                      <div className="rounded border p-2 text-center">
-                        <p className="text-xs text-muted-foreground">F1</p>
-                        <p className="text-sm font-bold text-blue-600">{formatarPct(job.metricas.f1_score)}</p>
+                      <div className="rounded border p-2 text-center" style={{ borderColor: C.gray200 }}>
+                        <p className="text-xs" style={{ color: C.text500 }}>F1</p>
+                        <p className="text-sm font-bold" style={{ color: C.statusInfo }}>{formatarPct(job.metricas.f1_score)}</p>
                       </div>
-                      <div className="rounded border p-2 text-center">
-                        <p className="text-xs text-muted-foreground">Precision</p>
-                        <p className="text-sm font-bold text-purple-600">{formatarPct(job.metricas.precision)}</p>
+                      <div className="rounded border p-2 text-center" style={{ borderColor: C.gray200 }}>
+                        <p className="text-xs" style={{ color: C.text500 }}>Precision</p>
+                        <p className="text-sm font-bold" style={{ color: C.navy700 }}>{formatarPct(job.metricas.precision)}</p>
                       </div>
-                      <div className="rounded border p-2 text-center">
-                        <p className="text-xs text-muted-foreground">Recall</p>
-                        <p className="text-sm font-bold text-orange-600">{formatarPct(job.metricas.recall)}</p>
+                      <div className="rounded border p-2 text-center" style={{ borderColor: C.gray200 }}>
+                        <p className="text-xs" style={{ color: C.text500 }}>Recall</p>
+                        <p className="text-sm font-bold" style={{ color: C.orange600 }}>{formatarPct(job.metricas.recall)}</p>
                       </div>
                     </div>
                   )}
@@ -2600,12 +2637,15 @@ export function BertTrainingPage() {
                   {/* Historico de loss por epoca (como chunks) */}
                   {job.metricas?.historico_loss && (
                     <div>
-                      <h4 className="mb-2 text-sm font-medium">Progresso por Epoca</h4>
+                      <h4 className="mb-2 text-sm font-medium" style={{ color: C.text900 }}>Progresso por Epoca</h4>
                       <div className="space-y-2">
                         {job.metricas.historico_loss.map((loss, idx) => (
                           <div
                             key={idx}
-                            className="flex items-center gap-4 rounded-lg border p-3 transition-colors hover:bg-gray-50"
+                            className="flex items-center gap-4 rounded-lg border p-3 transition-colors"
+                            style={{ borderColor: C.gray200 }}
+                            onMouseEnter={(e) => { e.currentTarget.style.background = C.gray50 }}
+                            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
                             data-testid={`chunk-epoca-${idx + 1}`}
                           >
                             <Badge variant="outline" className="shrink-0">
@@ -2657,8 +2697,7 @@ export function BertTrainingPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-        </div>
-      </main>
+      </div>
     </div>
   )
 }
