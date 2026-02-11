@@ -21,18 +21,7 @@ vi.mock('@tanstack/react-router', () => ({
   },
 }))
 
-/**
- * Mock do hook useApiQuery legado.
- * Retorna dados vazios por padrão. Testes individuais podem sobrescrever.
- */
-vi.mock('@/hooks/useApiQuery', () => ({
-  useApiQuery: vi.fn().mockReturnValue({
-    data: null,
-    isLoading: false,
-    error: null,
-    refetch: vi.fn(),
-  }),
-}))
+// useApiQuery removido (era @deprecated, nunca usado em producao)
 
 /**
  * Mock dos hooks customizados do TanStack Query.
@@ -87,7 +76,6 @@ vi.mock('@/hooks/useQueries', () => ({
   }),
   useInvalidateQueries: vi.fn().mockReturnValue({
     invalidateGeradorHistorico: vi.fn(),
-    invalidateAll: vi.fn(),
     invalidateByKey: vi.fn(),
   }),
   useHistoricoClassificador: vi.fn().mockReturnValue({
@@ -136,10 +124,6 @@ vi.mock('@/hooks/useQueries', () => ({
   }),
   useAdminUsers: vi.fn().mockReturnValue({
     data: [],
-    isLoading: false,
-  }),
-  useCurrentUser: vi.fn().mockReturnValue({
-    data: null,
     isLoading: false,
   }),
   useGeracaoDetalhe: vi.fn().mockReturnValue({

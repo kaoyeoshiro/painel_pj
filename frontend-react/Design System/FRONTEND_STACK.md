@@ -246,6 +246,29 @@ Nao valida profundidade > 1 por design (manter leve).
 
 ## Gerenciamento de Estado
 
+### State Architecture — Regras (Resumo)
+
+> Documentacao completa: `Design System/STATE_ARCHITECTURE_RULES.md`
+> Inventario: `Design System/STATE_AUDIT_INVENTORY.md`
+
+**Principio**: Cada dado vive em exatamente UM lugar.
+
+| Tipo de dado | Onde vive | Exemplo |
+|-------------|-----------|---------|
+| Dados do servidor (listas, detalhes, status) | **TanStack Query** | `useHistoricoGerador()`, `useTiposPeca()` |
+| Identidade do usuario e token JWT | **Zustand (auth-store)** | `useAuthStore(s => s.user)` |
+| Preferencias de UI | **Zustand (ui-store)** | `useUiStore(s => s.sidebarCollapsed)` |
+| Estado efemero de pagina | **useState/useReducer local** | Formularios, modais, streaming chunks |
+| Conteudo de streaming SSE | **useState local** + invalidation ao completar | Chunks incrementais durante SSE |
+
+**Anti-patterns proibidos**:
+- Guardar resposta de API no Zustand
+- `queryClient.invalidateQueries()` sem filtro (bazuca)
+- Criar novo store Zustand para dados do servidor
+- Usar `useApiQuery` (REMOVIDO — era `@deprecated`)
+
+**Subscricoes Zustand**: SEMPRE seletivas (`useAuthStore(s => s.user)`), nunca destructuring.
+
 ### Client HTTP (`lib/api.ts`)
 
 **ApiError tipado** com campos estruturados:
@@ -370,24 +393,24 @@ useSSE({
 
 ## Roteamento com TanStack Router
 
-### Abordagem: Manual Routes
+### Abordagem: Manual Routes + Lazy Loading
 
 Usamos **roteamento manual** (`createRoute`) — nao file-based. Decisao motivada por:
-- Compatibilidade com sistema de feature flags (native vs legacy iframe)
 - Controle explicito de rotas alias (ex: `/admin/prompts` e `/admin/prompts-config` apontam para mesma page)
+- Integracoes com `AuthGuard` e layout compartilhado
 
-### Feature Flags
+### Lazy Loading
 
-Cada sistema pode rodar nativo (React) ou legacy (iframe):
+Todas as paginas sao carregadas via `React.lazy()`. O `Suspense` boundary fica no `AppLayout` (ao redor do `Outlet`), exibindo skeleton de carregamento.
 
 ```typescript
-function GeradorPecasRoutePage() {
-  if (shouldUseNativeGeradorPecas()) return <GeradorPecasPage />
-  return <GeradorPecasLegacyPage />
-}
+const GeradorPecasPage = lazy(() =>
+  import('@/pages/gerador-pecas/GeradorPecasPage')
+    .then(m => ({ default: m.GeradorPecasPage }))
+)
 ```
 
-Flag `VITE_PORTAL_NATIVE_<SISTEMA>` — `'0'` = legacy, qualquer outro valor = nativo.
+Apenas `LoginPage` e carregada eagerly (primeira pagina visivel).
 
 ---
 
@@ -423,9 +446,11 @@ Componentes em `components/ui/` sao atomicos. Composicao em `components/shared/`
 
 ## Seguranca no Frontend
 
-### Sanitizacao Markdown (DOMPurify)
+### Sanitizacao de HTML (DOMPurify)
 
-**Allowlist estrita** — tags e atributos nao listados sao removidos:
+**Sanitizacao e OBRIGATORIA e sem bypass.** O hook `useMarkdown` nao aceita opcao para desabilitar sanitizacao.
+
+**Allowlist estrita** (tudo fora da lista e removido):
 
 ```
 Tags permitidas: p, h1-h6, ul, ol, li, strong, em, b, i, a, code, pre,
@@ -435,11 +460,58 @@ Tags permitidas: p, h1-h6, ul, ol, li, strong, em, b, i, a, code, pre,
 Atributos permitidos: href, target, rel, src, alt, class, id, title,
   colspan, rowspan, open
 
+Protocolos permitidos: https, http, mailto, tel (ALLOW_UNKNOWN_PROTOCOLS: false)
+
 PROIBIDOS: style (attr), on* (onclick/onerror/onload/onmouseover),
-  javascript: URIs, data: URIs, script/iframe/object/embed/form/svg/math
+  javascript: URIs, data: URIs, vbscript: URIs,
+  script/iframe/object/embed/form/svg/math/style tags
 ```
 
-Links externos: forcados com `target="_blank"` + `rel="noopener noreferrer"`.
+Links: todo `<a>` recebe `target="_blank"` + `rel="noopener noreferrer"` via hook DOMPurify.
+
+**Componentes para renderizar HTML**:
+- `useMarkdown(text)` — converte Markdown para HTML sanitizado (hook)
+- `<MarkdownRenderer content={text} />` — wrapper do hook com estilos prose
+- `<SafeHtml html={rawHtml} />` — sanitiza e renderiza HTML cru (sem Markdown)
+- `sanitizeHtml(raw)` — funcao pura exportada para uso fora de componentes
+
+**Regras para o time**:
+1. NUNCA use `dangerouslySetInnerHTML` diretamente. Use `useMarkdown`, `MarkdownRenderer` ou `SafeHtml`.
+2. NUNCA crie opcao de desabilitar sanitizacao.
+3. Todo HTML vindo do backend ou de input de usuario DEVE ser sanitizado.
+4. Testes de XSS em `src/hooks/__tests__/useMarkdown.security.test.ts` (26 testes).
+
+### Politica de Links Externos
+
+- Todo link externo DEVE ter `rel="noopener noreferrer"`.
+- O DOMPurify hook ja forca isso automaticamente em links dentro de Markdown.
+- Para links em JSX, usar explicitamente: `<a href="..." target="_blank" rel="noopener noreferrer">`.
+
+### Politica de Redirects
+
+- Nao existem redirects por query param (`?next=`, `?redirect=`).
+- Redirects sao hardcoded: `window.location.href = '/login'` (unico destino).
+- Se no futuro for necessario redirect por param, implementar allowlist de paths internos (inicio com `/`, sem `//`).
+
+### Auth e Token
+
+- Token JWT armazenado em `localStorage` (chave `access_token`).
+- **Risco aceito**: `localStorage` e acessivel por scripts na mesma origem. Se houver XSS, token pode ser exfiltrado. Mitigacao primaria: sanitizacao forte + CSP.
+- **Futuro**: Migrar para cookie httpOnly (requer mudanca no backend).
+- Fluxo de 401: `api.ts` limpa token e redireciona uma unica vez (guard contra duplo redirect).
+- `AuthGuard` nao renderiza conteudo enquanto status e `unknown`.
+
+### Politica de Logs e Erros
+
+- `console.log` NAO deve ser usado em producao. Apenas `console.warn` / `console.error` para erros reais.
+- Toasts de fallback (fora do provider) logam apenas `variant`, sem conteudo.
+- Mensagens de erro da API: usar `getUserFriendlyError(error)` de `lib/utils.ts` para evitar exposicao de detalhes internos em erros de servidor (5xx).
+- NUNCA logar tokens, senhas ou dados pessoais (CPF, nomes de partes).
+
+### Meta Tags de Seguranca
+
+`index.html` inclui:
+- `<meta name="referrer" content="strict-origin-when-cross-origin" />`
 
 ### Recomendacoes de CSP / Headers (infra)
 
@@ -449,14 +521,18 @@ O frontend nao controla headers HTTP diretamente. Recomendacoes para o gateway/n
 Content-Security-Policy:
   default-src 'self';
   script-src 'self';
-  style-src 'self' 'unsafe-inline';  # Tailwind precisa de inline styles
-  img-src 'self' data:;
+  style-src 'self' 'unsafe-inline';
+  img-src 'self' data: https:;
   connect-src 'self' <api-domain>;
+  font-src 'self';
   frame-ancestors 'none';
+  base-uri 'self';
+  form-action 'self';
 
 X-Content-Type-Options: nosniff
 X-Frame-Options: DENY
 Referrer-Policy: strict-origin-when-cross-origin
+Permissions-Policy: camera=(), microphone=(), geolocation=()
 ```
 
 ---

@@ -16,7 +16,7 @@ function formatDate(): string {
 }
 
 export function WelcomeHeader() {
-  const { user } = useAuthStore()
+  const user = useAuthStore(s => s.user)
   const firstName = user?.full_name?.split(' ')[0] ?? user?.username ?? 'Usuario'
 
   return (

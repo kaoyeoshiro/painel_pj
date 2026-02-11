@@ -16,29 +16,15 @@ import {
   bertApi,
   adminApi,
   usersApi,
-  apiRequest,
 } from '@/lib/api'
 import type { TipoPecaResponse, HistoricoItem, GeracaoDetalhe } from '@/types/gerador-pecas'
 
 // ============================================================
-// AUTH HOOKS
+// AUTH
 // ============================================================
-
-interface UserMe {
-  id: number
-  username: string
-  full_name: string
-  role: string
-}
-
-export function useCurrentUser(options?: { enabled?: boolean }) {
-  return useQuery({
-    queryKey: queryKeys.auth.me(),
-    queryFn: () => apiRequest<UserMe>('/auth/me', { method: 'GET' }),
-    staleTime: 1000 * 60 * 10, // 10 minutos - dados do usuário mudam pouco
-    ...options,
-  })
-}
+// Dados do usuario autenticado vivem EXCLUSIVAMENTE no Zustand (auth-store).
+// O auth-store.loadUser() busca GET /auth/me e valida com JSON Schema.
+// NAO criar hooks Query para /auth/me — ver STATE_ARCHITECTURE_RULES.md.
 
 // ============================================================
 // GERADOR DE PEÇAS HOOKS
@@ -436,18 +422,19 @@ export function useAdminUsers(
 // ============================================================
 
 /**
- * Hook para invalidar queries manualmente
- * Útil quando você precisa forçar um refresh após uma ação
+ * Hook para invalidar queries manualmente apos operacoes que nao usam useMutation
+ * (ex: SSE streaming que finaliza com resultado no servidor).
+ *
+ * REGRA: Sempre invalidar queries ESPECIFICAS — nunca usar invalidacao global.
+ * Ver Design System/STATE_ARCHITECTURE_RULES.md para politica completa.
  */
 export function useInvalidateQueries() {
   const queryClient = useQueryClient()
-  
+
   return {
-    invalidateGeradorHistorico: () => 
+    invalidateGeradorHistorico: () =>
       queryClient.invalidateQueries({ queryKey: queryKeys.geradorPecas.historico() }),
-    invalidateAll: () => 
-      queryClient.invalidateQueries(),
-    invalidateByKey: (key: readonly unknown[]) => 
+    invalidateByKey: (key: readonly unknown[]) =>
       queryClient.invalidateQueries({ queryKey: key }),
   }
 }

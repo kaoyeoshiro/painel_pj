@@ -8,7 +8,7 @@ import { AdminCard } from './AdminCard'
  * Pagina inicial (Dashboard) — grid de sistemas + painel admin.
  */
 export function DashboardPage() {
-  const { user } = useAuthStore()
+  const user = useAuthStore(s => s.user)
 
   return (
     <div style={{ fontFamily: FONT_UI, maxWidth: 1350, margin: '0 auto', padding: '32px 40px' }}>

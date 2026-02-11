@@ -14,7 +14,8 @@ export function LoginPage() {
   const [error, setError] = useState('')
   const [isLoading, setIsLoading] = useState(false)
 
-  const { user, login } = useAuthStore()
+  const user = useAuthStore(s => s.user)
+  const login = useAuthStore(s => s.login)
   const navigate = useNavigate()
 
   // Se já estiver logado, redireciona para dashboard

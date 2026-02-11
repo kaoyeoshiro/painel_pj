@@ -57,7 +57,6 @@ vi.mock('@/hooks/useQueries', () => ({
   useRestaurarVersao: () => ({ mutate: vi.fn(), isPending: false }),
   useInvalidateQueries: () => ({
     invalidateGeradorHistorico: vi.fn(),
-    invalidateAll: vi.fn(),
     invalidateByKey: vi.fn(),
   }),
 }))

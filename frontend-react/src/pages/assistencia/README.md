@@ -45,7 +45,7 @@ Componente principal da página com funcionalidades completas:
 - Toast notifications (via `useToast`)
 
 #### Hooks Utilizados
-- `useApiQuery` - Query com estado de loading/error/data
+- `useQuery` (@tanstack/react-query) - Query com cache, loading/error/data
 - `useToast` - Notificações toast
 - `useState`, `useCallback`, `useMemo`, `useEffect` - React hooks padrão
 
