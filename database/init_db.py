@@ -116,7 +116,8 @@ def run_migrations():
             WHERE table_name = 'gemini_api_logs' AND column_name = 'thinking_level'
         """)).fetchone()
         if result_setor and result_thinking:
-            # Migrações já aplicadas, apenas executa seed_prompt_groups
+            # Migrações já aplicadas — cria colunas novas ANTES de qualquer query ORM
+            migrate_per_group_prompts(db)
             seed_prompt_groups(db)
             db.close()
             return
@@ -1610,8 +1611,9 @@ def run_migrations():
             db.rollback()
             print(f"[WARN] Migração thinking_level: {e}")
 
+    # Cria colunas novas ANTES de qualquer query ORM no PromptGroup
+    migrate_per_group_prompts(db)
     seed_prompt_groups(db)
-
 
     db.close()
 
@@ -2225,6 +2227,107 @@ O campo "irrelevante" deve ser true apenas se o documento for meramente administ
 
 _DB_INITIALIZED = False  # Cache em memória
 
+def migrate_per_group_prompts(db: Session):
+    """
+    Migracao: cada grupo passa a ter seus proprios prompts base e peca.
+
+    1. Vincula modulos base/peca existentes (group_id=NULL) ao grupo PS
+    2. Duplica modulos base/peca do PS para PP e DETRAN (se ainda nao existem)
+    3. Troca UniqueConstraint para (tipo, nome, group_id)
+    """
+    from sqlalchemy import inspect as sa_inspect, text
+
+    # Rollback defensivo — limpa transacao suja de migracoes anteriores
+    try:
+        db.rollback()
+    except Exception:
+        pass
+
+    inspector = sa_inspect(engine)
+
+    # --- 1. Vincular modulos base/peca existentes (sem grupo) ao PS ---
+    grupo_ps = db.query(PromptGroup).filter(PromptGroup.slug == "ps").first()
+    if not grupo_ps:
+        print("[WARN] Migracao per-group prompts: grupo PS nao encontrado, pulando")
+        return
+
+    modulos_sem_grupo = db.query(PromptModulo).filter(
+        PromptModulo.tipo.in_(["base", "peca"]),
+        PromptModulo.group_id.is_(None)
+    ).all()
+
+    if modulos_sem_grupo:
+        for modulo in modulos_sem_grupo:
+            modulo.group_id = grupo_ps.id
+        db.commit()
+        print(f"[OK] Migracao: {len(modulos_sem_grupo)} modulos base/peca vinculados ao PS")
+
+    # --- 2. Duplicar modulos base/peca do PS para PP e DETRAN ---
+    modulos_ps = db.query(PromptModulo).filter(
+        PromptModulo.tipo.in_(["base", "peca"]),
+        PromptModulo.group_id == grupo_ps.id
+    ).all()
+
+    for slug in ["pp", "detran"]:
+        grupo = db.query(PromptGroup).filter(PromptGroup.slug == slug).first()
+        if not grupo:
+            continue
+
+        # Verifica se o grupo ja tem modulos base/peca proprios
+        existentes = db.query(PromptModulo).filter(
+            PromptModulo.tipo.in_(["base", "peca"]),
+            PromptModulo.group_id == grupo.id
+        ).count()
+
+        if existentes > 0:
+            continue  # Ja foi migrado anteriormente
+
+        # Duplica cada modulo do PS para o grupo
+        for m_ps in modulos_ps:
+            novo = PromptModulo(
+                tipo=m_ps.tipo,
+                categoria=m_ps.categoria,
+                subcategoria=m_ps.subcategoria,
+                group_id=grupo.id,
+                subgroup_id=m_ps.subgroup_id,
+                nome=m_ps.nome,
+                titulo=m_ps.titulo,
+                condicao_ativacao=m_ps.condicao_ativacao,
+                conteudo=m_ps.conteudo,
+                modo_ativacao=m_ps.modo_ativacao,
+                palavras_chave=m_ps.palavras_chave,
+                tags=m_ps.tags,
+                ativo=m_ps.ativo,
+                ordem=m_ps.ordem,
+                versao=1,
+            )
+            db.add(novo)
+
+        db.commit()
+        print(f"[OK] Migracao: {len(modulos_ps)} modulos base/peca duplicados para {slug.upper()}")
+
+    # --- 3. Trocar UniqueConstraint ---
+    try:
+        constraints = inspector.get_unique_constraints('prompt_modulos')
+        constraint_names = {c['name'] for c in constraints}
+
+        if 'uq_prompt_modulo' in constraint_names:
+            db.execute(text("ALTER TABLE prompt_modulos DROP CONSTRAINT uq_prompt_modulo"))
+            db.commit()
+            print("[OK] Migracao: constraint uq_prompt_modulo removida")
+
+        if 'uq_prompt_modulo_group' not in constraint_names:
+            db.execute(text(
+                "ALTER TABLE prompt_modulos ADD CONSTRAINT uq_prompt_modulo_group "
+                "UNIQUE (tipo, nome, group_id)"
+            ))
+            db.commit()
+            print("[OK] Migracao: constraint uq_prompt_modulo_group criada")
+    except Exception as e:
+        db.rollback()
+        print(f"[WARN] Migracao constraint: {e}")
+
+
 def init_database():
     """Inicializa o banco de dados completo"""
     global _DB_INITIALIZED
@@ -2240,7 +2343,7 @@ def init_database():
 
     # Fast-path com cache em arquivo (evita query ao banco em dev)
     # IMPORTANTE: Versão do schema - incrementar quando adicionar novas colunas/tabelas
-    SCHEMA_VERSION = "v5"  # v5: adicionado sistema BERT Training
+    SCHEMA_VERSION = "v6"  # v6: prompts base/peca duplicados por grupo
     import hashlib
     cache_file = Path(__file__).parent / ".db_initialized"
     db_url_hash = hashlib.md5(f"{engine.url}:{SCHEMA_VERSION}".encode()).hexdigest()[:8]
@@ -2255,6 +2358,7 @@ def init_database():
                 db.execute(text("SELECT setor FROM users LIMIT 1"))
                 db.execute(text("SELECT thinking_level FROM gemini_api_logs LIMIT 1"))
                 db.execute(text("SELECT 1 FROM request_perf_logs LIMIT 1"))
+                db.execute(text("SELECT 1 FROM prompt_modulos WHERE tipo = 'base' AND group_id IS NOT NULL LIMIT 1"))
                 db.close()
                 print("[OK] Conexao com banco de dados estabelecida!")
                 _DB_INITIALIZED = True
@@ -2280,6 +2384,7 @@ def init_database():
         db.execute(text("SELECT setor FROM users LIMIT 1"))
         db.execute(text("SELECT thinking_level FROM gemini_api_logs LIMIT 1"))
         db.execute(text("SELECT 1 FROM request_perf_logs LIMIT 1"))
+        db.execute(text("SELECT 1 FROM prompt_modulos WHERE tipo = 'base' AND group_id IS NOT NULL LIMIT 1"))
         db.close()
         if result:
             # Banco ok, salva cache
@@ -2293,7 +2398,7 @@ def init_database():
     # Inicialização completa (só roda na primeira vez)
     wait_for_db()
     create_tables()
-    run_migrations()
+    run_migrations()  # Inclui migrate_per_group_prompts + seed_prompt_groups
     seed_admin()
     seed_prompts()
     seed_prompt_modulos()

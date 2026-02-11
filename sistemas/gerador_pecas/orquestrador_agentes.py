@@ -939,21 +939,18 @@ class OrquestradorAgentes:
     def _carregar_modulos_base(self) -> str:
         """
         Carrega módulos BASE (sempre ativos) e monta o prompt do sistema.
+        Delega ao loader centralizado com resolução de grupo.
 
         Returns:
             Prompt do sistema montado a partir dos módulos base
         """
-        modulos_base = self.db.query(PromptModulo).filter(
-            PromptModulo.tipo == "base",
-            PromptModulo.ativo == True
-        ).order_by(PromptModulo.ordem).all()
-
-        partes = [f"## {m.titulo}\n\n{m.conteudo}" for m in modulos_base]
-        return "\n\n".join(partes)
+        from sistemas.gerador_pecas.services_prompt_loader import carregar_prompt_sistema
+        return carregar_prompt_sistema(self.db, self.group_id)
 
     def _carregar_modulo_peca(self, tipo_peca: Optional[str]) -> str:
         """
         Carrega o módulo de PEÇA específico (se tipo especificado).
+        Delega ao loader centralizado com resolução de grupo.
 
         Args:
             tipo_peca: Tipo de peça (ex: 'contestacao')
@@ -961,18 +958,8 @@ class OrquestradorAgentes:
         Returns:
             Prompt da peça ou string vazia
         """
-        if not tipo_peca:
-            return ""
-
-        modulo_peca = self.db.query(PromptModulo).filter(
-            PromptModulo.tipo == "peca",
-            PromptModulo.nome == tipo_peca,
-            PromptModulo.ativo == True
-        ).first()
-
-        if modulo_peca:
-            return f"## ESTRUTURA DA PECA: {modulo_peca.titulo}\n\n{modulo_peca.conteudo}"
-        return ""
+        from sistemas.gerador_pecas.services_prompt_loader import carregar_prompt_peca
+        return carregar_prompt_peca(self.db, tipo_peca, self.group_id)
 
     def _carregar_modulos_conteudo(self, modulos_ids: List[int]) -> List:
         """

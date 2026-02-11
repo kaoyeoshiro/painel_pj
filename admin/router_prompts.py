@@ -373,11 +373,8 @@ async def listar_modulos(
         query = query.filter(PromptModulo.categoria == categoria)
 
     if group_id:
-        # Grupo só filtra módulos de conteúdo - peça e base são globais
-        query = query.filter(
-            (PromptModulo.group_id == group_id) |
-            (PromptModulo.tipo.in_(["peca", "base"]))
-        )
+        # Cada grupo tem seus proprios prompts (base, peca e conteudo)
+        query = query.filter(PromptModulo.group_id == group_id)
 
     if subgroup_id:
         # Subgrupo operacional - filtra apenas módulos de conteúdo
