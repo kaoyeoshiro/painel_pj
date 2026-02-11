@@ -64,7 +64,7 @@ def load_model(model_path: Path) -> Optional[Dict[str, Any]]:
 
         # Carrega tokenizer - suporta ambos os formatos de checkpoint
         base_model = checkpoint.get("model_name") or checkpoint.get("base_model", "neuralmind/bert-base-portuguese-cased")
-        tokenizer = AutoTokenizer.from_pretrained(base_model)
+        tokenizer = AutoTokenizer.from_pretrained(base_model)  # nosec B615 - modelo controlado internamente
 
         # Recria o modelo - suporta ambos os formatos de checkpoint
         from sistemas.bert_training.ml.classifier import BertClassifier

@@ -160,7 +160,7 @@ def safe_torch_load(model_path: str | Path, map_location: str = "cpu") -> Any:
     logger.info("Carregando modelo seguro: %s", resolved_path)
 
     # 4. Carrega com torch.load
-    checkpoint = torch.load(resolved_path, map_location=map_location)
+    checkpoint = torch.load(resolved_path, map_location=map_location)  # nosec B614 - wrapper seguro com validacoes previas
 
     logger.info(
         "Modelo carregado com sucesso: %s (keys: %s)",

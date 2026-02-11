@@ -837,7 +837,7 @@ Responda SOMENTE com o JSON, sem texto adicional.
     def _gerar_cache_key(self, documentos: str) -> str:
         """Gera chave de cache baseada nos documentos"""
         import hashlib
-        return hashlib.md5(documentos.encode()).hexdigest()
+        return hashlib.md5(documentos.encode(), usedforsecurity=False).hexdigest()
 
     def _verificar_cache(self, cache_key: str) -> Optional[List[int]]:
         """Verifica se há resultado em cache válido"""

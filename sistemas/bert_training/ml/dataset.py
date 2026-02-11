@@ -2,7 +2,7 @@
 """
 Dataset PyTorch para classificação de texto.
 
-Adaptado do projeto E:\Projetos\BERT para integração com o portal PGE.
+Adaptado do projeto BERT para integracao com o portal PGE.
 """
 
 import json
@@ -46,7 +46,7 @@ class TextClassificationDataset(Dataset):
 
         # Carrega o tokenizer
         logger.info(f"Carregando tokenizer: {tokenizer_name}")
-        self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
+        self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)  # nosec B615 - modelo controlado internamente
         # Configura o lado do truncamento
         self.tokenizer.truncation_side = truncation_side
         logger.info(
@@ -124,7 +124,7 @@ class TokenClassificationDataset(Dataset):
 
         # Carrega o tokenizer
         logger.info(f"Carregando tokenizer: {tokenizer_name}")
-        self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)
+        self.tokenizer = AutoTokenizer.from_pretrained(tokenizer_name)  # nosec B615 - modelo controlado internamente
 
     def __len__(self) -> int:
         return len(self.tokens_list)

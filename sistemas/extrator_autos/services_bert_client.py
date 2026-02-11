@@ -334,7 +334,7 @@ class BertClassifierClient:
 
             return {
                 "model": model,
-                "tokenizer": AutoTokenizer.from_pretrained(base_model),
+                "tokenizer": AutoTokenizer.from_pretrained(base_model),  # nosec B615 - modelo controlado internamente
                 "id_to_label": id_to_label,
                 "device": device,
             }

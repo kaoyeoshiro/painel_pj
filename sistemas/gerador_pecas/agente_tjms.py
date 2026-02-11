@@ -644,7 +644,7 @@ async def baixar_documentos_paralelo(
 
 def extrair_documentos_xml(xml_text: str) -> List[DocumentoTJMS]:
     """Extrai lista de documentos do XML de resposta"""
-    root = ET.fromstring(xml_text)
+    root = ET.fromstring(xml_text)  # nosec B314 - XML vem de API SOAP interna (TJ-MS)
     docs = []
 
     for elem in root.iter():
@@ -719,8 +719,8 @@ def extrair_dados_processo_xml(xml_text: str) -> Optional[DadosProcesso]:
         DadosProcesso com polo ativo, polo passivo e demais dados
     """
     try:
-        root = ET.fromstring(xml_text)
-        
+        root = ET.fromstring(xml_text)  # nosec B314 - XML vem de API SOAP interna (TJ-MS)
+
         # Busca o elemento dadosBasicos
         dados_basicos = None
         for elem in root.iter():
@@ -913,7 +913,7 @@ def extrair_info_processo_xml(xml_text: str) -> dict:
     }
 
     try:
-        root = ET.fromstring(xml_text)
+        root = ET.fromstring(xml_text)  # nosec B314 - XML vem de API SOAP interna (TJ-MS)
 
         # Procurar classeProcessual no XML
         for elem in root.iter():

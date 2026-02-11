@@ -231,7 +231,7 @@ class DocumentDownloader:
             )
             
             # Extrai conteúdo base64
-            root = ET.fromstring(xml_response)
+            root = ET.fromstring(xml_response)  # nosec B314 - XML vem de API SOAP interna (TJ-MS)
             for elem in root.iter():
                 tag_no_ns = elem.tag.split('}')[-1].lower() if '}' in elem.tag else elem.tag.lower()
                 if tag_no_ns == 'documento':

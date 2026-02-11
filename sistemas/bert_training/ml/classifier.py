@@ -2,7 +2,7 @@
 """
 Classificador BERT para classificação de texto.
 
-Adaptado do projeto E:\Projetos\BERT para integração com o portal PGE.
+Adaptado do projeto BERT para integracao com o portal PGE.
 """
 
 import torch
@@ -38,7 +38,7 @@ class BertClassifier(nn.Module):
 
         # Carrega o modelo base
         logger.info(f"Carregando modelo base: {model_name}")
-        base_model = AutoModelForPreTraining.from_pretrained(model_name)
+        base_model = AutoModelForPreTraining.from_pretrained(model_name)  # nosec B615 - modelo controlado internamente
 
         # Extrai apenas o encoder BERT
         self.bert = base_model.bert

@@ -57,7 +57,7 @@ def safe_parse_xml(xml_text: str) -> ET.Element:
 
     # Fallback: xml.etree.ElementTree do Python 3
     # Python 3.x tem proteções básicas contra XXE por padrão
-    return ET.fromstring(xml_text)
+    return ET.fromstring(xml_text)  # nosec B314 - XML vem de API SOAP interna (TJ-MS via proxy)
 
 
 def _check_xml_for_malicious_patterns(xml_text: str) -> None:

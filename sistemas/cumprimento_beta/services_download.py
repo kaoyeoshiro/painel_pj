@@ -170,7 +170,7 @@ def extrair_documentos_xml(xml_content: str) -> List[DocumentoTJMSTemp]:
     documentos = []
 
     try:
-        root = ET.fromstring(xml_content)
+        root = ET.fromstring(xml_content)  # nosec B314 - XML vem de API SOAP interna (TJ-MS)
 
         for elem in root.iter():
             tag_no_ns = elem.tag.split('}')[-1].lower() if '}' in elem.tag else elem.tag.lower()

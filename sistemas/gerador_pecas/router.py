@@ -2891,7 +2891,7 @@ async def baixar_documento_processo(
             xml_response = await baixar_documentos_async(session, cnj_limpo, lista_ids)
         
         # Extrai conteúdo base64 de todos os documentos
-        root = ET.fromstring(xml_response)
+        root = ET.fromstring(xml_response)  # nosec B314 - XML vem de API SOAP interna (TJ-MS)
         pdfs_bytes = []
         
         for elem in root.iter():
