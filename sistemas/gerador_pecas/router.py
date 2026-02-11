@@ -40,6 +40,7 @@ from sistemas.gerador_pecas.versoes import (
     restaurar_versao
 )
 from admin.models import ConfiguracaoIA, PromptConfig
+from admin.models_prompts import PromptModulo
 from admin.models_prompt_groups import PromptGroup, PromptSubgroup
 from sistemas.gerador_pecas.services_parecer_natjus import (
     build_parecer_audit_payload,
