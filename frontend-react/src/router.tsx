@@ -3,43 +3,54 @@
  *
  * Todas as rotas sao definidas aqui. Todos os sistemas e admins
  * foram migrados para React.
+ *
+ * PERFORMANCE: Todas as paginas sao lazy-loaded via React.lazy().
+ * O Suspense boundary fica no AppLayout (ao redor do Outlet).
+ * Apenas LoginPage e carregada eagerly (primeira pagina visivel).
  */
 
+import { lazy } from 'react'
 import { createRouter, createRootRoute, createRoute, redirect, Outlet } from '@tanstack/react-router'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { AuthGuard } from '@/components/layout/AuthGuard'
 import { LoginPage } from '@/pages/login/LoginPage'
-import { DashboardPageV2 } from '@/pages/dashboard/DashboardPageV2'
-import { ChangePasswordPage } from '@/pages/change-password/ChangePasswordPage'
-import { DesignSystemPage } from '@/pages/dev/DesignSystemPage'
-import { CumprimentoBetaPage } from '@/pages/cumprimento-beta/CumprimentoBetaPage'
-import { ExtratorAutosPage } from '@/pages/extrator-autos/ExtratorAutosPage'
-import { LegacyAdminFramePage } from '@/pages/admin/legacy/LegacyAdminFramePage'
-import { UsersPage } from '@/pages/admin/users/UsersPage'
-import { PromptsPage } from '@/pages/admin/prompts/PromptsPage'
-import { PromptsModulosPage } from '@/pages/admin/prompts-modulos/PromptsModulosPage'
-import { FeedbacksPage } from '@/pages/admin/feedbacks/FeedbacksPage'
-import { PerformancePage } from '@/pages/admin/performance/PerformancePage'
-import { VariaveisPage } from '@/pages/admin/variaveis/VariaveisPage'
-import { CategoriasJsonPage } from '@/pages/admin/categorias-json/CategoriasJsonPage'
-import { HistoricoGeradorPage } from '@/pages/admin/historico-gerador/HistoricoGeradorPage'
-import { HistoricoPedidoCalculoPage } from '@/pages/admin/historico-pedido-calculo/HistoricoPedidoCalculoPage'
-import { HistoricoPrestacaoContasPage } from '@/pages/admin/historico-prestacao-contas/HistoricoPrestacaoContasPage'
-import { ModulosTipoPecaPage } from '@/pages/admin/modulos-tipo-peca/ModulosTipoPecaPage'
-import { ConfigPecasPage } from '@/pages/admin/config-pecas/ConfigPecasPage'
-import { TesteAtivacaoPage } from '@/pages/admin/teste-ativacao/TesteAtivacaoPage'
-import { TesteCategoriasPage } from '@/pages/admin/teste-categorias/TesteCategoriasPage'
-import { TjmsDocsPage } from '@/pages/admin/tjms-docs/TjmsDocsPage'
-import { RestaurarSlugsPage } from '@/pages/admin/restaurar-slugs/RestaurarSlugsPage'
-import MatriculasPage from '@/pages/matriculas/MatriculasPage'
-import { AssistenciaPage } from '@/pages/assistencia/AssistenciaPage'
-import { ClassificadorPage } from '@/pages/classificador/ClassificadorPage'
-import { PedidoCalculoPage } from '@/pages/pedido-calculo/PedidoCalculoPage'
-import { PrestacaoContasPage } from '@/pages/prestacao-contas/PrestacaoContasPage'
-import { RelatorioCumprimentoPage } from '@/pages/relatorio-cumprimento/RelatorioCumprimentoPage'
-import { GeradorPecasPage } from '@/pages/gerador-pecas/GeradorPecasPage'
-import { BertTrainingPage } from '@/pages/bert-training/BertTrainingPage'
 
+// ---------------------------------------------------------------------------
+// Lazy imports — cada pagina vira um chunk separado no build
+// ---------------------------------------------------------------------------
+
+// Sistemas
+const DashboardPageV2 = lazy(() => import('@/pages/dashboard/DashboardPageV2').then(m => ({ default: m.DashboardPageV2 })))
+const GeradorPecasPage = lazy(() => import('@/pages/gerador-pecas/GeradorPecasPage').then(m => ({ default: m.GeradorPecasPage })))
+const ExtratorAutosPage = lazy(() => import('@/pages/extrator-autos/ExtratorAutosPage').then(m => ({ default: m.ExtratorAutosPage })))
+const ClassificadorPage = lazy(() => import('@/pages/classificador/ClassificadorPage').then(m => ({ default: m.ClassificadorPage })))
+const PedidoCalculoPage = lazy(() => import('@/pages/pedido-calculo/PedidoCalculoPage').then(m => ({ default: m.PedidoCalculoPage })))
+const PrestacaoContasPage = lazy(() => import('@/pages/prestacao-contas/PrestacaoContasPage').then(m => ({ default: m.PrestacaoContasPage })))
+const RelatorioCumprimentoPage = lazy(() => import('@/pages/relatorio-cumprimento/RelatorioCumprimentoPage').then(m => ({ default: m.RelatorioCumprimentoPage })))
+const CumprimentoBetaPage = lazy(() => import('@/pages/cumprimento-beta/CumprimentoBetaPage').then(m => ({ default: m.CumprimentoBetaPage })))
+const AssistenciaPage = lazy(() => import('@/pages/assistencia/AssistenciaPage').then(m => ({ default: m.AssistenciaPage })))
+const MatriculasPage = lazy(() => import('@/pages/matriculas/MatriculasPage'))
+const BertTrainingPage = lazy(() => import('@/pages/bert-training/BertTrainingPage').then(m => ({ default: m.BertTrainingPage })))
+const ChangePasswordPage = lazy(() => import('@/pages/change-password/ChangePasswordPage').then(m => ({ default: m.ChangePasswordPage })))
+const DesignSystemPage = lazy(() => import('@/pages/dev/DesignSystemPage').then(m => ({ default: m.DesignSystemPage })))
+
+// Admin
+const UsersPage = lazy(() => import('@/pages/admin/users/UsersPage').then(m => ({ default: m.UsersPage })))
+const PromptsPage = lazy(() => import('@/pages/admin/prompts/PromptsPage').then(m => ({ default: m.PromptsPage })))
+const PromptsModulosPage = lazy(() => import('@/pages/admin/prompts-modulos/PromptsModulosPage').then(m => ({ default: m.PromptsModulosPage })))
+const FeedbacksPage = lazy(() => import('@/pages/admin/feedbacks/FeedbacksPage').then(m => ({ default: m.FeedbacksPage })))
+const PerformancePage = lazy(() => import('@/pages/admin/performance/PerformancePage').then(m => ({ default: m.PerformancePage })))
+const VariaveisPage = lazy(() => import('@/pages/admin/variaveis/VariaveisPage').then(m => ({ default: m.VariaveisPage })))
+const CategoriasJsonPage = lazy(() => import('@/pages/admin/categorias-json/CategoriasJsonPage').then(m => ({ default: m.CategoriasJsonPage })))
+const HistoricoGeradorPage = lazy(() => import('@/pages/admin/historico-gerador/HistoricoGeradorPage').then(m => ({ default: m.HistoricoGeradorPage })))
+const HistoricoPedidoCalculoPage = lazy(() => import('@/pages/admin/historico-pedido-calculo/HistoricoPedidoCalculoPage').then(m => ({ default: m.HistoricoPedidoCalculoPage })))
+const HistoricoPrestacaoContasPage = lazy(() => import('@/pages/admin/historico-prestacao-contas/HistoricoPrestacaoContasPage').then(m => ({ default: m.HistoricoPrestacaoContasPage })))
+const ModulosTipoPecaPage = lazy(() => import('@/pages/admin/modulos-tipo-peca/ModulosTipoPecaPage').then(m => ({ default: m.ModulosTipoPecaPage })))
+const ConfigPecasPage = lazy(() => import('@/pages/admin/config-pecas/ConfigPecasPage').then(m => ({ default: m.ConfigPecasPage })))
+const TesteAtivacaoPage = lazy(() => import('@/pages/admin/teste-ativacao/TesteAtivacaoPage').then(m => ({ default: m.TesteAtivacaoPage })))
+const TesteCategoriasPage = lazy(() => import('@/pages/admin/teste-categorias/TesteCategoriasPage').then(m => ({ default: m.TesteCategoriasPage })))
+const TjmsDocsPage = lazy(() => import('@/pages/admin/tjms-docs/TjmsDocsPage').then(m => ({ default: m.TjmsDocsPage })))
+const RestaurarSlugsPage = lazy(() => import('@/pages/admin/restaurar-slugs/RestaurarSlugsPage').then(m => ({ default: m.RestaurarSlugsPage })))
 
 // ---------------------------------------------------------------------------
 // Root route - renderiza apenas Outlet
@@ -82,7 +93,7 @@ const loginRoute = createRoute({
 })
 
 // ---------------------------------------------------------------------------
-// Rotas autenticadas (com layout)
+// Rotas autenticadas (com layout) — componentes lazy-loaded
 // ---------------------------------------------------------------------------
 const dashboardRoute = createRoute({
   getParentRoute: () => layoutRoute,
@@ -93,7 +104,7 @@ const dashboardRoute = createRoute({
 const geradorPecasRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: '/gerador-pecas',
-  component: GeradorPecasRoutePage,
+  component: GeradorPecasPage,
 })
 
 const extratorAutosRoute = createRoute({
@@ -105,25 +116,25 @@ const extratorAutosRoute = createRoute({
 const classificadorRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: '/classificador',
-  component: ClassificadorRoutePage,
+  component: ClassificadorPage,
 })
 
 const pedidoCalculoRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: '/pedido-calculo',
-  component: PedidoCalculoRoutePage,
+  component: PedidoCalculoPage,
 })
 
 const prestacaoContasRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: '/prestacao-contas',
-  component: PrestacaoContasRoutePage,
+  component: PrestacaoContasPage,
 })
 
 const relatorioCumprimentoRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: '/relatorio-cumprimento',
-  component: RelatorioCumprimentoRoutePage,
+  component: RelatorioCumprimentoPage,
 })
 
 const cumprimentoBetaRoute = createRoute({
@@ -135,19 +146,19 @@ const cumprimentoBetaRoute = createRoute({
 const assistenciaRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: '/assistencia',
-  component: AssistenciaRoutePage,
+  component: AssistenciaPage,
 })
 
 const matriculasRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: '/matriculas',
-  component: MatriculasRoutePage,
+  component: MatriculasPage,
 })
 
 const bertTrainingRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: '/bert-training',
-  component: BertTrainingRoutePage,
+  component: BertTrainingPage,
 })
 
 const changePasswordRoute = createRoute({
@@ -161,109 +172,6 @@ const devDesignSystemRoute = createRoute({
   path: '/dev/design-system',
   component: DesignSystemPage,
 })
-
-function AssistenciaLegacyPage() { return <LegacyAdminFramePage legacyPath="/assistencia" /> }
-function MatriculasLegacyPage() { return <LegacyAdminFramePage legacyPath="/matriculas" /> }
-function GeradorPecasLegacyPage() { return <LegacyAdminFramePage legacyPath="/gerador-pecas" /> }
-function PedidoCalculoLegacyPage() { return <LegacyAdminFramePage legacyPath="/pedido-calculo" /> }
-function PrestacaoContasLegacyPage() { return <LegacyAdminFramePage legacyPath="/prestacao-contas" /> }
-function RelatorioCumprimentoLegacyPage() { return <LegacyAdminFramePage legacyPath="/relatorio-cumprimento" /> }
-function ClassificadorLegacyPage() { return <LegacyAdminFramePage legacyPath="/classificador" /> }
-function BertTrainingLegacyPage() { return <LegacyAdminFramePage legacyPath="/bert-training" /> }
-
-function AdminUsersLegacyPage() { return <LegacyAdminFramePage legacyPath="/admin/users" /> }
-function AdminPromptsLegacyPage() { return <LegacyAdminFramePage legacyPath="/admin/prompts-config" /> }
-function AdminPromptsModulosLegacyPage() { return <LegacyAdminFramePage legacyPath="/admin/prompts-modulos" /> }
-function AdminFeedbacksLegacyPage() { return <LegacyAdminFramePage legacyPath="/admin/feedbacks" /> }
-function AdminPerformanceLegacyPage() { return <LegacyAdminFramePage legacyPath="/admin/performance" /> }
-function AdminVariaveisLegacyPage() { return <LegacyAdminFramePage legacyPath="/admin/variaveis" /> }
-function AdminCategoriasJsonLegacyPage() { return <LegacyAdminFramePage legacyPath="/admin/categorias-resumo-json" /> }
-function AdminHistoricoGeradorLegacyPage() { return <LegacyAdminFramePage legacyPath="/admin/gerador-pecas/historico" /> }
-function AdminHistoricoPedidoCalculoLegacyPage() { return <LegacyAdminFramePage legacyPath="/admin/pedido-calculo/debug" /> }
-function AdminHistoricoPrestacaoContasLegacyPage() { return <LegacyAdminFramePage legacyPath="/admin/prestacao-contas/debug" /> }
-function AdminModulosTipoPecaLegacyPage() { return <LegacyAdminFramePage legacyPath="/admin/modulos-tipo-peca" /> }
-function AdminConfigPecasLegacyPage() { return <LegacyAdminFramePage legacyPath="/api/gerador-pecas/config/admin" /> }
-function AdminTesteAtivacaoLegacyPage() { return <LegacyAdminFramePage legacyPath="/admin/prompts-modulos/teste" /> }
-function AdminTesteCategoriasLegacyPage() { return <LegacyAdminFramePage legacyPath="/admin/categorias-resumo-json/teste" /> }
-function AdminTjmsDocsLegacyPage() { return <LegacyAdminFramePage legacyPath="/admin/tjms-docs" /> }
-function AdminTjmsDocsPlanoLegacyPage() { return <LegacyAdminFramePage legacyPath="/admin/tjms-docs/plano" /> }
-function AdminRestaurarSlugsLegacyPage() { return <LegacyAdminFramePage legacyPath="/admin/restaurar-slugs" /> }
-
-function shouldUseNativeByDefault(nativeFlag: string | undefined): boolean {
-  return nativeFlag !== '0'
-}
-
-function shouldUseNativeMatriculas(): boolean {
-  return shouldUseNativeByDefault(import.meta.env.VITE_PORTAL_NATIVE_MATRICULAS)
-}
-
-function MatriculasRoutePage() {
-  if (shouldUseNativeMatriculas()) return <MatriculasPage />
-  return <MatriculasLegacyPage />
-}
-
-function shouldUseNativeAssistencia(): boolean {
-  return shouldUseNativeByDefault(import.meta.env.VITE_PORTAL_NATIVE_ASSISTENCIA)
-}
-
-function AssistenciaRoutePage() {
-  if (shouldUseNativeAssistencia()) return <AssistenciaPage />
-  return <AssistenciaLegacyPage />
-}
-
-function shouldUseNativeClassificador(): boolean {
-  return shouldUseNativeByDefault(import.meta.env.VITE_PORTAL_NATIVE_CLASSIFICADOR)
-}
-
-function ClassificadorRoutePage() {
-  if (shouldUseNativeClassificador()) return <ClassificadorPage />
-  return <ClassificadorLegacyPage />
-}
-
-function shouldUseNativePedidoCalculo(): boolean {
-  return shouldUseNativeByDefault(import.meta.env.VITE_PORTAL_NATIVE_PEDIDO_CALCULO)
-}
-
-function PedidoCalculoRoutePage() {
-  if (shouldUseNativePedidoCalculo()) return <PedidoCalculoPage />
-  return <PedidoCalculoLegacyPage />
-}
-
-function shouldUseNativePrestacaoContas(): boolean {
-  return shouldUseNativeByDefault(import.meta.env.VITE_PORTAL_NATIVE_PRESTACAO_CONTAS)
-}
-
-function PrestacaoContasRoutePage() {
-  if (shouldUseNativePrestacaoContas()) return <PrestacaoContasPage />
-  return <PrestacaoContasLegacyPage />
-}
-
-function shouldUseNativeRelatorioCumprimento(): boolean {
-  return shouldUseNativeByDefault(import.meta.env.VITE_PORTAL_NATIVE_RELATORIO_CUMPRIMENTO)
-}
-
-function RelatorioCumprimentoRoutePage() {
-  if (shouldUseNativeRelatorioCumprimento()) return <RelatorioCumprimentoPage />
-  return <RelatorioCumprimentoLegacyPage />
-}
-
-function shouldUseNativeGeradorPecas(): boolean {
-  return shouldUseNativeByDefault(import.meta.env.VITE_PORTAL_NATIVE_GERADOR_PECAS)
-}
-
-function GeradorPecasRoutePage() {
-  if (shouldUseNativeGeradorPecas()) return <GeradorPecasPage />
-  return <GeradorPecasLegacyPage />
-}
-
-function shouldUseNativeBertTraining(): boolean {
-  return shouldUseNativeByDefault(import.meta.env.VITE_PORTAL_NATIVE_BERT_TRAINING)
-}
-
-function BertTrainingRoutePage() {
-  if (shouldUseNativeBertTraining()) return <BertTrainingPage />
-  return <BertTrainingLegacyPage />
-}
 
 // ---------------------------------------------------------------------------
 // Rotas administrativas (/admin/*) - com layout

@@ -1,3 +1,4 @@
+import { memo } from 'react'
 import { useAuthStore } from '@/stores/auth-store'
 import { useUiStore } from '@/stores/ui-store'
 import { useNavigate } from '@tanstack/react-router'
@@ -14,10 +15,12 @@ import {
 /**
  * Header da aplicacao — PGE Design System
  * Fundo navy.950, logo PGE branco direto sobre fundo escuro, avatar laranja a direita
+ * Memoizado para evitar re-render em mudanca de rota (AppLayout re-renderiza via useRouterState)
  */
-export function Header() {
-  const { user, logout } = useAuthStore()
-  const { toggleSidebar } = useUiStore()
+export const Header = memo(function Header() {
+  const user = useAuthStore(s => s.user)
+  const logout = useAuthStore(s => s.logout)
+  const toggleSidebar = useUiStore(s => s.toggleSidebar)
   const navigate = useNavigate()
 
   const handleLogout = () => {
@@ -114,4 +117,4 @@ export function Header() {
       <div style={{ height: 20, background: '#F7F8F9' }} />
     </header>
   )
-}
+})

@@ -2,14 +2,51 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 import tailwindcss from '@tailwindcss/vite'
 import path from 'path'
+import { visualizer } from 'rollup-plugin-visualizer'
 
 // Configuracao do Vite para o Portal PGE-MS
 export default defineConfig({
-  plugins: [react(), tailwindcss()],
+  plugins: [
+    react(),
+    tailwindcss(),
+    visualizer({
+      filename: 'reports/bundle-analysis.html',
+      gzipSize: true,
+      brotliSize: true,
+      open: false,
+    }),
+  ],
   base: '/',
   build: {
     outDir: 'dist',
     sourcemap: false,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Vendor: Router + Query (carregado sempre)
+          'vendor-tanstack': [
+            '@tanstack/react-router',
+            '@tanstack/react-query',
+          ],
+          // Vendor: UI primitives (carregado com AppLayout)
+          'vendor-radix': [
+            '@radix-ui/react-dialog',
+            '@radix-ui/react-dropdown-menu',
+            '@radix-ui/react-select',
+            '@radix-ui/react-tabs',
+            '@radix-ui/react-toast',
+            '@radix-ui/react-tooltip',
+            '@radix-ui/react-popover',
+            '@radix-ui/react-checkbox',
+            '@radix-ui/react-switch',
+          ],
+          // Vendor: Graficos (lazy — so 3 paginas usam)
+          'vendor-recharts': ['recharts'],
+          // Vendor: Markdown (lazy — poucas paginas)
+          'vendor-markdown': ['marked', 'dompurify'],
+        },
+      },
+    },
   },
   resolve: {
     alias: {

@@ -366,11 +366,13 @@ interface BertStatus {
   total_epochs?: number
 }
 
-export function useBertStatus(options?: { enabled?: boolean; refetchInterval?: number }) {
+export function useBertStatus(options?: { enabled?: boolean; refetchInterval?: number | false }) {
   return useQuery({
     queryKey: queryKeys.bert.status(),
     queryFn: () => bertApi.get<BertStatus>('/status'),
-    refetchInterval: 5000, // Poll a cada 5 segundos quando treinando
+    // Poll a cada 5s APENAS se o caller solicitar (ex: pagina de treinamento ativa).
+    // Antes era incondicional, desperdicando bandwidth quando nao havia treinamento.
+    refetchInterval: options?.refetchInterval ?? false,
     ...options,
   })
 }

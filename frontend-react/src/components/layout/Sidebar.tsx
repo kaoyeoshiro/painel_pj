@@ -112,7 +112,7 @@ function NavLink({ item, collapsed }: { item: NavItem; collapsed: boolean }) {
 }
 
 function SidebarContent({ collapsed = false }: { collapsed?: boolean }) {
-  const { user } = useAuthStore()
+  const user = useAuthStore(s => s.user)
 
   return (
     <nav className="flex-1 overflow-y-auto py-4">
@@ -160,8 +160,10 @@ function SidebarContent({ collapsed = false }: { collapsed?: boolean }) {
  * Mobile: abre/fecha com Sheet (drawer)
  */
 export function Sidebar() {
-  const { sidebarOpen, setSidebarOpen, sidebarCollapsed, toggleSidebarCollapsed } =
-    useUiStore()
+  const sidebarOpen = useUiStore(s => s.sidebarOpen)
+  const setSidebarOpen = useUiStore(s => s.setSidebarOpen)
+  const sidebarCollapsed = useUiStore(s => s.sidebarCollapsed)
+  const toggleSidebarCollapsed = useUiStore(s => s.toggleSidebarCollapsed)
 
   return (
     <TooltipProvider>

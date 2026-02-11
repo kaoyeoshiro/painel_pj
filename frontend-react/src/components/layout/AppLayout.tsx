@@ -1,23 +1,11 @@
+import { Suspense } from 'react'
 import { Outlet, useRouterState } from '@tanstack/react-router'
 import { Header } from './Header'
 import { Sidebar } from './Sidebar'
 
-const ALWAYS_LEGACY_FRAME_PREFIXES: string[] = []
-const ALWAYS_NATIVE_NO_SHELL_PREFIXES: string[] = []
-
+/** Prefixos que usam topbar inline no mobile (header oculto em telas pequenas) */
 const MOBILE_INLINE_TOPBAR_PREFIXES = [
   '/classificador',
-]
-
-const CONDITIONAL_LEGACY_SYSTEM_PREFIXES: Array<{ prefix: string; nativeFlag: string | undefined }> = [
-  { prefix: '/assistencia', nativeFlag: import.meta.env.VITE_PORTAL_NATIVE_ASSISTENCIA },
-  { prefix: '/matriculas', nativeFlag: import.meta.env.VITE_PORTAL_NATIVE_MATRICULAS },
-  { prefix: '/gerador-pecas', nativeFlag: import.meta.env.VITE_PORTAL_NATIVE_GERADOR_PECAS },
-  { prefix: '/pedido-calculo', nativeFlag: import.meta.env.VITE_PORTAL_NATIVE_PEDIDO_CALCULO },
-  { prefix: '/prestacao-contas', nativeFlag: import.meta.env.VITE_PORTAL_NATIVE_PRESTACAO_CONTAS },
-  { prefix: '/relatorio-cumprimento', nativeFlag: import.meta.env.VITE_PORTAL_NATIVE_RELATORIO_CUMPRIMENTO },
-  { prefix: '/classificador', nativeFlag: import.meta.env.VITE_PORTAL_NATIVE_CLASSIFICADOR },
-  { prefix: '/bert-training', nativeFlag: import.meta.env.VITE_PORTAL_NATIVE_BERT_TRAINING },
 ]
 
 function pathMatchesPrefix(pathname: string, prefix: string): boolean {
@@ -25,28 +13,23 @@ function pathMatchesPrefix(pathname: string, prefix: string): boolean {
   return pathname === normalizedPrefix || pathname.startsWith(`${normalizedPrefix}/`)
 }
 
-function shouldRenderWithoutReactShell(pathname: string): boolean {
-  const isAlwaysLegacy = ALWAYS_LEGACY_FRAME_PREFIXES.some((prefix) =>
-    pathMatchesPrefix(pathname, prefix)
-  )
-
-  if (isAlwaysLegacy) return true
-
-  const isAlwaysNativeNoShell = ALWAYS_NATIVE_NO_SHELL_PREFIXES.some((prefix) =>
-    pathMatchesPrefix(pathname, prefix)
-  )
-
-  if (isAlwaysNativeNoShell) return true
-
-  // Em sistemas do portal, só removemos o shell quando houver rollback explícito
-  // para legado (VITE_PORTAL_NATIVE_*=0).
-  return CONDITIONAL_LEGACY_SYSTEM_PREFIXES.some(
-    ({ prefix, nativeFlag }) => nativeFlag === '0' && pathMatchesPrefix(pathname, prefix)
-  )
-}
-
 function shouldUseInlineTopbarOnMobile(pathname: string): boolean {
   return MOBILE_INLINE_TOPBAR_PREFIXES.some((prefix) => pathMatchesPrefix(pathname, prefix))
+}
+
+/** Fallback de carregamento para rotas lazy-loaded (evita layout shift) */
+function PageLoadingFallback() {
+  return (
+    <div className="p-6 space-y-4 animate-pulse">
+      <div className="h-8 w-48 rounded-md bg-gray-200" />
+      <div className="h-4 w-96 rounded-md bg-gray-200" />
+      <div className="mt-6 space-y-3">
+        <div className="h-4 w-full rounded-md bg-gray-100" />
+        <div className="h-4 w-5/6 rounded-md bg-gray-100" />
+        <div className="h-4 w-4/6 rounded-md bg-gray-100" />
+      </div>
+    </div>
+  )
 }
 
 /**
@@ -56,12 +39,7 @@ function shouldUseInlineTopbarOnMobile(pathname: string): boolean {
  */
 export function AppLayout() {
   const pathname = useRouterState({ select: (s) => s.location.pathname })
-  const shouldSkipShell = shouldRenderWithoutReactShell(pathname)
   const useInlineTopbarOnMobile = shouldUseInlineTopbarOnMobile(pathname)
-
-  if (shouldSkipShell) {
-    return <Outlet />
-  }
 
   return (
     <div className="flex h-screen overflow-hidden" style={{ background: '#F7F8F9' }}>
@@ -81,7 +59,9 @@ export function AppLayout() {
 
         {/* Área de conteúdo (renderiza as páginas) */}
         <main className="flex-1 overflow-y-auto" style={{ background: '#F7F8F9' }}>
-          <Outlet />
+          <Suspense fallback={<PageLoadingFallback />}>
+            <Outlet />
+          </Suspense>
         </main>
       </div>
     </div>
