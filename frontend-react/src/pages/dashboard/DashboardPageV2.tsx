@@ -1,32 +1,10 @@
 import { useState } from 'react'
 import { Link } from '@tanstack/react-router'
 import { useAuthStore } from '@/stores/auth-store'
-import { cn } from '@/lib/utils'
+import { C } from '@/lib/designTokens'
 import { systemCards, adminCards } from './constants'
 import { ChevronRight, ChevronDown, Settings } from 'lucide-react'
 import type { SystemCardConfig, AdminCardConfig } from './types'
-
-// ============================================================
-// PGE Design System — Color Tokens
-// ============================================================
-
-const C = {
-  navy950: '#22314B',
-  navy900: '#253D52',
-  navy700: '#2B5376',
-  navy600: '#356A8E',
-  navy500: '#4A98A0',
-  navy100: '#D5ECEF',
-  navy50: '#EFF8F9',
-  orange500: '#F58634',
-  orange400: '#F79A54',
-  gray200: '#E2E3E5',
-  gray100: '#F0F1F2',
-  gray500: '#8D8F92',
-  text900: '#1A2332',
-  text500: '#5A6578',
-  text400: '#8D95A0',
-}
 
 // ============================================================
 // Helpers
@@ -202,11 +180,7 @@ export function DashboardPageV2() {
     user?.full_name?.split(' ')[0] ?? user?.username ?? 'Usuario'
 
   return (
-    <div style={{ fontFamily: "var(--font-ui, 'Plus Jakarta Sans', system-ui, sans-serif)" }}>
-      <div
-        className="mx-auto"
-        style={{ maxWidth: 1350, padding: '32px 40px' }}
-      >
+    <div className="mx-auto max-w-pge px-4 py-8 sm:px-6 lg:px-10">
         {/* Greeting */}
         <div style={{ paddingBottom: 32 }}>
           <p
@@ -304,7 +278,6 @@ export function DashboardPageV2() {
             )}
           </section>
         )}
-      </div>
     </div>
   )
 }

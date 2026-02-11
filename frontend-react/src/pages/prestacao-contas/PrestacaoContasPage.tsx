@@ -17,7 +17,8 @@ import { prestacaoContasApi, getToken } from '@/lib/api'
 import { useMarkdown } from '@/hooks/useMarkdown'
 import { BreadcrumbBar } from '@/components/layout/BreadcrumbBar'
 import { ContentDialog } from '@/components/layout/ContentDialog'
-import { C, FONT_UI, FONT_DOC } from '@/lib/designTokens'
+import { ContentArea } from '@/components/layout/ContentArea'
+import { C, FONT_DOC } from '@/lib/designTokens'
 import {
   FileText,
   History,
@@ -1576,14 +1577,14 @@ export function PrestacaoContasPage() {
   // =====================================================
 
   return (
-    <div style={{ fontFamily: FONT_UI }}>
+    <>
       <BreadcrumbBar
         title="Prestacao de Contas"
         icon={<Building2 style={{ width: 14, height: 14 }} />}
         actions={renderHistoricoSheet()}
       />
 
-      <div style={{ maxWidth: 1350, margin: '0 auto', padding: '32px 40px' }}>
+      <ContentArea>
         <div className="max-w-4xl mx-auto space-y-6">
           {estadoPagina === 'idle' && (
             <>
@@ -1615,7 +1616,7 @@ export function PrestacaoContasPage() {
             </>
           )}
         </div>
-      </div>
+      </ContentArea>
 
       {/* ContentDialog para resultado */}
       {geracaoAtual && estadoPagina === 'resultado' && (
@@ -1651,7 +1652,7 @@ export function PrestacaoContasPage() {
       )}
 
       {renderConfirmacaoDialog()}
-    </div>
+    </>
   )
 }
 

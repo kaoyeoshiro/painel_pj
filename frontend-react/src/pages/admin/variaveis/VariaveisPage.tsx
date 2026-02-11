@@ -9,7 +9,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { useToast } from '@/components/ui/toast'
 import { Search, Hash, Link2, Unlink2, Layers3, BookOpen, HelpCircle, Plus, Users, ChevronLeft, ChevronRight, Variable } from 'lucide-react'
 import { BreadcrumbBar } from '@/components/layout/BreadcrumbBar'
-import { C, FONT_UI } from '@/lib/designTokens'
+import { ContentArea } from '@/components/layout/ContentArea'
+import { C } from '@/lib/designTokens'
 import { AdminSubNav } from '@/components/layout/AdminSubNav'
 
 interface Variavel {
@@ -105,7 +106,7 @@ export function VariaveisPage() {
   }
 
   return (
-    <div style={{ fontFamily: FONT_UI }}>
+    <>
       <BreadcrumbBar
         title="Painel de Variaveis"
         icon={<Variable style={{ width: 14, height: 14 }} />}
@@ -126,7 +127,7 @@ export function VariaveisPage() {
         }
       />
 
-      <div style={{ maxWidth: 1350, margin: '0 auto', padding: '32px 40px' }}>
+      <ContentArea>
         <AdminSubNav />
 
         <div>
@@ -310,7 +311,7 @@ export function VariaveisPage() {
             </DialogFooter>
           </DialogContent>
         </Dialog>
-      </div>
-    </div>
+      </ContentArea>
+    </>
   )
 }

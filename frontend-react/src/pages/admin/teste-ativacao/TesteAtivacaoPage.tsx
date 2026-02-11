@@ -21,7 +21,8 @@ import {
   Zap,
 } from 'lucide-react'
 import { BreadcrumbBar } from '@/components/layout/BreadcrumbBar'
-import { C, FONT_UI } from '@/lib/designTokens'
+import { ContentArea } from '@/components/layout/ContentArea'
+import { C } from '@/lib/designTokens'
 
 interface TipoPeca {
   slug: string
@@ -308,7 +309,7 @@ export function TesteAtivacaoPage() {
   }
 
   return (
-    <div style={{ fontFamily: FONT_UI }}>
+    <>
       <BreadcrumbBar
         title="Teste de Ativacao de Modulos"
         icon={<Zap style={{ width: 14, height: 14 }} />}
@@ -334,7 +335,7 @@ export function TesteAtivacaoPage() {
         }
       />
 
-      <div className="p-4">
+      <ContentArea>
         <div className="grid grid-cols-12 gap-4">
           <div className="col-span-12 lg:col-span-3 space-y-4">
             <Card className="bg-white rounded-2xl shadow-sm overflow-hidden" style={{ borderColor: C.gray200 }}>
@@ -564,7 +565,7 @@ export function TesteAtivacaoPage() {
             </div>
           </div>
         </div>
-      </div>
-    </div>
+      </ContentArea>
+    </>
   )
 }

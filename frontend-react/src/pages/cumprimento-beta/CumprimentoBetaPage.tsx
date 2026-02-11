@@ -1,7 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
 import { Play, RotateCw, FlaskConical, MessageSquare, Send, User, Bot, Loader2, AlertCircle, Download } from 'lucide-react'
 import { BreadcrumbBar } from '@/components/layout/BreadcrumbBar'
-import { C, FONT_UI } from '@/lib/designTokens'
+import { ContentArea } from '@/components/layout/ContentArea'
+import { C } from '@/lib/designTokens'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -334,7 +335,7 @@ export function CumprimentoBetaPage() {
   }
 
   return (
-    <div style={{ fontFamily: FONT_UI }}>
+    <>
       <BreadcrumbBar
         title="Cumprimento de Sentenca"
         icon={<FlaskConical style={{ width: 14, height: 14 }} />}
@@ -392,7 +393,7 @@ export function CumprimentoBetaPage() {
         }
       />
 
-      <div style={{ maxWidth: 1350, margin: '0 auto', padding: '32px 40px' }}>
+      <ContentArea>
         <div className="space-y-6" style={{ maxWidth: 896, margin: '0 auto' }}>
         {/* Input de Processo */}
         <Card style={{ borderColor: C.gray200, borderRadius: 16 }}>
@@ -654,8 +655,8 @@ export function CumprimentoBetaPage() {
           </Card>
         )}
         </div>
-      </div>
-    </div>
+      </ContentArea>
+    </>
   )
 }
 

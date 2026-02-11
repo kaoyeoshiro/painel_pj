@@ -18,7 +18,8 @@ import {
   CircleHelp,
 } from 'lucide-react'
 import { BreadcrumbBar } from '@/components/layout/BreadcrumbBar'
-import { C, FONT_UI } from '@/lib/designTokens'
+import { ContentArea } from '@/components/layout/ContentArea'
+import { C } from '@/lib/designTokens'
 import {
   PieChart,
   Pie,
@@ -262,7 +263,7 @@ export function PerformancePage() {
   ]
 
   return (
-    <div style={{ fontFamily: FONT_UI }}>
+    <>
       <BreadcrumbBar
         title="Performance & Logs"
         icon={<Activity style={{ width: 14, height: 14 }} />}
@@ -273,7 +274,7 @@ export function PerformancePage() {
           </span>
         }
       />
-      <div style={{ maxWidth: 1350, margin: '0 auto', padding: '32px 40px' }}>
+      <ContentArea>
 
       <nav className="flex gap-8 overflow-x-auto border-b mb-6" style={{ borderColor: C.gray200 }}>
         <button onClick={() => setTab('sistema')} className="py-4 px-1 font-medium whitespace-nowrap" style={tab === 'sistema' ? { borderBottom: `3px solid ${C.navy700}`, color: C.navy700 } : { color: C.text500 }}>
@@ -532,7 +533,7 @@ export function PerformancePage() {
           </div>
         )}
       </div>
-      </div>
-    </div>
+      </ContentArea>
+    </>
   )
 }

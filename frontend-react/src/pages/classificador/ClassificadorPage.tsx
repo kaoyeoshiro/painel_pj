@@ -4,7 +4,8 @@ import { useQuery } from '@tanstack/react-query'
 import { queryKeys } from '@/lib/query-client'
 import { useToast } from '@/hooks/use-toast'
 import { BreadcrumbBar } from '@/components/layout/BreadcrumbBar'
-import { C, FONT_UI } from '@/lib/designTokens'
+import { ContentArea } from '@/components/layout/ContentArea'
+import { C } from '@/lib/designTokens'
 import { CircleDot, CirclePlus, FileSearch, FolderOpen, MessageCircleMore, Zap } from 'lucide-react'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card'
@@ -1479,13 +1480,13 @@ export function ClassificadorPage() {
   const promptsList = prompts ?? []
 
   return (
-    <div style={{ fontFamily: FONT_UI }}>
+    <>
       <BreadcrumbBar
         title="Classificador de Documentos"
         icon={<FileSearch style={{ width: 14, height: 14 }} />}
       />
 
-      <div style={{ maxWidth: 1350, margin: '0 auto', padding: '32px 40px' }}>
+      <ContentArea>
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as PageTab)}>
           <TabsList
             className="grid w-full grid-cols-4 h-auto rounded-none bg-transparent p-0"
@@ -1537,7 +1538,7 @@ export function ClassificadorPage() {
             />
           </TabsContent>
         </Tabs>
-      </div>
-    </div>
+      </ContentArea>
+    </>
   )
 }

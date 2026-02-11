@@ -1,11 +1,12 @@
 import { Link } from '@tanstack/react-router'
 import { ExternalLink, AlertTriangle, CheckCircle, Network, BookOpen } from 'lucide-react'
 import { BreadcrumbBar } from '@/components/layout/BreadcrumbBar'
-import { C, FONT_UI } from '@/lib/designTokens'
+import { ContentArea } from '@/components/layout/ContentArea'
+import { C } from '@/lib/designTokens'
 
 export function TjmsDocsPage() {
   return (
-    <div style={{ fontFamily: FONT_UI }}>
+    <>
       <BreadcrumbBar
         title="Documentacao Integracao TJ-MS"
         icon={<BookOpen style={{ width: 14, height: 14 }} />}
@@ -20,8 +21,7 @@ export function TjmsDocsPage() {
         }
       />
 
-      <div style={{ maxWidth: 1350, margin: '0 auto', padding: '32px 40px' }}>
-        <div className="space-y-6">
+      <ContentArea className="space-y-6">
           <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
             <div className="flex items-start gap-3">
               <AlertTriangle className="h-5 w-5 text-amber-500 mt-0.5" />
@@ -79,8 +79,7 @@ PROXIES:
 - Local (Playwright/Subconta): ngrok`}</pre>
             </div>
           </div>
-        </div>
-      </div>
-    </div>
+      </ContentArea>
+    </>
   )
 }

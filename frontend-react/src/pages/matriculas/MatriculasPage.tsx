@@ -15,7 +15,7 @@ import type {
   FeedbackRequest,
 } from '@/types/matriculas'
 import { BreadcrumbBar } from '@/components/layout/BreadcrumbBar'
-import { C, FONT_UI } from '@/lib/designTokens'
+import { C } from '@/lib/designTokens'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -530,7 +530,7 @@ export default function MatriculasPage() {
   }
 
   return (
-    <div style={{ fontFamily: FONT_UI }}>
+    <>
       {/* Breadcrumb Bar */}
       <BreadcrumbBar
         title="Matriculas Confrontantes"
@@ -1142,7 +1142,7 @@ export default function MatriculasPage() {
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+    </>
   )
 }
 

@@ -12,7 +12,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/hooks/use-toast'
 import { BreadcrumbBar } from '@/components/layout/BreadcrumbBar'
 import { AdminSubNav } from '@/components/layout'
-import { C, FONT_UI } from '@/lib/designTokens'
+import { ContentArea } from '@/components/layout/ContentArea'
+import { C } from '@/lib/designTokens'
 import { RotateCcw, Plus, FileEdit, ChevronDown, ChevronRight } from 'lucide-react'
 
 interface Prompt {
@@ -345,13 +346,13 @@ export function PromptsPage() {
   }, [filteredPrompts])
 
   return (
-    <div style={{ fontFamily: FONT_UI }}>
+    <>
       <BreadcrumbBar
         title="Gerenciamento de Prompts e IA"
         icon={<FileEdit style={{ width: 14, height: 14 }} />}
       />
 
-      <div style={{ maxWidth: 1350, margin: '0 auto', padding: '32px 40px' }} className="space-y-6">
+      <ContentArea className="space-y-6">
       <AdminSubNav />
 
       {/* Seção 1: Configurações de IA — color-coded */}
@@ -641,7 +642,7 @@ export function PromptsPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-    </div>
-    </div>
+    </ContentArea>
+    </>
   )
 }

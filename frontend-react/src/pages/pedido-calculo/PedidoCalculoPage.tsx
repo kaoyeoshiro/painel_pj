@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef } from 'react'
 import { Link } from '@tanstack/react-router'
+import { ContentArea } from '@/components/layout/ContentArea'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -49,29 +50,7 @@ import type {
   DocumentoResponse,
 } from '@/types/pedido-calculo'
 
-// ============================================================
-// PGE Design System — Color Tokens
-// ============================================================
-
-const C = {
-  navy950: '#22314B',
-  navy900: '#253D52',
-  navy700: '#2B5376',
-  navy600: '#356A8E',
-  navy500: '#4A98A0',
-  navy100: '#D5ECEF',
-  navy50: '#EFF8F9',
-  orange500: '#F58634',
-  orange400: '#F79A54',
-  gray200: '#E2E3E5',
-  gray100: '#F0F1F2',
-  gray50: '#F7F8F9',
-  gray500: '#8D8F92',
-  text900: '#1A2332',
-  text700: '#2D3B4E',
-  text500: '#5A6578',
-  text400: '#8D95A0',
-}
+import { C } from '@/lib/designTokens'
 
 export function PedidoCalculoPage() {
   const { toast } = useToast()
@@ -663,12 +642,12 @@ export function PedidoCalculoPage() {
   }
 
   return (
-    <div style={{ fontFamily: "var(--font-ui, 'Plus Jakarta Sans', system-ui, sans-serif)" }}>
+    <>
       {/* ============================================================ */}
       {/* BREADCRUMB BAR — leve, subordinada ao header global          */}
       {/* ============================================================ */}
-      <div className="border-b" style={{ borderColor: C.gray200 }}>
-        <div className="mx-auto flex max-w-[1350px] items-center justify-between" style={{ height: 48, padding: '0 40px' }}>
+      <div className="border-b border-gray-200">
+        <div className="mx-auto flex h-12 max-w-pge items-center justify-between px-4 sm:px-6 lg:px-10">
           <div className="flex items-center gap-2">
             <Link
               to="/dashboard"
@@ -750,8 +729,7 @@ export function PedidoCalculoPage() {
         </div>
       </div>
 
-      <div>
-        <div className="mx-auto max-w-[1350px] px-4 py-8 sm:px-6 lg:px-8">
+      <ContentArea>
           {/* Formulario Principal */}
           <div className="mb-6 overflow-hidden rounded-2xl border bg-white shadow-sm" style={{ borderColor: C.gray200 }}>
             {/* Navy accent bar */}
@@ -870,8 +848,7 @@ export function PedidoCalculoPage() {
               )}
             </div>
           </div>
-        </div>
-      </div>
+      </ContentArea>
 
       {/* Modal de Progresso */}
       <Dialog open={isProcessing} onOpenChange={setIsProcessing}>
@@ -1183,7 +1160,7 @@ export function PedidoCalculoPage() {
           </div>
         </DialogContent>
       </Dialog>
-    </div>
+    </>
   )
 }
 

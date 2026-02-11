@@ -16,11 +16,8 @@ interface BreadcrumbBarProps {
  */
 export function BreadcrumbBar({ title, icon, actions, backTo = '/dashboard' }: BreadcrumbBarProps) {
   return (
-    <div className="border-b" style={{ borderColor: C.gray200 }}>
-      <div
-        className="mx-auto flex items-center justify-between"
-        style={{ height: 48, maxWidth: 1350, padding: '0 40px' }}
-      >
+    <div className="border-b border-gray-200">
+      <div className="mx-auto flex h-12 max-w-pge items-center justify-between px-4 sm:px-6 lg:px-10">
         {/* Lado esquerdo: voltar > icone > titulo */}
         <div className="flex items-center gap-2">
           <Link

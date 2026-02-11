@@ -28,7 +28,8 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/co
 import { BreadcrumbBar } from '@/components/layout/BreadcrumbBar'
 import { ContentDialog } from '@/components/layout/ContentDialog'
 import { ChatPanel, type ChatMessage } from '@/components/layout/ChatPanel'
-import { C, FONT_UI, FONT_DOC } from '@/lib/designTokens'
+import { ContentArea } from '@/components/layout/ContentArea'
+import { C, FONT_DOC } from '@/lib/designTokens'
 import { useQuery } from '@tanstack/react-query'
 import { queryKeys } from '@/lib/query-client'
 import { useMarkdown } from '@/hooks/useMarkdown'
@@ -524,7 +525,7 @@ export function RelatorioCumprimentoPage() {
   const processoSubtitle = dadosCumprimento?.numero_processo_formatado || numeroCnj
 
   return (
-    <div style={{ fontFamily: FONT_UI }}>
+    <>
       {/* ============================================================ */}
       {/* BREADCRUMB BAR — subordinada ao Header global                */}
       {/* ============================================================ */}
@@ -602,7 +603,7 @@ export function RelatorioCumprimentoPage() {
       {/* ============================================================ */}
       {/* CONTEUDO PRINCIPAL                                           */}
       {/* ============================================================ */}
-      <div style={{ maxWidth: 1350, margin: '0 auto', padding: '32px 40px' }}>
+      <ContentArea>
         <div className="space-y-6" style={{ maxWidth: 900, margin: '0 auto' }}>
 
           {/* Card de Entrada — Numero do Processo */}
@@ -923,7 +924,7 @@ export function RelatorioCumprimentoPage() {
             </div>
           )}
         </div>
-      </div>
+      </ContentArea>
 
       {/* ============================================================ */}
       {/* CONTENT DIALOG — Visualizacao do relatorio gerado            */}
@@ -1094,7 +1095,7 @@ export function RelatorioCumprimentoPage() {
           />
         }
       />
-    </div>
+    </>
   )
 }
 

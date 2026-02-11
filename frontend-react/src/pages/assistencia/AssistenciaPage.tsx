@@ -2,7 +2,8 @@ import { useState, useCallback, useEffect } from 'react'
 import { Search, Scale, Trash2, FileText, FileDown, RotateCw, Database, Clock } from 'lucide-react'
 import { useMarkdown } from '@/hooks/useMarkdown'
 import { BreadcrumbBar } from '@/components/layout/BreadcrumbBar'
-import { C, FONT_UI, FONT_DOC } from '@/lib/designTokens'
+import { ContentArea } from '@/components/layout/ContentArea'
+import { C, FONT_DOC } from '@/lib/designTokens'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Skeleton } from '@/components/ui/skeleton'
@@ -661,14 +662,14 @@ export function AssistenciaPage() {
   // =====================================================
 
   return (
-    <div style={{ fontFamily: FONT_UI }}>
+    <>
       <BreadcrumbBar
         title="Assistencia Judiciaria"
         icon={<Scale style={{ width: 14, height: 14 }} />}
         actions={renderHistoricoSheet()}
       />
 
-      <div style={{ maxWidth: 1350, margin: '0 auto', padding: '32px 40px' }}>
+      <ContentArea>
         <div className="mx-auto max-w-4xl space-y-6">
           {/* Formulario de consulta */}
           <div
@@ -745,8 +746,8 @@ export function AssistenciaPage() {
           {viewState === 'erro' && renderErro()}
           {viewState === 'resultado' && renderResultado()}
         </div>
-      </div>
-    </div>
+      </ContentArea>
+    </>
   )
 }
 

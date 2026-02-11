@@ -29,7 +29,8 @@ import {
   X,
 } from 'lucide-react'
 import { BreadcrumbBar } from '@/components/layout/BreadcrumbBar'
-import { C, FONT_UI } from '@/lib/designTokens'
+import { ContentArea } from '@/components/layout/ContentArea'
+import { C } from '@/lib/designTokens'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -892,7 +893,7 @@ export function BertTrainingPage() {
   // ========================================================================
 
   return (
-    <div style={{ fontFamily: FONT_UI }}>
+    <>
       <BreadcrumbBar
         title="Treinamento de IA"
         icon={<Brain style={{ width: 14, height: 14 }} />}
@@ -917,7 +918,7 @@ export function BertTrainingPage() {
         }
       />
 
-      <div style={{ maxWidth: 1350, margin: '0 auto', padding: '32px 40px' }}>
+      <ContentArea>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
           <TabsList className="grid w-full grid-cols-4">
@@ -2697,7 +2698,7 @@ export function BertTrainingPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      </div>
-    </div>
+      </ContentArea>
+    </>
   )
 }

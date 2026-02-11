@@ -25,7 +25,8 @@ import { useQuery } from '@tanstack/react-query'
 import { queryKeys } from '@/lib/query-client'
 import { useMarkdown } from '@/hooks/useMarkdown'
 import { BreadcrumbBar } from '@/components/layout/BreadcrumbBar'
-import { C, FONT_UI } from '@/lib/designTokens'
+import { ContentArea } from '@/components/layout/ContentArea'
+import { C } from '@/lib/designTokens'
 import { Calculator } from 'lucide-react'
 
 // ---------------------------------------------------------------------------
@@ -450,13 +451,12 @@ export function HistoricoPedidoCalculoPage() {
   ]
 
   return (
-    <div style={{ fontFamily: FONT_UI }}>
+    <>
       <BreadcrumbBar
         title="Historico - Pedido de Calculo"
         icon={<Calculator style={{ width: 14, height: 14 }} />}
       />
-      <div style={{ maxWidth: 1350, margin: '0 auto', padding: '32px 40px' }}>
-        <div className="space-y-6">
+      <ContentArea className="space-y-6">
           <DataTable
             columns={columns}
             data={geracoes || []}
@@ -467,10 +467,9 @@ export function HistoricoPedidoCalculoPage() {
             onRowClick={handleRowClick}
             emptyMessage="Nenhuma geracao encontrada"
           />
-        </div>
-      </div>
+      </ContentArea>
 
       <DetalhesModal geracao={selectedGeracao} onClose={() => setSelectedGeracao(null)} />
-    </div>
+    </>
   )
 }

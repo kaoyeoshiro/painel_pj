@@ -1,7 +1,8 @@
 import { useState, useEffect, useMemo } from 'react'
 import { usersApi } from '@/lib/api'
 import { BreadcrumbBar } from '@/components/layout/BreadcrumbBar'
-import { C, FONT_UI } from '@/lib/designTokens'
+import { ContentArea } from '@/components/layout/ContentArea'
+import { C } from '@/lib/designTokens'
 import { Users as UsersIcon, UserPlus, Users } from 'lucide-react'
 import { DataTable } from '@/components/shared/DataTable'
 import { Button } from '@/components/ui/button'
@@ -458,7 +459,7 @@ export function UsersPage() {
   ]
 
   return (
-    <div style={{ fontFamily: FONT_UI }}>
+    <>
       <BreadcrumbBar
         title="Gerenciamento de Usuarios"
         icon={<UsersIcon style={{ width: 14, height: 14 }} />}
@@ -501,8 +502,7 @@ export function UsersPage() {
           </div>
         }
       />
-      <div style={{ maxWidth: 1350, margin: '0 auto', padding: '32px 40px' }}>
-      <div className="space-y-6">
+      <ContentArea className="space-y-6">
 
       {/* Tabela de usuarios — exibicao agrupada ou normal */}
       {groupBy === 'none' || !groupedUsers ? (
@@ -770,8 +770,7 @@ export function UsersPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      </div>
-      </div>
-    </div>
+      </ContentArea>
+    </>
   )
 }

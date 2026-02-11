@@ -13,7 +13,8 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { useToast } from '@/hooks/use-toast'
 import { BreadcrumbBar } from '@/components/layout/BreadcrumbBar'
 import { AdminSubNav } from '@/components/layout'
-import { C, FONT_UI } from '@/lib/designTokens'
+import { ContentArea } from '@/components/layout/ContentArea'
+import { C } from '@/lib/designTokens'
 import { Settings as SettingsIcon } from 'lucide-react'
 
 // Interfaces
@@ -606,7 +607,7 @@ export function ConfigPecasPage() {
   }
 
   return (
-    <div style={{ fontFamily: FONT_UI }}>
+    <>
       <BreadcrumbBar
         title="Configuração de Peças"
         icon={<SettingsIcon style={{ width: 14, height: 14 }} />}
@@ -632,7 +633,7 @@ export function ConfigPecasPage() {
         }
       />
 
-      <div style={{ maxWidth: 1350, margin: '0 auto', padding: '32px 40px' }} className="space-y-6">
+      <ContentArea className="space-y-6">
       <AdminSubNav />
 
       <Tabs defaultValue="categorias" className="w-full">
@@ -967,7 +968,7 @@ export function ConfigPecasPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      </div>
-    </div>
+      </ContentArea>
+    </>
   )
 }

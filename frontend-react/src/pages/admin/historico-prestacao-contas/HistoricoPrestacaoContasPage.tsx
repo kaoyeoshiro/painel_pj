@@ -11,7 +11,8 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { useToast } from '@/hooks/use-toast'
 import { useMarkdown } from '@/hooks/useMarkdown'
 import { BreadcrumbBar } from '@/components/layout/BreadcrumbBar'
-import { C, FONT_UI } from '@/lib/designTokens'
+import { ContentArea } from '@/components/layout/ContentArea'
+import { C } from '@/lib/designTokens'
 import { Building2 } from 'lucide-react'
 
 // Interfaces
@@ -329,12 +330,12 @@ export function HistoricoPrestacaoContasPage() {
   ]
 
   return (
-    <div style={{ fontFamily: FONT_UI }}>
+    <>
       <BreadcrumbBar
         title="Historico - Prestacao de Contas"
         icon={<Building2 style={{ width: 14, height: 14 }} />}
       />
-      <div style={{ maxWidth: 1350, margin: '0 auto', padding: '32px 40px' }}>
+      <ContentArea>
         {loading ? (
           <div className="space-y-3">
             <Skeleton className="h-12 w-full" />
@@ -348,7 +349,7 @@ export function HistoricoPrestacaoContasPage() {
             onRowClick={(row) => loadDetalhes(row.id)}
           />
         )}
-      </div>
+      </ContentArea>
 
       {/* Dialog de Detalhes */}
       <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
@@ -636,6 +637,6 @@ export function HistoricoPrestacaoContasPage() {
           </Dialog>
         </DialogContent>
       </Dialog>
-    </div>
+    </>
   )
 }

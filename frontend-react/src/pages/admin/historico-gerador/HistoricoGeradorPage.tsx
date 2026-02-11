@@ -10,7 +10,8 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { useToast } from '@/hooks/use-toast'
 import { useMarkdown } from '@/hooks/useMarkdown'
 import { BreadcrumbBar } from '@/components/layout/BreadcrumbBar'
-import { C, FONT_UI } from '@/lib/designTokens'
+import { ContentArea } from '@/components/layout/ContentArea'
+import { C } from '@/lib/designTokens'
 import { History } from 'lucide-react'
 
 interface Geracao {
@@ -187,26 +188,25 @@ export function HistoricoGeradorPage() {
 
   if (loading) {
     return (
-      <div style={{ fontFamily: FONT_UI }}>
+      <>
         <BreadcrumbBar
           title="Historico - Gerador de Pecas"
           icon={<History style={{ width: 14, height: 14 }} />}
         />
-        <div style={{ maxWidth: 1350, margin: '0 auto', padding: '32px 40px' }}>
+        <ContentArea>
           <Skeleton className="h-96 w-full" />
-        </div>
-      </div>
+        </ContentArea>
+      </>
     )
   }
 
   return (
-    <div style={{ fontFamily: FONT_UI }}>
+    <>
       <BreadcrumbBar
         title="Historico - Gerador de Pecas"
         icon={<History style={{ width: 14, height: 14 }} />}
       />
-      <div style={{ maxWidth: 1350, margin: '0 auto', padding: '32px 40px' }}>
-      <div className="space-y-4">
+      <ContentArea className="space-y-4">
 
       <DataTable
         data={geracoes}
@@ -369,9 +369,8 @@ export function HistoricoGeradorPage() {
           ) : null}
         </DialogContent>
       </Dialog>
-      </div>
-      </div>
-    </div>
+      </ContentArea>
+    </>
   )
 }
 

@@ -31,7 +31,8 @@ import { useQuery } from '@tanstack/react-query'
 import { queryKeys } from '@/lib/query-client'
 import { useToast } from '@/components/ui/toast'
 import { cn } from '@/lib/utils'
-import { C, FONT_UI } from '@/lib/designTokens'
+import { ContentArea } from '@/components/layout/ContentArea'
+import { C } from '@/lib/designTokens'
 import type {
   ProcessoInfo,
   CategoriaDocumento,
@@ -502,7 +503,7 @@ export function ExtratorAutosPage() {
   // ---------------------------------------------------------------------------
 
   return (
-    <div style={{ fontFamily: FONT_UI }}>
+    <>
       {/* ============================================================ */}
       {/* BREADCRUMB BAR                                               */}
       {/* ============================================================ */}
@@ -571,8 +572,7 @@ export function ExtratorAutosPage() {
       {/* ============================================================ */}
       {/* MAIN CONTENT                                                 */}
       {/* ============================================================ */}
-      <div className="mx-auto max-w-[1350px] px-4 py-8 sm:px-6 lg:px-10">
-        <div className="space-y-6">
+      <ContentArea className="space-y-6">
 
           {/* ===== Secao 1: Input ===== */}
           {(pageState === 'idle' || pageState === 'erro') && (
@@ -1313,8 +1313,7 @@ export function ExtratorAutosPage() {
             )}
           </div>
 
-        </div>
-      </div>
-    </div>
+      </ContentArea>
+    </>
   )
 }

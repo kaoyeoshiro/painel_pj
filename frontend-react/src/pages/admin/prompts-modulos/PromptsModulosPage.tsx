@@ -9,7 +9,8 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { BreadcrumbBar } from '@/components/layout/BreadcrumbBar'
 import { AdminSubNav } from '@/components/layout'
-import { C, FONT_UI } from '@/lib/designTokens'
+import { ContentArea } from '@/components/layout/ContentArea'
+import { C } from '@/lib/designTokens'
 import {
   ChevronDown, ChevronRight, Edit2, Trash2, ToggleLeft, ToggleRight,
   Plus, Search, Download, Upload, History, Settings, RotateCcw,
@@ -1037,7 +1038,7 @@ export function PromptsModulosPage() {
   // ========== Render ==========
 
   return (
-    <div style={{ fontFamily: FONT_UI }}>
+    <>
       <BreadcrumbBar
         title="Modulos de Prompts"
         icon={<FileJson style={{ width: 14, height: 14 }} />}
@@ -1070,7 +1071,7 @@ export function PromptsModulosPage() {
         }
       />
 
-      <div style={{ maxWidth: 1350, margin: '0 auto', padding: '32px 40px' }} className="space-y-6">
+      <ContentArea className="space-y-6">
       <AdminSubNav />
 
       {/* Filtros */}
@@ -1595,7 +1596,7 @@ export function PromptsModulosPage() {
           </div>
         </DialogContent>
       </Dialog>
-    </div>
-    </div>
+    </ContentArea>
+    </>
   )
 }

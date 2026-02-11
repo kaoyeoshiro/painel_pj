@@ -3,7 +3,8 @@ import { adminApi } from '@/lib/api'
 import { useToast } from '@/components/ui/toast'
 import { AlertTriangle, RotateCcw, Wand2 } from 'lucide-react'
 import { BreadcrumbBar } from '@/components/layout/BreadcrumbBar'
-import { C, FONT_UI } from '@/lib/designTokens'
+import { ContentArea } from '@/components/layout/ContentArea'
+import { C } from '@/lib/designTokens'
 
 const JSON_BACKUP = {
   nome_assistido: {
@@ -83,13 +84,13 @@ export function RestaurarSlugsPage() {
   }
 
   return (
-    <div style={{ fontFamily: FONT_UI }}>
+    <>
       <BreadcrumbBar
         title="Restaurar Slugs"
         icon={<RotateCcw style={{ width: 14, height: 14 }} />}
       />
 
-      <div style={{ maxWidth: 1350, margin: '0 auto', padding: '32px 40px' }}>
+      <ContentArea>
         <div className="max-w-4xl mx-auto">
           <div className="bg-white rounded-2xl shadow-sm p-6" style={{ border: `1px solid ${C.gray200}` }}>
 
@@ -136,7 +137,7 @@ export function RestaurarSlugsPage() {
             )}
           </div>
         </div>
-      </div>
-    </div>
+      </ContentArea>
+    </>
   )
 }

@@ -26,7 +26,8 @@ import { HelpCircle, X, Tags } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { BreadcrumbBar } from '@/components/layout/BreadcrumbBar'
 import { AdminSubNav } from '@/components/layout'
-import { C, FONT_UI } from '@/lib/designTokens'
+import { ContentArea } from '@/components/layout/ContentArea'
+import { C } from '@/lib/designTokens'
 
 // Estrutura de dados da categoria JSON
 interface CategoriaJSON {
@@ -319,7 +320,7 @@ export function CategoriasJsonPage() {
   }
 
   return (
-    <div style={{ fontFamily: FONT_UI }}>
+    <>
       <BreadcrumbBar
         title="Categorias JSON"
         icon={<Tags style={{ width: 14, height: 14 }} />}
@@ -345,7 +346,7 @@ export function CategoriasJsonPage() {
         }
       />
 
-      <div style={{ maxWidth: 1350, margin: '0 auto', padding: '32px 40px' }} className="space-y-6">
+      <ContentArea className="space-y-6">
       <AdminSubNav />
 
       {/* Loading */}
@@ -804,7 +805,7 @@ export function CategoriasJsonPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
-      </div>
-    </div>
+      </ContentArea>
+    </>
   )
 }

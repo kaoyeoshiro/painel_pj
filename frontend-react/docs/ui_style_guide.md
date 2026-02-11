@@ -11,14 +11,44 @@
 
 ## Componentes de Layout
 
-### `PageContainer`
+### `ContentArea` (principal para paginas com BreadcrumbBar)
 
-Container padrão de página. Fornece `max-w-7xl`, padding horizontal e vertical.
+Wrapper padrao de conteudo. Garante alinhamento com o BreadcrumbBar usando os mesmos tokens de largura e padding.
+
+```tsx
+import { ContentArea } from '@/components/layout/ContentArea'
+
+// Uso padrao
+<>
+  <BreadcrumbBar title="..." icon={...} />
+  <ContentArea className="space-y-6">
+    {/* conteudo */}
+  </ContentArea>
+</>
+
+// Sem padding vertical (toolbar sticky, etc.)
+<ContentArea noPaddingY>...</ContentArea>
+
+// Sem padding nenhum
+<ContentArea noPadding>...</ContentArea>
+```
+
+| Prop | Tipo | Descricao |
+|------|------|-----------|
+| `className` | `string` | Classes adicionais (ex: `space-y-6`) |
+| `noPaddingY` | `boolean` | Remove padding vertical (`py-8`) |
+| `noPadding` | `boolean` | Remove todo padding |
+
+Equivalencias: `max-w-pge` = 1350px, `lg:px-10` = 40px, `py-8` = 32px.
+
+### `PageContainer` (para paginas com AppLayout/PageHeader)
+
+Container alternativo com mesma largura. Usado em paginas com sistema de `PageHeader` + `SectionCard`.
 
 ```tsx
 import { PageContainer } from '@/components/layout/PageContainer'
 
-// Uso padrão
+// Uso padrao
 <PageContainer>
   <PageHeader ... />
   <SectionCard>...</SectionCard>
@@ -27,9 +57,9 @@ import { PageContainer } from '@/components/layout/PageContainer'
 // Largura total (sem max-width)
 <PageContainer fluid>...</PageContainer>
 
-// Sem padding (para páginas com sidebar interna)
+// Sem padding (para paginas com sidebar interna)
 <PageContainer noPadding fluid>
-  <div className="px-4 sm:px-6 lg:px-8 pt-6">
+  <div className="px-4 sm:px-6 lg:px-10 pt-6">
     <PageHeader ... />
   </div>
   <div className="flex flex-1 overflow-hidden">
@@ -39,9 +69,9 @@ import { PageContainer } from '@/components/layout/PageContainer'
 </PageContainer>
 ```
 
-| Prop | Tipo | Descrição |
+| Prop | Tipo | Descricao |
 |------|------|-----------|
-| `fluid` | `boolean` | Remove `max-w-7xl` |
+| `fluid` | `boolean` | Remove `max-w-pge` |
 | `noPadding` | `boolean` | Remove padding interno |
 | `className` | `string` | Classes adicionais |
 
@@ -119,7 +149,7 @@ import { SectionCard } from '@/components/layout/SectionCard'
 
 | Contexto | Valor |
 |----------|-------|
-| Padding de página | `px-4 sm:px-6 lg:px-8 py-6` |
+| Padding de página | `px-4 sm:px-6 lg:px-10 py-8` |
 | Padding de card | `p-6` |
 | Gap entre seções | `space-y-6` |
 | Gap entre campos | `space-y-4` |
@@ -187,7 +217,7 @@ Páginas como **Assistência** e **Matrículas** que têm sidebar interna devem 
 
 ```tsx
 <PageContainer noPadding fluid className="flex flex-col h-full">
-  <div className="px-4 sm:px-6 lg:px-8 pt-6">
+  <div className="px-4 sm:px-6 lg:px-10 pt-6">
     <PageHeader title="..." icon={...} />
   </div>
   <div className="flex flex-1 overflow-hidden">
@@ -245,9 +275,12 @@ Muitas páginas de sistema têm um Sheet (drawer lateral) de histórico. Ele dev
 
 ### Estilo
 
-- **NÃO** use cores hardcoded — use os tokens (`primary-500`, `gray-200`, etc.)
-- **NÃO** misture `p-4` e `p-6` em cards do mesmo nível — use `SectionCard` (que já tem `p-6`)
-- **NÃO** defina scrollbar customizada inline — use a classe `.custom-scrollbar`
+- **NAO** use `style={{ fontFamily: FONT_UI }}` — a fonte e global via `body` no CSS
+- **NAO** use `style={{ maxWidth: 1350, padding: '32px 40px' }}` — use `ContentArea` ou `max-w-pge`
+- **NAO** redeclare `const C = {...}` localmente — importe de `@/lib/designTokens`
+- **NAO** use cores hardcoded — use os tokens (`primary-500`, `gray-200`, etc.)
+- **NAO** misture `p-4` e `p-6` em cards do mesmo nivel — use `SectionCard` (que ja tem `p-6`)
+- **NAO** defina scrollbar customizada inline — use a classe `.custom-scrollbar`
 
 ### Componentes
 

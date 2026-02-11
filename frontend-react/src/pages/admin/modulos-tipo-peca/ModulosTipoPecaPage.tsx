@@ -14,7 +14,8 @@ import {
 import { Skeleton } from '@/components/ui/skeleton'
 import { useToast } from '@/components/ui/toast'
 import { BreadcrumbBar } from '@/components/layout/BreadcrumbBar'
-import { C, FONT_UI } from '@/lib/designTokens'
+import { ContentArea } from '@/components/layout/ContentArea'
+import { C } from '@/lib/designTokens'
 import { Layers } from 'lucide-react'
 
 interface PromptGroup {
@@ -387,7 +388,7 @@ export function ModulosTipoPecaPage() {
   }
 
   return (
-    <div style={{ fontFamily: FONT_UI }}>
+    <>
       <BreadcrumbBar
         title="Módulos por Tipo de Peça"
         icon={<Layers style={{ width: 14, height: 14 }} />}
@@ -423,7 +424,7 @@ export function ModulosTipoPecaPage() {
         }
       />
 
-      <div style={{ maxWidth: 1350, margin: '0 auto', padding: '32px 40px' }} className="space-y-6">
+      <ContentArea className="space-y-6">
 
       {/* Cards de estatísticas */}
       {carregandoTipos ? (
@@ -616,7 +617,7 @@ export function ModulosTipoPecaPage() {
           })}
         </div>
       )}
-      </div>
-    </div>
+      </ContentArea>
+    </>
   )
 }

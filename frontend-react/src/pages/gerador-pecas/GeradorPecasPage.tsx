@@ -111,29 +111,7 @@ const AGENT_META = [
   { numero: 3, nome: 'Redator', descricao: 'Gera a peca juridica', icon: Pen },
 ] as const
 
-// ============================================================
-// PGE Design System — Color Tokens
-// ============================================================
-
-const C = {
-  navy950: '#22314B',
-  navy900: '#253D52',
-  navy700: '#2B5376',
-  navy600: '#356A8E',
-  navy500: '#4A98A0',
-  navy100: '#D5ECEF',
-  navy50: '#EFF8F9',
-  orange500: '#F58634',
-  orange400: '#F79A54',
-  gray200: '#E2E3E5',
-  gray100: '#F0F1F2',
-  gray50: '#F7F8F9',
-  gray500: '#8D8F92',
-  text900: '#1A2332',
-  text700: '#2D3B4E',
-  text500: '#5A6578',
-  text400: '#8D95A0',
-}
+import { C } from '@/lib/designTokens'
 
 // ============================================================
 // Main Page Component
@@ -999,13 +977,13 @@ export function GeradorPecasPage() {
 
   return (
     <TooltipProvider delayDuration={300}>
-      <div className="flex h-full flex-col overflow-hidden" style={{ fontFamily: "var(--font-ui, 'Plus Jakarta Sans', system-ui, sans-serif)" }}>
+      <div className="flex h-full flex-col overflow-hidden">
 
         {/* ============================================================ */}
         {/* BREADCRUMB BAR — leve, subordinada ao header global          */}
         {/* ============================================================ */}
-        <div className="flex-shrink-0 border-b" style={{ borderColor: C.gray200 }}>
-          <div className="mx-auto flex max-w-[1350px] items-center justify-between" style={{ height: 48, padding: '0 40px' }}>
+        <div className="flex-shrink-0 border-b border-gray-200">
+          <div className="mx-auto flex h-12 max-w-pge items-center justify-between px-4 sm:px-6 lg:px-10">
           <div className="flex items-center gap-2">
             <Link
               to="/dashboard"
@@ -1057,7 +1035,7 @@ export function GeradorPecasPage() {
         {/* MAIN CONTENT                                                 */}
         {/* ============================================================ */}
         <div className={cn(
-          'mx-auto w-full max-w-[1350px] flex-1 px-4 sm:px-6 lg:px-8',
+          'mx-auto w-full max-w-pge flex-1 px-4 sm:px-6 lg:px-10',
           (pageState === 'resultado' || pageState === 'editando') ? 'overflow-hidden py-0' : 'overflow-y-auto py-6',
         )}>
 
@@ -1518,7 +1496,7 @@ export function GeradorPecasPage() {
                   })()}
 
                   {/* Footer actions */}
-                  <div className="sticky bottom-0 -mx-4 mt-4 border-t px-4 py-4 sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8" style={{ borderColor: C.gray200, background: C.gray50 }}>
+                  <div className="sticky bottom-0 -mx-4 mt-4 border-t px-4 py-4 sm:-mx-6 sm:px-6 lg:-mx-10 lg:px-10" style={{ borderColor: C.gray200, background: C.gray50 }}>
                     <div className="flex items-center justify-between">
                       <p className="text-sm" style={{ color: C.text500 }}>
                         <span className="font-semibold" style={{ color: C.text900 }}>{curadoriaSelected.size}</span> de {curadoriaModulos.length} selecionado(s)
