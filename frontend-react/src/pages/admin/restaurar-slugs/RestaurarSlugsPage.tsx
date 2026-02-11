@@ -91,7 +91,7 @@ export function RestaurarSlugsPage() {
       />
 
       <ContentArea>
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-4xl">
           <div className="bg-white rounded-2xl shadow-sm p-6" style={{ border: `1px solid ${C.gray200}` }}>
 
             <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 mb-6">

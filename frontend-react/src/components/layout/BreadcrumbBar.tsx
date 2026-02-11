@@ -1,5 +1,6 @@
 import { Link } from '@tanstack/react-router'
 import { ArrowLeft, ChevronRight } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import { C } from '@/lib/designTokens'
 
 interface BreadcrumbBarProps {
@@ -7,6 +8,8 @@ interface BreadcrumbBarProps {
   icon: React.ReactNode
   actions?: React.ReactNode
   backTo?: string
+  /** Classes CSS adicionais no wrapper externo (ex: flex-shrink-0 para layouts flex) */
+  className?: string
 }
 
 /**
@@ -14,9 +17,9 @@ interface BreadcrumbBarProps {
  * Subordinada ao Header global navy do AppLayout.
  * Altura fixa de 48px, maxWidth 1350px, accent navy.
  */
-export function BreadcrumbBar({ title, icon, actions, backTo = '/dashboard' }: BreadcrumbBarProps) {
+export function BreadcrumbBar({ title, icon, actions, backTo = '/dashboard', className }: BreadcrumbBarProps) {
   return (
-    <div className="border-b border-gray-200">
+    <div className={cn('border-b border-gray-200', className)}>
       <div className="mx-auto flex h-12 max-w-pge items-center justify-between px-4 sm:px-6 lg:px-10">
         {/* Lado esquerdo: voltar > icone > titulo */}
         <div className="flex items-center gap-2">

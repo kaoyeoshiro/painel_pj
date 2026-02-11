@@ -15,7 +15,6 @@ import {
   RotateCcw,
   AlertTriangle,
   Trash2,
-  ArrowLeft,
   ChevronRight,
   Zap,
   Search,
@@ -26,8 +25,8 @@ import {
   Bot,
   Sparkles,
 } from 'lucide-react'
-import { Link } from '@tanstack/react-router'
 import { cn } from '@/lib/utils'
+import { BreadcrumbBar } from '@/components/layout/BreadcrumbBar'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -982,54 +981,39 @@ export function GeradorPecasPage() {
         {/* ============================================================ */}
         {/* BREADCRUMB BAR — leve, subordinada ao header global          */}
         {/* ============================================================ */}
-        <div className="flex-shrink-0 border-b border-gray-200">
-          <div className="mx-auto flex h-12 max-w-pge items-center justify-between px-4 sm:px-6 lg:px-10">
-          <div className="flex items-center gap-2">
-            <Link
-              to="/dashboard"
-              className="flex h-7 w-7 items-center justify-center rounded-lg transition-colors"
-              style={{ color: C.text400 }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = C.gray100; e.currentTarget.style.color = C.text700 }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = C.text400 }}
-              aria-label="Voltar ao Dashboard"
-            >
-              <ArrowLeft style={{ width: 16, height: 16 }} />
-            </Link>
-            <ChevronRight style={{ width: 14, height: 14, color: C.text400, margin: '0 4px' }} />
-            <div className="flex items-center justify-center rounded-lg" style={{ width: 28, height: 28, background: C.navy100, color: C.navy700 }}>
-              <Scale style={{ width: 14, height: 14 }} />
-            </div>
-            <span className="font-semibold" style={{ fontSize: 15, color: C.text900, marginLeft: 4 }}>Gerador de Pecas</span>
-          </div>
-
-          <div className="flex items-center gap-2">
-            {(pageState === 'resultado' || pageState === 'editando') && (
+        <BreadcrumbBar
+          title="Gerador de Pecas"
+          icon={<Scale style={{ width: 14, height: 14 }} />}
+          className="flex-shrink-0"
+          actions={
+            <>
+              {(pageState === 'resultado' || pageState === 'editando') && (
+                <button
+                  onClick={voltarParaInicio}
+                  className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-semibold text-white transition-all hover:opacity-90"
+                  style={{ background: C.navy950, fontSize: 13 }}
+                >
+                  <Sparkles style={{ width: 14, height: 14 }} />
+                  <span className="hidden sm:inline">Nova Geracao</span>
+                </button>
+              )}
               <button
-                onClick={voltarParaInicio}
-                className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-semibold text-white transition-all hover:opacity-90"
-                style={{ background: C.navy950, fontSize: 13 }}
+                onClick={() => setShowSidebar(!showSidebar)}
+                className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-medium transition-colors"
+                style={{
+                  color: showSidebar ? C.text900 : C.text500,
+                  background: showSidebar ? C.gray100 : 'transparent',
+                  fontSize: 13,
+                }}
+                onMouseEnter={(e) => { if (!showSidebar) e.currentTarget.style.background = C.gray100 }}
+                onMouseLeave={(e) => { if (!showSidebar) e.currentTarget.style.background = 'transparent' }}
               >
-                <Sparkles style={{ width: 14, height: 14 }} />
-                <span className="hidden sm:inline">Nova Geracao</span>
+                <Clock style={{ width: 14, height: 14 }} />
+                <span className="hidden sm:inline">Historico</span>
               </button>
-            )}
-            <button
-              onClick={() => setShowSidebar(!showSidebar)}
-              className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-medium transition-colors"
-              style={{
-                color: showSidebar ? C.text900 : C.text500,
-                background: showSidebar ? C.gray100 : 'transparent',
-                fontSize: 13,
-              }}
-              onMouseEnter={(e) => { if (!showSidebar) e.currentTarget.style.background = C.gray100 }}
-              onMouseLeave={(e) => { if (!showSidebar) e.currentTarget.style.background = 'transparent' }}
-            >
-              <Clock style={{ width: 14, height: 14 }} />
-              <span className="hidden sm:inline">Historico</span>
-            </button>
-          </div>
-          </div>
-        </div>
+            </>
+          }
+        />
 
         {/* ============================================================ */}
         {/* MAIN CONTENT                                                 */}

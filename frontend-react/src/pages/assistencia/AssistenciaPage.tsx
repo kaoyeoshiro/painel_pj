@@ -670,7 +670,7 @@ export function AssistenciaPage() {
       />
 
       <ContentArea>
-        <div className="mx-auto max-w-4xl space-y-6">
+        <div className="max-w-4xl space-y-6">
           {/* Formulario de consulta */}
           <div
             className="overflow-hidden rounded-2xl border bg-white shadow-sm"

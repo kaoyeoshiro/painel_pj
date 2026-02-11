@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import { Link } from '@tanstack/react-router'
+import { BreadcrumbBar } from '@/components/layout/BreadcrumbBar'
 import { ContentArea } from '@/components/layout/ContentArea'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -9,7 +9,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Textarea } from '@/components/ui/textarea'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import { ScrollArea } from '@/components/ui/scroll-area'
-import { Separator } from '@/components/ui/separator'
 import { useToast } from '@/components/ui/toast'
 import { useQuery } from '@tanstack/react-query'
 import { queryKeys } from '@/lib/query-client'
@@ -26,15 +25,11 @@ import {
   FolderOpen,
   Send,
   Star,
-  AlertCircle,
   FileText,
   Search,
   Brain,
   Sparkles,
-  ArrowLeft,
-  ChevronRight,
   Clock,
-  MessageSquare,
   Bot,
 } from 'lucide-react'
 import type {
@@ -646,88 +641,70 @@ export function PedidoCalculoPage() {
       {/* ============================================================ */}
       {/* BREADCRUMB BAR — leve, subordinada ao header global          */}
       {/* ============================================================ */}
-      <div className="border-b border-gray-200">
-        <div className="mx-auto flex h-12 max-w-pge items-center justify-between px-4 sm:px-6 lg:px-10">
-          <div className="flex items-center gap-2">
-            <Link
-              to="/dashboard"
-              className="flex h-7 w-7 items-center justify-center rounded-lg transition-colors"
-              style={{ color: C.text400 }}
-              onMouseEnter={(e) => { e.currentTarget.style.background = C.gray100; e.currentTarget.style.color = C.text700 }}
-              onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = C.text400 }}
-              aria-label="Voltar ao Dashboard"
-            >
-              <ArrowLeft style={{ width: 16, height: 16 }} />
-            </Link>
-            <ChevronRight style={{ width: 14, height: 14, color: C.text400, margin: '0 4px' }} />
-            <div className="flex items-center justify-center rounded-lg" style={{ width: 28, height: 28, background: C.navy100, color: C.navy700 }}>
-              <Calculator style={{ width: 14, height: 14 }} />
-            </div>
-            <span className="font-semibold" style={{ fontSize: 15, color: C.text900, marginLeft: 4 }}>Pedido de Calculo</span>
-          </div>
+      <BreadcrumbBar
+        title="Pedido de Calculo"
+        icon={<Calculator style={{ width: 14, height: 14 }} />}
+        actions={
+          <Sheet>
+            <SheetTrigger asChild>
+              <button
+                className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-medium transition-colors"
+                style={{ color: C.text500, fontSize: 13 }}
+                onMouseEnter={(e) => { e.currentTarget.style.background = C.gray100 }}
+                onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
+              >
+                <Clock style={{ width: 14, height: 14 }} />
+                <span className="hidden sm:inline">Historico</span>
+              </button>
+            </SheetTrigger>
+            <SheetContent>
+              <SheetHeader>
+                <SheetTitle>Historico</SheetTitle>
+              </SheetHeader>
+              <ScrollArea className="mt-4 h-[calc(100vh-80px)]">
+                {isLoadingHistorico ? (
+                  <div className="py-8 text-center">
+                    <p className="text-sm" style={{ color: C.text400 }}>Carregando historico...</p>
+                  </div>
+                ) : !historico || historico.length === 0 ? (
+                  <div className="py-8 text-center">
+                    <p className="text-sm" style={{ color: C.text400 }}>Nenhum pedido gerado ainda</p>
+                  </div>
+                ) : (
+                  <div className="space-y-1">
+                    {historico.map((item) => {
+                      const numero = item.numero_cnj_formatado || item.numero_cnj || 'Processo'
+                      const autor =
+                        item.dados_processo?.autor ||
+                        item.dados_agente1?.dados_basicos?.autor ||
+                        'Pedido de Calculo'
+                      const data = item.criado_em ? new Date(item.criado_em) : null
 
-          <div className="flex items-center gap-2">
-            <Sheet>
-              <SheetTrigger asChild>
-                <button
-                  className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-medium transition-colors"
-                  style={{ color: C.text500, fontSize: 13 }}
-                  onMouseEnter={(e) => { e.currentTarget.style.background = C.gray100 }}
-                  onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
-                >
-                  <Clock style={{ width: 14, height: 14 }} />
-                  <span className="hidden sm:inline">Historico</span>
-                </button>
-              </SheetTrigger>
-              <SheetContent>
-                <SheetHeader>
-                  <SheetTitle>Historico</SheetTitle>
-                </SheetHeader>
-                <ScrollArea className="mt-4 h-[calc(100vh-80px)]">
-                  {isLoadingHistorico ? (
-                    <div className="py-8 text-center">
-                      <p className="text-sm" style={{ color: C.text400 }}>Carregando historico...</p>
-                    </div>
-                  ) : !historico || historico.length === 0 ? (
-                    <div className="py-8 text-center">
-                      <p className="text-sm" style={{ color: C.text400 }}>Nenhum pedido gerado ainda</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-1">
-                      {historico.map((item) => {
-                        const numero = item.numero_cnj_formatado || item.numero_cnj || 'Processo'
-                        const autor =
-                          item.dados_processo?.autor ||
-                          item.dados_agente1?.dados_basicos?.autor ||
-                          'Pedido de Calculo'
-                        const data = item.criado_em ? new Date(item.criado_em) : null
-
-                        return (
-                          <div
-                            key={item.id}
-                            onClick={() => carregarDoHistorico(item.id)}
-                            className="group flex cursor-pointer items-center gap-3 rounded-xl px-3 py-3 transition-colors hover:bg-slate-50"
-                          >
-                            <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg" style={{ background: C.navy100, color: C.navy700 }}>
-                              <FileText className="h-3.5 w-3.5" />
-                            </div>
-                            <div className="min-w-0 flex-1">
-                              <p className="truncate text-sm font-medium" style={{ color: C.text700 }}>{numero}</p>
-                              <p className="mt-0.5 truncate text-xs" style={{ color: C.text400 }}>
-                                {autor} &middot; {data ? data.toLocaleDateString('pt-BR') : '-'}
-                              </p>
-                            </div>
+                      return (
+                        <div
+                          key={item.id}
+                          onClick={() => carregarDoHistorico(item.id)}
+                          className="group flex cursor-pointer items-center gap-3 rounded-xl px-3 py-3 transition-colors hover:bg-slate-50"
+                        >
+                          <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg" style={{ background: C.navy100, color: C.navy700 }}>
+                            <FileText className="h-3.5 w-3.5" />
                           </div>
-                        )
-                      })}
-                    </div>
-                  )}
-                </ScrollArea>
-              </SheetContent>
-            </Sheet>
-          </div>
-        </div>
-      </div>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate text-sm font-medium" style={{ color: C.text700 }}>{numero}</p>
+                            <p className="mt-0.5 truncate text-xs" style={{ color: C.text400 }}>
+                              {autor} &middot; {data ? data.toLocaleDateString('pt-BR') : '-'}
+                            </p>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )}
+              </ScrollArea>
+            </SheetContent>
+          </Sheet>
+        }
+      />
 
       <ContentArea>
           {/* Formulario Principal */}
