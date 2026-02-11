@@ -8,11 +8,13 @@ export function useToast() {
   if (!context) {
     // Fallback caso nao esteja dentro do ToastProvider (como em testes)
     return {
-      toast: ({ title, description, variant }: { title?: string; description?: string; variant?: string }) => {
-        console.log('[Toast]', { title, description, variant })
+      toast: ({ variant }: { title?: string; description?: string; variant?: string }) => {
+        if (import.meta.env.DEV) {
+          console.warn('[Toast] Chamado fora do ToastProvider (variant:', variant, ')')
+        }
       },
-      dismiss: (id: string) => {
-        console.log('[Toast dismiss]', id)
+      dismiss: () => {
+        // noop fora do provider
       },
     }
   }

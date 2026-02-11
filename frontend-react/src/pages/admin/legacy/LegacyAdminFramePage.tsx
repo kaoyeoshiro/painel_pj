@@ -102,7 +102,7 @@ export function LegacyAdminFramePage({ legacyPath }: LegacyAdminFramePageProps) 
             <a
               href={src}
               target="_blank"
-              rel="noreferrer"
+              rel="noopener noreferrer"
               className="inline-flex items-center rounded-md border border-gray-300 bg-white px-3 py-2 text-sm font-medium text-gray-700 transition-colors hover:bg-gray-100"
             >
               Abrir em nova aba

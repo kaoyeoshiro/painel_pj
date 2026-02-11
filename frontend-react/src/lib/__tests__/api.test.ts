@@ -14,8 +14,13 @@ describe('API Client', () => {
   it('setToken salva e getToken recupera o token', () => {
     setToken('meu-token-123')
     expect(getToken()).toBe('meu-token-123')
+    // Token e salvo apenas na chave principal (access_token)
     expect(localStorage.getItem('access_token')).toBe('meu-token-123')
-    expect(localStorage.getItem('auth_token')).toBe('meu-token-123')
+  })
+
+  it('getToken le chave legada auth_token como fallback', () => {
+    localStorage.setItem('auth_token', 'legacy-token')
+    expect(getToken()).toBe('legacy-token')
   })
 
   it('clearToken remove o token', () => {

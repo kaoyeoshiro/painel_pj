@@ -7,8 +7,10 @@ import DOMPurify from 'dompurify'
  *
  * Tags e atributos NAO listados aqui sao removidos automaticamente.
  * Isso impede injecao de script, iframe, object, embed, form, style, svg, math, etc.
+ *
+ * SEGURANCA: Sanitizacao e SEMPRE ativa. Nao existe opcao de bypass.
  */
-const PURIFY_CONFIG: DOMPurify.Config = {
+export const PURIFY_CONFIG: DOMPurify.Config = {
   ALLOWED_TAGS: [
     'p', 'h1', 'h2', 'h3', 'h4', 'h5', 'h6',
     'ul', 'ol', 'li',
@@ -28,10 +30,12 @@ const PURIFY_CONFIG: DOMPurify.Config = {
     'colspan', 'rowspan',
     'open',
   ],
-  // Bloqueia URIs perigosas em href/src (javascript:, data:, vbscript:)
-  ALLOWED_URI_REGEXP: /^(?:(?:https?|mailto|tel):|[^a-z]|[a-z+.-]+(?:[^a-z+.\-:]|$))/i,
+  // Allowlist explicita de protocolos seguros. Bloqueia javascript:, data:, vbscript:, etc.
+  ALLOWED_URI_REGEXP: /^(?:https?|mailto|tel):/i,
   // Impede atributo style inline (mesmo que nao esteja no ALLOWED_ATTR, e uma seguranca extra)
   FORBID_ATTR: ['style', 'onerror', 'onload', 'onclick', 'onmouseover'],
+  // Protocolos desconhecidos sao bloqueados
+  ALLOW_UNKNOWN_PROTOCOLS: false,
 }
 
 /**
@@ -46,25 +50,24 @@ DOMPurify.addHook('afterSanitizeAttributes', (node) => {
   }
 })
 
-// Hook para renderizar Markdown com sanitizacao
-interface UseMarkdownOptions {
-  sanitize?: boolean
+/**
+ * Sanitiza HTML cru usando DOMPurify com allowlist estrita.
+ * Funcao pura exportada para uso fora de componentes React (ex: testes, utils).
+ */
+export function sanitizeHtml(rawHtml: string): string {
+  return DOMPurify.sanitize(rawHtml, PURIFY_CONFIG) as string
 }
 
-export function useMarkdown(text: string, options: UseMarkdownOptions = {}) {
-  const { sanitize = true } = options
-
+/**
+ * Hook para renderizar Markdown com sanitizacao obrigatoria.
+ * SEGURANCA: Nao existe opcao de desabilitar sanitizacao.
+ */
+export function useMarkdown(text: string) {
   const html = useMemo(() => {
     if (!text) return ''
-
     const rawHtml = marked.parse(text, { async: false }) as string
-
-    if (sanitize) {
-      return DOMPurify.sanitize(rawHtml, PURIFY_CONFIG) as string
-    }
-
-    return rawHtml
-  }, [text, sanitize])
+    return sanitizeHtml(rawHtml)
+  }, [text])
 
   return { html }
 }

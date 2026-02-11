@@ -6,26 +6,43 @@ const API_BASE = ''
 // Token management
 // ---------------------------------------------------------------------------
 
+/** Chave principal de armazenamento do token */
+const TOKEN_KEY = 'access_token'
+
+/** Chaves legadas mantidas para leitura (compatibilidade com sessoes existentes) */
+const LEGACY_KEYS = ['auth_token'] as const
+
 /** Busca token do localStorage */
 export function getToken(): string | null {
   return (
-    localStorage.getItem('access_token') ||
-    localStorage.getItem('auth_token') ||
-    sessionStorage.getItem('auth_token')
+    localStorage.getItem(TOKEN_KEY) ||
+    localStorage.getItem(LEGACY_KEYS[0]) ||
+    sessionStorage.getItem(LEGACY_KEYS[0])
   )
 }
 
-/** Salva token no localStorage */
+/** Salva token no localStorage (apenas chave principal) */
 export function setToken(token: string): void {
-  localStorage.setItem('access_token', token)
-  localStorage.setItem('auth_token', token)
+  localStorage.setItem(TOKEN_KEY, token)
 }
 
-/** Remove token do localStorage */
+/** Remove token de todas as chaves conhecidas */
 export function clearToken(): void {
-  localStorage.removeItem('access_token')
-  localStorage.removeItem('auth_token')
-  sessionStorage.removeItem('auth_token')
+  localStorage.removeItem(TOKEN_KEY)
+  // Limpa chaves legadas tambem
+  localStorage.removeItem(LEGACY_KEYS[0])
+  sessionStorage.removeItem(LEGACY_KEYS[0])
+}
+
+// ---------------------------------------------------------------------------
+// Guard contra redirect duplicado em 401
+// ---------------------------------------------------------------------------
+
+let _redirectingTo401 = false
+
+/** Reseta flag de redirect (usado em testes) */
+export function _resetRedirectGuard(): void {
+  _redirectingTo401 = false
 }
 
 // ---------------------------------------------------------------------------
@@ -119,10 +136,13 @@ export async function apiRequest<T>(
     body: processedBody,
   })
 
-  // Trata 401 — token invalido/expirado
+  // Trata 401 — token invalido/expirado (com guard contra redirect duplicado)
   if (response.status === 401) {
     clearToken()
-    window.location.href = '/login'
+    if (!_redirectingTo401) {
+      _redirectingTo401 = true
+      window.location.href = '/login'
+    }
     throw new ApiError(401, 'Sessao expirada')
   }
 
