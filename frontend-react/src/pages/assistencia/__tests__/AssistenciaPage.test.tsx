@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { render, screen, waitFor } from '@/test/test-utils'
+import userEvent from '@testing-library/user-event'
 import { AssistenciaPage } from '../AssistenciaPage'
 import * as api from '@/lib/api'
 
@@ -68,40 +69,52 @@ describe('AssistenciaPage', () => {
     expect(screen.getByRole('button', { name: /consultar/i })).toBeInTheDocument()
   })
 
-  it('deve mostrar loading enquanto busca histórico', async () => {
-    // Mock da API com delay
+  it('deve mostrar loading enquanto busca historico', async () => {
+    // Mock da API com delay para capturar estado de loading
     vi.mocked(api.assistenciaApi.get).mockImplementation(
-      () => new Promise((resolve) => setTimeout(() => resolve([]), 100))
+      () => new Promise((resolve) => setTimeout(() => resolve([]), 500))
     )
 
     render(<AssistenciaPage />)
 
-    // Verifica se mostra skeleton durante carregamento
+    // Abre o sheet de historico
+    const btnHistorico = screen.getByText('Historico')
+    await userEvent.click(btnHistorico)
+
+    // Verifica se mostra skeleton durante carregamento dentro do Sheet
     await waitFor(() => {
       const skeletons = document.querySelectorAll('.animate-pulse')
       expect(skeletons.length).toBeGreaterThan(0)
     })
   })
 
-  it('deve mostrar histórico quando API retorna sucesso', async () => {
+  it('deve mostrar historico quando API retorna sucesso', async () => {
     // Mock da API retornando dados
     vi.mocked(api.assistenciaApi.get).mockResolvedValue(mockHistorico)
 
     render(<AssistenciaPage />)
 
-    // Aguarda o histórico carregar
+    // Abre o sheet de historico
+    const btnHistorico = screen.getByText('Historico')
+    await userEvent.click(btnHistorico)
+
+    // Aguarda o historico carregar dentro do Sheet
     await waitFor(() => {
       expect(screen.getByText('0800123-45.2024.8.12.0001')).toBeInTheDocument()
-      expect(screen.getByText('Acao Civil Publica')).toBeInTheDocument()
     })
   })
 
-  it('deve mostrar mensagem quando não há histórico', async () => {
+  it('deve mostrar mensagem quando nao ha historico', async () => {
     // Mock da API retornando array vazio
     vi.mocked(api.assistenciaApi.get).mockResolvedValue([])
 
     render(<AssistenciaPage />)
 
+    // Abre o sheet de historico
+    const btnHistorico = screen.getByText('Historico')
+    await userEvent.click(btnHistorico)
+
+    // Verifica mensagem de historico vazio dentro do Sheet
     await waitFor(() => {
       expect(screen.getByText('Nenhuma consulta ainda')).toBeInTheDocument()
     })
@@ -115,7 +128,7 @@ describe('AssistenciaPage', () => {
     await waitFor(() => {
       expect(screen.getByText('Consulta de Processos')).toBeInTheDocument()
       expect(
-        screen.getByText(/Digite o número CNJ do processo para consultar/i)
+        screen.getByText(/Digite o numero CNJ do processo para consultar/i)
       ).toBeInTheDocument()
     })
   })

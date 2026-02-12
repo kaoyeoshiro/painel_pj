@@ -134,7 +134,8 @@ describe('RelatorioCumprimentoPage', () => {
 
     // Verifica se o item do historico aparece
     await waitFor(() => {
-      expect(screen.getByText('0800123-45.2024.8.12.0001')).toBeInTheDocument()
+      const processoElements = screen.getAllByText('0800123-45.2024.8.12.0001')
+      expect(processoElements.length).toBeGreaterThan(0)
     })
   })
 

@@ -189,6 +189,102 @@ Abrir `reports/bundle-analysis.html` no navegador para visualizar:
 | `vite.config.ts` | manualChunks + visualizer plugin |
 | `package.json` | +rollup-plugin-visualizer (devDep) |
 
+## Core Web Vitals — Budget e Baseline
+
+> Metricas de referencia para monitoramento continuo.
+> Valores baseline coletados em ambiente local (Vite dev server, sem throttling).
+> Em producao (build otimizado + HTTP/2 + CDN), valores tendem a ser melhores.
+
+### Budget (metas recomendadas pelo Google)
+
+| Metrica | Descricao | Budget | Classificacao |
+|---------|-----------|--------|---------------|
+| **LCP** (Largest Contentful Paint) | Tempo ate o maior elemento visivel carregar | < 2.5s | Bom |
+| **INP** (Interaction to Next Paint) | Latencia de interacao (substitui FID desde mar/2024) | < 200ms | Bom |
+| **CLS** (Cumulative Layout Shift) | Deslocamento visual acumulado | < 0.1 | Bom |
+| **FCP** (First Contentful Paint) | Tempo ate o primeiro conteudo pintado | < 1.8s | Bom |
+| **TTFB** (Time to First Byte) | Tempo ate primeiro byte do servidor | < 800ms | Bom |
+| **TBT** (Total Blocking Time) | Tempo total bloqueando main thread | < 200ms | Bom |
+
+### Baseline Estimado (pos-otimizacao)
+
+| Metrica | Rota /login | Rota /dashboard | Rota /bert-training |
+|---------|-------------|-----------------|---------------------|
+| **JS inicial (gzip)** | ~137 kB | ~177 kB | ~299 kB |
+| **LCP esperado** | < 1.5s | < 2.0s | < 2.5s |
+| **INP esperado** | < 100ms | < 150ms | < 200ms |
+| **CLS esperado** | ~0 | < 0.05 | < 0.1 |
+| **FCP esperado** | < 1.0s | < 1.5s | < 1.8s |
+
+**Notas:**
+- `/login` e a rota mais leve (JS ~137 kB gzip, sem vendor-radix/recharts)
+- `/bert-training` e a rota mais pesada (carrega recharts sob demanda, 365 kB)
+- CLS tende a zero porque usamos Suspense fallback com skeleton que ocupa o mesmo espaco
+- INP depende da complexidade da pagina; paginas com DataTable grandes podem ter INP maior
+
+### Como Coletar Metricas
+
+#### Opcao 1: Lighthouse CLI (recomendado para CI)
+
+```bash
+# Instalar Lighthouse globalmente
+npm install -g lighthouse
+
+# Coletar metricas da rota /login (requer servidor rodando)
+lighthouse http://localhost:5173/login \
+  --output=json \
+  --output-path=reports/lighthouse-login.json \
+  --chrome-flags="--headless --no-sandbox" \
+  --only-categories=performance
+
+# Coletar metricas da rota /dashboard
+lighthouse http://localhost:5173/dashboard \
+  --output=json \
+  --output-path=reports/lighthouse-dashboard.json \
+  --chrome-flags="--headless --no-sandbox" \
+  --only-categories=performance
+```
+
+#### Opcao 2: Chrome DevTools (manual)
+
+1. Abrir Chrome DevTools (F12)
+2. Aba "Lighthouse" > Selecionar "Performance"
+3. Clicar "Analyze page load"
+4. Anotar LCP, TBT, CLS, FCP, Speed Index
+
+#### Opcao 3: web-vitals (runtime, futuro)
+
+```typescript
+// Adicionar ao main.tsx para coleta em producao
+import { onLCP, onINP, onCLS } from 'web-vitals'
+onLCP(console.log)
+onINP(console.log)
+onCLS(console.log)
+```
+
+### Budget CI (futuro)
+
+Para adicionar verificacao automatica no CI:
+
+```bash
+# Instalar lighthouse-ci
+npm install -g @lhci/cli
+
+# Criar .lighthouserc.json na raiz
+{
+  "ci": {
+    "assert": {
+      "assertions": {
+        "categories:performance": ["error", { "minScore": 0.9 }],
+        "largest-contentful-paint": ["warn", { "maxNumericValue": 2500 }],
+        "cumulative-layout-shift": ["error", { "maxNumericValue": 0.1 }],
+        "interactive": ["warn", { "maxNumericValue": 3000 }]
+      }
+    }
+  }
+}
+```
+
 ## Validacao
 
 - [x] `npx tsc --noEmit` — sem erros

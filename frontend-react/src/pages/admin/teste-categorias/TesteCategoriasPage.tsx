@@ -237,7 +237,7 @@ export function TesteCategoriasPage() {
           <div className="flex items-center gap-2">
             <label className="text-sm font-medium whitespace-nowrap" style={{ color: C.text500 }}>Categoria:</label>
             <Select value={categoriaId || '__none__'} onValueChange={(v) => setCategoriaId(v === '__none__' ? '' : v)} disabled={loadingCategorias}>
-              <SelectTrigger className="h-9 min-w-[240px] bg-white text-sm" style={{ borderColor: C.gray300 }}>
+              <SelectTrigger className="h-9 min-w-[240px] bg-white text-sm" style={{ borderColor: C.gray300 }} data-testid="select-categoria">
                 <SelectValue placeholder={loadingCategorias ? 'Carregando...' : '-- Selecione --'} />
               </SelectTrigger>
               <SelectContent>
@@ -283,7 +283,7 @@ export function TesteCategoriasPage() {
                     <Plus className="h-4 w-4 mr-1" />
                     {loadingValidar ? 'Adicionando...' : 'Adicionar'}
                   </Button>
-                  <Button variant="outline" onClick={handleClear} title="Limpar pendentes">
+                  <Button variant="outline" onClick={handleClear} title="Limpar pendentes" data-testid="btn-limpar">
                     <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
@@ -344,6 +344,7 @@ export function TesteCategoriasPage() {
                     color: activeTab === 'resultados' ? C.navy700 : C.text500,
                     background: activeTab === 'resultados' ? C.navy50 : 'transparent',
                   }}
+                  data-testid="tab-resultados"
                 >
                   <List className="h-4 w-4" />
                   Resultados ({resultados.length})
@@ -356,6 +357,7 @@ export function TesteCategoriasPage() {
                     color: activeTab === 'visualizacao' ? C.navy700 : C.text500,
                     background: activeTab === 'visualizacao' ? C.navy50 : 'transparent',
                   }}
+                  data-testid="tab-visualizacao"
                 >
                   <Eye className="h-4 w-4" />
                   Visualizacao
@@ -368,6 +370,7 @@ export function TesteCategoriasPage() {
                     color: activeTab === 'progresso' ? C.navy700 : C.text500,
                     background: activeTab === 'progresso' ? C.navy50 : 'transparent',
                   }}
+                  data-testid="tab-progresso"
                 >
                   <List className="h-4 w-4" />
                   Progresso

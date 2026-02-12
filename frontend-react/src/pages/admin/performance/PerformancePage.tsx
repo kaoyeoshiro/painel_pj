@@ -277,13 +277,13 @@ export function PerformancePage() {
       <ContentArea>
 
       <nav className="flex gap-8 overflow-x-auto border-b mb-6" style={{ borderColor: C.gray200 }}>
-        <button onClick={() => setTab('sistema')} className="py-4 px-1 font-medium whitespace-nowrap" style={tab === 'sistema' ? { borderBottom: `3px solid ${C.navy700}`, color: C.navy700 } : { color: C.text500 }}>
+        <button onClick={() => setTab('sistema')} className="py-4 px-1 font-medium whitespace-nowrap" style={tab === 'sistema' ? { borderBottom: `3px solid ${C.navy700}`, color: C.navy700 } : { color: C.text500 }} data-testid="tab-performance">
           <Server className="h-4 w-4 inline mr-2" />Performance Sistema
         </button>
-        <button onClick={() => setTab('gemini')} className="py-4 px-1 font-medium whitespace-nowrap" style={tab === 'gemini' ? { borderBottom: `3px solid ${C.navy700}`, color: C.navy700 } : { color: C.text500 }}>
+        <button onClick={() => setTab('gemini')} className="py-4 px-1 font-medium whitespace-nowrap" style={tab === 'gemini' ? { borderBottom: `3px solid ${C.navy700}`, color: C.navy700 } : { color: C.text500 }} data-testid="tab-gemini">
           <Bot className="h-4 w-4 inline mr-2" />Logs Gemini API
         </button>
-        <button onClick={() => setTab('avancado')} className="py-4 px-1 font-medium whitespace-nowrap" style={tab === 'avancado' ? { borderBottom: `3px solid ${C.navy700}`, color: C.navy700 } : { color: C.text500 }}>
+        <button onClick={() => setTab('avancado')} className="py-4 px-1 font-medium whitespace-nowrap" style={tab === 'avancado' ? { borderBottom: `3px solid ${C.navy700}`, color: C.navy700 } : { color: C.text500 }} data-testid="tab-advanced-logs">
           <Code className="h-4 w-4 inline mr-2" />Logs Avancados
         </button>
       </nav>
@@ -452,10 +452,10 @@ export function PerformancePage() {
                   </Select>
                 </div>
                 <div className="flex items-end gap-2">
-                  <Button onClick={() => void loadData()} className="flex-1" style={{ background: C.navy950, color: 'white' }}>
+                  <Button onClick={() => void loadData()} className="flex-1" style={{ background: C.navy950, color: 'white' }} data-testid="btn-refresh">
                     Filtrar
                   </Button>
-                  <Button onClick={clearFilters} variant="outline">x</Button>
+                  <Button onClick={clearFilters} variant="outline" data-testid="btn-clear-filters">x</Button>
                 </div>
               </div>
             </div>

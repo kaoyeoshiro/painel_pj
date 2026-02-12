@@ -318,7 +318,7 @@ export function TesteAtivacaoPage() {
           <div className="flex items-center gap-2">
             <label className="text-sm font-medium whitespace-nowrap" style={{ color: C.text500 }}>Tipo de Peca:</label>
             <Select value={tipoPecaSelecionado || '__none__'} onValueChange={(v) => setTipoPecaSelecionado(v === '__none__' ? '' : v)} disabled={loading}>
-              <SelectTrigger className="h-9 min-w-[200px] bg-white text-sm" style={{ borderColor: C.gray300 }}>
+              <SelectTrigger className="h-9 min-w-[200px] bg-white text-sm" style={{ borderColor: C.gray300 }} data-testid="select-tipo-peca">
                 <SelectValue placeholder={loading ? 'Carregando...' : '-- Selecione --'} />
               </SelectTrigger>
               <SelectContent>
@@ -414,7 +414,7 @@ export function TesteAtivacaoPage() {
                     if (cenario) aplicarCenario(cenario)
                   }}
                 >
-                  <SelectTrigger className="h-10 text-sm">
+                  <SelectTrigger className="h-10 text-sm" data-testid="btn-pre-definidos">
                     <SelectValue placeholder="-- Selecionar cenario --" />
                   </SelectTrigger>
                   <SelectContent>
@@ -453,6 +453,7 @@ export function TesteAtivacaoPage() {
                     color: activeTab === 'variaveis-extracao' ? C.navy700 : C.text500,
                     background: activeTab === 'variaveis-extracao' ? C.navy50 : 'transparent',
                   }}
+                  data-testid="tab-variaveis-extracao"
                 >
                   <FileText className="h-4 w-4" />
                   Variaveis Extracao
@@ -465,6 +466,7 @@ export function TesteAtivacaoPage() {
                     color: activeTab === 'variaveis-processo' ? C.navy700 : C.text500,
                     background: activeTab === 'variaveis-processo' ? C.navy50 : 'transparent',
                   }}
+                  data-testid="tab-variaveis-processo"
                 >
                   <FileText className="h-4 w-4" />
                   Variaveis Processo
@@ -477,6 +479,7 @@ export function TesteAtivacaoPage() {
                     color: activeTab === 'resultados' ? C.navy700 : C.text500,
                     background: activeTab === 'resultados' ? C.navy50 : 'transparent',
                   }}
+                  data-testid="tab-resultados"
                 >
                   <FileText className="h-4 w-4" />
                   Resultados

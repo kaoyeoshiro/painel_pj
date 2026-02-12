@@ -11,12 +11,12 @@ import { defineConfig, devices } from '@playwright/test'
 
 export default defineConfig({
   testDir: './e2e/admin-supplemental',
-  fullyParallel: false,
+  fullyParallel: true,
   forbidOnly: !!process.env.CI,
   retries: process.env.CI ? 2 : 0,
-  workers: 1,
-  timeout: 60_000,
-  expect: { timeout: 10_000 },
+  workers: process.env.CI ? 2 : 4,
+  timeout: 30_000,
+  expect: { timeout: 5_000 },
 
   reporter: [
     ['list'],

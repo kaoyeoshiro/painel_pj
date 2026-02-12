@@ -51,7 +51,8 @@ describe('PrestacaoContasPage', () => {
 
     // Verifica elementos principais do formulario
     expect(screen.getByText('Prestacao de Contas')).toBeInTheDocument()
-    expect(screen.getByText('Analisar Prestacao de Contas')).toBeInTheDocument()
+    const titleElements = screen.getAllByText('Analisar Prestacao de Contas')
+    expect(titleElements.length).toBeGreaterThan(0)
     expect(screen.getByLabelText('Numero do Processo (CNJ)')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /Analisar Prestacao de Contas/i })).toBeInTheDocument()
   })
@@ -68,7 +69,7 @@ describe('PrestacaoContasPage', () => {
     render(<PrestacaoContasPage />)
 
     // Verifica que skeletons de loading estao presentes
-    expect(screen.getByText('Análises Recentes')).toBeInTheDocument()
+    expect(screen.getByText('Analises Recentes')).toBeInTheDocument()
   })
 
   it('deve exibir historico quando carregado com dados', async () => {

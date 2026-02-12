@@ -101,7 +101,8 @@ describe('ClassificadorPage', () => {
     render(<ClassificadorPage />)
 
     await waitFor(() => {
-      expect(screen.getByText(/arraste arquivos aqui ou clique para selecionar/i)).toBeInTheDocument()
+      const uploadAreas = screen.getAllByText(/arraste arquivos aqui ou clique para selecionar/i)
+      expect(uploadAreas.length).toBeGreaterThan(0)
     })
   })
 

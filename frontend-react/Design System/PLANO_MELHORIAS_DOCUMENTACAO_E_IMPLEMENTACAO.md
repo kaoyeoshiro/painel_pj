@@ -263,18 +263,18 @@ Token JWT em localStorage e acessivel por scripts. Se houver XSS, token pode ser
 
 ## Cronograma Sugerido
 
-### Sprint 1 (Imediato)
-- [ ] Item 1: Atualizar PGE-DESIGN-SYSTEM.md
-- [ ] Item 2: Remover mock de useApiQuery
-- [ ] Item 3: Remover dependencia cmdk
+### Sprint 1 (Imediato) — CONCLUIDO
+- [x] Item 1: Atualizar PGE-DESIGN-SYSTEM.md
+- [x] Item 2: Remover mock de useApiQuery
+- [x] Item 3: Remover dependencia cmdk
 
-### Sprint 2 (Curto Prazo)
-- [ ] Item 4: Investigar testes unitarios
-- [ ] Item 7: Documentar metricas Lighthouse
+### Sprint 2 (Curto Prazo) — CONCLUIDO
+- [x] Item 4: Investigar testes unitarios (84 falhas → 0 falhas, 253 testes passando)
+- [x] Item 7: Documentar metricas Lighthouse (Core Web Vitals + budget + scripts)
 
-### Sprint 3 (Medio Prazo)
-- [ ] Item 5: Adicionar data-testid
-- [ ] Item 6: Otimizar suite admin-supplemental
+### Sprint 3 (Medio Prazo) — CONCLUIDO
+- [x] Item 5: Adicionar data-testid (PerformancePage, TesteAtivacaoPage, TesteCategoriasPage)
+- [x] Item 6: Otimizar suite admin-supplemental (parallel, workers, timeouts reduzidos)
 
 ### Backlog (Depende de Terceiros)
 - [ ] Item 8: Configurar CSP (infra)
@@ -286,13 +286,13 @@ Token JWT em localStorage e acessivel por scripts. Se houver XSS, token pode ser
 
 | Item | Responsavel | Inicio | Conclusao | Status |
 |------|-------------|--------|-----------|--------|
-| 1 | - | - | - | PENDENTE |
-| 2 | - | - | - | PENDENTE |
-| 3 | - | - | - | PENDENTE |
-| 4 | - | - | - | PENDENTE |
-| 5 | - | - | - | PENDENTE |
-| 6 | - | - | - | PENDENTE |
-| 7 | - | - | - | PENDENTE |
+| 1 | Claude Code | 2026-02-11 | 2026-02-11 | CONCLUIDO |
+| 2 | Claude Code | 2026-02-11 | 2026-02-11 | CONCLUIDO |
+| 3 | Claude Code | 2026-02-11 | 2026-02-11 | CONCLUIDO |
+| 4 | Claude Code | 2026-02-11 | 2026-02-11 | CONCLUIDO |
+| 5 | Claude Code | 2026-02-11 | 2026-02-11 | CONCLUIDO |
+| 6 | Claude Code | 2026-02-11 | 2026-02-11 | CONCLUIDO |
+| 7 | Claude Code | 2026-02-11 | 2026-02-11 | CONCLUIDO |
 | 8 | - | - | - | PENDENTE (INFRA) |
 | 9 | - | - | - | PENDENTE (BACKEND) |
 

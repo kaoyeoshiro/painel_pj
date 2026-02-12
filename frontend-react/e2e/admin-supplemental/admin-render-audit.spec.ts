@@ -78,7 +78,7 @@ test.describe('Admin Render Audit', () => {
 
         consoleErrors.length = 0
         await navigateToAdminRoute(route)
-        await page.waitForTimeout(1000)
+        await page.waitForTimeout(200)
 
         // Filtra erros fatais (ignora rede e favicon)
         const fatalErrors = consoleErrors.filter((e) => {

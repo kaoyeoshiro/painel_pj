@@ -69,7 +69,8 @@ describe('MatriculasPage', () => {
 
     // Verifica se os botoes principais estao presentes
     expect(screen.getByRole('button', { name: /analisar/i })).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /importar/i })).toBeInTheDocument()
+    const importarButtons = screen.getAllByRole('button', { name: /importar/i })
+    expect(importarButtons.length).toBeGreaterThan(0)
   })
 
   it('deve exibir dados quando a API retorna sucesso', async () => {

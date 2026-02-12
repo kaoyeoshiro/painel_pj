@@ -37,8 +37,8 @@ test.describe('Safe Click Audit — Tabs', () => {
           }
 
           await tabEl.click()
-          // Aguarda breve transicao
-          await page.waitForTimeout(500)
+          // Aguarda breve transicao (APIs mockadas)
+          await page.waitForTimeout(100)
 
           // Se tem contentHint, verifica que aparece
           if (tab.contentHint) {
@@ -82,18 +82,18 @@ test.describe('Safe Click Audit — Botoes Configurados', () => {
           }
 
           await btnEl.click()
-          await page.waitForTimeout(500)
+          await page.waitForTimeout(100)
 
           // Verifica efeito baseado no tipo esperado
           switch (btn.expectedEffect) {
             case 'dialog-opens': {
               // Verifica que algum dialog/modal abriu
               const dialog = page.getByRole('dialog').first()
-              const dialogVisible = await dialog.isVisible({ timeout: 3000 }).catch(() => false)
+              const dialogVisible = await dialog.isVisible({ timeout: 1500 }).catch(() => false)
               if (dialogVisible) {
                 // Fecha o dialog (Escape ou botao fechar)
                 await page.keyboard.press('Escape')
-                await page.waitForTimeout(300)
+                await page.waitForTimeout(100)
               }
               break
             }
