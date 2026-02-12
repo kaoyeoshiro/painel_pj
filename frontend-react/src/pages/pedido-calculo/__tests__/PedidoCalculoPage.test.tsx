@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor } from '@/test/test-utils'
 import { PedidoCalculoPage } from '../PedidoCalculoPage'
 import * as api from '@/lib/api'
 
@@ -36,11 +36,11 @@ describe('PedidoCalculoPage', () => {
 
     render(<PedidoCalculoPage />)
 
-    // Verifica elementos principais
-    expect(screen.getByText('Pedido de Cálculo Judicial')).toBeInTheDocument()
-    expect(screen.getByText('Cumprimento de Sentença contra a Fazenda Pública')).toBeInTheDocument()
-    expect(screen.getByLabelText('Número do Processo (CNJ)')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Gerar Pedido de Cálculo/i })).toBeInTheDocument()
+    // Verifica elementos principais (BreadcrumbBar title sem acentos)
+    expect(screen.getByText('Pedido de Calculo')).toBeInTheDocument()
+    expect(screen.getByLabelText('Numero do Processo (CNJ)')).toBeInTheDocument()
+    // O botao de submit contem "Gerar Pedido de Calculo"
+    expect(screen.getByRole('button', { name: /Gerar Pedido de Calculo/i })).toBeInTheDocument()
   })
 
   it('deve mostrar loading enquanto busca dados', async () => {
@@ -98,7 +98,7 @@ describe('PedidoCalculoPage', () => {
     // Aguarda a mensagem de vazio aparecer
     await waitFor(() => {
       expect(screen.getByText('Nenhum pedido gerado ainda')).toBeInTheDocument()
-      expect(screen.getByText('Use o formulário acima para gerar seu primeiro pedido')).toBeInTheDocument()
+      expect(screen.getByText('Use o formulario acima para gerar seu primeiro pedido')).toBeInTheDocument()
     })
   })
 
@@ -107,7 +107,7 @@ describe('PedidoCalculoPage', () => {
 
     render(<PedidoCalculoPage />)
 
-    const input = screen.getByLabelText('Número do Processo (CNJ)')
+    const input = screen.getByLabelText('Numero do Processo (CNJ)')
     expect(input).toBeInTheDocument()
     expect(input).toHaveAttribute('placeholder', '0000000-00.2024.8.12.0001')
   })

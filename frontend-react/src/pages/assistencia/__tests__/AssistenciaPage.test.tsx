@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor } from '@/test/test-utils'
 import { AssistenciaPage } from '../AssistenciaPage'
 import * as api from '@/lib/api'
 
@@ -63,7 +63,7 @@ describe('AssistenciaPage', () => {
     render(<AssistenciaPage />)
 
     // Verifica elementos principais
-    expect(screen.getByText('Assistência Judiciária')).toBeInTheDocument()
+    expect(screen.getByText('Assistencia Judiciaria')).toBeInTheDocument()
     expect(screen.getByPlaceholderText('0000000-00.0000.0.00.0000')).toBeInTheDocument()
     expect(screen.getByRole('button', { name: /consultar/i })).toBeInTheDocument()
   })
@@ -92,7 +92,7 @@ describe('AssistenciaPage', () => {
     // Aguarda o histórico carregar
     await waitFor(() => {
       expect(screen.getByText('0800123-45.2024.8.12.0001')).toBeInTheDocument()
-      expect(screen.getByText('Ação Civil Pública')).toBeInTheDocument()
+      expect(screen.getByText('Acao Civil Publica')).toBeInTheDocument()
     })
   })
 

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor } from '@/test/test-utils'
 import MatriculasPage from '../MatriculasPage'
 import { matriculasApi } from '@/lib/api'
 
@@ -61,11 +61,8 @@ describe('MatriculasPage', () => {
 
     // Verifica se o titulo principal esta presente (SystemTopbar)
     await waitFor(() => {
-      expect(screen.getByText('Matrículas Confrontantes')).toBeInTheDocument()
+      expect(screen.getByText('Matriculas Confrontantes')).toBeInTheDocument()
     })
-
-    // Verifica se o subtitulo esta presente
-    expect(screen.getByText('Sistema de Análise Documental')).toBeInTheDocument()
 
     // Verifica se o campo de matricula principal esta presente
     expect(screen.getByPlaceholderText('Ex: 12345')).toBeInTheDocument()

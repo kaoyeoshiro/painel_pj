@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor } from '@/test/test-utils'
 import { HistoricoPedidoCalculoPage } from '../HistoricoPedidoCalculoPage'
 
 // Mock do toast
@@ -38,10 +38,7 @@ describe('HistoricoPedidoCalculoPage', () => {
 
     render(<HistoricoPedidoCalculoPage />)
 
-    expect(screen.getByText('Histórico - Pedido de Cálculo')).toBeInTheDocument()
-    expect(
-      screen.getByText('Todas as gerações de pedidos de cálculo com logs de IA')
-    ).toBeInTheDocument()
+    expect(screen.getByText('Historico - Pedido de Calculo')).toBeInTheDocument()
   })
 
   it('deve mostrar loading state e depois exibir dados', async () => {

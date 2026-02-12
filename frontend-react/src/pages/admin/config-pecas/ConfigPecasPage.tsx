@@ -15,7 +15,7 @@ import { BreadcrumbBar } from '@/components/layout/BreadcrumbBar'
 import { AdminSubNav } from '@/components/layout'
 import { ContentArea } from '@/components/layout/ContentArea'
 import { C } from '@/lib/designTokens'
-import { Settings as SettingsIcon, ChevronDown, ChevronRight } from 'lucide-react'
+import { Settings as SettingsIcon, ChevronDown, ChevronRight, Pencil, Trash2 } from 'lucide-react'
 
 // Interfaces
 interface CategoriaDocumento {
@@ -356,6 +356,9 @@ export function ConfigPecasPage() {
   const [dialogTipoOpen, setDialogTipoOpen] = useState(false)
   const [tipoEditando, setTipoEditando] = useState<TipoPeca | null>(null)
 
+  // Estado do dialog de confirmacao de exclusao
+  const [confirmExclusao, setConfirmExclusao] = useState<{ tipo: 'categoria' | 'tipo'; id: number; nome: string } | null>(null)
+
   // Estado de loading para ações administrativas (itens 29.10 e 29.11)
   const [loadingCarregarIniciais, setLoadingCarregarIniciais] = useState(false)
   const [loadingSincronizar, setLoadingSincronizar] = useState(false)
@@ -547,8 +550,6 @@ export function ConfigPecasPage() {
   }
 
   const excluirCategoria = async (id: number) => {
-    if (!confirm('Deseja realmente excluir esta categoria?')) return
-
     try {
       await configApi.delete(`/categorias/${id}`)
       toast({
@@ -631,8 +632,6 @@ export function ConfigPecasPage() {
   }
 
   const excluirTipo = async (id: number) => {
-    if (!confirm('Deseja realmente excluir este tipo de peça?')) return
-
     try {
       await configApi.delete(`/tipos-peca/${id}`)
       toast({
@@ -647,6 +646,16 @@ export function ConfigPecasPage() {
         variant: 'destructive'
       })
     }
+  }
+
+  const confirmarExclusao = async () => {
+    if (!confirmExclusao) return
+    if (confirmExclusao.tipo === 'categoria') {
+      await excluirCategoria(confirmExclusao.id)
+    } else {
+      await excluirTipo(confirmExclusao.id)
+    }
+    setConfirmExclusao(null)
   }
 
   return (
@@ -697,17 +706,43 @@ export function ConfigPecasPage() {
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {categorias.map(categoria => (
                 <Card key={categoria.id} className="rounded-2xl flex flex-col h-full" style={{ borderColor: C.gray200 }}>
-                  <CardHeader>
-                    <div className="flex items-center gap-2">
-                      <div
-                        className="w-4 h-4 rounded-full flex-shrink-0"
-                        style={{ backgroundColor: categoria.cor }}
-                      />
-                      <CardTitle className="text-base" style={{ color: C.text900 }}>{categoria.titulo}</CardTitle>
+                  <CardHeader className="p-4 pb-2 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 min-w-0">
+                        <div
+                          className="w-3 h-3 rounded-full flex-shrink-0"
+                          style={{ backgroundColor: categoria.cor }}
+                        />
+                        <CardTitle className="text-sm truncate" style={{ color: C.text900 }}>{categoria.titulo}</CardTitle>
+                      </div>
+                      <div className="flex items-center gap-0.5 flex-shrink-0">
+                        <button
+                          type="button"
+                          className="p-1.5 rounded-md transition-colors"
+                          style={{ color: C.text400, background: 'transparent' }}
+                          onMouseEnter={e => { e.currentTarget.style.background = C.gray100; e.currentTarget.style.color = C.text900 }}
+                          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = C.text400 }}
+                          onClick={() => abrirDialogCategoria(categoria)}
+                          aria-label={`Editar categoria ${categoria.titulo}`}
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          className="p-1.5 rounded-md transition-colors"
+                          style={{ color: C.text400, background: 'transparent' }}
+                          onMouseEnter={e => { e.currentTarget.style.background = C.gray100; e.currentTarget.style.color = C.text900 }}
+                          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = C.text400 }}
+                          onClick={() => setConfirmExclusao({ tipo: 'categoria', id: categoria.id, nome: categoria.titulo })}
+                          aria-label={`Excluir categoria ${categoria.titulo}`}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
                     </div>
                     <CardDescription className="font-mono text-xs" style={{ color: C.text400 }}>{categoria.nome}</CardDescription>
                   </CardHeader>
-                  <CardContent className="space-y-3 flex flex-col flex-1">
+                  <CardContent className="space-y-2 flex flex-col flex-1 p-4 pt-0">
                     {categoria.descricao && (
                       <p className="text-sm" style={{ color: C.text500 }}>{categoria.descricao}</p>
                     )}
@@ -721,23 +756,6 @@ export function ConfigPecasPage() {
                       {categoria.is_primeiro_documento && (
                         <Badge variant="outline">1o doc</Badge>
                       )}
-                    </div>
-
-                    <div className="flex gap-2 mt-auto pt-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => abrirDialogCategoria(categoria)}
-                      >
-                        Editar
-                      </Button>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => excluirCategoria(categoria.id)}
-                      >
-                        Excluir
-                      </Button>
                     </div>
                   </CardContent>
                 </Card>
@@ -758,14 +776,40 @@ export function ConfigPecasPage() {
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {tiposPeca.map(tipo => (
                 <Card key={tipo.id} className="rounded-2xl flex flex-col h-full" style={{ borderColor: C.gray200 }}>
-                  <CardHeader>
-                    <div className="flex items-center gap-2">
-                      {tipo.icone && <span className="text-2xl">{tipo.icone}</span>}
-                      <CardTitle className="text-base" style={{ color: C.text900 }}>{tipo.titulo}</CardTitle>
+                  <CardHeader className="p-4 pb-2 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2 min-w-0">
+                        {tipo.icone && <span className="text-lg flex-shrink-0">{tipo.icone}</span>}
+                        <CardTitle className="text-sm truncate" style={{ color: C.text900 }}>{tipo.titulo}</CardTitle>
+                      </div>
+                      <div className="flex items-center gap-0.5 flex-shrink-0">
+                        <button
+                          type="button"
+                          className="p-1.5 rounded-md transition-colors"
+                          style={{ color: C.text400, background: 'transparent' }}
+                          onMouseEnter={e => { e.currentTarget.style.background = C.gray100; e.currentTarget.style.color = C.text900 }}
+                          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = C.text400 }}
+                          onClick={() => abrirDialogTipo(tipo)}
+                          aria-label={`Editar tipo ${tipo.titulo}`}
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                        <button
+                          type="button"
+                          className="p-1.5 rounded-md transition-colors"
+                          style={{ color: C.text400, background: 'transparent' }}
+                          onMouseEnter={e => { e.currentTarget.style.background = C.gray100; e.currentTarget.style.color = C.text900 }}
+                          onMouseLeave={e => { e.currentTarget.style.background = 'transparent'; e.currentTarget.style.color = C.text400 }}
+                          onClick={() => setConfirmExclusao({ tipo: 'tipo', id: tipo.id, nome: tipo.titulo })}
+                          aria-label={`Excluir tipo ${tipo.titulo}`}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
                     </div>
                     <CardDescription className="font-mono text-xs" style={{ color: C.text400 }}>{tipo.nome}</CardDescription>
                   </CardHeader>
-                  <CardContent className="space-y-3 flex flex-col flex-1">
+                  <CardContent className="space-y-2 flex flex-col flex-1 p-4 pt-0">
                     {tipo.descricao && (
                       <p className="text-sm" style={{ color: C.text500 }}>{tipo.descricao}</p>
                     )}
@@ -785,23 +829,6 @@ export function ConfigPecasPage() {
                       {tipo.is_padrao && (
                         <Badge variant="outline">Padrao</Badge>
                       )}
-                    </div>
-
-                    <div className="flex gap-2 mt-auto pt-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => abrirDialogTipo(tipo)}
-                      >
-                        Editar
-                      </Button>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => excluirTipo(tipo.id)}
-                      >
-                        Excluir
-                      </Button>
                     </div>
                   </CardContent>
                 </Card>
@@ -1002,6 +1029,26 @@ export function ConfigPecasPage() {
               Cancelar
             </Button>
             <Button onClick={salvarTipo} style={{ background: C.navy950, color: 'white' }}>Salvar</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      {/* Dialog de confirmacao de exclusao */}
+      <Dialog open={confirmExclusao !== null} onOpenChange={(open) => { if (!open) setConfirmExclusao(null) }}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Confirmar exclusao</DialogTitle>
+            <DialogDescription>
+              Deseja realmente excluir {confirmExclusao?.tipo === 'categoria' ? 'a categoria' : 'o tipo'}{' '}
+              <strong>{confirmExclusao?.nome}</strong>? Esta acao nao pode ser desfeita.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setConfirmExclusao(null)}>
+              Cancelar
+            </Button>
+            <Button variant="destructive" onClick={confirmarExclusao}>
+              Excluir
+            </Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>

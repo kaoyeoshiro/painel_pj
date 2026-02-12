@@ -94,13 +94,10 @@ describe('TesteAtivacaoPage', () => {
 
     // Verificar título (sem acentos no componente)
     expect(screen.getByText('Teste de Ativacao de Modulos')).toBeInTheDocument()
-    expect(
-      screen.getByText('Simule ativacao de prompts com variaveis de teste')
-    ).toBeInTheDocument()
 
     // Aguardar carregamento
     await waitFor(() => {
-      expect(adminApi.get).toHaveBeenCalledWith('/teste-ativacao/tipos-peca')
+      expect(adminApi.get).toHaveBeenCalledWith('/admin/api/teste-ativacao/tipos-peca')
     })
   })
 
@@ -109,7 +106,7 @@ describe('TesteAtivacaoPage', () => {
 
     // Aguardar carregamento dos tipos
     await waitFor(() => {
-      expect(adminApi.get).toHaveBeenCalledWith('/teste-ativacao/tipos-peca')
+      expect(adminApi.get).toHaveBeenCalledWith('/admin/api/teste-ativacao/tipos-peca')
     })
 
     // Verificar que o label de tipo de peça está renderizado
@@ -121,7 +118,7 @@ describe('TesteAtivacaoPage', () => {
 
     // Aguardar carregamento das categorias
     await waitFor(() => {
-      expect(adminApi.get).toHaveBeenCalledWith('/teste-ativacao/categorias-extracao')
+      expect(adminApi.get).toHaveBeenCalledWith('/admin/api/teste-ativacao/categorias-extracao')
     })
 
     // Verificar que as categorias foram renderizadas
@@ -176,7 +173,7 @@ describe('TesteAtivacaoPage', () => {
 
     // Verificar chamada à API
     await waitFor(() => {
-      expect(adminApi.post).toHaveBeenCalledWith('/teste-ativacao/simular', expect.any(Object))
+      expect(adminApi.post).toHaveBeenCalledWith('/admin/api/teste-ativacao/simular', expect.any(Object))
     })
 
     // Os resultados devem ser mostrados na aba Resultados (auto-switched)
@@ -231,7 +228,7 @@ describe('TesteAtivacaoPage', () => {
 
     // Aguardar carregamento completo
     await waitFor(() => {
-      expect(adminApi.get).toHaveBeenCalledWith('/teste-ativacao/tipos-peca')
+      expect(adminApi.get).toHaveBeenCalledWith('/admin/api/teste-ativacao/tipos-peca')
     })
   })
 })

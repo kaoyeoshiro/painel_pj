@@ -25,6 +25,7 @@ import {
   BookOpen,
   PanelLeftClose,
   PanelLeftOpen,
+  Zap,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
 import { Sheet, SheetContent } from '@/components/ui/sheet'
@@ -68,6 +69,8 @@ const adminItems: NavItem[] = [
   { to: '/admin/categorias-json', icon: FileJson, label: 'Categorias JSON', adminOnly: true },
   { to: '/admin/historico-gerador', icon: History, label: 'Histórico Gerador', adminOnly: true },
   { to: '/admin/config-pecas', icon: Settings, label: 'Config Peças', adminOnly: true },
+  { to: '/admin/teste-ativacao', icon: Zap, label: 'Teste Ativação', adminOnly: true },
+  { to: '/admin/teste-categorias', icon: FlaskConical, label: 'Teste Categorias', adminOnly: true },
   { to: '/admin/tjms-docs', icon: BookOpen, label: 'TJ-MS Docs', adminOnly: true },
 ]
 

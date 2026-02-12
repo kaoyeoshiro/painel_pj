@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor } from '@/test/test-utils'
 import userEvent from '@testing-library/user-event'
 import { ClassificadorPage } from '../ClassificadorPage'
 
@@ -15,23 +15,13 @@ vi.mock('@/lib/api', () => ({
   getToken: vi.fn(() => 'fake-token'),
 }))
 
-// Mock do toast - precisa exportar ToastContext pois use-toast.ts importa dele
-vi.mock('@/components/ui/toast', () => {
-  const { createContext } = require('react')
-  const mockToast = vi.fn()
-  const ctx = createContext({
-    toasts: [],
-    toast: mockToast,
+// Mock do toast
+vi.mock('@/hooks/use-toast', () => ({
+  useToast: () => ({
+    toast: vi.fn(),
     dismiss: vi.fn(),
-  })
-  return {
-    ToastContext: ctx,
-    useToast: () => ({
-      toast: mockToast,
-      dismiss: vi.fn(),
-    }),
-  }
-})
+  }),
+}))
 
 // Import API mockada para configurar retornos
 import { classificadorApi } from '@/lib/api'

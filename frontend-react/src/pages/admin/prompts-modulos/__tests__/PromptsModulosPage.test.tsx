@@ -155,8 +155,8 @@ describe('PromptsModulosPage', () => {
 
     render(<PromptsModulosPage />)
 
-    // Verifica título
-    expect(screen.getByText('Módulos de Prompts')).toBeInTheDocument()
+    // Verifica título (BreadcrumbBar sem acentos)
+    expect(screen.getByText('Modulos de Prompts')).toBeInTheDocument()
 
     // Aguarda carregamento
     await waitFor(() => {
@@ -229,13 +229,13 @@ describe('PromptsModulosPage', () => {
       expect(screen.getByText('Módulo 1')).toBeInTheDocument()
     })
 
-    // Clica no botão Novo Módulo
-    const botaoNovo = screen.getByRole('button', { name: 'Novo Módulo' })
+    // Clica no botão Novo Modulo (sem acento no componente)
+    const botaoNovo = screen.getByRole('button', { name: 'Novo Modulo' })
     await user.click(botaoNovo)
 
-    // Verifica que o dialog foi aberto (agora teremos 2 "Novo Módulo": botão + título)
+    // Verifica que o dialog foi aberto (título do dialog: "Novo Módulo" com acento)
     await waitFor(() => {
-      expect(screen.getAllByText('Novo Módulo').length).toBeGreaterThan(1)
+      expect(screen.getByText('Novo Módulo')).toBeInTheDocument()
     })
 
     // Verifica campos do formulário
@@ -287,8 +287,8 @@ describe('PromptsModulosPage', () => {
       expect(screen.getByText('Módulo 1')).toBeInTheDocument()
     })
 
-    // Abre dialog de criação (pega o botão, não o texto do título do dialog)
-    await user.click(screen.getByRole('button', { name: 'Novo Módulo' }))
+    // Abre dialog de criação (pega o botão, sem acento no componente)
+    await user.click(screen.getByRole('button', { name: 'Novo Modulo' }))
 
     // Preenche formulário
     await user.type(screen.getByLabelText('Título'), 'Novo Módulo')

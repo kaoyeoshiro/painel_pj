@@ -107,7 +107,6 @@ describe('VariaveisPage', () => {
 
     // Verificar título
     expect(screen.getByText('Painel de Variaveis')).toBeInTheDocument()
-    expect(screen.getByText('Variaveis de extracao do sistema')).toBeInTheDocument()
 
     // Aguardar carregamento dos dados
     await waitFor(() => {

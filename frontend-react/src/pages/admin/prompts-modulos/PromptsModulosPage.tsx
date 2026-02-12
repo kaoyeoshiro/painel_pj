@@ -11,10 +11,11 @@ import { BreadcrumbBar } from '@/components/layout/BreadcrumbBar'
 import { AdminSubNav } from '@/components/layout'
 import { ContentArea } from '@/components/layout/ContentArea'
 import { C } from '@/lib/designTokens'
+import { Link } from '@tanstack/react-router'
 import {
   ChevronDown, ChevronRight, Edit2, Trash2, ToggleLeft, ToggleRight,
   Plus, Search, Download, Upload, History, Settings, RotateCcw,
-  FileText, FileJson, Lightbulb, X,
+  FileText, FileJson, Lightbulb, X, Zap,
 } from 'lucide-react'
 
 // ---- Interfaces ----
@@ -1044,6 +1045,12 @@ export function PromptsModulosPage() {
         icon={<FileJson style={{ width: 14, height: 14 }} />}
         actions={
           <div className="flex items-center gap-2">
+            <Link to="/admin/teste-ativacao">
+              <Button variant="outline" size="sm" className="gap-1.5" style={{ borderColor: C.orange400, color: C.orange600 }}>
+                <Zap className="h-4 w-4" />
+                Testar Ativacao
+              </Button>
+            </Link>
             <Button variant="outline" size="sm" onClick={() => setDialogGrupos(true)} className="gap-1.5">
               <Settings className="h-4 w-4" />
               Grupos

@@ -8,7 +8,8 @@
  */
 
 import { useState, useEffect, useCallback } from 'react'
-import { Tags } from 'lucide-react'
+import { Tags, FlaskConical } from 'lucide-react'
+import { Link } from '@tanstack/react-router'
 import { Button } from '@/components/ui/button'
 import {
   Dialog,
@@ -131,13 +132,26 @@ export function CategoriasJsonPage() {
         title="Categorias JSON"
         icon={<Tags style={{ width: 14, height: 14 }} />}
         actions={
-          <Button
-            onClick={handleCreate}
-            style={{ background: C.navy950, color: 'white' }}
-            data-testid="btn-nova-categoria"
-          >
-            Nova Categoria
-          </Button>
+          <div className="flex items-center gap-2">
+            <Link to="/admin/teste-categorias">
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-1.5"
+                style={{ borderColor: C.orange400, color: C.orange600 }}
+              >
+                <FlaskConical className="h-4 w-4" />
+                Testar Categorias
+              </Button>
+            </Link>
+            <Button
+              onClick={handleCreate}
+              style={{ background: C.navy950, color: 'white' }}
+              data-testid="btn-nova-categoria"
+            >
+              Nova Categoria
+            </Button>
+          </div>
         }
       />
 

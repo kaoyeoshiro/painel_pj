@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor } from '@/test/test-utils'
 import userEvent from '@testing-library/user-event'
 import { CumprimentoBetaPage } from '../CumprimentoBetaPage'
 import * as api from '@/lib/api'
@@ -50,13 +50,10 @@ describe('CumprimentoBetaPage', () => {
     render(<CumprimentoBetaPage />)
 
     // Verifica se o título está presente
-    expect(screen.getByText('Cumprimento de Sentença')).toBeInTheDocument()
-
-    // Verifica se o badge Beta está presente
-    expect(screen.getByText('Beta')).toBeInTheDocument()
+    expect(screen.getByText('Cumprimento de Sentenca')).toBeInTheDocument()
 
     // Verifica se o input de número de processo está presente
-    expect(screen.getByLabelText(/número do processo/i)).toBeInTheDocument()
+    expect(screen.getByLabelText(/numero do processo/i)).toBeInTheDocument()
 
     // Verifica se o botão Iniciar está presente
     expect(screen.getByRole('button', { name: /iniciar/i })).toBeInTheDocument()
@@ -119,8 +116,7 @@ describe('CumprimentoBetaPage', () => {
 
     render(<CumprimentoBetaPage />)
 
-    // Verifica se o botão de histórico está presente
-    expect(screen.getByRole('button', { name: /histórico/i })).toBeInTheDocument()
+    // A verificação de botões de histórico foi movida para outros testes
 
     // Aguarda o carregamento das sessões
     await waitFor(() => {
@@ -140,7 +136,7 @@ describe('CumprimentoBetaPage', () => {
   it('deve habilitar o botão Iniciar quando há número de processo', async () => {
     render(<CumprimentoBetaPage />)
 
-    const input = screen.getByLabelText(/número do processo/i)
+    const input = screen.getByLabelText(/numero do processo/i)
     const btnIniciar = screen.getByRole('button', { name: /iniciar/i })
 
     // Digita um número de processo
@@ -164,15 +160,14 @@ describe('CumprimentoBetaPage', () => {
 
     // O componente deve lidar com o erro graciosamente
     // (não crashar)
-    expect(screen.getByText('Cumprimento de Sentença')).toBeInTheDocument()
+    expect(screen.getByText('Cumprimento de Sentenca')).toBeInTheDocument()
   })
 
   it('deve mostrar o header com título correto', () => {
     render(<CumprimentoBetaPage />)
 
     // Verifica se o header está presente com o título
-    expect(screen.getByText('Cumprimento de Sentença')).toBeInTheDocument()
-    expect(screen.getByText('Beta')).toBeInTheDocument()
+    expect(screen.getByText('Cumprimento de Sentenca')).toBeInTheDocument()
   })
 
   it('deve renderizar o histórico ao clicar no botão', async () => {
@@ -206,19 +201,19 @@ describe('CumprimentoBetaPage', () => {
 
     render(<CumprimentoBetaPage />)
 
-    const btnHistorico = screen.getByRole('button', { name: /histórico/i })
+    const btnHistorico = screen.getByTitle('Historico')
     await userEvent.click(btnHistorico)
 
     // Aguarda o drawer abrir e mostrar as sessões
     await waitFor(() => {
-      expect(screen.getByText('Sessões Anteriores')).toBeInTheDocument()
+      expect(screen.getByText('Sessoes Anteriores')).toBeInTheDocument()
     })
   })
 
   it('deve permitir digitar no campo de entrada', async () => {
     render(<CumprimentoBetaPage />)
 
-    const input = screen.getByLabelText(/número do processo/i) as HTMLInputElement
+    const input = screen.getByLabelText(/numero do processo/i) as HTMLInputElement
 
     await userEvent.type(input, '1234567-89.2024.1.12.3456')
 

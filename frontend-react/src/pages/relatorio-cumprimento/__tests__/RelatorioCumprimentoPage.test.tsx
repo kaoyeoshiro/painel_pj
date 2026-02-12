@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor } from '@/test/test-utils'
 import userEvent from '@testing-library/user-event'
 import { RelatorioCumprimentoPage } from '../RelatorioCumprimentoPage'
 import * as api from '@/lib/api'
@@ -64,8 +64,8 @@ describe('RelatorioCumprimentoPage', () => {
     // Verifica botao de gerar
     expect(screen.getByRole('button', { name: /gerar relatorio/i })).toBeInTheDocument()
 
-    // Verifica botao de historico (button inside SheetTrigger)
-    expect(screen.getByTitle('Histórico')).toBeInTheDocument()
+    // Verifica botao de historico (button inside SheetTrigger) - text is "Historico" without accent
+    expect(screen.getByText(/historico/i)).toBeInTheDocument()
   })
 
   it('deve mostrar estado de carregamento ao buscar historico', async () => {
@@ -123,8 +123,8 @@ describe('RelatorioCumprimentoPage', () => {
 
     render(<RelatorioCumprimentoPage />)
 
-    // Clica no botao de historico para abrir o drawer
-    const btnHistorico = screen.getByTitle('Histórico')
+    // Clica no botao de historico para abrir o drawer - use text "Historico" without accent
+    const btnHistorico = screen.getByText(/historico/i)
     await userEvent.click(btnHistorico)
 
     // Verifica se o drawer mostra o titulo
@@ -211,7 +211,7 @@ describe('RelatorioCumprimentoPage', () => {
     render(<RelatorioCumprimentoPage />)
 
     // Abre o drawer de historico
-    const btnHistorico = screen.getByTitle('Histórico')
+    const btnHistorico = screen.getByText(/historico/i)
     await userEvent.click(btnHistorico)
 
     // Verifica mensagem de vazio

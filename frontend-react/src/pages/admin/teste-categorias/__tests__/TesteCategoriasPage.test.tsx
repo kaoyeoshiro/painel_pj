@@ -85,7 +85,7 @@ describe('TesteCategoriasPage', () => {
     render(<TesteCategoriasPage />)
 
     expect(screen.getByText('Ambiente de Teste de Categorias')).toBeInTheDocument()
-    expect(screen.getByText('Teste e valide a extracao de JSON por categoria')).toBeInTheDocument()
+    // Subtítulo removido na refatoração visual — verificar label "Categoria:"
     expect(screen.getByText('Categoria:')).toBeInTheDocument()
   })
 
@@ -96,7 +96,7 @@ describe('TesteCategoriasPage', () => {
 
     await waitFor(() => {
       expect(adminApi.get).toHaveBeenCalledWith(
-        '/admin/api/categorias-resumo-json/teste-categorias/categorias-ativas'
+        '/admin/api/teste-categorias/categorias-ativas'
       )
     })
 
@@ -122,7 +122,7 @@ describe('TesteCategoriasPage', () => {
 
     await waitFor(() => {
       expect(adminApi.post).toHaveBeenCalledWith(
-        '/admin/api/categorias-resumo-json/teste-categorias/validar-processos',
+        '/admin/api/teste-categorias/validar-processos',
         { processos: ['0000000-00.0000.0.00.0000', 'invalido'] }
       )
     })
@@ -159,7 +159,7 @@ describe('TesteCategoriasPage', () => {
 
     await waitFor(() => {
       expect(adminApi.post).toHaveBeenCalledWith(
-        '/admin/api/categorias-resumo-json/teste-categorias/validar-processos',
+        '/admin/api/teste-categorias/validar-processos',
         expect.any(Object)
       )
     })
@@ -171,7 +171,7 @@ describe('TesteCategoriasPage', () => {
     // Aguardar chamada da API de classificação
     await waitFor(() => {
       expect(adminApi.post).toHaveBeenCalledWith(
-        '/admin/api/categorias-resumo-json/teste-categorias/classificar',
+        '/admin/api/teste-categorias/classificar',
         expect.objectContaining({
           processos: ['0000000-00.0000.0.00.0000'],
           categoria_id: 1

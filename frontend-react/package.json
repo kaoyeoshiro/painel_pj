@@ -18,6 +18,8 @@
     "test:full-regression": "playwright test -c playwright.full-regression.config.ts",
     "test:admin-supplemental": "playwright test -c playwright.admin-supplemental.config.ts",
     "test:admin-supplemental:headed": "playwright test -c playwright.admin-supplemental.config.ts --headed",
+    "test:admin-destructive": "playwright test -c playwright.admin-destructive.config.ts",
+    "test:admin-destructive:headed": "playwright test -c playwright.admin-destructive.config.ts --headed",
     "generate:api": "node scripts/generate-api.mjs",
     "generate:api:file": "node scripts/generate-api.mjs ./openapi.json"
   },
@@ -36,7 +38,6 @@
     "@tanstack/react-router": "^1.158.4",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
-    "cmdk": "^1.1.1",
     "dompurify": "^3.3.1",
     "lucide-react": "^0.563.0",
     "marked": "^17.0.1",

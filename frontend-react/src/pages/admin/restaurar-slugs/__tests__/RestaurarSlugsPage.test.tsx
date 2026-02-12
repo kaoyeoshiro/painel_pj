@@ -22,7 +22,8 @@ describe('RestaurarSlugsPage', () => {
   it('renders the page with title and button', () => {
     render(<RestaurarSlugsPage />)
 
-    expect(screen.getByRole('heading', { name: /Restaurar Slugs/i })).toBeInTheDocument()
+    // BreadcrumbBar renderiza <span> + botão com mesmo texto — verificar ambos
+    expect(screen.getAllByText('Restaurar Slugs').length).toBeGreaterThanOrEqual(1)
     expect(screen.getByRole('button', { name: /Restaurar Slugs/i })).toBeInTheDocument()
   })
 

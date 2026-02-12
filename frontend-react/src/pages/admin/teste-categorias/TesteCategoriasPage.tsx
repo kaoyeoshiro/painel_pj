@@ -11,7 +11,6 @@ import {
   AlertTriangle,
   Eye,
   List,
-  Tags,
   Plus,
   Trash2,
   Download,
@@ -20,6 +19,7 @@ import {
 } from 'lucide-react'
 import { BreadcrumbBar } from '@/components/layout/BreadcrumbBar'
 import { ContentArea } from '@/components/layout/ContentArea'
+import { AdminSubNav } from '@/components/layout'
 import { C } from '@/lib/designTokens'
 
 interface Categoria {
@@ -77,7 +77,7 @@ export function TesteCategoriasPage() {
     setLoadingCategorias(true)
     try {
       const data = await adminApi.get<Categoria[]>(
-        '/admin/api/categorias-resumo-json/teste-categorias/categorias-ativas',
+        '/admin/api/teste-categorias/categorias-ativas',
       )
       setCategorias(data)
     } catch (error) {
@@ -110,7 +110,7 @@ export function TesteCategoriasPage() {
     setLoadingValidar(true)
     try {
       const data = await adminApi.post<ProcessoValidado[]>(
-        '/admin/api/categorias-resumo-json/teste-categorias/validar-processos',
+        '/admin/api/teste-categorias/validar-processos',
         { processos: linhas },
       )
       setProcessosValidados(data)
@@ -144,7 +144,7 @@ export function TesteCategoriasPage() {
     setLoadingClassificar(true)
     try {
       const data = await adminApi.post<ClassificacaoResultado[]>(
-        '/admin/api/categorias-resumo-json/teste-categorias/classificar',
+        '/admin/api/teste-categorias/classificar',
         {
           processos: processosAptos,
           categoria_id: Number(categoriaId),
@@ -176,7 +176,7 @@ export function TesteCategoriasPage() {
   async function handleDownloadAll(): Promise<void> {
     setLoadingExportAll(true)
     try {
-      const blob = await adminApi.blob('/admin/api/categorias-resumo-json/teste-categorias/exportar')
+      const blob = await adminApi.blob('/admin/api/teste-categorias/exportar')
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = url
@@ -199,7 +199,7 @@ export function TesteCategoriasPage() {
   async function handleResetErrors(): Promise<void> {
     setLoadingResetErrors(true)
     try {
-      await adminApi.post('/admin/api/categorias-resumo-json/teste-categorias/resetar-erros')
+      await adminApi.post('/admin/api/teste-categorias/resetar-erros')
       setResultados((prev) =>
         prev.map((r) => (r.status === 'erro' ? { ...r, status: 'ok', erro: undefined } : r)),
       )
@@ -234,15 +234,14 @@ export function TesteCategoriasPage() {
         title="Ambiente de Teste de Categorias"
         icon={<FlaskConical style={{ width: 14, height: 14 }} />}
         actions={
-          <div className="flex items-center gap-2 px-4 py-2 rounded-lg shrink-0" style={{ background: C.orange50, border: `2px solid ${C.orange400}` }}>
-            <Tags className="h-4 w-4" style={{ color: C.orange600 }} />
-            <label className="text-sm font-medium whitespace-nowrap" style={{ color: C.text700 }}>Categoria:</label>
+          <div className="flex items-center gap-2">
+            <label className="text-sm font-medium whitespace-nowrap" style={{ color: C.text500 }}>Categoria:</label>
             <Select value={categoriaId || '__none__'} onValueChange={(v) => setCategoriaId(v === '__none__' ? '' : v)} disabled={loadingCategorias}>
-              <SelectTrigger className="h-10 min-w-[240px] bg-white font-semibold" style={{ border: `2px solid ${C.orange400}` }}>
-                <SelectValue placeholder="-- Selecione uma categoria --" />
+              <SelectTrigger className="h-9 min-w-[240px] bg-white text-sm" style={{ borderColor: C.gray300 }}>
+                <SelectValue placeholder={loadingCategorias ? 'Carregando...' : '-- Selecione --'} />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="__none__">-- Selecione uma categoria --</SelectItem>
+                <SelectItem value="__none__">-- Selecione --</SelectItem>
                 {categorias.map((cat) => (
                   <SelectItem key={cat.id} value={String(cat.id)}>
                     {cat.nome}
@@ -254,7 +253,8 @@ export function TesteCategoriasPage() {
         }
       />
 
-      <ContentArea>
+      <ContentArea className="space-y-6">
+        <AdminSubNav />
         <div className="grid grid-cols-12 gap-4">
           <div className="col-span-12 lg:col-span-3 space-y-4">
             <Card className="bg-white rounded-2xl shadow-sm overflow-hidden" style={{ borderColor: C.gray200 }}>

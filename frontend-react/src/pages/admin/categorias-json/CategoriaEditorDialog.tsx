@@ -260,7 +260,7 @@ export function CategoriaEditorDialog({ open, editingId, onClose, onSaved }: Cat
 
   return (
     <>
-      <Dialog open={open} onOpenChange={() => { /* bloqueado — usa onClose explicitamente */ }}>
+      <Dialog open={open} onOpenChange={(isOpen) => { if (!isOpen) onClose() }}>
         <DialogContent
           className="max-w-5xl max-h-[95vh] overflow-y-auto"
           onInteractOutside={(e) => e.preventDefault()}

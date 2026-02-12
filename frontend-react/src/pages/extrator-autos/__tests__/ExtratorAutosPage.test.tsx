@@ -1,11 +1,12 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { render, screen, fireEvent, waitFor } from '@/test/test-utils'
 import { ExtratorAutosPage } from '../ExtratorAutosPage'
 import * as api from '@/lib/api'
 
-// Mock do router
+// Mock do router (BreadcrumbBar usa Link)
 vi.mock('@tanstack/react-router', () => ({
   useNavigate: () => vi.fn(),
+  Link: ({ children, ...props }: { children?: React.ReactNode; to?: string }) => <a href={props.to}>{children}</a>,
 }))
 
 // Mock do modulo de API
@@ -102,6 +103,9 @@ describe('ExtratorAutosPage', () => {
 
   it('deve exibir descricao do sistema no header', () => {
     render(<ExtratorAutosPage />)
-    expect(screen.getByText('Download de documentos processuais')).toBeInTheDocument()
+    // BreadcrumbBar renderiza o titulo
+    expect(screen.getByText('Extrator de Autos')).toBeInTheDocument()
+    // Descricao aparece dentro do card de consulta
+    expect(screen.getByText('Informe o numero CNJ para buscar documentos do processo')).toBeInTheDocument()
   })
 })

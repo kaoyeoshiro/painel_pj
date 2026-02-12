@@ -21,8 +21,6 @@ vi.mock('@tanstack/react-router', () => ({
   },
 }))
 
-// useApiQuery removido (era @deprecated, nunca usado em producao)
-
 /**
  * Mock dos hooks customizados do TanStack Query.
  * Retorna dados vazios/default para evitar chamadas de API reais.

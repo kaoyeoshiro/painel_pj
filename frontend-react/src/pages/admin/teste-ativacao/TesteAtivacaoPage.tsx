@@ -22,6 +22,7 @@ import {
 } from 'lucide-react'
 import { BreadcrumbBar } from '@/components/layout/BreadcrumbBar'
 import { ContentArea } from '@/components/layout/ContentArea'
+import { AdminSubNav } from '@/components/layout'
 import { C } from '@/lib/designTokens'
 
 interface TipoPeca {
@@ -107,10 +108,10 @@ export function TesteAtivacaoPage() {
     setLoading(true)
     try {
       const [tipos, cats, vars, cs] = await Promise.all([
-        adminApi.get<TipoPeca[]>('/teste-ativacao/tipos-peca'),
-        adminApi.get<CategoriaExtracao[]>('/teste-ativacao/categorias-extracao'),
-        adminApi.get<Variavel[]>('/teste-ativacao/variaveis-processo'),
-        adminApi.get<Cenario[]>('/teste-ativacao/cenarios'),
+        adminApi.get<TipoPeca[]>('/admin/api/teste-ativacao/tipos-peca'),
+        adminApi.get<CategoriaExtracao[]>('/admin/api/teste-ativacao/categorias-extracao'),
+        adminApi.get<Variavel[]>('/admin/api/teste-ativacao/variaveis-processo'),
+        adminApi.get<Cenario[]>('/admin/api/teste-ativacao/cenarios'),
       ])
 
       setTiposPeca(tipos)
@@ -162,7 +163,7 @@ export function TesteAtivacaoPage() {
 
     setSimulando(true)
     try {
-      const data = await adminApi.post<SimulacaoResultado>('/teste-ativacao/simular', {
+      const data = await adminApi.post<SimulacaoResultado>('/admin/api/teste-ativacao/simular', {
         tipo_peca: tipoPecaSelecionado,
         categorias_extracao: Array.from(categoriasSelecionadas),
         variaveis: valoresVariaveis,
@@ -189,7 +190,7 @@ export function TesteAtivacaoPage() {
 
     setGerandoVariaveisIA(true)
     try {
-      const data = await adminApi.post<Record<string, string | boolean>>('/teste-ativacao/gerar-variaveis-ia', {
+      const data = await adminApi.post<Record<string, string | boolean>>('/admin/api/teste-ativacao/gerar-variaveis-ia', {
         tipo_peca: tipoPecaSelecionado,
         categorias: Array.from(categoriasSelecionadas),
       })
@@ -240,7 +241,7 @@ export function TesteAtivacaoPage() {
 
     setSalvandoCenario(true)
     try {
-      await adminApi.post('/teste-ativacao/cenarios', {
+      await adminApi.post('/admin/api/teste-ativacao/cenarios', {
         nome: nomeCenario.trim(),
         tipo_peca: tipoPecaSelecionado,
         categorias: Array.from(categoriasSelecionadas),
@@ -248,7 +249,7 @@ export function TesteAtivacaoPage() {
         descricao_situacao: descricaoSituacao || undefined,
       })
 
-      const novosCenarios = await adminApi.get<Cenario[]>('/teste-ativacao/cenarios')
+      const novosCenarios = await adminApi.get<Cenario[]>('/admin/api/teste-ativacao/cenarios')
       setCenarios(novosCenarios)
       setNomeCenario('')
       toast({ title: 'Cenário salvo' })
@@ -314,12 +315,11 @@ export function TesteAtivacaoPage() {
         title="Teste de Ativacao de Modulos"
         icon={<Zap style={{ width: 14, height: 14 }} />}
         actions={
-          <div className="flex items-center gap-2 px-4 py-2 rounded-lg shrink-0" style={{ background: C.orange50, border: `2px solid ${C.orange400}` }}>
-            <FileText className="h-4 w-4" style={{ color: C.orange600 }} />
-            <label className="text-sm font-medium" style={{ color: C.text700 }}>Tipo de Peca:</label>
-            <Select value={tipoPecaSelecionado || '__none__'} onValueChange={(v) => setTipoPecaSelecionado(v === '__none__' ? '' : v)}>
-              <SelectTrigger className="h-10 min-w-[200px] bg-white font-semibold" style={{ border: `2px solid ${C.orange400}` }}>
-                <SelectValue placeholder="-- Selecione --" />
+          <div className="flex items-center gap-2">
+            <label className="text-sm font-medium whitespace-nowrap" style={{ color: C.text500 }}>Tipo de Peca:</label>
+            <Select value={tipoPecaSelecionado || '__none__'} onValueChange={(v) => setTipoPecaSelecionado(v === '__none__' ? '' : v)} disabled={loading}>
+              <SelectTrigger className="h-9 min-w-[200px] bg-white text-sm" style={{ borderColor: C.gray300 }}>
+                <SelectValue placeholder={loading ? 'Carregando...' : '-- Selecione --'} />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="__none__">-- Selecione --</SelectItem>
@@ -330,12 +330,13 @@ export function TesteAtivacaoPage() {
                 ))}
               </SelectContent>
             </Select>
-            {!tipoPecaSelecionado && <span className="text-xs font-medium animate-pulse" style={{ color: C.statusError }}>(obrigatorio)</span>}
+            {!tipoPecaSelecionado && !loading && <span className="text-xs font-medium" style={{ color: C.statusWarning }}>(obrigatorio)</span>}
           </div>
         }
       />
 
-      <ContentArea>
+      <ContentArea className="space-y-6">
+        <AdminSubNav />
         <div className="grid grid-cols-12 gap-4">
           <div className="col-span-12 lg:col-span-3 space-y-4">
             <Card className="bg-white rounded-2xl shadow-sm overflow-hidden" style={{ borderColor: C.gray200 }}>

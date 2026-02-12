@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
-import { render, screen, waitFor } from '@testing-library/react'
+import { render, screen, waitFor } from '@/test/test-utils'
 import userEvent from '@testing-library/user-event'
 import { PrestacaoContasPage } from '../PrestacaoContasPage'
 import * as api from '@/lib/api'
@@ -50,12 +50,10 @@ describe('PrestacaoContasPage', () => {
     render(<PrestacaoContasPage />)
 
     // Verifica elementos principais do formulario
-    expect(screen.getByText('Análise de Prestação de Contas')).toBeInTheDocument()
-    // "Processos de Medicamentos" aparece no header e no card, verificamos que existe ao menos uma
-    const textosMedicamentos = screen.getAllByText('Processos de Medicamentos')
-    expect(textosMedicamentos.length).toBeGreaterThanOrEqual(1)
+    expect(screen.getByText('Prestacao de Contas')).toBeInTheDocument()
+    expect(screen.getByText('Analisar Prestacao de Contas')).toBeInTheDocument()
     expect(screen.getByLabelText('Numero do Processo (CNJ)')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: /Analisar Prestação de Contas/i })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /Analisar Prestacao de Contas/i })).toBeInTheDocument()
   })
 
   it('deve exibir estado de loading no historico', async () => {
@@ -156,7 +154,7 @@ describe('PrestacaoContasPage', () => {
 
     render(<PrestacaoContasPage />)
 
-    const botao = screen.getByRole('button', { name: /Analisar Prestação de Contas/i })
+    const botao = screen.getByRole('button', { name: /Analisar Prestacao de Contas/i })
     expect(botao).toBeInTheDocument()
   })
 
@@ -172,7 +170,7 @@ describe('PrestacaoContasPage', () => {
     const input = screen.getByLabelText('Numero do Processo (CNJ)')
     await user.type(input, '0800123-45.2024.8.12.0001')
 
-    const botao = screen.getByRole('button', { name: /Analisar Prestação de Contas/i })
+    const botao = screen.getByRole('button', { name: /Analisar Prestacao de Contas/i })
     expect(botao).not.toBeDisabled()
   })
 

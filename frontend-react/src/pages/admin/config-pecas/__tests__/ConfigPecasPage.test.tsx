@@ -33,7 +33,8 @@ describe('ConfigPecasPage', () => {
     render(<ConfigPecasPage />)
 
     expect(screen.getByText('Configuração de Peças')).toBeInTheDocument()
-    expect(screen.getByText('Gerencie categorias de documentos e tipos de peças jurídicas')).toBeInTheDocument()
+    // Subtítulo removido na refatoração visual — verificar tab "Categorias de Documentos"
+    expect(screen.getByRole('tab', { name: /categorias de documentos/i })).toBeInTheDocument()
   })
 
   it('deve renderizar as tabs de categorias e tipos', () => {

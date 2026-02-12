@@ -41,8 +41,8 @@ describe('HistoricoPrestacaoContasPage', () => {
 
     render(<HistoricoPrestacaoContasPage />)
 
-    expect(screen.getByText('Histórico - Prestação de Contas')).toBeInTheDocument()
-    expect(screen.getByText('Visualize todas as prestações de contas geradas')).toBeInTheDocument()
+    // BreadcrumbBar title sem acentos
+    expect(screen.getByText('Historico - Prestacao de Contas')).toBeInTheDocument()
   })
 
   it('deve carregar e exibir lista de gerações', async () => {

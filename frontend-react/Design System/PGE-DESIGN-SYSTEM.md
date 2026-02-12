@@ -10,7 +10,10 @@
 - **React 19** — biblioteca de UI
 - **Vite 7** — bundler e dev server
 - **TypeScript** — tipagem estrita
-- **CSS inline via objetos `style`** — tokens aplicados diretamente, sem Tailwind em produção
+- **Tailwind CSS 4** — classes utilitarias com design tokens
+- **Design tokens** — centralizados em `src/lib/designTokens.ts` e variaveis CSS
+
+> **Nota**: A estilizacao usa primariamente classes Tailwind. Os exemplos com `style={}` neste documento sao ilustrativos dos valores dos tokens. Na pratica, use classes Tailwind ou variaveis CSS.
 
 ---
 
@@ -305,56 +308,68 @@ Ghost:       bg transparent, text text.400, hover bg gray.100
 
 ---
 
-## Exemplo de estrutura — Página de módulo (com breadcrumb bar)
+## Mapeamento Tokens → Tailwind CSS
+
+Os tokens de cor definidos em `designTokens.ts` possuem variaveis CSS correspondentes.
+Na pratica, use classes Tailwind sempre que possivel em vez de `style={}` inline.
+
+| Token | Variavel CSS | Classe Tailwind (exemplo) |
+|-------|-------------|--------------------------|
+| `navy.950` | `--color-navy-950` | `bg-[--color-navy-950]` ou `text-[var(--color-navy-950)]` |
+| `gray.50` | `--color-gray-50` | `bg-[--color-gray-50]` |
+| `gray.200` | `--color-gray-200` | `border-[--color-gray-200]` |
+| `orange.500` | `--color-orange-500` | `text-[--color-orange-500]` |
+| `text.900` | `--color-text-900` | `text-[--color-text-900]` |
+
+> **Regra**: Preferir classes Tailwind (`className`) ao inves de `style={{}}`. Usar `style` apenas para valores verdadeiramente dinamicos (calculados em runtime).
+
+---
+
+## Exemplo de estrutura — Pagina de modulo (com BreadcrumbBar)
 
 ```tsx
-// O Header global e Sidebar são renderizados pelo AppLayout — NÃO incluir aqui.
-// A página recebe apenas o espaço de conteúdo dentro do <main> do AppLayout.
+// O Header global e Sidebar sao renderizados pelo AppLayout — NAO incluir aqui.
+// A pagina recebe apenas o espaco de conteudo dentro do <main> do AppLayout.
+// Usar o componente <BreadcrumbBar> + <ContentArea> (padrao do projeto).
+
+import { BreadcrumbBar } from '@/components/layout/BreadcrumbBar'
+import { ContentArea } from '@/components/layout/ContentArea'
+import { FileText } from 'lucide-react'
 
 export default function NomeDoModuloPage() {
   return (
-    <div style={{ fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif" }}>
+    <>
+      {/* BreadcrumbBar — componente padrao, leve, subordinado ao header global */}
+      <BreadcrumbBar
+        title="Nome do Modulo"
+        icon={<FileText className="w-3.5 h-3.5" />}
+        actions={<Button variant="ghost">Historico</Button>}
+      />
 
-      {/* Breadcrumb bar — leve, subordinada ao header global */}
-      <div style={{ borderBottom: "1px solid #E2E3E5" }}>
-        <div style={{ maxWidth: 1350, margin: "0 auto", padding: "0 40px", height: 48, display: "flex", alignItems: "center", justifyContent: "space-between" }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-            {/* Botão voltar (← ) */}
-            {/* Separador (›) */}
-            {/* Ícone do módulo (28px, bg navy.100, cor navy.700) */}
-            {/* Nome do módulo (15px, weight 600, cor text.900) */}
-          </div>
-          <div>
-            {/* Botões de ação contextual (ghost) */}
-          </div>
-        </div>
-      </div>
-
-      {/* Content — centered */}
-      <div style={{ maxWidth: 1350, margin: "0 auto", padding: "32px 40px" }}>
-        {/* Conteúdo do módulo */}
-      </div>
-
-    </div>
-  );
+      {/* ContentArea — centralizado com max-width e padding padrao */}
+      <ContentArea>
+        {/* Conteudo do modulo */}
+      </ContentArea>
+    </>
+  )
 }
 ```
 
-## Exemplo de estrutura — Dashboard (sem breadcrumb bar)
+## Exemplo de estrutura — Dashboard (sem BreadcrumbBar)
 
 ```tsx
-// O Header global e Sidebar são renderizados pelo AppLayout — NÃO incluir aqui.
+// O Header global e Sidebar sao renderizados pelo AppLayout — NAO incluir aqui.
+
+import { ContentArea } from '@/components/layout/ContentArea'
 
 export default function DashboardPage() {
   return (
-    <div style={{ fontFamily: "'Plus Jakarta Sans', system-ui, sans-serif" }}>
-      <div style={{ maxWidth: 1350, margin: "0 auto", padding: "32px 40px" }}>
-        {/* Saudação + data */}
-        {/* Grid de cards de módulo */}
-        {/* Seção admin (se admin) */}
-      </div>
-    </div>
-  );
+    <ContentArea>
+      {/* Saudacao + data */}
+      {/* Grid de cards de modulo */}
+      {/* Secao admin (se admin) */}
+    </ContentArea>
+  )
 }
 ```
 

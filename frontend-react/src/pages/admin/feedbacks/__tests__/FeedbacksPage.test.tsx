@@ -60,9 +60,8 @@ describe('FeedbacksPage', () => {
     render(<FeedbacksPage />)
 
     expect(screen.getByText('Dashboard de Feedbacks')).toBeInTheDocument()
-    expect(
-      screen.getByText('Avaliações das análises de IA')
-    ).toBeInTheDocument()
+    // Subtítulo removido na refatoração visual — verificar botão Exportar
+    expect(screen.getByText('Exportar')).toBeInTheDocument()
   })
 
   it('deve carregar e exibir estatísticas do dashboard', async () => {
