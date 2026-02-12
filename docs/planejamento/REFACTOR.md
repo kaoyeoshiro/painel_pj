@@ -690,3 +690,104 @@ O relatório de reanálise identificou 4 falhas remanescentes após Waves 1-4:
 - `admin/router_import.py` (249L — Import de produção)
 - `sistemas/assistencia_judiciaria/core/logic.py` (DIP: `ai_service` parameter)
 - `sistemas/assistencia_judiciaria/router.py` (instancia GeminiAdapter)
+
+---
+
+## Wave 8 — Correção Definitiva das Falhas Remanescentes (2026-02-12)
+
+### Contexto
+
+Auditoria automatizada com Agent Teams (5 auditores paralelos) identificou que as Waves 5-7 deixaram 2 falhas pendentes:
+
+1. **76 `db.query()` raw remanescentes nos admin routers** — Waves 5-7 criaram repositories e fizeram AdminSplit, mas a migração real das queries foi incompleta. O pior caso era `router_feedbacks.py` com 48 violações onde o repository era apenas um "holder" de sessão (`feedback_repo.db.query(...)` em vez de métodos dedicados). `router_performance.py` (19) e `router_gemini_logs.py` (2) não tinham repository nenhum.
+
+2. **78 yields inline no `gerador_pecas/router.py`** — O `services_stream.py` era apenas um helper de formatação (153 linhas) cobrindo ~14% dos pontos de streaming. O próprio docstring admitia: "A lógica dos generators permanece no router.py devido à complexidade".
+
+As outras 2 falhas originais (hierarquia dupla de adapters e AdminSplit) foram confirmadas como corrigidas.
+
+### Execução com Agent Teams (3 teammates paralelos)
+
+| Agente | Modelo | Arquivos (ownership exclusivo) | Resultado |
+|--------|--------|-------------------------------|-----------|
+| fixer-feedbacks-prompts | Sonnet | `router_feedbacks.py`, `router_prompts.py`, `repositories.py` | 55 → 0 db.query |
+| fixer-perf-logs | Sonnet | `router_performance.py`, `router_gemini_logs.py`, `repositories_performance.py` (NOVO) | 21 → 0 db.query |
+| fixer-streaming | Opus | `gerador_pecas/router.py`, `services_stream.py`, `test_gerador_stream_services.py` | 78 → 0 yields inline |
+
+### Status por Task
+
+| ID | Nome | Status | Descrição | Impacto |
+|----|------|--------|-----------|---------|
+| T23 | Migrar db.query feedbacks+prompts | Concluído | 55 db.query → ~60 métodos novos em FeedbackRepository + PromptRepos | 0 raw db.query |
+| T24 | Migrar db.query performance+logs | Concluído | 21 db.query → PerformanceRepository (15 métodos) + GeminiLogsRepository (2 métodos) | 0 raw db.query |
+| T25 | Extrair streaming gerador_pecas | Concluído | 78 yields inline → stream_helper.format_*() + 2 métodos novos | 0 yields inline |
+
+### Métricas
+
+| Métrica | Após Wave 7 | Após Wave 8 |
+|---------|-------------|-------------|
+| db.query raw em admin routers | 76 | **0** |
+| db.query via repo em admin/ | 52 | **~130** (todos via métodos dedicados) |
+| Métodos em FeedbackRepository | ~10 | **~70** |
+| Métodos em PerformanceRepository | 0 (não existia) | **15** |
+| Métodos em GeminiLogsRepository | 0 (não existia) | **2** |
+| yields inline em gerador_pecas/router.py | 78 | **0** |
+| Cobertura do stream_helper | ~14% (13 de 91 pontos) | **100%** |
+| Testes gerador stream | 21 | **28** (+7) |
+
+### Validação Final Wave 8
+
+| Verificação | Resultado |
+|-------------|-----------|
+| Compilação dos 9 arquivos | **OK** |
+| Testes de segurança (`pytest -m security`) | **59 passed** |
+| Testes gerador stream | **28 passed** |
+| Testes admin repositories | **21 passed** |
+| Testes de refatoração (total) | **118 passed, 4 skipped** |
+| `check_boundaries.py` | **0 erros**, 29 warnings (legado) |
+| Grep `db.query(` em admin/router_*.py | **0 matches** |
+| Grep `yield f"data: {json.dumps` em gerador_pecas/router.py | **0 matches** |
+
+### Commit
+
+| Wave | Commit | Mensagem |
+|------|--------|----------|
+| 8 | `2369cf4` | `refactor(backend): elimina db.query() dos admin routers e streaming inline do gerador_pecas` |
+
+### Arquivos Criados/Modificados
+
+**Wave 8 (Repository Completion + Streaming Extraction):**
+- `admin/repositories.py` — ~60 métodos novos (FeedbackRepository, PromptModuloRepository, PromptSubgroupRepository, PromptSubcategoriaRepository)
+- `admin/repositories_performance.py` — NOVO (PerformanceRepository + GeminiLogsRepository + factory functions)
+- `admin/router_feedbacks.py` — 48 db.query → chamadas a FeedbackRepository
+- `admin/router_prompts.py` — 7 db.query → chamadas a PromptRepos
+- `admin/router_performance.py` — 19 db.query → PerformanceRepository via Depends
+- `admin/router_gemini_logs.py` — 2 db.query → GeminiLogsRepository via Depends
+- `sistemas/gerador_pecas/services_stream.py` — expandido com `format_agente_erro()` e `format_raw()`
+- `sistemas/gerador_pecas/router.py` — 78 yields inline substituídos por `stream_helper.format_*()`
+- `tests/test_gerador_stream_services.py` — 7 testes novos (28 total)
+
+---
+
+## Resumo Consolidado — Todas as Waves
+
+### Progresso por Falha Original
+
+| # | Falha Original | Wave 1-4 | Wave 5-7 | Wave 8 | Status Final |
+|---|---------------|----------|----------|--------|-------------|
+| 1 | db.query raw em admin (181) | Repos criados | Parcial (76 restantes) | **0 restantes** | **CORRIGIDO** |
+| 2 | Streaming desconectado | Services criados | Parcial (78 yields inline) | **0 yields inline** | **CORRIGIDO** |
+| 3 | Hierarquia dupla adapters | app/adapters/ criado | Consolidado (1 hierarquia) | — | **CORRIGIDO** |
+| 4 | T12-AdminSplit adiado | Adiado | Concluído (24L orquestrador) | — | **CORRIGIDO** |
+
+### Números Finais
+
+| Métrica | Início | Final |
+|---------|--------|-------|
+| db.query raw em admin routers | 181 | **0** |
+| admin/router.py linhas | 2586 | **24** (orquestrador) |
+| yields inline gerador_pecas | 78 | **0** |
+| Hierarquias adapter | 2 | **1** |
+| Testes de refatoração | 0 | **164+** |
+| SSEEventFormatter consumidores | 0 | **2** |
+| Adapters em produção | 0 | **1** |
+| Boundary errors | — | **0** |
