@@ -39,12 +39,8 @@ node_modules/
 npm_install.log
 package-lock.json
 
-# TypeScript build outputs (generated from src/)
-# Arquivos de sistemas são versionados para deploy
-frontend/static/js/api.js
-frontend/static/js/ui.js
-frontend/static/js/index.js
-frontend/static/js/*.js.map
+# Frontend legado desabilitado (apagao controlado 2026-02-12)
+frontend__DISABLED/
 
 # OS
 .DS_Store
