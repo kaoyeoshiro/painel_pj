@@ -381,16 +381,30 @@ Wave 1 (lint)
 - **Nota**: 7 fetch() de streaming permanecem (agora via useStreamingFetch, nao mais diretos)
 
 ### Wave 4 — Reducao de Paginas Gigantes
-- **Status**: EM EXECUCAO
+- **Status**: CONCLUIDA
 - **Inicio**: 2026-02-12
-- **Conclusao**: —
-- **Metricas pos**: pages > 1200 linhas=8 (alvo: 0)
+- **Conclusao**: 2026-02-12
+- **Commits**: `21e4931` (Wave 4B) + `fc36ce8` (Wave 4A)
+- **Metricas pos**: pages > 1200 linhas=0 (era 8), pages > 800=3 (eram 12)
+- **Reducoes**:
+  - BertTrainingPage: 2704 → 180 (-93%)
+  - GeradorPecasPage: 1877 → 150 (-92%)
+  - PromptsModulosPage: 1810 → 329 (-82%)
+  - PrestacaoContasPage: 1612 → 162 (-90%)
+  - ClassificadorPage: 1544 → 104 (-93%)
+  - ExtratorAutosPage: 1292 → 72 (-94%)
+  - RelatorioCumprimentoPage: 1266 → 124 (-90%)
+  - PerformancePage: 1257 → 65 (-95%)
+- **Padrao**: Page (composicao fina) + Hook (estado/logica) + Components (visual) + types.ts
+- **Pendente**: 3 paginas entre 800-1200 (Matriculas, PedidoCalculo, ConfigPecas) — alvo futuro
 
 ### Wave 5 — Testes Faltantes
-- **Status**: EM EXECUCAO
+- **Status**: CONCLUIDA
 - **Inicio**: 2026-02-12
-- **Conclusao**: —
-- **Metricas pos**: pages sem teste=4 (alvo: 0)
+- **Conclusao**: 2026-02-12
+- **Commit**: `4ec45bd`
+- **Metricas pos**: 36 testes novos (10+14+12), total 297 (era 261)
+- **Cobertura**: LoginPage (10), ChangePasswordPage (14), DashboardPageV2 (12)
 
 ### Wave 6 — Inline Styles e Hex Hardcoded
 - **Status**: PENDENTE
