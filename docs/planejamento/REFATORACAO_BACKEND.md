@@ -175,13 +175,23 @@ porque o React SPA usa iframe (`LegacyAdminFramePage.tsx`) para exibir paginas a
 
 ### Checklist
 
-- [ ] **3.1** Criar `database/repository_base.py` — interface generica `IRepository[T]`
-- [ ] **3.2** Criar `sistemas/gerador_pecas/repositories.py` (piloto)
-  - `GeracaoPecaRepository`: find_by_numero_cnj, save, get_statistics, etc.
-- [ ] **3.3** Injetar via FastAPI `Depends`
-- [ ] **3.4** Migrar 48 operacoes DB do `router.py` → repositorio
-- [ ] **3.5** Repetir para `pedido_calculo`, `bert_training`, demais sistemas
-- [ ] **3.6** Criar testes unitarios com SQLite in-memory
+- [x] **3.1** Criar `database/repository_base.py` — `BaseRepository[T]` generico ✅ `d8f1efa`
+- [x] **3.2** Criar `sistemas/gerador_pecas/repositories.py` (piloto) ✅
+  - GeracaoPecaRepository: find_by_user, find_by_id_and_user, find_latest_with_docs
+  - FeedbackPecaRepository: find_by_geracao
+  - VersaoPecaRepository: has_versions
+- [x] **3.3** Injetar via FastAPI `Depends` (get_geracao_repo, get_feedback_repo) ✅
+- [x] **3.4** Migrar 16 endpoints CRUD de `router.py` → repositorio ✅
+  - gerador_pecas: 11 endpoints (historico, versoes, feedback, autos)
+  - pedido_calculo: 5 endpoints (verificar, historico, feedback)
+- [x] **3.5** `pedido_calculo/repositories.py` criado ✅
+  - GeracaoPedidoCalculoRepository: find_by_user, find_by_id_and_user, find_latest_by_cnj_and_user
+  - FeedbackPedidoCalculoRepository: find_by_geracao
+- [ ] **3.5b** Repetir para `bert_training`, demais sistemas (incremental)
+- [x] **3.6** 25 testes unitarios (BaseRepository, GeracaoPeca, Feedback, Versao, factories, estrutural) ✅
+
+> **Nota**: Endpoints streaming (processar-stream, curadoria) mantidos com `db` direto.
+> Serao migrados na Fase 4 quando geradores se tornarem services injetaveis.
 
 **Risco**: Medio
 **Pre-requisito**: Fase 2
@@ -194,12 +204,20 @@ porque o React SPA usa iframe (`LegacyAdminFramePage.tsx`) para exibir paginas a
 
 ### Checklist
 
-- [ ] **4.1** Identificar use cases do `gerador_pecas/router.py`:
+- [x] **4.1** Criar `admin/repositories.py` — `ConfiguracaoIARepository`, `PromptConfigRepository` ✅ `c760e6b`
+  - get_config, get_valor (com default), list_by_sistema
+  - Shared entre 7+ routers que consultam ConfiguracaoIA
+- [x] **4.2** Migrar endpoints `editar-minuta` e `editar-minuta-stream` para config_repo ✅ `c760e6b`
+  - Substituido `db.query(ConfiguracaoIA)` por `config_repo.get_valor()`
+  - Substituido `print()` por `logger.info()`
+- [ ] **4.3** Identificar e criar service classes para endpoints complexos:
   - `GerarPecaService`, `PreviewModulosService`, `ChatContinuacaoService`, `GerarComCuradoriaService`
-- [ ] **4.2** Criar service classes com deps injetadas (repo, adapters)
-- [ ] **4.3** Refatorar router para delegar ao service
-- [ ] **4.4** Repetir para `pedido_calculo` e `bert_training`
-- [ ] **4.5** Testes unitarios para services com mocks
+- [ ] **4.4** Refatorar streaming generators (processar-stream ~545L, processar-pdfs-stream ~510L)
+- [ ] **4.5** Repetir para `pedido_calculo` e `bert_training`
+- [ ] **4.6** Testes unitarios para services com mocks
+
+> **Nota**: Endpoints streaming sao closures com db, performance tracking e SSE formatting.
+> Extracao incremental — os mais complexos (545-800 linhas) requerem services injetaveis.
 
 **Risco**: Medio-Alto
 **Pre-requisito**: Fase 3
@@ -284,12 +302,21 @@ Estrategia: aggregator router que inclui 5 sub-routers, mesmo prefix `/bert-trai
 
 ### Checklist
 
-- [ ] **6.1** Criar `adapters/ports.py` — interfaces `IGeminiPort`, `ITJMSPort`, `IBertPort`
-- [ ] **6.2** Criar `adapters/gemini_adapter.py`
-- [ ] **6.3** Criar `adapters/tjms_adapter.py`
-- [ ] **6.4** Criar `adapters/bert_adapter.py`
-- [ ] **6.5** Injetar adapters via FastAPI `Depends`
-- [ ] **6.6** Testes com `MockGeminiAdapter`, `MockTJMSAdapter`
+- [x] **6.1** Criar `adapters/ports.py` — `IGeminiPort`, `ITJMSPort`, `IBertPort` ✅ `9bf5628`
+  - 3 Protocols com `@runtime_checkable`
+  - IGeminiPort: generate, generate_stream
+  - ITJMSPort: consultar_processo, baixar_documento, consultar_codigos_documentos
+  - IBertPort: classify, is_available
+- [x] **6.2** Criar `adapters/gemini_adapter.py` ✅ — wraps gemini_service singleton
+- [x] **6.3** Criar `adapters/tjms_adapter.py` ✅ — wraps TJMSClient + AgenteTJMSIntegrado
+- [x] **6.4** Criar `adapters/bert_adapter.py` ✅ — wraps BertClassifierClient
+- [ ] **6.5** Injetar adapters via FastAPI `Depends` nos endpoints existentes (incremental)
+- [x] **6.6** 20 testes (interfaces, mocks, imports, validacao estrutural) ✅
+  - MockGeminiAdapter e MockTJMSAdapter para uso em testes futuros
+
+> **Nota**: Adapters criados com lazy imports para evitar circular imports no startup.
+> Factories singleton: `get_gemini_adapter()`, `get_tjms_adapter()`, `get_bert_adapter()`.
+> Injecao nos endpoints sera feita incrementalmente conforme Fase 4 avanca.
 
 **Risco**: Baixo (aditivo, coexiste com imports diretos)
 **Pre-requisito**: Fase 4
@@ -371,4 +398,7 @@ Fase 5 (Split) pode iniciar apos Fase 2 ─────────────�
 | 2026-02-12 | 1 | Removido FRONTEND_MODE + bloco legado (-239 linhas). Itens 1.3-1.7 bloqueados por iframe | `95ed652` |
 | 2026-02-12 | 5b | Split services_deterministic.py: 3 classes + mode resolution extraidos (2616→772 linhas) | `ed5a59e` |
 | 2026-02-12 | 5c | Split bert_training/router.py em 5 sub-routers (2519→28 linhas aggregator) | `00f573c` |
+| 2026-02-12 | 3 | Repository Pattern: BaseRepository + 2 pilotos (gerador_pecas, pedido_calculo). 16 endpoints, 25 testes | `d8f1efa` |
+| 2026-02-12 | 4 | ConfiguracaoIARepository + migra editar-minuta endpoints (print→logger) | `c760e6b` |
+| 2026-02-12 | 6 | Adapters/DIP: 3 ports (Protocol) + 3 adapters concretos + 20 testes | `9bf5628` |
 | | | | |
