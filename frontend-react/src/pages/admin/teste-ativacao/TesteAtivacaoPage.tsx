@@ -8,7 +8,9 @@ import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { useToast } from '@/hooks/use-toast'
+import { useMarkdown } from '@/hooks/useMarkdown'
 import {
   Wand2,
   FileText,
@@ -19,6 +21,10 @@ import {
   PlayCircle,
   Download,
   Zap,
+  FolderOpen,
+  Bot,
+  Copy,
+  Loader2,
 } from 'lucide-react'
 import { BreadcrumbBar } from '@/components/layout/BreadcrumbBar'
 import { ContentArea } from '@/components/layout/ContentArea'
@@ -70,6 +76,16 @@ interface Cenario {
   descricao_situacao?: string
 }
 
+interface CenarioPredefinido {
+  id: number
+  nome: string
+  descricao?: string
+  tipo_peca: string
+  categorias: number[]
+  variaveis: Record<string, string | boolean>
+  descricao_situacao?: string
+}
+
 type ActiveTab = 'variaveis-extracao' | 'variaveis-processo' | 'resultados'
 
 export function TesteAtivacaoPage() {
@@ -99,6 +115,17 @@ export function TesteAtivacaoPage() {
   const [exportandoJson, setExportandoJson] = useState(false)
 
   const [activeTab, setActiveTab] = useState<ActiveTab>('variaveis-extracao')
+
+  // Estados para features orfas
+  const [modalPredefinidos, setModalPredefinidos] = useState(false)
+  const [cenariosPredefinidos, setCenariosPredefinidos] = useState<CenarioPredefinido[]>([])
+  const [loadingPredefinidos, setLoadingPredefinidos] = useState(false)
+  const [modalRelatorio, setModalRelatorio] = useState(false)
+  const [relatorioConteudo, setRelatorioConteudo] = useState('')
+  const [loadingRelatorio, setLoadingRelatorio] = useState(false)
+  const [relatorioModuloTitulo, setRelatorioModuloTitulo] = useState('')
+
+  const { html: relatorioHtml } = useMarkdown(relatorioConteudo)
 
   useEffect(() => {
     void carregarDadosIniciais()
@@ -157,7 +184,7 @@ export function TesteAtivacaoPage() {
 
   async function simularAtivacao() {
     if (!tipoPecaSelecionado) {
-      toast({ variant: 'destructive', title: 'Tipo de peça é obrigatório' })
+      toast({ variant: 'destructive', title: 'Tipo de peca e obrigatorio' })
       return
     }
 
@@ -174,7 +201,7 @@ export function TesteAtivacaoPage() {
     } catch (error) {
       toast({
         variant: 'destructive',
-        title: 'Erro na simulação',
+        title: 'Erro na simulacao',
         description: error instanceof Error ? error.message : 'Erro desconhecido',
       })
     } finally {
@@ -184,7 +211,7 @@ export function TesteAtivacaoPage() {
 
   async function gerarVariaveisIA() {
     if (!tipoPecaSelecionado || categoriasSelecionadas.size === 0) {
-      toast({ variant: 'destructive', title: 'Selecione tipo de peça e ao menos uma categoria' })
+      toast({ variant: 'destructive', title: 'Selecione tipo de peca e ao menos uma categoria' })
       return
     }
 
@@ -195,11 +222,11 @@ export function TesteAtivacaoPage() {
         categorias: Array.from(categoriasSelecionadas),
       })
       setValoresVariaveis((prev) => ({ ...prev, ...data }))
-      toast({ title: 'Variáveis geradas via IA' })
+      toast({ title: 'Variaveis geradas via IA' })
     } catch (error) {
       toast({
         variant: 'destructive',
-        title: 'Erro ao gerar variáveis',
+        title: 'Erro ao gerar variaveis',
         description: error instanceof Error ? error.message : 'Erro desconhecido',
       })
     } finally {
@@ -235,7 +262,7 @@ export function TesteAtivacaoPage() {
 
   async function salvarCenario() {
     if (!nomeCenario.trim()) {
-      toast({ variant: 'destructive', title: 'Informe o nome do cenário' })
+      toast({ variant: 'destructive', title: 'Informe o nome do cenario' })
       return
     }
 
@@ -252,11 +279,11 @@ export function TesteAtivacaoPage() {
       const novosCenarios = await adminApi.get<Cenario[]>('/admin/api/teste-ativacao/cenarios')
       setCenarios(novosCenarios)
       setNomeCenario('')
-      toast({ title: 'Cenário salvo' })
+      toast({ title: 'Cenario salvo' })
     } catch (error) {
       toast({
         variant: 'destructive',
-        title: 'Erro ao salvar cenário',
+        title: 'Erro ao salvar cenario',
         description: error instanceof Error ? error.message : 'Erro desconhecido',
       })
     } finally {
@@ -264,12 +291,73 @@ export function TesteAtivacaoPage() {
     }
   }
 
-  const aplicarCenario = (cenario: Cenario) => {
+  const aplicarCenario = (cenario: Cenario | CenarioPredefinido) => {
     setTipoPecaSelecionado(cenario.tipo_peca)
     setCategoriasSelecionadas(new Set(cenario.categorias))
     setValoresVariaveis(cenario.variaveis)
     setDescricaoSituacao(cenario.descricao_situacao || '')
     setCenarioSelecionadoId(String(cenario.id))
+  }
+
+  /** Carregar cenarios predefinidos do backend */
+  async function carregarPredefinidos() {
+    setLoadingPredefinidos(true)
+    setModalPredefinidos(true)
+    try {
+      const data = await adminApi.get<CenarioPredefinido[]>('/admin/api/teste-ativacao/cenarios-predefinidos')
+      setCenariosPredefinidos(data)
+    } catch (error) {
+      toast({
+        variant: 'destructive',
+        title: 'Erro ao carregar cenarios predefinidos',
+        description: error instanceof Error ? error.message : 'Erro desconhecido',
+      })
+    } finally {
+      setLoadingPredefinidos(false)
+    }
+  }
+
+  /** Gerar relatorio de ativacao via IA para um modulo nao ativado */
+  async function gerarRelatorioAtivacao(modulo: ModuloSimulado) {
+    setRelatorioModuloTitulo(modulo.titulo)
+    setRelatorioConteudo('')
+    setModalRelatorio(true)
+    setLoadingRelatorio(true)
+    try {
+      const data = await adminApi.post<{ sucesso: boolean; relatorio: string }>(
+        '/admin/api/teste-ativacao/relatorio-ativacao',
+        {
+          modulo_id: modulo.id,
+          tipo_peca: tipoPecaSelecionado,
+          variaveis_fornecidas: valoresVariaveis,
+          resultado_avaliacao: {
+            ativado: false,
+            modo: modulo.modo,
+            detalhes: modulo.detalhes || '',
+          },
+        },
+      )
+      setRelatorioConteudo(data.relatorio || 'Sem relatorio disponivel.')
+    } catch (error) {
+      setRelatorioConteudo('Erro ao gerar relatorio.')
+      toast({
+        variant: 'destructive',
+        title: 'Erro ao gerar relatorio',
+        description: error instanceof Error ? error.message : 'Erro desconhecido',
+      })
+    } finally {
+      setLoadingRelatorio(false)
+    }
+  }
+
+  /** Copiar markdown original para clipboard */
+  async function copiarRelatorio() {
+    try {
+      await navigator.clipboard.writeText(relatorioConteudo)
+      toast({ title: 'Copiado', description: 'Relatorio copiado para a area de transferencia' })
+    } catch {
+      toast({ title: 'Erro', description: 'Nao foi possivel copiar', variant: 'destructive' })
+    }
   }
 
   const renderCampoVariavel = (variavel: Variavel) => {
@@ -290,7 +378,7 @@ export function TesteAtivacaoPage() {
               variant={valoresVariaveis[variavel.slug] === false ? 'default' : 'outline'}
               onClick={() => handleVariavelChange(variavel.slug, false)}
             >
-              Não
+              Nao
             </Button>
           </div>
         </div>
@@ -398,9 +486,19 @@ export function TesteAtivacaoPage() {
                   <Bookmark className="h-4 w-4" style={{ color: C.navy600 }} />
                   Cenarios Salvos
                 </h3>
-                <button onClick={salvarCenario} className="text-green-600 hover:text-green-800 text-sm" title="Salvar cenário atual">
-                  <Save className="h-4 w-4" />
-                </button>
+                <div className="flex items-center gap-1">
+                  <button
+                    onClick={carregarPredefinidos}
+                    className="p-1 rounded hover:bg-blue-100 transition-colors"
+                    title="Cenarios pre-definidos"
+                    data-testid="btn-pre-definidos"
+                  >
+                    <FolderOpen className="h-4 w-4" style={{ color: C.navy600 }} />
+                  </button>
+                  <button onClick={salvarCenario} className="text-green-600 hover:text-green-800 text-sm p-1" title="Salvar cenario atual">
+                    <Save className="h-4 w-4" />
+                  </button>
+                </div>
               </div>
               <div className="p-2 space-y-2">
                 <Select
@@ -414,7 +512,7 @@ export function TesteAtivacaoPage() {
                     if (cenario) aplicarCenario(cenario)
                   }}
                 >
-                  <SelectTrigger className="h-10 text-sm" data-testid="btn-pre-definidos">
+                  <SelectTrigger className="h-10 text-sm">
                     <SelectValue placeholder="-- Selecionar cenario --" />
                   </SelectTrigger>
                   <SelectContent>
@@ -431,7 +529,7 @@ export function TesteAtivacaoPage() {
                   <Input
                     value={nomeCenario}
                     onChange={(e) => setNomeCenario(e.target.value)}
-                    placeholder="Nome do cenário"
+                    placeholder="Nome do cenario"
                     className="h-8 text-xs"
                   />
                   <Button onClick={salvarCenario} size="sm" variant="outline" disabled={salvandoCenario}>
@@ -544,8 +642,24 @@ export function TesteAtivacaoPage() {
                               <div>
                                 <p className="font-semibold" style={{ color: C.text900 }}>{modulo.titulo}</p>
                                 <p className="text-xs mt-1" style={{ color: C.text500 }}>{modulo.grupo}</p>
+                                {modulo.detalhes && (
+                                  <p className="text-xs mt-1" style={{ color: C.text400 }}>{modulo.detalhes}</p>
+                                )}
                               </div>
-                              <Badge variant="destructive">Não ativado</Badge>
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  size="sm"
+                                  onClick={() => gerarRelatorioAtivacao(modulo)}
+                                  disabled={loadingRelatorio}
+                                  className="text-xs text-white"
+                                  style={{ background: 'linear-gradient(135deg, #f59e0b, #ea580c)' }}
+                                  data-testid={`btn-relatorio-${modulo.id}`}
+                                >
+                                  <Bot className="h-3.5 w-3.5 mr-1" />
+                                  Relatorio IA
+                                </Button>
+                                <Badge variant="destructive">Nao ativado</Badge>
+                              </div>
                             </div>
                           </Card>
                         ))}
@@ -570,6 +684,102 @@ export function TesteAtivacaoPage() {
           </div>
         </div>
       </ContentArea>
+
+      {/* Dialog de cenarios predefinidos */}
+      <Dialog open={modalPredefinidos} onOpenChange={setModalPredefinidos}>
+        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FolderOpen className="h-5 w-5" style={{ color: C.navy600 }} />
+              Cenarios Pre-definidos
+            </DialogTitle>
+          </DialogHeader>
+          {loadingPredefinidos ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin" style={{ color: C.navy600 }} />
+            </div>
+          ) : cenariosPredefinidos.length === 0 ? (
+            <p className="text-center py-8" style={{ color: C.text400 }}>Nenhum cenario pre-definido disponivel</p>
+          ) : (
+            <div className="space-y-3">
+              {cenariosPredefinidos.map((cenario) => (
+                <div
+                  key={cenario.id}
+                  className="p-4 rounded-2xl cursor-pointer transition-colors"
+                  style={{
+                    background: 'white',
+                    border: `1px solid ${C.gray200}`,
+                  }}
+                  onClick={() => {
+                    aplicarCenario(cenario)
+                    setModalPredefinidos(false)
+                    toast({ title: 'Cenario aplicado', description: cenario.nome })
+                  }}
+                  onMouseEnter={(e) => { e.currentTarget.style.background = C.navy50 }}
+                  onMouseLeave={(e) => { e.currentTarget.style.background = 'white' }}
+                >
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="font-semibold text-sm" style={{ color: C.text900 }}>{cenario.nome}</p>
+                    <Badge variant="default" className="text-xs">{cenario.tipo_peca}</Badge>
+                  </div>
+                  {cenario.descricao && (
+                    <p className="text-xs mt-1" style={{ color: C.text500 }}>{cenario.descricao}</p>
+                  )}
+                  <div className="flex items-center gap-2 mt-2">
+                    <Badge variant="default" className="text-xs" style={{ background: C.navy100, color: C.navy700 }}>
+                      {Object.keys(cenario.variaveis).length} variaveis
+                    </Badge>
+                    {cenario.categorias.length > 0 && (
+                      <Badge variant="default" className="text-xs" style={{ background: C.navy100, color: C.navy700 }}>
+                        {cenario.categorias.length} categorias
+                      </Badge>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog de relatorio de ativacao */}
+      <Dialog open={modalRelatorio} onOpenChange={setModalRelatorio}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <div className="px-2 py-1 rounded-lg" style={{ background: 'linear-gradient(135deg, #fffbeb, #fff7ed)' }}>
+              <DialogTitle className="flex items-center gap-2">
+                <Bot className="h-5 w-5" style={{ color: '#ea580c' }} />
+                Relatorio IA — {relatorioModuloTitulo}
+              </DialogTitle>
+            </div>
+          </DialogHeader>
+          {loadingRelatorio ? (
+            <div className="flex flex-col items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin mb-3" style={{ color: '#ea580c' }} />
+              <p className="text-sm" style={{ color: C.text500 }}>Gerando relatorio via IA...</p>
+            </div>
+          ) : (
+            <div
+              className="prose prose-sm max-w-none"
+              dangerouslySetInnerHTML={{ __html: relatorioHtml }}
+            />
+          )}
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={copiarRelatorio}
+              disabled={loadingRelatorio || !relatorioConteudo}
+            >
+              <Copy className="h-4 w-4 mr-1" />
+              Copiar
+            </Button>
+            <Button variant="outline" size="sm" onClick={() => setModalRelatorio(false)}>
+              Fechar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </>
   )
 }

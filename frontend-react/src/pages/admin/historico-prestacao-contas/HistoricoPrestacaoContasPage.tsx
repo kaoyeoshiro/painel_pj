@@ -13,7 +13,7 @@ import { useMarkdown } from '@/hooks/useMarkdown'
 import { BreadcrumbBar } from '@/components/layout/BreadcrumbBar'
 import { ContentArea } from '@/components/layout/ContentArea'
 import { C } from '@/lib/designTokens'
-import { Building2 } from 'lucide-react'
+import { Building2, Upload, X } from 'lucide-react'
 
 // Interfaces
 interface GeracaoAdmin {
@@ -66,10 +66,11 @@ function getParecerBadgeVariant(parecer?: string): 'default' | 'success' | 'dest
 }
 
 // Helper para formatar status badge
-function getStatusBadgeVariant(status: string): 'default' | 'success' | 'destructive' {
+function getStatusBadgeVariant(status: string): 'default' | 'success' | 'destructive' | 'warning' {
   const s = status.toLowerCase()
   if (s === 'success' || s === 'sucesso' || s === 'completo') return 'success'
   if (s === 'error' || s === 'erro' || s === 'falha') return 'destructive'
+  if (s === 'aguardando_documentos') return 'warning'
   return 'default'
 }
 
@@ -92,7 +93,14 @@ function formatData(isoString: string): string {
   })
 }
 
-// Componente de Log Colapsável
+// Helper para formatar tamanho de arquivo
+function formatFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`
+  if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`
+}
+
+// Componente de Log Colapsavel
 function LogItem({ log }: { log: LogChamadaIA }) {
   const [expanded, setExpanded] = useState(false)
   const { html: promptHtml } = useMarkdown(log.prompt_enviado || '')
@@ -128,7 +136,7 @@ function LogItem({ log }: { log: LogChamadaIA }) {
           {log.tokens_entrada !== undefined && (
             <div className="mb-4 flex gap-4 text-sm">
               <span>Tokens Entrada: <strong>{log.tokens_entrada}</strong></span>
-              <span>Tokens Saída: <strong>{log.tokens_saida || 0}</strong></span>
+              <span>Tokens Saida: <strong>{log.tokens_saida || 0}</strong></span>
             </div>
           )}
           {log.prompt_enviado && (
@@ -164,7 +172,7 @@ export function HistoricoPrestacaoContasPage() {
   const [expandedView, setExpandedView] = useState<string | null>(null)
   const [uploadDialogOpen, setUploadDialogOpen] = useState(false)
   const [uploading, setUploading] = useState(false)
-  const [reprocessing, setReprocessing] = useState(false)
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([])
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { toast } = useToast()
 
@@ -175,25 +183,27 @@ export function HistoricoPrestacaoContasPage() {
   const copiarConteudo = async (texto: string) => {
     try {
       await navigator.clipboard.writeText(texto)
-      toast({ title: 'Copiado', description: 'Conteúdo copiado para a área de transferência' })
+      toast({ title: 'Copiado', description: 'Conteudo copiado para a area de transferencia' })
     } catch {
-      toast({ title: 'Erro', description: 'Não foi possível copiar', variant: 'destructive' })
+      toast({ title: 'Erro', description: 'Nao foi possivel copiar', variant: 'destructive' })
     }
   }
 
-  /** Anexar documentos a uma geração */
-  const handleUploadDocumentos = async (files: FileList) => {
-    if (!selectedGeracao || files.length === 0) return
+  /** Enviar documentos faltantes */
+  const handleUploadDocumentos = async () => {
+    if (!selectedGeracao || selectedFiles.length === 0) return
 
     setUploading(true)
     try {
       const formData = new FormData()
-      Array.from(files).forEach(file => formData.append('files', file))
+      formData.append('geracao_id', String(selectedGeracao.id))
+      selectedFiles.forEach(file => formData.append('arquivos', file))
 
-      await prestacaoAdminApi.post(`/geracoes/${selectedGeracao.id}/documentos`, formData)
-      toast({ title: 'Documentos anexados', description: `${files.length} arquivo(s) enviado(s)` })
+      await prestacaoAdminApi.post('/upload-documentos-faltantes', formData)
+      toast({ title: 'Documentos enviados', description: `${selectedFiles.length} arquivo(s) enviado(s) com sucesso` })
       setUploadDialogOpen(false)
-      // Recarregar detalhes
+      setSelectedFiles([])
+      loadGeracoes()
       loadDetalhes(selectedGeracao.id)
     } catch (error) {
       toast({
@@ -206,27 +216,17 @@ export function HistoricoPrestacaoContasPage() {
     }
   }
 
-  /** Reprocessar a geração */
-  const handleReprocessar = async () => {
-    if (!selectedGeracao) return
-
-    setReprocessing(true)
-    try {
-      await prestacaoAdminApi.post(`/geracoes/${selectedGeracao.id}/reprocessar`)
-      toast({ title: 'Reprocessamento iniciado', description: 'A geração será reprocessada' })
-      loadGeracoes()
-    } catch (error) {
-      toast({
-        title: 'Erro ao reprocessar',
-        description: error instanceof Error ? error.message : 'Erro desconhecido',
-        variant: 'destructive'
-      })
-    } finally {
-      setReprocessing(false)
-    }
+  /** Adicionar arquivos a lista de selecionados */
+  const handleFilesSelected = (files: FileList) => {
+    setSelectedFiles(prev => [...prev, ...Array.from(files)])
   }
 
-  // Carregar lista de gerações
+  /** Remover arquivo da lista de selecionados */
+  const removeFile = (index: number) => {
+    setSelectedFiles(prev => prev.filter((_, i) => i !== index))
+  }
+
+  // Carregar lista de geracoes
   useEffect(() => {
     loadGeracoes()
   }, [])
@@ -237,10 +237,10 @@ export function HistoricoPrestacaoContasPage() {
       const response = await prestacaoAdminApi.get<GeracaoAdmin[]>('/geracoes?limit=200&offset=0')
       setGeracoes(response)
     } catch (error) {
-      console.error('Erro ao carregar gerações:', error)
+      console.error('Erro ao carregar geracoes:', error)
       toast({
         title: 'Erro',
-        description: 'Não foi possível carregar o histórico',
+        description: 'Nao foi possivel carregar o historico',
         variant: 'destructive'
       })
     } finally {
@@ -248,7 +248,7 @@ export function HistoricoPrestacaoContasPage() {
     }
   }
 
-  // Carregar detalhes de uma geração
+  // Carregar detalhes de uma geracao
   async function loadDetalhes(id: number) {
     try {
       setLoadingDetalhes(true)
@@ -259,7 +259,7 @@ export function HistoricoPrestacaoContasPage() {
       console.error('Erro ao carregar detalhes:', error)
       toast({
         title: 'Erro',
-        description: 'Não foi possível carregar os detalhes da geração',
+        description: 'Nao foi possivel carregar os detalhes da geracao',
         variant: 'destructive'
       })
     } finally {
@@ -267,7 +267,7 @@ export function HistoricoPrestacaoContasPage() {
     }
   }
 
-  // Definição das colunas da tabela
+  // Definicao das colunas da tabela
   const columns: ColumnDef<GeracaoAdmin>[] = [
     {
       accessor: 'numero_cnj_formatado',
@@ -356,7 +356,7 @@ export function HistoricoPrestacaoContasPage() {
         <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
-              Detalhes da Geração #{selectedGeracao?.id}
+              Detalhes da Geracao #{selectedGeracao?.id}
             </DialogTitle>
           </DialogHeader>
 
@@ -367,24 +367,19 @@ export function HistoricoPrestacaoContasPage() {
             </div>
           ) : selectedGeracao ? (
             <>
-            {/* Botões de ação */}
+            {/* Botoes de acao */}
             <div className="flex gap-2 mb-2">
               <Button
                 variant="outline"
                 size="sm"
-                onClick={() => setUploadDialogOpen(true)}
+                onClick={() => {
+                  setSelectedFiles([])
+                  setUploadDialogOpen(true)
+                }}
                 data-testid="btn-anexar-documentos"
               >
+                <Upload className="h-4 w-4 mr-1" />
                 Anexar Documentos
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleReprocessar}
-                disabled={reprocessing}
-                data-testid="btn-reprocessar"
-              >
-                {reprocessing ? 'Reprocessando...' : 'Enviar e Reprocessar'}
               </Button>
               {selectedGeracao.fundamentacao && (
                 <>
@@ -436,7 +431,7 @@ export function HistoricoPrestacaoContasPage() {
                         dangerouslySetInnerHTML={{ __html: fundamentacaoHtml }}
                       />
                     ) : (
-                      <p className="text-muted-foreground">Sem fundamentação disponível</p>
+                      <p className="text-muted-foreground">Sem fundamentacao disponivel</p>
                     )}
                   </CardContent>
                 </Card>
@@ -501,7 +496,7 @@ export function HistoricoPrestacaoContasPage() {
                 {selectedGeracao.perguntas_usuario && selectedGeracao.perguntas_usuario.length > 0 && (
                   <Card>
                     <CardHeader>
-                      <CardTitle>Perguntas do Usuário</CardTitle>
+                      <CardTitle>Perguntas do Usuario</CardTitle>
                     </CardHeader>
                     <CardContent>
                       <ul className="list-disc list-inside space-y-1">
@@ -518,7 +513,7 @@ export function HistoricoPrestacaoContasPage() {
               <TabsContent value="logs" className="space-y-4">
                 <Card>
                   <CardHeader>
-                    <CardTitle>Logs de Chamadas à IA</CardTitle>
+                    <CardTitle>Logs de Chamadas a IA</CardTitle>
                   </CardHeader>
                   <CardContent>
                     {selectedGeracao.logs_ia && selectedGeracao.logs_ia.length > 0 ? (
@@ -528,7 +523,7 @@ export function HistoricoPrestacaoContasPage() {
                         ))}
                       </div>
                     ) : (
-                      <p className="text-muted-foreground">Nenhum log disponível</p>
+                      <p className="text-muted-foreground">Nenhum log disponivel</p>
                     )}
                   </CardContent>
                 </Card>
@@ -567,7 +562,7 @@ export function HistoricoPrestacaoContasPage() {
                   <CardContent>
                     <ScrollArea className="h-[400px]">
                       <pre className="text-sm bg-muted p-4 rounded whitespace-pre-wrap">
-                        {selectedGeracao.resultado_raw || 'Sem resposta bruta disponível'}
+                        {selectedGeracao.resultado_raw || 'Sem resposta bruta disponivel'}
                       </pre>
                     </ScrollArea>
                   </CardContent>
@@ -583,7 +578,7 @@ export function HistoricoPrestacaoContasPage() {
               <DialogContent className="max-w-[95vw] max-h-[95vh] flex flex-col">
                 <DialogHeader>
                   <DialogTitle className="flex items-center justify-between">
-                    <span>Visualização Expandida</span>
+                    <span>Visualizacao Expandida</span>
                     <Button
                       variant="outline"
                       size="sm"
@@ -602,21 +597,42 @@ export function HistoricoPrestacaoContasPage() {
             </Dialog>
           )}
 
-          {/* Dialog de upload de documentos */}
-          <Dialog open={uploadDialogOpen} onOpenChange={setUploadDialogOpen}>
+          {/* Dialog de upload de documentos faltantes */}
+          <Dialog open={uploadDialogOpen} onOpenChange={(open) => { setUploadDialogOpen(open); if (!open) setSelectedFiles([]) }}>
             <DialogContent>
               <DialogHeader>
-                <DialogTitle>Anexar Documentos</DialogTitle>
+                <DialogTitle>Enviar Documentos Faltantes</DialogTitle>
               </DialogHeader>
+
+              {/* Badges dos documentos faltantes */}
+              {selectedGeracao?.documentos_faltantes && selectedGeracao.documentos_faltantes.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-sm font-medium" style={{ color: C.text700 }}>Documentos solicitados:</p>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedGeracao.documentos_faltantes.map((doc, idx) => (
+                      <span
+                        key={idx}
+                        className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium"
+                        style={{ background: '#fef3c7', color: '#92400e', border: `1px solid ${C.statusWarning}` }}
+                      >
+                        {doc}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {/* Dropzone */}
               <div
-                className="border-2 border-dashed rounded-lg p-8 text-center cursor-pointer hover:border-primary transition-colors"
+                className="border-2 border-dashed rounded-lg p-6 text-center cursor-pointer hover:border-primary transition-colors"
                 onClick={() => fileInputRef.current?.click()}
                 data-testid="upload-dropzone"
               >
-                <p className="text-muted-foreground">
-                  Clique ou arraste arquivos aqui para anexar
+                <Upload className="h-8 w-8 mx-auto mb-2" style={{ color: C.text400 }} />
+                <p className="text-sm" style={{ color: C.text500 }}>
+                  Clique para selecionar arquivos
                 </p>
-                <p className="text-xs text-muted-foreground mt-2">
+                <p className="text-xs mt-1" style={{ color: C.text400 }}>
                   PDF, DOCX, imagens aceitos
                 </p>
                 <input
@@ -625,12 +641,52 @@ export function HistoricoPrestacaoContasPage() {
                   multiple
                   accept=".pdf,.docx,.doc,.png,.jpg,.jpeg"
                   className="hidden"
-                  onChange={(e) => e.target.files && handleUploadDocumentos(e.target.files)}
+                  onChange={(e) => {
+                    if (e.target.files) handleFilesSelected(e.target.files)
+                    e.target.value = ''
+                  }}
                 />
               </div>
-              <DialogFooter>
-                <Button variant="outline" onClick={() => setUploadDialogOpen(false)}>
+
+              {/* Lista de arquivos selecionados */}
+              {selectedFiles.length > 0 && (
+                <div className="space-y-1 max-h-[200px] overflow-y-auto">
+                  {selectedFiles.map((file, idx) => (
+                    <div
+                      key={`${file.name}-${idx}`}
+                      className="flex items-center justify-between px-3 py-2 rounded-lg text-sm"
+                      style={{ background: C.gray50, border: `1px solid ${C.gray200}` }}
+                    >
+                      <div className="flex items-center gap-2 min-w-0">
+                        <span className="truncate" style={{ color: C.text700 }}>{file.name}</span>
+                        <span className="text-xs whitespace-nowrap" style={{ color: C.text400 }}>
+                          {formatFileSize(file.size)}
+                        </span>
+                      </div>
+                      <button
+                        onClick={() => removeFile(idx)}
+                        className="ml-2 p-1 rounded hover:bg-red-100 transition-colors"
+                        title="Remover arquivo"
+                      >
+                        <X className="h-3.5 w-3.5" style={{ color: C.statusError }} />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              )}
+
+              <DialogFooter className="gap-2">
+                <Button variant="outline" onClick={() => { setUploadDialogOpen(false); setSelectedFiles([]) }}>
                   Cancelar
+                </Button>
+                <Button
+                  onClick={handleUploadDocumentos}
+                  disabled={selectedFiles.length === 0 || uploading}
+                  style={{ background: C.navy950 }}
+                  className="text-white"
+                  data-testid="btn-enviar-documentos"
+                >
+                  {uploading ? 'Enviando...' : `Enviar ${selectedFiles.length > 0 ? `(${selectedFiles.length})` : ''}`}
                 </Button>
               </DialogFooter>
             </DialogContent>
