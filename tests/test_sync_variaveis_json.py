@@ -13,7 +13,7 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 
 def test_estrutura_request_ordenar():
     """Verifica estrutura do request de ordenação"""
-    from sistemas.gerador_pecas.router_extraction import OrdenarPerguntasRequest, PerguntaOrdenarItem
+    from sistemas.gerador_pecas.schemas_extraction import OrdenarPerguntasRequest, PerguntaOrdenarItem
 
     perguntas = [
         PerguntaOrdenarItem(id=1, pergunta="Qual o valor do pedido?", tipo_sugerido="currency"),
@@ -33,7 +33,7 @@ def test_estrutura_request_ordenar():
 
 def test_estrutura_request_posicionar():
     """Verifica estrutura do request de posicionamento"""
-    from sistemas.gerador_pecas.router_extraction import PosicionarPerguntaRequest, PerguntaOrdenarItem
+    from sistemas.gerador_pecas.schemas_extraction import PosicionarPerguntaRequest, PerguntaOrdenarItem
 
     nova_pergunta = PerguntaOrdenarItem(
         pergunta="Qual a data da decisao?",

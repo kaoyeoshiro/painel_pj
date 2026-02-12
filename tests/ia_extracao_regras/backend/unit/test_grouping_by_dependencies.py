@@ -20,7 +20,7 @@ import sys
 import os
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', '..', '..'))
 
-from sistemas.gerador_pecas.router_extraction import _agrupar_por_dependencias_algoritmo
+from sistemas.gerador_pecas.extraction_helpers import _agrupar_por_dependencias_algoritmo
 
 
 def criar_pergunta_mock(id: int, pergunta: str, ordem: int,

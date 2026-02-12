@@ -74,8 +74,11 @@ except ImportError:
 # Import do admin de prompts modulares
 from admin.router_prompts import router as prompts_modulos_router
 
-# Import do router de extração (perguntas, modelos, variáveis, regras determinísticas)
-from sistemas.gerador_pecas.router_extraction import router as extraction_router
+# Import dos routers de extração (splitados de router_extraction.py)
+from sistemas.gerador_pecas.router_ext_questions import router as ext_questions_router
+from sistemas.gerador_pecas.router_ext_models import router as ext_models_router
+from sistemas.gerador_pecas.router_ext_variables import router as ext_variables_router
+from sistemas.gerador_pecas.router_ext_deps import router as ext_deps_router
 
 # Import do sistema de Pedido de Cálculo
 from sistemas.pedido_calculo.router import router as pedido_calculo_router
@@ -634,8 +637,11 @@ app.include_router(teste_categorias_router, prefix="/admin/api")
 if teste_ativacao_router is not None:
     app.include_router(teste_ativacao_router, prefix="/admin/api")
 
-# Router de Extração (perguntas, modelos, variáveis, regras determinísticas)
-app.include_router(extraction_router, prefix="/admin/api/extraction")
+# Routers de Extração (splitados de router_extraction.py)
+app.include_router(ext_questions_router, prefix="/admin/api/extraction")
+app.include_router(ext_models_router, prefix="/admin/api/extraction")
+app.include_router(ext_variables_router, prefix="/admin/api/extraction")
+app.include_router(ext_deps_router, prefix="/admin/api/extraction")
 
 # Router de Configuração de Tipos de Peça e Categorias de Documentos (admin)
 app.include_router(config_pecas_router)
