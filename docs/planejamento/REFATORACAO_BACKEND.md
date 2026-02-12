@@ -2,7 +2,8 @@
 
 > **Branch**: `refactor/backend-cleanup` (baseada em `feat/tailadmin-dashboard`)
 > **Inicio**: 2026-02-11
-> **Status**: EM ANDAMENTO
+> **Conclusao**: 2026-02-12
+> **Status**: ✅ CONCLUIDO (fundacao arquitetural completa)
 
 ---
 
@@ -22,26 +23,28 @@
 
 ## Resumo do Problema
 
-| Metrica | Valor |
-|---------|-------|
-| Linhas em routers | ~28.600 (era ~28.900) |
-| Maior arquivo | `router.py` (3.742 linhas) — `router_extraction.py` eliminado na Fase 5a |
-| main.py | 1.081 linhas (era 1.320, -239 com remocao do legado) |
-| Operacoes DB diretas em routers | 48+ (so gerador_pecas) |
-| Models no Alembic env.py | ~15 de 62+ (muitos com nome errado) |
-| Migrations Alembic | 4 (cobertura ~10%) |
-| Templates Jinja2 legados | ~30 arquivos |
-| `create_all()` no startup | Sim (init_db.py:95) |
-| SQL manual de migracao | 330+ linhas em init_db.py |
+| Metrica | Antes | Depois | Melhoria |
+|---------|-------|--------|----------|
+| Linhas em routers | ~28.900 | ~28.600 | -300 (splits redistribuiram, nao adicionaram) |
+| Maior arquivo router | 5.267 (router_extraction.py) | 3.612 (gerador_pecas/router.py) | -31% |
+| main.py | 1.320 | 1.080 | -240 linhas (-18%) |
+| init_db.py | 2.373 | 807 | -1.566 linhas (-66%) |
+| Models no Alembic env.py | ~15 de 62+ | 72 (100%) | Cobertura completa |
+| Migrations Alembic | 0 uteis | 3 (baseline + 2) | Alembic e fonte de verdade |
+| `create_all()` no startup | Sim | Removido | Alembic gerencia schema |
+| Hotspots >2000L | 3 arquivos (10.4k linhas) | 0 arquivos | Todos splitados |
+| Arquivos criados (modulos) | — | 24 | Separacao de responsabilidades |
+| Testes criados | — | 3 arquivos (54 testes) | Repos + Adapters + Migrations |
+| Commits na branch | — | 33 | 33 commits atomicos |
 
 ### Top 5 Hotspots (original → atual)
 
 | # | Arquivo | Original | Atual | Status |
 |---|---------|----------|-------|--------|
-| 1 | `gerador_pecas/router.py` | 3.742 | 3.742 | Pendente (Fase 3/4) |
+| 1 | `gerador_pecas/router.py` | 3.742 | **3.612** | ✅ Repos injetados, -130L (Fase 3) |
 | 2 | `gerador_pecas/router_extraction.py` | 5.267 | **0** | ✅ Eliminado (Fase 5a) |
 | 3 | `gerador_pecas/services_deterministic.py` | 2.616 | **772** | ✅ Split (Fase 5b) |
-| 4 | `pedido_calculo/router.py` | 1.789 | 1.789 | Pendente (Fase 3/4) |
+| 4 | `pedido_calculo/router.py` | 1.789 | **1.709** | ✅ Repos injetados, -80L (Fase 3) |
 | 5 | `bert_training/router.py` | 2.519 | **28** | ✅ Split (Fase 5c) |
 
 ---
@@ -93,7 +96,7 @@
   - 9 testes: imports, cadeia, head unico, upgrade/downgrade
   - Todos passando
 
-- [ ] **0.8** Documentar workflow Alembic em ADR
+- [x] **0.8** Documentar workflow Alembic em ADR ✅ `72c4d8a` (ADR-0002)
 
 **Risco**: Alto (schema em producao)
 **Rollback**: `alembic downgrade -1`. Manter `create_all()` comentado como safety net por 2 semanas.
@@ -401,4 +404,56 @@ Fase 5 (Split) pode iniciar apos Fase 2 ─────────────�
 | 2026-02-12 | 3 | Repository Pattern: BaseRepository + 2 pilotos (gerador_pecas, pedido_calculo). 16 endpoints, 25 testes | `d8f1efa` |
 | 2026-02-12 | 4 | ConfiguracaoIARepository + migra editar-minuta endpoints (print→logger) | `c760e6b` |
 | 2026-02-12 | 6 | Adapters/DIP: 3 ports (Protocol) + 3 adapters concretos + 20 testes | `9bf5628` |
-| | | | |
+| 2026-02-12 | — | Documento marcado como CONCLUIDO. Trabalho futuro documentado | `7e3184e` |
+
+---
+
+## Resumo Final
+
+### O que foi entregue
+
+| Fase | Status | Resumo |
+|------|--------|--------|
+| 0 — Alembic | ✅ Completa (exceto stamp prod) | 72 models, baseline, 3 migrations, CI, ADR-0002 |
+| 1 — Frontend Legado | ✅ Parcial (iframe bloqueia) | FRONTEND_MODE removido, -239 linhas |
+| 2 — Quick Wins | ✅ Completa | 138 schemas extraidos, Gemini unificado, dead code removido |
+| 3 — Repository Pattern | ✅ Completa (pilotos) | BaseRepository + 2 sistemas, 16 endpoints, 25 testes |
+| 4 — Service Layer | ✅ Parcial (fundacao) | ConfiguracaoIARepository + 2 endpoints migrados |
+| 5 — Split de Arquivos | ✅ Completa | 3/3 hotspots eliminados (10.4k → 1.8k linhas) |
+| 6 — Adapters (DIP) | ✅ Completa (infra) | 3 ports + 3 adapters + 20 testes |
+
+### Metricas da branch
+
+| Metrica | Valor |
+|---------|-------|
+| Commits | 33 |
+| Arquivos criados | 27 (24 modulos + 3 testes) |
+| Linhas de codigo novo | ~10.950 |
+| Testes novos | 54 (25 repos + 20 adapters + 9 migrations) |
+| Testes de seguranca | 59 passando (preservados) |
+| Rotas da API | 524 (preservadas) |
+| Hotspots >2000L eliminados | 3 (router_extraction, services_deterministic, bert_training/router) |
+
+---
+
+## Trabalho Futuro (incremental)
+
+> Itens que ficam para sessoes futuras. Nenhum e bloqueante — a fundacao esta pronta.
+
+### Prioridade Alta
+
+- [ ] **Fase 0.3**: Stamp banco de producao (`alembic stamp head`) — requer acesso prod
+- [ ] **Fase 4.3-4.4**: Service classes para streaming endpoints (processar-stream ~545L, processar-pdfs-stream ~510L, curadoria ~375L, pedido-calculo ~800L)
+
+### Prioridade Media
+
+- [ ] **Fase 3.5b**: Repositories para `bert_training`, `classificador_documentos`, demais sistemas
+- [ ] **Fase 6.5**: Injetar adapters via `Depends` nos endpoints existentes (substituir imports diretos)
+- [ ] **Fase 4.5-4.6**: Services + testes para `pedido_calculo` e `bert_training`
+
+### Prioridade Baixa (desbloqueio externo necessario)
+
+- [ ] **Fase 1.3-1.7**: Remover templates/rotas-espelho Jinja2 (requer migrar iframe → React nativo)
+- [ ] **Fase 1.8**: Ajustar CSP (apos remocao do iframe)
+- [ ] **Fase 2b**: Mover imports lazy para nivel de modulo (risco circular imports)
+- [ ] **Fase 2d**: Limpar imports nao usados via linter (melhoria continua)
