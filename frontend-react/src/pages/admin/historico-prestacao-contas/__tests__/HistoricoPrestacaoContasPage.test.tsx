@@ -12,7 +12,7 @@ vi.mock('@/lib/api', () => ({
 
 // Mock do useMarkdown
 vi.mock('@/hooks/useMarkdown', () => ({
-  useMarkdown: vi.fn((content: string) => content)
+  useMarkdown: (content: string) => ({ html: content || '' })
 }))
 
 // Mock do useToast
@@ -96,7 +96,7 @@ describe('HistoricoPrestacaoContasPage', () => {
     await waitFor(() => {
       expect(mockToast).toHaveBeenCalledWith({
         title: 'Erro',
-        description: 'Não foi possível carregar o histórico',
+        description: 'Nao foi possivel carregar o historico',
         variant: 'destructive'
       })
     })
@@ -164,7 +164,7 @@ describe('HistoricoPrestacaoContasPage', () => {
 
     // Verificar se dialog foi aberto com detalhes
     await waitFor(() => {
-      expect(screen.getByText('Detalhes da Geração #1')).toBeInTheDocument()
+      expect(screen.getByText('Detalhes da Geracao #1')).toBeInTheDocument()
     })
 
     // Verificar abas
@@ -275,7 +275,7 @@ describe('HistoricoPrestacaoContasPage', () => {
 
     // Aguardar abertura do dialog e clicar na aba Logs IA
     await waitFor(() => {
-      expect(screen.getByText('Detalhes da Geração #1')).toBeInTheDocument()
+      expect(screen.getByText('Detalhes da Geracao #1')).toBeInTheDocument()
     })
 
     const logsTab = screen.getByRole('tab', { name: /Logs IA/i })

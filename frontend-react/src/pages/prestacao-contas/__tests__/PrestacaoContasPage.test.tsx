@@ -208,8 +208,8 @@ describe('PrestacaoContasPage', () => {
 
     render(<PrestacaoContasPage />)
 
-    // Botao com titulo de historico completo (SheetTrigger)
-    const botaoHistorico = screen.getByTitle('Historico completo')
+    // Botao com texto "Historico" (SheetTrigger)
+    const botaoHistorico = screen.getByText('Historico')
     expect(botaoHistorico).toBeInTheDocument()
   })
 })

@@ -8,6 +8,8 @@ import { adminApi } from '@/lib/api';
 vi.mock('@/lib/api', () => ({
   adminApi: {
     get: vi.fn(),
+    post: vi.fn(),
+    put: vi.fn(),
     delete: vi.fn(),
   },
   getToken: vi.fn(() => null),
@@ -24,20 +26,33 @@ vi.mock('@/hooks/use-toast', () => ({
 vi.mock('recharts', () => ({
   ResponsiveContainer: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   PieChart: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+  BarChart: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
   Pie: () => <div />,
+  Bar: () => <div />,
   Cell: () => <div />,
   Tooltip: () => <div />,
   Legend: () => <div />,
+  XAxis: () => <div />,
+  YAxis: () => <div />,
+  CartesianGrid: () => <div />,
 }));
 
 describe('PerformancePage', () => {
   const mockPerfSummary = {
-    bottleneck_summary: { llm: 15, db: 8, parse: 3 },
+    period_hours: 24,
+    total_logs: 100,
+    bottleneck_summary: { LLM: 15, DB: 8, PARSE: 3, OUTRO: 2 },
     avg_times: { llm: 1200, db: 300, parse: 100, total: 1600 },
+    slowest_by_bottleneck: {
+      LLM: [{ route: '/api/gerar', total_ms: 5000, llm_ms: 4500 }],
+      DB: [{ route: '/api/save', total_ms: 2000, db_ms: 1800 }],
+      PARSE: [],
+      OUTRO: [],
+    },
     recent_errors: [
       {
-        id: 1,
         route: '/api/test',
+        error_type: 'timeout',
         error_message: 'Timeout',
         created_at: '2024-01-01T10:00:00Z',
       },
@@ -52,8 +67,11 @@ describe('PerformancePage', () => {
         system_name: 'gerador_pecas',
         route: '/api/gerar',
         total_ms: 1500,
-        bottleneck: 'llm',
-        status: 'success',
+        llm_request_ms: 1200,
+        db_total_ms: 200,
+        json_parse_ms: 50,
+        bottleneck: 'LLM',
+        status: 'ok',
       },
       {
         id: 2,
@@ -61,61 +79,40 @@ describe('PerformancePage', () => {
         system_name: 'bert_training',
         route: '/api/train',
         total_ms: 500,
-        bottleneck: 'db',
+        llm_request_ms: 0,
+        db_total_ms: 400,
+        json_parse_ms: 10,
+        bottleneck: 'DB',
         status: 'error',
-        error_message: 'Connection failed',
+        error_message_short: 'Connection failed',
       },
     ],
   };
 
-  const mockGeminiSummary = {
-    total_calls: 150,
-    stats: {
-      success_count: 145,
-      error_count: 5,
-      avg_latency_ms: 1250,
-      success_rate: 96.7,
-      total_prompt_tokens: 50000,
-      total_response_tokens: 30000,
-    },
-    by_sistema: [
-      { sistema: 'gerador_pecas', count: 100 },
-      { sistema: 'bert_training', count: 50 },
-    ],
-    by_model: [
-      { model: 'gemini-1.5-pro', count: 120 },
-      { model: 'gemini-1.5-flash', count: 30 },
-    ],
-  };
-
-  const mockGeminiLogs = {
-    logs: [
+  const mockRouteMaps = {
+    mappings: [
       {
         id: 1,
-        created_at: '2024-01-01T10:00:00Z',
-        sistema: 'gerador_pecas',
-        model: 'gemini-1.5-pro',
-        time_total_ms: 1300,
-        success: true,
-        prompt_tokens_estimated: 500,
-        response_tokens: 300,
+        route_pattern: '/api/gerar',
+        system_name: 'Gerador de Pecas',
+        match_type: 'prefix',
+        priority: 0,
+        created_at: '2024-01-01T00:00:00Z',
+        updated_at: '2024-01-01T00:00:00Z',
       },
-      {
-        id: 2,
-        created_at: '2024-01-01T11:00:00Z',
-        sistema: 'bert_training',
-        model: 'gemini-1.5-flash',
-        time_total_ms: 800,
-        success: false,
-        error: 'Rate limit exceeded',
-      },
+    ],
+  };
+
+  const mockTopRoutes = {
+    routes: [
+      { route: '/api/unknown', count: 50, system_name: 'unknown', has_mapping: false },
     ],
   };
 
   beforeEach(() => {
     vi.clearAllMocks();
 
-    // Mock padrão para todas as chamadas
+    // Mock padrao para todas as chamadas
     (adminApi.get as any).mockImplementation((url: string) => {
       if (url.includes('/admin/api/performance/summary')) {
         return Promise.resolve(mockPerfSummary);
@@ -123,26 +120,53 @@ describe('PerformancePage', () => {
       if (url.includes('/admin/api/performance/logs')) {
         return Promise.resolve(mockPerfLogs);
       }
+      if (url.includes('/admin/api/performance/route-maps')) {
+        return Promise.resolve(mockRouteMaps);
+      }
+      if (url.includes('/admin/api/performance/top-routes')) {
+        return Promise.resolve(mockTopRoutes);
+      }
+      if (url.includes('/admin/api/performance/actions')) {
+        return Promise.resolve({ actions: ['gerar_peca', 'classificar'] });
+      }
+      if (url.includes('/admin/api/performance/systems')) {
+        return Promise.resolve({ systems: ['gerador_pecas', 'bert_training'] });
+      }
       if (url.includes('/admin/api/gemini-logs/summary')) {
-        return Promise.resolve(mockGeminiSummary);
+        return Promise.resolve({
+          total_calls: 150,
+          stats: {
+            success_count: 145,
+            error_count: 5,
+            avg_latency_ms: 1250,
+            success_rate: 96.7,
+            total_prompt_tokens: 50000,
+            total_response_tokens: 30000,
+          },
+          by_sistema: [{ sistema: 'gerador_pecas', count: 100 }],
+          by_model: [{ model: 'gemini-1.5-pro', count: 120 }],
+          slowest_calls: [],
+          recent_errors: [],
+        });
+      }
+      if (url.includes('/admin/api/gemini-logs/systems')) {
+        return Promise.resolve({ systems: ['gerador_pecas'] });
+      }
+      if (url.includes('/admin/api/gemini-logs/models')) {
+        return Promise.resolve({ models: ['gemini-1.5-pro'] });
       }
       if (url.includes('/admin/api/gemini-logs')) {
-        return Promise.resolve(mockGeminiLogs);
-      }
-      if (url.includes('/admin/api/performance/route-mapping')) {
-        return Promise.resolve({ mappings: [] });
+        return Promise.resolve({ logs: [], total: 0, limit: 100, offset: 0 });
       }
       return Promise.resolve({});
     });
   });
 
-  it('deve renderizar a página e carregar dados iniciais', async () => {
+  it('deve renderizar a pagina e carregar dados iniciais', async () => {
     render(<PerformancePage />);
 
-    // Verifica se o título está presente
     expect(screen.getByText('Performance & Logs')).toBeInTheDocument();
 
-    // Aguarda o carregamento dos dados
     await waitFor(() => {
       expect(adminApi.get).toHaveBeenCalledWith(
         expect.stringContaining('/admin/api/performance/summary')
@@ -152,86 +176,108 @@ describe('PerformancePage', () => {
       );
     });
 
-    // Verifica se os cards de gargalo foram renderizados
     await waitFor(() => {
       expect(screen.getByText('Gargalo LLM')).toBeInTheDocument();
       expect(screen.getByText('Gargalo DB')).toBeInTheDocument();
-      expect(screen.getByText('Gargalo Parse')).toBeInTheDocument();
+      expect(screen.getByText('Gargalo PARSE')).toBeInTheDocument();
     });
   });
 
-  it('deve exibir dados da tab Performance Sistema corretamente', async () => {
+  it('deve usar endpoints corretos com parametros corretos', async () => {
     render(<PerformancePage />);
 
-    // Aguarda o carregamento
     await waitFor(() => {
-      expect(screen.getByText('Gargalo LLM')).toBeInTheDocument();
+      // Verifica endpoint correto de route-maps (nao route-mapping)
+      expect(adminApi.get).toHaveBeenCalledWith('/admin/api/performance/route-maps');
+      // Verifica endpoints de filtro dinamico
+      expect(adminApi.get).toHaveBeenCalledWith('/admin/api/performance/actions');
+      expect(adminApi.get).toHaveBeenCalledWith('/admin/api/performance/systems');
+      // Verifica top-routes
+      expect(adminApi.get).toHaveBeenCalledWith(
+        expect.stringContaining('/admin/api/performance/top-routes')
+      );
     });
-
-    // Verifica se o gráfico de gargalos está presente
-    expect(screen.getByText('Distribuicao de Gargalos')).toBeInTheDocument();
-
-    // Verifica se a tabela de logs está presente
-    expect(screen.getByText('Logs de Performance')).toBeInTheDocument();
   });
 
-  it('deve alternar para a tab Logs Gemini e exibir dados', async () => {
-    const user = userEvent.setup();
+  it('deve exibir dados com keys uppercase de bottleneck', async () => {
     render(<PerformancePage />);
 
-    // Aguarda o carregamento inicial
     await waitFor(() => {
-      expect(screen.getByText('Gargalo LLM')).toBeInTheDocument();
+      // Backend retorna keys uppercase (LLM, DB, PARSE, OUTRO)
+      expect(screen.getByText('15')).toBeInTheDocument(); // LLM count
+      expect(screen.getByText('8')).toBeInTheDocument(); // DB count
+      expect(screen.getByText('3')).toBeInTheDocument(); // PARSE count
     });
-
-    // Clica na tab Logs Gemini (custom button, not role="tab")
-    const geminiTab = screen.getByText('Logs Gemini API');
-    await user.click(geminiTab);
-
-    // Verifica se os cards de resumo Gemini estão visíveis
-    await waitFor(() => {
-      expect(screen.getByText('Total Chamadas')).toBeInTheDocument();
-      expect(screen.getByText('Latencia Media')).toBeInTheDocument();
-      expect(screen.getByText('Taxa Sucesso')).toBeInTheDocument();
-    });
-
-    // Verifica se a tabela de logs Gemini está presente (text appears in tab + heading)
-    expect(screen.getAllByText('Logs Gemini API').length).toBeGreaterThanOrEqual(2);
   });
 
-  it('deve ter as três tabs navegáveis', async () => {
+  it('deve ter as tres tabs navegaveis', async () => {
     render(<PerformancePage />);
 
-    // Aguarda o carregamento inicial
     await waitFor(() => {
       expect(adminApi.get).toHaveBeenCalled();
     });
 
-    // Verifica se as tabs estão presentes
     expect(screen.getByText('Performance Sistema')).toBeInTheDocument();
     expect(screen.getByText('Logs Gemini API')).toBeInTheDocument();
     expect(screen.getByText('Logs Avancados')).toBeInTheDocument();
   });
 
-  it('deve exibir os filtros na tab Performance Sistema', async () => {
+  it('deve exibir filtros com dropdowns dinamicos', async () => {
     render(<PerformancePage />);
 
-    // Aguarda o carregamento
     await waitFor(() => {
       expect(screen.getByText('Gargalo LLM')).toBeInTheDocument();
     });
 
-    // Verifica filtros
     expect(screen.getByText('Filtrar')).toBeInTheDocument();
   });
 
-  it('deve exibir o botão Limpar antigos na tabela de logs', async () => {
+  it('deve exibir botao de limpeza de logs', async () => {
     render(<PerformancePage />);
 
     await waitFor(() => {
       expect(screen.getByText('Logs de Performance')).toBeInTheDocument();
     });
 
-    expect(screen.getByText('Limpar antigos')).toBeInTheDocument();
+    // Botao de limpar com icone Trash2
+    const limparBtn = screen.getByText('Limpar');
+    expect(limparBtn).toBeInTheDocument();
+  });
+
+  it('deve alternar para tab Gemini e carregar dados', async () => {
+    const user = userEvent.setup();
+    render(<PerformancePage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Gargalo LLM')).toBeInTheDocument();
+    });
+
+    const geminiTab = screen.getByText('Logs Gemini API');
+    await user.click(geminiTab);
+
+    await waitFor(() => {
+      expect(screen.getByText('Total Chamadas')).toBeInTheDocument();
+      expect(screen.getByText('Latencia Media')).toBeInTheDocument();
+      expect(screen.getByText('Taxa Sucesso')).toBeInTheDocument();
+    });
+  });
+
+  it('deve exibir secao de mapeamento rota-sistema', async () => {
+    render(<PerformancePage />);
+
+    await waitFor(() => {
+      expect(screen.getByText(/Mapeamento Rota/)).toBeInTheDocument();
+    });
+
+    // Botao de adicionar
+    expect(screen.getByText('Adicionar')).toBeInTheDocument();
+  });
+
+  it('deve exibir botao Limpar Cache no header', async () => {
+    render(<PerformancePage />);
+
+    await waitFor(() => {
+      expect(screen.getByText('Limpar Cache')).toBeInTheDocument();
+    });
   });
 });
