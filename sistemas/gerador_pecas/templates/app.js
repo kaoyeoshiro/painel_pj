@@ -359,7 +359,7 @@
       if (modal) modal.classList.add("hidden");
     }
     slugify(texto) {
-      return texto.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
+      return texto.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
     }
     async criarSubcategoria() {
       const nomeInput = document.getElementById("subcategoria-nome");

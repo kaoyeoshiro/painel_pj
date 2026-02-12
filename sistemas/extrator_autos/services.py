@@ -314,7 +314,7 @@ class ExtratorAutosService:
         Returns:
             Dict com chaves: processo, documentos, total_documentos, erro.
         """
-        tipo = TipoConsulta.COMPLETA if buscar_instancias else TipoConsulta.COMPLETA
+        tipo = TipoConsulta.COMPLETA if buscar_instancias else TipoConsulta.METADATA_ONLY
         options = ConsultaOptions(tipo=tipo)
 
         try:

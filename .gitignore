@@ -85,6 +85,14 @@ run_teste.bat
 .claude/settings.local.json
 .playwright-mcp/
 
+# === SonarQube (config local de dev) ===
+.scannerwork/
+.sonar-scanner/
+sonar-bugs.json
+sonar-hotspots.json
+docker-compose.sonarqube.yml
+sonar-project.properties
+
 # === Arquivos temporários do projeto ===
 tmp_*
 *.pid
