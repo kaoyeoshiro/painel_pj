@@ -619,3 +619,74 @@ Windows não suporta Agent Teams (requer tmux/WSL). A execução foi adaptada pa
 - `scripts/check_boundaries.py`
 - `.github/workflows/architecture.yml`
 - `tests/test_adapters.py`, `test_architecture_boundaries.py`
+
+---
+
+## Waves 5-7 — Correção das Falhas da Reanalise (2026-02-12)
+
+### Contexto
+
+O relatório de reanálise identificou 4 falhas remanescentes após Waves 1-4:
+1. Admin repos existem mas não são usados (181 `db.query()`)
+2. Streaming services existem mas não estão conectados
+3. Hierarquia dupla de adapters (`/adapters/` e `/app/adapters/`)
+4. T12-AdminSplit ainda adiado
+
+### Status por Task
+
+| ID | Nome | Wave | Status | Descrição | Impacto |
+|----|------|------|--------|-----------|---------|
+| T14 | Wire repos admin/router.py | 5 | Concluído | CRUD/Config endpoints → repos | 0 raw db.query |
+| T15 | Wire repos router_prompts.py | 5 | Concluído | 87 db.query → repo calls | 0 raw db.query |
+| T16 | Wire FeedbackRepo admin/router.py | 5 | Concluído | 60+ queries → FeedbackRepository | 0 raw db.query |
+| T17 | Consolidar adapters | 5 | Concluído | Removido `/adapters/` root, mantido `/app/adapters/` | 1 hierarquia |
+| T18 | Wire PedidoCalculoStreamService | 6 | Concluído | ~800 linhas de generator inline → service | router -45% |
+| T19 | Wire helpers SSE prestacao_contas | 6 | Concluído | 43 `EventoSSE(tipo=...)` → helpers | 0 inline |
+| T20 | Adotar SSEEventFormatter | 6 | Concluído | pedido_calculo + gerador_pecas delegam ao SSEEventFormatter | 2 consumidores |
+| T21 | AdminSplit | 7 | Concluído | admin/router.py (2586L) → 4 sub-routers | router 23L |
+| T22 | DIP Runtime PoC | 7 | Concluído | GeminiAdapter injetado em assistencia_judiciaria | 1 adapter em prod |
+
+### Métricas
+
+| Métrica | Antes (Wave 4) | Após Wave 7 |
+|---------|----------------|-------------|
+| db.query raw em admin/ | 181 | **0** |
+| db.query via repo em admin/ | 0 | 52 (45 feedback + 7 prompts) |
+| admin/router.py linhas | 2586 | **23** (orquestrador) |
+| pedido_calculo/router.py linhas | 1708 | **933** (-45%) |
+| Hierarquias adapter | 2 | **1** (`app/adapters/`) |
+| SSEEventFormatter consumidores | 0 | **2** (pedido_calculo, gerador_pecas) |
+| Adapters em uso produção | 0 | **1** (assistencia_judiciaria) |
+| EventoSSE inline em prestacao_contas | 43 | **0** |
+
+### Validação Final Waves 5-7
+
+| Verificação | Resultado |
+|-------------|-----------|
+| Testes de segurança (`pytest -m security`) | **59 passed** |
+| Testes de refatoração (adapters + SSE + streams + repos) | **149 passed** |
+| `check_boundaries.py` | 0 erros, 29 warnings (legado) |
+| Imports admin (router, config, feedbacks, import, prompts) | OK, 72 rotas |
+
+### Arquivos Criados/Modificados
+
+**Wave 5 (Repository Wiring + Adapter Consolidation):**
+- `admin/router.py` (db.query → repos)
+- `admin/router_prompts.py` (db.query → repos)
+- `admin/repositories.py` (métodos adicionais)
+- `app/domain/shared/protocols.py` (`@runtime_checkable` consolidado)
+- Removido: `adapters/` (root) — agora só `app/adapters/`
+
+**Wave 6 (Streaming Integration + SSE Common):**
+- `sistemas/pedido_calculo/services_stream.py` (lógica de ~800L migrada do router)
+- `sistemas/pedido_calculo/router.py` (thin: instancia service + StreamingResponse)
+- `sistemas/prestacao_contas/services_stream.py` (helpers SSE)
+- `sistemas/prestacao_contas/services.py` (EventoSSE inline → helpers)
+
+**Wave 7 (AdminSplit + DIP Runtime):**
+- `admin/router.py` (orquestrador de 23 linhas)
+- `admin/router_config.py` (436L — CRUD + Config IA + Modelos)
+- `admin/router_feedbacks.py` (1715L — Dashboard + Feedbacks)
+- `admin/router_import.py` (249L — Import de produção)
+- `sistemas/assistencia_judiciaria/core/logic.py` (DIP: `ai_service` parameter)
+- `sistemas/assistencia_judiciaria/router.py` (instancia GeminiAdapter)

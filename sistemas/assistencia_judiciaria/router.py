@@ -21,7 +21,8 @@ from database.connection import get_db
 from utils.rate_limit import limiter, LIMITS, get_user_identifier
 from utils.quota_manager import check_ai_quota
 from utils.timezone import to_iso_utc
-from sistemas.assistencia_judiciaria.core.logic import full_flow, DEFAULT_MODEL
+from sistemas.assistencia_judiciaria.core.logic import full_flow, full_flow_async, DEFAULT_MODEL
+from app.adapters.gemini_adapter import GeminiAdapter
 from sistemas.assistencia_judiciaria.core.document import markdown_to_docx, docx_to_pdf
 from sistemas.assistencia_judiciaria.models import ConsultaProcesso, FeedbackAnalise
 from admin.models import ConfiguracaoIA
@@ -227,10 +228,13 @@ async def consultar_processo(
                     "consultado_em": to_iso_utc(consulta_existente.consultado_em)
                 }
         
-        # Faz nova consulta
-        logger.info("Iniciando full_flow...")
+        # Faz nova consulta via DIP (injecao de dependencia)
+        logger.info("Iniciando full_flow_async com GeminiAdapter (DIP)...")
         try:
-            dados, relatorio = full_flow(req.cnj, req.model)
+            ai_service = GeminiAdapter()
+            dados, relatorio = await full_flow_async(
+                req.cnj, req.model, ai_service=ai_service
+            )
         except RuntimeError as e:
             error_msg = str(e)
             if "Timeout" in error_msg or "timeout" in error_msg:

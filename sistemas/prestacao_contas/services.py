@@ -45,6 +45,17 @@ from sistemas.prestacao_contas.identificador_peticoes import (
 )
 from sistemas.prestacao_contas.agente_analise import AgenteAnalise, DadosAnalise, ResultadoAnalise
 from sistemas.prestacao_contas.ia_logger import IALogger, create_logger
+from sistemas.prestacao_contas.services_stream import (
+    evento_inicio,
+    evento_etapa,
+    evento_progresso,
+    evento_info,
+    evento_aviso,
+    evento_erro,
+    evento_resultado,
+    evento_solicitar_documentos,
+    evento_erro_com_fim,
+)
 
 # Cliente TJMS unificado (funcoes de compatibilidade)
 from services.tjms import (
@@ -335,7 +346,7 @@ class OrquestradorPrestacaoContas:
             logger.info(f"\n{'#'*60}")
             logger.info(f"# PRESTAÇÃO DE CONTAS - {numero_cnj}")
             logger.info(f"{'#'*60}")
-            yield EventoSSE(tipo="inicio", mensagem="Iniciando análise de prestação de contas")
+            yield evento_inicio("Iniciando análise de prestação de contas")
 
             # Gera correlation_id para rastrear métricas
             import uuid
@@ -349,12 +360,11 @@ class OrquestradorPrestacaoContas:
             # - Task C: Consulta XML do processo (necessário para fallback e demais etapas)
             # - Task A+B: Extração paralela de extrato (scrapper + fallback)
             log_etapa(1, "CONSULTA XML + EXTRATO (PARALELO)")
-            yield EventoSSE(
-                tipo="etapa",
+            yield evento_etapa(
                 etapa=1,
                 etapa_nome="XML + Extrato (Paralelo)",
                 mensagem="Consultando processo e baixando extrato em paralelo...",
-                progresso=10
+                progresso=10,
             )
 
             # TASK C: Consulta XML do processo
@@ -373,15 +383,11 @@ class OrquestradorPrestacaoContas:
                 geracao.erro = resultado_xml.erro
                 self.db.commit()
 
-                yield EventoSSE(
-                    tipo="erro",
-                    etapa=1,
-                    mensagem=f"Erro ao consultar processo: {resultado_xml.erro}"
+                evt_erro, evt_fim = evento_erro_com_fim(
+                    f"Erro ao consultar processo: {resultado_xml.erro}", etapa=1
                 )
-                yield EventoSSE(
-                    tipo="fim",
-                    mensagem="Processamento finalizado com erro"
-                )
+                yield evt_erro
+                yield evt_fim
                 return
 
             geracao.numero_cnj_formatado = resultado_xml.dados_basicos.numero_formatado
@@ -389,12 +395,11 @@ class OrquestradorPrestacaoContas:
             log_sucesso(f"Processo encontrado: {resultado_xml.dados_basicos.autor}")
             log_info(f"Total de documentos no processo: {len(resultado_xml.peticoes_candidatas)} petições candidatas")
 
-            yield EventoSSE(
-                tipo="progresso",
+            yield evento_progresso(
                 etapa=1,
                 mensagem=f"Processo encontrado: {resultado_xml.dados_basicos.autor}",
                 progresso=20,
-                dados={"autor": resultado_xml.dados_basicos.autor}
+                dados={"autor": resultado_xml.dados_basicos.autor},
             )
 
             # DEBUG: Mostra as primeiras 15 petições candidatas
@@ -407,12 +412,11 @@ class OrquestradorPrestacaoContas:
             # =====================================================
             # EXTRAÇÃO PARALELA DE EXTRATO (Task A + Task B)
             # =====================================================
-            yield EventoSSE(
-                tipo="etapa",
+            yield evento_etapa(
                 etapa=2,
                 etapa_nome="Extrato da Subconta (Paralelo)",
                 mensagem="Executando scrapper e fallback em paralelo...",
-                progresso=25
+                progresso=25,
             )
 
             # Carrega configuração de timeouts do banco
@@ -441,8 +445,7 @@ class OrquestradorPrestacaoContas:
                 log_info(f"  t_fallback: {resultado_extrato.metricas.t_fallback:.2f}s" if resultado_extrato.metricas.t_fallback else "  t_fallback: N/A")
                 log_info(f"  t_total: {resultado_extrato.metricas.t_total:.2f}s")
 
-                yield EventoSSE(
-                    tipo="progresso",
+                yield evento_progresso(
                     etapa=2,
                     mensagem=f"Extrato obtido via {resultado_extrato.source.value} ({len(resultado_extrato.texto or '')} chars)",
                     progresso=35,
@@ -451,7 +454,7 @@ class OrquestradorPrestacaoContas:
                         "t_scrapper": resultado_extrato.metricas.t_scrapper,
                         "t_fallback": resultado_extrato.metricas.t_fallback,
                         "t_total": resultado_extrato.metricas.t_total,
-                    }
+                    },
                 )
             else:
                 # Extrato não encontrado - NÃO interrompe o pipeline
@@ -463,17 +466,16 @@ class OrquestradorPrestacaoContas:
                 log_aviso(f"Extrato não localizado - pipeline continuará sem extrato")
                 log_info(f"  Observação: {resultado_extrato.observacao}")
 
-                yield EventoSSE(
-                    tipo="aviso",
+                yield evento_aviso(
+                    "Extrato não localizado - análise continuará sem extrato da subconta",
                     etapa=2,
-                    mensagem="Extrato não localizado - análise continuará sem extrato da subconta",
                     dados={
                         "extrato_source": "none",
                         "observacao": resultado_extrato.observacao,
                         "t_scrapper": resultado_extrato.metricas.t_scrapper,
                         "t_fallback": resultado_extrato.metricas.t_fallback,
                         "t_total": resultado_extrato.metricas.t_total,
-                    }
+                    },
                 )
 
             # =====================================================
@@ -482,11 +484,7 @@ class OrquestradorPrestacaoContas:
             # Só busca alvarás se não encontrou extrato válido
             if not resultado_extrato.valido:
                 log_info("Buscando 'Alvará' (código 3) nos últimos 30 documentos...")
-                yield EventoSSE(
-                    tipo="info",
-                    etapa=2,
-                    mensagem="Buscando Alvarás nos documentos recentes..."
-                )
+                yield evento_info("Buscando Alvarás nos documentos recentes...", etapa=2)
 
                 CODIGO_ALVARA = "3"
                 MAX_DOCS_ALVARA = 30
@@ -505,20 +503,12 @@ class OrquestradorPrestacaoContas:
 
                 if alvaras:
                     log_info(f"Encontrados {len(alvaras)} Alvarás nos últimos {MAX_DOCS_ALVARA} documentos")
-                    yield EventoSSE(
-                        tipo="info",
-                        etapa=2,
-                        mensagem=f"Encontrados {len(alvaras)} Alvarás"
-                    )
+                    yield evento_info(f"Encontrados {len(alvaras)} Alvarás", etapa=2)
 
                     async with aiohttp.ClientSession() as session:
                         for i, alvara in enumerate(alvaras):
                             try:
-                                yield EventoSSE(
-                                    tipo="info",
-                                    etapa=2,
-                                    mensagem=f"Baixando Alvará {i+1}/{len(alvaras)}..."
-                                )
+                                yield evento_info(f"Baixando Alvará {i+1}/{len(alvaras)}...", etapa=2)
 
                                 xml_docs = await baixar_documentos_async(session, numero_cnj, [alvara.id])
 
@@ -551,11 +541,10 @@ class OrquestradorPrestacaoContas:
                     if any(d.get("tipo", "").startswith("Alvará") for d in extratos_imagens_fallback):
                         total_alvaras = sum(1 for d in extratos_imagens_fallback if d.get("tipo", "").startswith("Alvará"))
                         log_sucesso(f"Fallback: {total_alvaras} Alvarás obtidos como imagem")
-                        yield EventoSSE(
-                            tipo="progresso",
+                        yield evento_progresso(
                             etapa=2,
                             mensagem=f"{total_alvaras} Alvarás obtidos como imagem",
-                            progresso=39
+                            progresso=39,
                         )
                 else:
                     log_info("Nenhum Alvará encontrado nos últimos 30 documentos")
@@ -571,12 +560,11 @@ class OrquestradorPrestacaoContas:
             peticoes_para_analisar = resultado_xml.peticoes_candidatas[:MAX_PETICOES]
             log_info(f"Serão analisadas as últimas {len(peticoes_para_analisar)} petições")
 
-            yield EventoSSE(
-                tipo="etapa",
+            yield evento_etapa(
                 etapa=3,
                 etapa_nome="Classificar Documentos",
                 mensagem=f"Analisando {len(peticoes_para_analisar)} petições...",
-                progresso=40
+                progresso=40,
             )
 
             identificador = IdentificadorPeticoes(
@@ -603,11 +591,7 @@ class OrquestradorPrestacaoContas:
 
             async with aiohttp.ClientSession() as session:
                 for i, peticao in enumerate(peticoes_para_analisar):
-                    yield EventoSSE(
-                        tipo="info",
-                        etapa=3,
-                        mensagem=f"Baixando documento {i+1}/{len(peticoes_para_analisar)}..."
-                    )
+                    yield evento_info(f"Baixando documento {i+1}/{len(peticoes_para_analisar)}...", etapa=3)
 
                     try:
                         xml_docs = await baixar_documentos_async(session, numero_cnj, [peticao.id])
@@ -641,24 +625,16 @@ class OrquestradorPrestacaoContas:
                 geracao.erro = "Nenhum documento pôde ser baixado do processo"
                 self.db.commit()
 
-                yield EventoSSE(
-                    tipo="erro",
-                    etapa=3,
-                    mensagem="Nenhum documento pôde ser baixado do processo"
+                evt_erro, evt_fim = evento_erro_com_fim(
+                    "Nenhum documento pôde ser baixado do processo", etapa=3
                 )
-                yield EventoSSE(
-                    tipo="fim",
-                    mensagem="Processamento finalizado com erro"
-                )
+                yield evt_erro
+                yield evt_fim
                 return
 
             # FASE 2: Classificar todos via LLM (PARALELIZADO)
             log_info(f"Classificando {len(documentos_baixados)} documentos via IA em paralelo...")
-            yield EventoSSE(
-                tipo="info",
-                etapa=3,
-                mensagem=f"Classificando {len(documentos_baixados)} documentos via IA em paralelo..."
-            )
+            yield evento_info(f"Classificando {len(documentos_baixados)} documentos via IA em paralelo...", etapa=3)
 
             async def classificar_documento(doc_info):
                 """Classifica um documento via LLM"""
@@ -700,11 +676,7 @@ class OrquestradorPrestacaoContas:
                         peticao_prestacao = doc_class["texto"]
                         peticao_prestacao_doc = peticao
                         log_sucesso(f"✨ PETIÇÃO DE PRESTAÇÃO ENCONTRADA! (ID: {peticao.id})")
-                        yield EventoSSE(
-                            tipo="info",
-                            etapa=3,
-                            mensagem=f"Petição de prestação encontrada! (confiança: {resultado_id.confianca:.0%})"
-                        )
+                        yield evento_info(f"Petição de prestação encontrada! (confiança: {resultado_id.confianca:.0%})", etapa=3)
                         # SEMPRE busca anexos de petição de prestação (notas fiscais, comprovantes)
                         # independente do LLM detectar menciona_anexos - prestações sempre têm anexos
                         if peticao.data_juntada:
@@ -736,11 +708,7 @@ class OrquestradorPrestacaoContas:
             if not peticao_prestacao:
                 log_aviso("Petição de prestação de contas não encontrada - buscando notas fiscais como fallback")
 
-                yield EventoSSE(
-                    tipo="info",
-                    etapa=3,
-                    mensagem="Petição de prestação não encontrada. Buscando notas fiscais..."
-                )
+                yield evento_info("Petição de prestação não encontrada. Buscando notas fiscais...", etapa=3)
 
                 # FALLBACK: Buscar notas fiscais (códigos 9870 e 386) nos ÚLTIMOS 50 documentos do processo
                 # NOTA: Usa CODIGOS_NOTA_FISCAL importado de xml_parser.py para consistência
@@ -768,11 +736,7 @@ class OrquestradorPrestacaoContas:
                     async with aiohttp.ClientSession() as session:
                         for i, nf in enumerate(notas_fiscais):
                             try:
-                                yield EventoSSE(
-                                    tipo="info",
-                                    etapa=3,
-                                    mensagem=f"Baixando nota fiscal {i+1}/{len(notas_fiscais)}..."
-                                )
+                                yield evento_info(f"Baixando nota fiscal {i+1}/{len(notas_fiscais)}...", etapa=3)
 
                                 xml_docs = await baixar_documentos_async(session, numero_cnj, [nf.id])
                                 import base64
@@ -839,17 +803,15 @@ class OrquestradorPrestacaoContas:
 
                         self.db.commit()
 
-                        yield EventoSSE(
-                            tipo="solicitar_documentos",
-                            etapa=3,
-                            mensagem="Documentos não encontrados. Por favor, anexe manualmente.",
+                        yield evento_solicitar_documentos(
+                            "Documentos não encontrados. Por favor, anexe manualmente.",
                             dados={
                                 "geracao_id": geracao.id,
                                 "numero_cnj": numero_cnj,
                                 "documentos_faltantes": docs_faltantes,
                                 "mensagem": mensagem,
                                 "expira_em": geracao.estado_expira_em.isoformat() if geracao.estado_expira_em else None,
-                            }
+                            },
                         )
                         return
                 else:
@@ -871,17 +833,15 @@ class OrquestradorPrestacaoContas:
 
                     self.db.commit()
 
-                    yield EventoSSE(
-                        tipo="solicitar_documentos",
-                        etapa=3,
-                        mensagem="Documentos não encontrados. Por favor, anexe manualmente.",
+                    yield evento_solicitar_documentos(
+                        "Documentos não encontrados. Por favor, anexe manualmente.",
                         dados={
                             "geracao_id": geracao.id,
                             "numero_cnj": numero_cnj,
                             "documentos_faltantes": docs_faltantes,
                             "mensagem": mensagem,
                             "expira_em": geracao.estado_expira_em.isoformat() if geracao.estado_expira_em else None,
-                        }
+                        },
                     )
                     return
 
@@ -908,23 +868,21 @@ class OrquestradorPrestacaoContas:
                 for i, pr in enumerate(peticoes_relevantes, 1):
                     log_info(f"     {i}. {pr['resultado'].resumo or pr['doc'].id}")
 
-            yield EventoSSE(
-                tipo="progresso",
+            yield evento_progresso(
                 etapa=3,
                 mensagem=f"Classificação: {total_relevantes} relevantes, {total_irrelevantes} descartados",
-                progresso=55
+                progresso=55,
             )
 
             # =====================================================
             # ETAPA 4: BAIXAR DOCUMENTOS ANEXOS
             # =====================================================
             log_etapa(4, "DOWNLOAD DE DOCUMENTOS ANEXOS")
-            yield EventoSSE(
-                tipo="etapa",
+            yield evento_etapa(
                 etapa=4,
                 etapa_nome="Baixar Documentos",
                 mensagem="Baixando documentos anexos...",
-                progresso=60
+                progresso=60,
             )
 
             documentos_anexos = []  # Imagens (notas fiscais, comprovantes)
@@ -938,11 +896,7 @@ class OrquestradorPrestacaoContas:
             # Baixa petição inicial
             if resultado_xml.peticao_inicial:
                 log_info(f"Baixando petição inicial (ID: {resultado_xml.peticao_inicial.id})...")
-                yield EventoSSE(
-                    tipo="info",
-                    etapa=4,
-                    mensagem="Baixando petição inicial..."
-                )
+                yield evento_info("Baixando petição inicial...", etapa=4)
                 try:
                     async with aiohttp.ClientSession() as session:
                         xml_docs = await baixar_documentos_async(
@@ -980,11 +934,7 @@ class OrquestradorPrestacaoContas:
             logger.warning(f"{'='*60}")
 
             if peticoes_contexto:
-                yield EventoSSE(
-                    tipo="info",
-                    etapa=4,
-                    mensagem=f"{len(peticoes_contexto)} petições relevantes adicionadas ao contexto"
-                )
+                yield evento_info(f"{len(peticoes_contexto)} petições relevantes adicionadas ao contexto", etapa=4)
 
             # Prepara parser para buscar documentos anexos
             parser = XMLParserPrestacao(xml_response)
@@ -1048,11 +998,7 @@ class OrquestradorPrestacaoContas:
                     if docs_novos:
                         hora_ref = peticao_com_anexos.data_juntada.strftime('%d/%m/%Y %H:%M')
                         log_info(f"Encontrados {len(docs_novos)} anexos próximos a {hora_ref}")
-                        yield EventoSSE(
-                            tipo="info",
-                            etapa=4,
-                            mensagem=f"Baixando {len(docs_novos)} documentos anexos..."
-                        )
+                        yield evento_info(f"Baixando {len(docs_novos)} documentos anexos...", etapa=4)
 
                         ids_docs = [d.id for d in docs_novos]
                         try:
@@ -1095,11 +1041,7 @@ class OrquestradorPrestacaoContas:
                                                 "imagens": imagens
                                             })
                                             log_sucesso(f"Anexo convertido para imagem: {doc.tipo_descricao or doc.tipo_codigo} ({len(imagens)} páginas)")
-                                            yield EventoSSE(
-                                                tipo="info",
-                                                etapa=4,
-                                                mensagem=f"Anexo '{doc.tipo_descricao or doc.tipo_codigo}' ({len(imagens)} páginas)"
-                                            )
+                                            yield evento_info(f"Anexo '{doc.tipo_descricao or doc.tipo_codigo}' ({len(imagens)} páginas)", etapa=4)
 
                         except Exception as e:
                             log_erro(f"Erro ao baixar documentos anexos: {e}")
@@ -1142,11 +1084,10 @@ class OrquestradorPrestacaoContas:
             total_imagens = sum(len(d.get('imagens', [])) for d in documentos_anexos)
             log_sucesso(f"Total: {len(documentos_anexos)} docs como imagem ({total_imagens} páginas), {len(peticoes_contexto)} docs como texto")
 
-            yield EventoSSE(
-                tipo="progresso",
+            yield evento_progresso(
                 etapa=4,
                 mensagem=f"{len(documentos_anexos)} documentos como imagem, {len(peticoes_contexto)} como texto",
-                progresso=75
+                progresso=75,
             )
 
             # =====================================================
@@ -1191,17 +1132,15 @@ class OrquestradorPrestacaoContas:
 
                 self.db.commit()
 
-                yield EventoSSE(
-                    tipo="solicitar_documentos",
-                    etapa=4,
-                    mensagem="Documentos insuficientes. Por favor, anexe manualmente.",
+                yield evento_solicitar_documentos(
+                    "Documentos insuficientes. Por favor, anexe manualmente.",
                     dados={
                         "geracao_id": geracao.id,
                         "numero_cnj": numero_cnj,
                         "documentos_faltantes": docs_faltantes,
                         "mensagem": mensagem,
                         "expira_em": geracao.estado_expira_em.isoformat() if geracao.estado_expira_em else None,
-                    }
+                    },
                 )
                 return
 
@@ -1253,12 +1192,11 @@ class OrquestradorPrestacaoContas:
             # =====================================================
             log_etapa(5, "ANÁLISE FINAL (LLM)")
             log_ia(f"Modelo: {self.modelo_analise} | Temperatura: {self.temperatura_analise}")
-            yield EventoSSE(
-                tipo="etapa",
+            yield evento_etapa(
                 etapa=5,
                 etapa_nome="Análise IA",
                 mensagem="Analisando prestação de contas com IA...",
-                progresso=80
+                progresso=80,
             )
 
             dados_analise = DadosAnalise(
@@ -1350,12 +1288,11 @@ class OrquestradorPrestacaoContas:
                 tipo="sucesso",
                 etapa=5,
                 mensagem="Análise concluída!",
-                progresso=100
+                progresso=100,
             )
 
-            yield EventoSSE(
-                tipo="resultado",
-                mensagem="Processamento finalizado",
+            yield evento_resultado(
+                "Processamento finalizado",
                 dados={
                     "geracao_id": geracao.id,
                     "parecer": resultado.parecer,
@@ -1367,7 +1304,7 @@ class OrquestradorPrestacaoContas:
                     "medicamento_comprado": resultado.medicamento_comprado,
                     "irregularidades": resultado.irregularidades,
                     "perguntas": resultado.perguntas,
-                }
+                },
             )
 
         except Exception as e:
@@ -1378,14 +1315,9 @@ class OrquestradorPrestacaoContas:
                 geracao.erro = str(e)
                 self.db.commit()
 
-                yield EventoSSE(
-                    tipo="erro",
-                    mensagem=f"Erro no processamento: {str(e)}"
-                )
-                yield EventoSSE(
-                    tipo="fim",
-                    mensagem="Processamento finalizado com erro"
-                )
+                evt_erro, evt_fim = evento_erro_com_fim(f"Erro no processamento: {str(e)}")
+                yield evt_erro
+                yield evt_fim
 
     async def responder_duvida(
         self,
@@ -1464,10 +1396,7 @@ class OrquestradorPrestacaoContas:
         ).first()
 
         if not geracao:
-            yield EventoSSE(
-                tipo="erro",
-                mensagem="Análise não encontrada"
-            )
+            yield evento_erro("Análise não encontrada")
             return
 
         inicio = datetime.utcnow()
@@ -1483,12 +1412,11 @@ class OrquestradorPrestacaoContas:
             if not geracao.peticao_inicial_texto and geracao.dados_processo_xml:
                 peticao_inicial_id = geracao.dados_processo_xml.get("peticao_inicial_id")
                 if peticao_inicial_id:
-                    yield EventoSSE(
-                        tipo="etapa",
+                    yield evento_etapa(
                         etapa=4,
                         etapa_nome="Buscar Petições",
                         mensagem="Baixando petição inicial do ESAJ...",
-                        progresso=60
+                        progresso=60,
                     )
                     log_info(f"Buscando petição inicial (ID: {peticao_inicial_id})...")
                     try:
@@ -1509,12 +1437,11 @@ class OrquestradorPrestacaoContas:
                     except Exception as e:
                         log_erro(f"Erro ao baixar petição inicial: {e}")
 
-            yield EventoSSE(
-                tipo="etapa",
+            yield evento_etapa(
                 etapa=5,
                 etapa_nome="Análise IA",
                 mensagem="Analisando documentos enviados...",
-                progresso=80
+                progresso=80,
             )
 
             # Prepara dados para análise
@@ -1582,12 +1509,11 @@ class OrquestradorPrestacaoContas:
                 tipo="sucesso",
                 etapa=5,
                 mensagem="Análise concluída!",
-                progresso=100
+                progresso=100,
             )
 
-            yield EventoSSE(
-                tipo="resultado",
-                mensagem="Processamento finalizado",
+            yield evento_resultado(
+                "Processamento finalizado",
                 dados={
                     "geracao_id": geracao.id,
                     "parecer": resultado.parecer,
@@ -1599,7 +1525,7 @@ class OrquestradorPrestacaoContas:
                     "medicamento_comprado": resultado.medicamento_comprado,
                     "irregularidades": resultado.irregularidades,
                     "perguntas": resultado.perguntas,
-                }
+                },
             )
 
         except Exception as e:
@@ -1610,11 +1536,6 @@ class OrquestradorPrestacaoContas:
                 geracao.erro = str(e)
                 self.db.commit()
 
-                yield EventoSSE(
-                    tipo="erro",
-                    mensagem=f"Erro ao processar: {str(e)}"
-                )
-                yield EventoSSE(
-                    tipo="fim",
-                    mensagem="Processamento finalizado com erro"
-                )
+                evt_erro, evt_fim = evento_erro_com_fim(f"Erro ao processar: {str(e)}")
+                yield evt_erro
+                yield evt_fim

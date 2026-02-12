@@ -27,6 +27,9 @@ from admin.models import PromptConfig, ConfiguracaoIA
 from sqlalchemy.orm import Session
 from services.ia_params_resolver import get_ia_params
 
+# DIP: Protocolo para servico de IA (permite injecao de dependencia)
+from app.domain.shared.protocols import AIServiceProtocol
+
 # Cliente TJMS unificado
 from services.tjms import TJMSClient, ConsultaOptions, TipoConsulta
 
@@ -444,9 +447,20 @@ async def consultar_processo_tjms_unificado(numero_processo: str) -> str:
         return processo.xml_raw
 
 
-async def full_flow_async(numero_raw: str, model: str, diagnostic_mode=False) -> Tuple[Dict[str, Any], str]:
+async def full_flow_async(
+    numero_raw: str,
+    model: str,
+    diagnostic_mode: bool = False,
+    ai_service: AIServiceProtocol | None = None,
+) -> Tuple[Dict[str, Any], str]:
     """
     Fluxo completo assincrono - usa TJMSClient unificado.
+
+    Args:
+        numero_raw: Numero CNJ (pode conter formatacao)
+        model: Modelo de IA padrao (pode ser sobrescrito pelo resolver)
+        diagnostic_mode: Modo diagnostico (gera prompt simplificado)
+        ai_service: Servico de IA injetado (DIP). Se None, usa call_gemini_async.
     """
     ok_config, msg_config = validate_config()
     if not ok_config:
@@ -486,7 +500,27 @@ async def full_flow_async(numero_raw: str, model: str, diagnostic_mode=False) ->
     finally:
         db.close()
 
-    rel = await call_gemini_async(messages, model=model, temperature=temperature, max_tokens=max_tokens)
+    # DIP: Usa servico injetado ou fallback para chamada direta
+    if ai_service is not None:
+        # Separa system e user prompts para o adapter
+        system_prompt = ""
+        user_prompt = ""
+        for msg in messages:
+            if msg.get("role") == "system":
+                system_prompt = msg.get("content", "")
+            elif msg.get("role") == "user":
+                user_prompt = msg.get("content", "")
+
+        logger.info(f"[DIP] Usando ai_service injetado (modelo={model})")
+        rel = await ai_service.gerar_texto(
+            prompt=user_prompt,
+            modelo=model,
+            temperatura=temperature,
+            max_tokens=max_tokens,
+            system_prompt=system_prompt,
+        )
+    else:
+        rel = await call_gemini_async(messages, model=model, temperature=temperature, max_tokens=max_tokens)
 
     if dados.get("cumprimento") and dados.get("possivel_apenso"):
         rel += "\n\nAviso: Processo de cumprimento possivelmente apensado. Talvez seja necessario consultar o processo originario para confirmar a AJG."
@@ -494,7 +528,12 @@ async def full_flow_async(numero_raw: str, model: str, diagnostic_mode=False) ->
     return dados, rel
 
 
-def full_flow(numero_raw: str, model: str, diagnostic_mode=False) -> Tuple[Dict[str, Any], str]:
+def full_flow(
+    numero_raw: str,
+    model: str,
+    diagnostic_mode: bool = False,
+    ai_service: AIServiceProtocol | None = None,
+) -> Tuple[Dict[str, Any], str]:
     """
     Fluxo completo sincrono - wrapper para full_flow_async.
 
@@ -505,7 +544,7 @@ def full_flow(numero_raw: str, model: str, diagnostic_mode=False) -> Tuple[Dict[
         # Estamos em contexto assincrono
         import nest_asyncio
         nest_asyncio.apply()
-        return loop.run_until_complete(full_flow_async(numero_raw, model, diagnostic_mode))
+        return loop.run_until_complete(full_flow_async(numero_raw, model, diagnostic_mode, ai_service))
     except RuntimeError:
         # Nao ha loop rodando - criar um novo
-        return asyncio.run(full_flow_async(numero_raw, model, diagnostic_mode))
+        return asyncio.run(full_flow_async(numero_raw, model, diagnostic_mode, ai_service))

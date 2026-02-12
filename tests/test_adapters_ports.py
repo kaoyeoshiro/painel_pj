@@ -1,11 +1,15 @@
 # -*- coding: utf-8 -*-
 """
-Testes para adapters e ports (Fase 6 — DIP).
+Testes para ports (interfaces DIP) e conformidade dos adapters.
 
 Verifica:
 - Interfaces (ports) definem contratos corretos
-- Adapters concretos implementam as interfaces
 - Mocks satisfazem as interfaces (para testes futuros)
+- Ports consolidados em app.domain.shared.protocols
+
+Nota: Os adapters concretos do diretorio raiz (adapters/) foram removidos.
+      Adapters canonicos estao em app/adapters/.
+      Ports foram consolidados em app/domain/shared/protocols.
 """
 
 import sys
@@ -17,7 +21,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
-from adapters.ports import IGeminiPort, ITJMSPort, IBertPort
+from app.domain.shared.protocols import IGeminiPort, ITJMSPort, IBertPort
 
 
 # ============================================
@@ -82,59 +86,44 @@ class TestIBertPort:
 
 
 # ============================================
-# Testes de Adapters Concretos (imports)
-# ============================================
-
-
-class TestAdapterImports:
-    """Verifica que adapters concretos importam corretamente."""
-
-    def test_gemini_adapter_imports(self):
-        from adapters.gemini_adapter import GeminiAdapter, get_gemini_adapter
-        assert GeminiAdapter is not None
-        assert callable(get_gemini_adapter)
-
-    def test_tjms_adapter_imports(self):
-        from adapters.tjms_adapter import TJMSAdapter, get_tjms_adapter
-        assert TJMSAdapter is not None
-        assert callable(get_tjms_adapter)
-
-    def test_bert_adapter_imports(self):
-        from adapters.bert_adapter import BertAdapter, get_bert_adapter
-        assert BertAdapter is not None
-        assert callable(get_bert_adapter)
-
-    def test_ports_importable_from_package(self):
-        from adapters import IGeminiPort, ITJMSPort, IBertPort
-        assert IGeminiPort is not None
-        assert ITJMSPort is not None
-        assert IBertPort is not None
-
-
-# ============================================
 # Testes Estruturais
 # ============================================
 
 
 class TestStructural:
-    """Verifica integridade estrutural dos adapters."""
+    """Verifica integridade estrutural dos protocols consolidados."""
 
-    def test_ports_file_exists(self):
-        ports_path = Path(__file__).parent.parent / "adapters" / "ports.py"
-        assert ports_path.exists()
+    def test_protocols_file_exists(self):
+        protocols_path = Path(__file__).parent.parent / "app" / "domain" / "shared" / "protocols.py"
+        assert protocols_path.exists()
 
-    def test_all_adapters_exist(self):
-        adapters_dir = Path(__file__).parent.parent / "adapters"
+    def test_app_adapters_exist(self):
+        """Adapters canonicos estao em app/adapters/."""
+        adapters_dir = Path(__file__).parent.parent / "app" / "adapters"
         assert (adapters_dir / "gemini_adapter.py").exists()
         assert (adapters_dir / "tjms_adapter.py").exists()
         assert (adapters_dir / "bert_adapter.py").exists()
 
-    def test_ports_use_protocol(self):
-        """Ports usam typing.Protocol (runtime checkable)."""
-        ports_path = Path(__file__).parent.parent / "adapters" / "ports.py"
-        content = ports_path.read_text(encoding="utf-8")
+    def test_root_adapters_removed(self):
+        """Diretorio adapters/ na raiz NAO deve existir."""
+        root_adapters = Path(__file__).parent.parent / "adapters"
+        assert not root_adapters.exists(), (
+            f"Diretorio {root_adapters} deveria ter sido removido na consolidacao"
+        )
+
+    def test_protocols_use_protocol(self):
+        """Protocols usam typing.Protocol (runtime checkable)."""
+        protocols_path = Path(__file__).parent.parent / "app" / "domain" / "shared" / "protocols.py"
+        content = protocols_path.read_text(encoding="utf-8")
         assert "Protocol" in content
         assert "runtime_checkable" in content
+
+    def test_ports_importable_from_protocols(self):
+        """Ports devem ser importaveis de app.domain.shared.protocols."""
+        from app.domain.shared.protocols import IGeminiPort, ITJMSPort, IBertPort
+        assert IGeminiPort is not None
+        assert ITJMSPort is not None
+        assert IBertPort is not None
 
 
 # ============================================
