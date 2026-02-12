@@ -165,9 +165,9 @@ export function CategoriasJsonPage() {
           </div>
         )}
 
-        {/* Grid de cards — 1 coluna (layout do legado) */}
+        {/* Grid de cards responsivo */}
         {!loading && categorias.length > 0 && (
-          <div className="grid grid-cols-1 gap-4" data-testid="categorias-grid">
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4" data-testid="categorias-grid">
             {categorias.map(categoria => (
               <CategoriaCard
                 key={categoria.id}

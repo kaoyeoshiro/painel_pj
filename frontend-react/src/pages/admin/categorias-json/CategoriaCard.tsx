@@ -38,7 +38,7 @@ export function CategoriaCard({ categoria, onEdit, onDeactivate }: CategoriaCard
 
   return (
     <Card
-      className="rounded-2xl p-4"
+      className="rounded-2xl p-4 flex flex-col h-full"
       style={{
         borderColor: isInactive ? '#fecdd3' : C.gray200,
         backgroundColor: isInactive ? '#fff1f2' : undefined,
@@ -133,7 +133,7 @@ export function CategoriaCard({ categoria, onEdit, onDeactivate }: CategoriaCard
       )}
 
       {/* Acoes */}
-      <div className="flex gap-2 mt-4">
+      <div className="flex gap-2 mt-auto pt-4">
         <Button
           variant="outline"
           size="sm"

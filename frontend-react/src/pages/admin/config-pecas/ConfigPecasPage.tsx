@@ -15,7 +15,7 @@ import { BreadcrumbBar } from '@/components/layout/BreadcrumbBar'
 import { AdminSubNav } from '@/components/layout'
 import { ContentArea } from '@/components/layout/ContentArea'
 import { C } from '@/lib/designTokens'
-import { Settings as SettingsIcon } from 'lucide-react'
+import { Settings as SettingsIcon, ChevronDown, ChevronRight } from 'lucide-react'
 
 // Interfaces
 interface CategoriaDocumento {
@@ -292,6 +292,49 @@ function DocumentTreeSelect({
           <p className="text-xs text-muted-foreground" data-testid="document-tree-summary">
             {selectedCodes.length} tipo(s) selecionado(s): {selectedCodes.join(', ')}
           </p>
+        </div>
+      )}
+    </div>
+  )
+}
+
+/**
+ * Exibe codigos de documento de forma colapsavel.
+ * Mostra badge com contagem; ao expandir, lista os codigos com scroll interno.
+ */
+function CodigosColapsavel({ codigos }: { codigos: number[] }) {
+  const [expanded, setExpanded] = useState(false)
+
+  if (codigos.length === 0) {
+    return (
+      <p className="text-xs italic" style={{ color: C.text400 }}>
+        Nenhum codigo vinculado
+      </p>
+    )
+  }
+
+  return (
+    <div>
+      <button
+        type="button"
+        onClick={() => setExpanded(!expanded)}
+        className="flex items-center gap-1.5 text-xs transition-colors hover:opacity-80"
+        style={{ color: C.navy700 }}
+        data-testid="btn-toggle-codigos"
+      >
+        {expanded
+          ? <ChevronDown className="h-3 w-3" />
+          : <ChevronRight className="h-3 w-3" />
+        }
+        <span className="font-medium">{codigos.length} codigo{codigos.length !== 1 ? 's' : ''}</span>
+      </button>
+      {expanded && (
+        <div className="mt-1.5 flex flex-wrap gap-1 max-h-32 overflow-y-auto p-2 rounded-lg border" style={{ borderColor: C.gray200, backgroundColor: C.gray50 }}>
+          {codigos.map(codigo => (
+            <Badge key={codigo} variant="outline" className="text-xs font-mono">
+              {codigo}
+            </Badge>
+          ))}
         </div>
       )}
     </div>
@@ -653,29 +696,23 @@ export function ConfigPecasPage() {
           ) : (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {categorias.map(categoria => (
-                <Card key={categoria.id} className="rounded-2xl" style={{ borderColor: C.gray200 }}>
+                <Card key={categoria.id} className="rounded-2xl flex flex-col h-full" style={{ borderColor: C.gray200 }}>
                   <CardHeader>
                     <div className="flex items-center gap-2">
                       <div
-                        className="w-4 h-4 rounded-full"
+                        className="w-4 h-4 rounded-full flex-shrink-0"
                         style={{ backgroundColor: categoria.cor }}
                       />
-                      <CardTitle className="text-lg" style={{ color: C.text900 }}>{categoria.titulo}</CardTitle>
+                      <CardTitle className="text-base" style={{ color: C.text900 }}>{categoria.titulo}</CardTitle>
                     </div>
-                    <CardDescription style={{ color: C.text500 }}>{categoria.nome}</CardDescription>
+                    <CardDescription className="font-mono text-xs" style={{ color: C.text400 }}>{categoria.nome}</CardDescription>
                   </CardHeader>
-                  <CardContent className="space-y-2">
+                  <CardContent className="space-y-3 flex flex-col flex-1">
                     {categoria.descricao && (
                       <p className="text-sm" style={{ color: C.text500 }}>{categoria.descricao}</p>
                     )}
 
-                    <div className="flex flex-wrap gap-1">
-                      {categoria.codigos_documento.map(codigo => (
-                        <Badge key={codigo} variant="outline">
-                          {codigo}
-                        </Badge>
-                      ))}
-                    </div>
+                    <CodigosColapsavel codigos={categoria.codigos_documento} />
 
                     <div className="flex flex-wrap gap-1">
                       <Badge variant={categoria.ativo ? 'default' : 'secondary'}>
@@ -686,7 +723,7 @@ export function ConfigPecasPage() {
                       )}
                     </div>
 
-                    <div className="flex gap-2 pt-2">
+                    <div className="flex gap-2 mt-auto pt-2">
                       <Button
                         variant="outline"
                         size="sm"
@@ -720,15 +757,15 @@ export function ConfigPecasPage() {
           ) : (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {tiposPeca.map(tipo => (
-                <Card key={tipo.id} className="rounded-2xl" style={{ borderColor: C.gray200 }}>
+                <Card key={tipo.id} className="rounded-2xl flex flex-col h-full" style={{ borderColor: C.gray200 }}>
                   <CardHeader>
                     <div className="flex items-center gap-2">
                       {tipo.icone && <span className="text-2xl">{tipo.icone}</span>}
-                      <CardTitle className="text-lg" style={{ color: C.text900 }}>{tipo.titulo}</CardTitle>
+                      <CardTitle className="text-base" style={{ color: C.text900 }}>{tipo.titulo}</CardTitle>
                     </div>
-                    <CardDescription style={{ color: C.text500 }}>{tipo.nome}</CardDescription>
+                    <CardDescription className="font-mono text-xs" style={{ color: C.text400 }}>{tipo.nome}</CardDescription>
                   </CardHeader>
-                  <CardContent className="space-y-2">
+                  <CardContent className="space-y-3 flex flex-col flex-1">
                     {tipo.descricao && (
                       <p className="text-sm" style={{ color: C.text500 }}>{tipo.descricao}</p>
                     )}
@@ -750,7 +787,7 @@ export function ConfigPecasPage() {
                       )}
                     </div>
 
-                    <div className="flex gap-2 pt-2">
+                    <div className="flex gap-2 mt-auto pt-2">
                       <Button
                         variant="outline"
                         size="sm"
