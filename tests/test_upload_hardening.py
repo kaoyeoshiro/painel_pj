@@ -27,7 +27,7 @@ class TestBertUploadHardening:
         upload_dataset deve validar magic bytes do Excel
         antes de processar o arquivo.
         """
-        router_path = Path(__file__).parent.parent / "sistemas" / "bert_training" / "router.py"
+        router_path = Path(__file__).parent.parent / "sistemas" / "bert_training" / "router_datasets.py"
         content = router_path.read_text(encoding="utf-8")
 
         # Verifica presenca da validacao de magic bytes
