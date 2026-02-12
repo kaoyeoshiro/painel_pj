@@ -396,3 +396,44 @@ Nesta rodada foi executada uma fase adicional focada em **organizacao fisica de 
 
 - `sistemas/pedido_calculo/router.py` foi atualizado para usar repositories de configuração/prompt
   (`PromptConfigRepository`, `ConfiguracaoIARepository`) e removeu acesso direto `db.query(...)`.
+
+---
+
+## 12) Reanalise complementar (2026-02-12, wave 2)
+
+Nova auditoria executada apos a rodada atual de implementacao, mantendo o historico acima inalterado.
+
+### 12.1) Melhorias confirmadas nesta wave
+
+1. **Legado admin extraido do `main.py` para `app/api/legacy`**
+   - Rotas/template admin foram movidas para `app/api/legacy/admin_templates.py`.
+   - Mount de static legado (`/static`) passou para `app/api/legacy/registry.py`.
+   - `main.py` deixou de conter `frontend/templates`, `frontend/static` e rotas `/admin/*` legadas.
+
+2. **Hotspot principal de `gerador_pecas` sem query direta em router**
+   - `sistemas/gerador_pecas/router.py` agora usa repositories (`Prompt*ReadRepository`, `CategoriaResumoJSONRepository`, `ConfiguracaoIARepository`) e ficou sem `db.query(...)` direto.
+
+3. **Organizacao fisica de docs concluida para pastas canonicas**
+   - `docs/decisoes/` -> consolidado em `docs/decisions/`.
+   - `docs/refactoring/` -> consolidado em `docs/refatoracao/`.
+   - Links de referencia principais ajustados para reduzir ambiguidade de contexto para IA.
+
+### 12.2) Validacao objetiva desta wave
+
+- `python -m py_compile app/repositories/sqlalchemy/gerador_pecas.py sistemas/gerador_pecas/repositories.py sistemas/gerador_pecas/router.py app/api/legacy/admin_templates.py app/api/legacy/registry.py main.py` -> OK
+- `python -m pytest tests/test_architecture_boundaries.py -q` -> **6 passed, 4 skipped**
+- `python -m pytest tests/test_import_compat_repositorio.py tests/test_pedido_calculo_stream.py tests/test_gerador_stream_services.py -q` -> **38 passed**
+- `python scripts/check_boundaries.py` -> **0 erros, 31 warnings**
+- `python -c "import main; print(len(main.app.routes))"` -> **522**
+
+### 12.3) Estado de cumprimento do plano apos esta wave
+
+- **Nao esta 100% concluido ainda.**
+- Evidencia atual (medicao em `admin`, `auth`, `sistemas`, `users`):
+  - arquivos `router*.py`: **37**
+  - routers com `db.query(...)`: **25**
+
+Leitura pragmatica:
+
+- A fundacao arquitetural e a limpeza dos hotspots centrais evoluiram de forma relevante.
+- Ainda resta migracao incremental dos routers remanescentes para repositories/services para atingir o objetivo final do plano.

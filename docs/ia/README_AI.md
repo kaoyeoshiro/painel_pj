@@ -12,7 +12,7 @@ Objetivo: reduzir contexto inicial para coding agents (menos tokens, mais precis
 - Entrada HTTP: `main.py`
 - Bootstrap de routers: `app/api/bootstrap.py`
 - Registro v1: `app/api/v1/routers/registry.py`
-- Legado temporário: `app/api/legacy/registry.py`
+- Legado temporário (admin/templates): `app/api/legacy/admin_templates.py`, `app/api/legacy/registry.py`
 - Repositórios SQLAlchemy: `app/repositories/sqlalchemy/`
 - Contratos/adapters: `app/domain/shared/protocols.py`, `app/adapters/`
 - Checks de boundary: `scripts/check_boundaries.py`, `tests/test_architecture_boundaries.py`

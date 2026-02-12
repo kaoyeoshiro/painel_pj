@@ -19,6 +19,8 @@ docs/
 ├── README.md                 # Este arquivo (indice central)
 ├── ia/                        # Contexto minimo para coding agents
 ├── arquitetura/              # Arquitetura e decisoes tecnicas
+├── decisions/                # ADRs do projeto (canônico)
+├── refatoracao/              # Relatórios de refatoração (canônico)
 ├── sistemas/                 # Documentacao por sistema
 ├── integracoes/              # Integracoes externas (TJ-MS, etc)
 ├── api/                      # Documentacao de API REST
@@ -35,7 +37,7 @@ docs/
 
 - Canonico para ADRs novos: `docs/decisions/`
 - Canonico para notas de refactor: `docs/refatoracao/`
-- Pastas antigas (`docs/decisoes/`, `docs/refactoring/`) devem ser tratadas como legado em migração.
+- Migração física das pastas antigas (`docs/decisoes/`, `docs/refactoring/`) foi concluída em 2026-02-12.
 
 ---
 

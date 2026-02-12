@@ -13,14 +13,14 @@ Objetivo: listar itens não essenciais para operação e reduzir ruído para IA.
 Observação: parecem backups temporários e não são usados em runtime.
 
 ## Legado de runtime que ainda NAO pode ser excluido
-- `frontend/templates` (usado por `main.py`)
-- `frontend/static` (mountado em `main.py`)
-- Rotas admin em template dentro de `main.py` (ex: `/admin/users`)
+- `frontend/templates` (usado por `app/api/legacy/admin_templates.py`)
+- `frontend/static` (mountado em `app/api/legacy/registry.py`)
+- Rotas admin em template no módulo legado (`app/api/legacy/admin_templates.py`, ex: `/admin/users`)
 
 Evidências:
-- `main.py:381`
-- `main.py:384`
-- `main.py:865`
+- `app/api/legacy/admin_templates.py:17`
+- `app/api/legacy/registry.py:15`
+- `app/api/legacy/admin_templates.py:187`
 
 ## Como validar antes de excluir algo
 1. Buscar referências:
@@ -42,4 +42,4 @@ python scripts/list_legacy_candidates.py --write docs/ia/CANDIDATOS_EXCLUSAO_LEG
 
 ## Veredito atual
 - Excluir agora: apenas artefatos locais/temporários.
-- Adiar exclusão: legado Jinja/static até migrar admin/template routes para React/API.
+- Adiar exclusão: `frontend/templates` e `frontend/static` até remover dependência de `app/api/legacy`.

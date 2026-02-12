@@ -39,7 +39,13 @@ from utils.rate_limit import limiter, LIMITS, get_user_identifier
 from utils.quota_manager import check_ai_quota
 from sistemas.gerador_pecas.models import GeracaoPeca, FeedbackPeca, VersaoPeca
 from sistemas.gerador_pecas.repositories import (
-    GeracaoPecaRepository, FeedbackPecaRepository,
+    CategoriaResumoJSONRepository,
+    FeedbackPecaRepository,
+    GeracaoPecaRepository,
+    PromptGroupReadRepository,
+    PromptModuloReadRepository,
+    PromptSubcategoriaReadRepository,
+    PromptSubgroupReadRepository,
     get_geracao_repo, get_feedback_repo,
 )
 from sistemas.gerador_pecas.services import GeradorPecasService
@@ -58,8 +64,7 @@ from sistemas.gerador_pecas.versoes import (
     comparar_versoes,
     restaurar_versao
 )
-from admin.models import ConfiguracaoIA, PromptConfig
-from admin.models_prompt_groups import PromptGroup, PromptSubgroup
+from admin.models_prompt_groups import PromptGroup
 from admin.repositories import ConfiguracaoIARepository, get_config_repo
 from sistemas.gerador_pecas.services_parecer_natjus import (
     build_parecer_audit_payload,
@@ -96,9 +101,10 @@ def _limpar_cnj(numero_cnj: str) -> str:
     return re.sub(r'\D', '', numero_cnj)
 
 def _listar_grupos_permitidos(current_user: User, db: Session) -> List[PromptGroup]:
-    query = db.query(PromptGroup).filter(PromptGroup.active == True)
+    group_repo = PromptGroupReadRepository(db)
+
     if current_user.role == "admin":
-        return query.order_by(PromptGroup.order, PromptGroup.name).all()
+        return group_repo.list_active_ordered()
 
     group_ids = set(current_user.allowed_group_ids or [])
     if current_user.default_group_id:
@@ -107,7 +113,7 @@ def _listar_grupos_permitidos(current_user: User, db: Session) -> List[PromptGro
     if not group_ids:
         return []
 
-    return query.filter(PromptGroup.id.in_(group_ids)).order_by(PromptGroup.order, PromptGroup.name).all()
+    return group_repo.list_active_by_ids(list(group_ids))
 
 
 def _resolver_grupo_e_subcategorias(
@@ -116,8 +122,6 @@ def _resolver_grupo_e_subcategorias(
     group_id: Optional[int],
     subcategoria_ids: Optional[List[int]]
 ):
-    from admin.models_prompt_groups import PromptSubcategoria
-
     grupos = _listar_grupos_permitidos(current_user, db)
     if not grupos:
         raise HTTPException(status_code=400, detail="Usuario sem grupo de prompts.")
@@ -128,10 +132,8 @@ def _resolver_grupo_e_subcategorias(
         else:
             raise HTTPException(status_code=400, detail="Selecione o grupo de prompts.")
     else:
-        grupo = db.query(PromptGroup).filter(
-            PromptGroup.id == group_id,
-            PromptGroup.active == True
-        ).first()
+        group_repo = PromptGroupReadRepository(db)
+        grupo = group_repo.get_active_by_id(group_id)
         if not grupo:
             raise HTTPException(status_code=400, detail="Grupo invalido ou inativo.")
         if current_user.role != "admin":
@@ -150,11 +152,11 @@ def _resolver_grupo_e_subcategorias(
                 subcategoria_ids_normalized.append(value)
 
         if subcategoria_ids_normalized:
-            subcategorias = db.query(PromptSubcategoria).filter(
-                PromptSubcategoria.id.in_(subcategoria_ids_normalized),
-                PromptSubcategoria.group_id == grupo.id,
-                PromptSubcategoria.active == True
-            ).all()
+            subcategoria_repo = PromptSubcategoriaReadRepository(db)
+            subcategorias = subcategoria_repo.list_active_by_ids_and_group(
+                subcategoria_ids_normalized,
+                grupo.id,
+            )
             if len(subcategorias) != len(subcategoria_ids_normalized):
                 raise HTTPException(status_code=400, detail="Subcategorias invalidas para o grupo selecionado.")
 
@@ -302,15 +304,12 @@ def _coletar_codigos_documento(valor: Any) -> List[int]:
 
 
 def _selecionar_categoria_resumo_por_codigos(db: Session, codigos_documento: List[int]):
-    from sistemas.gerador_pecas.models_resumo_json import CategoriaResumoJSON
-
     codigos_alvo = set(_coletar_codigos_documento(codigos_documento))
     if not codigos_alvo:
         return None
 
-    categorias = db.query(CategoriaResumoJSON).filter(
-        CategoriaResumoJSON.ativo == True
-    ).all()
+    categoria_repo = CategoriaResumoJSONRepository(db)
+    categorias = categoria_repo.list_active()
 
     melhor_categoria = None
     melhor_score = (-1, -1, -1, -1, -1, -1000000)
@@ -570,21 +569,12 @@ async def listar_tipos_peca(
     Retorna também `permite_auto` que indica se a detecção automática está habilitada.
     Quando `permite_auto=false`, o usuário DEVE selecionar um tipo de peça manualmente.
     """
-    from admin.models import ConfiguracaoIA
     from sistemas.gerador_pecas.services_prompt_loader import listar_tipos_peca as loader_listar_tipos
 
     tipos = loader_listar_tipos(db, group_id)
 
     # Verifica flag de detecção automática
-    config_auto = db.query(ConfiguracaoIA).filter(
-        ConfiguracaoIA.sistema == "gerador_pecas",
-        ConfiguracaoIA.chave == "enable_auto_piece_detection"
-    ).first()
-
-    # Por padrão, não permite auto se a flag não existir (fail-safe)
-    permite_auto = False
-    if config_auto and config_auto.valor:
-        permite_auto = config_auto.valor.lower() == "true"
+    permite_auto = config_cache.get_auto_detection_enabled(db)
 
     return {
         "tipos": tipos,
@@ -667,10 +657,8 @@ async def listar_subgrupos_por_grupo(
     """
     grupo, _ = _resolver_grupo_e_subcategorias(current_user, db, group_id, [])
 
-    subgrupos = db.query(PromptSubgroup).filter(
-        PromptSubgroup.group_id == grupo.id,
-        PromptSubgroup.active == True
-    ).order_by(PromptSubgroup.order, PromptSubgroup.name).all()
+    subgroup_repo = PromptSubgroupReadRepository(db)
+    subgrupos = subgroup_repo.list_active_by_group(grupo.id)
 
     return {
         "subgrupos": [
@@ -742,19 +730,12 @@ async def processar_processo(
         )
         
         # Busca configurações de IA
-        config_modelo = db.query(ConfiguracaoIA).filter(
-            ConfiguracaoIA.sistema == "gerador_pecas",
-            ConfiguracaoIA.chave == "modelo_geracao"
-        ).first()
-        modelo = config_modelo.valor if config_modelo else "anthropic/claude-3.5-sonnet"
-        
-        # Busca prompt do sistema
-        prompt_config = db.query(PromptConfig).filter(
-            PromptConfig.sistema == "gerador_pecas",
-            PromptConfig.tipo == "system",
-            PromptConfig.is_active == True
-        ).first()
-        # O prompt_sistema não é mais usado diretamente - agora vem dos módulos
+        config_repo = ConfiguracaoIARepository(db)
+        modelo = config_repo.get_valor(
+            "gerador_pecas",
+            "modelo_geracao",
+            default="anthropic/claude-3.5-sonnet",
+        )
         
         # Inicializa o serviço
         service = GeradorPecasService(
@@ -799,8 +780,6 @@ async def processar_processo_stream(
     """
     # SECURITY: Verifica cota de IA
     await check_ai_quota(current_user)
-
-    from admin.models import ConfiguracaoIA
 
     # Verifica se detecção automática está habilitada (com cache)
     permite_auto = config_cache.get_auto_detection_enabled(db)
@@ -1461,17 +1440,8 @@ async def processar_pdfs_stream(
     # SECURITY: Verifica cota de IA
     await check_ai_quota(current_user)
 
-    from admin.models import ConfiguracaoIA
-
     # Verifica se detecção automática está habilitada
-    config_auto = db.query(ConfiguracaoIA).filter(
-        ConfiguracaoIA.sistema == "gerador_pecas",
-        ConfiguracaoIA.chave == "enable_auto_piece_detection"
-    ).first()
-
-    permite_auto = False
-    if config_auto and config_auto.valor:
-        permite_auto = config_auto.valor.lower() == "true"
+    permite_auto = config_cache.get_auto_detection_enabled(db)
 
     # Validação: se auto-detecção está desabilitada, tipo_peca é obrigatório
     if not permite_auto and not tipo_peca:
@@ -1544,11 +1514,12 @@ async def processar_pdfs_stream(
                 yield stream_helper.format_info('Detectando tipo de peça automaticamente...')
 
                 # Busca configurações do modelo de geração
-                config_modelo = db.query(ConfiguracaoIA).filter(
-                    ConfiguracaoIA.sistema == "gerador_pecas",
-                    ConfiguracaoIA.chave == "modelo_geracao"
-                ).first()
-                modelo = config_modelo.valor if config_modelo else "google/gemini-2.5-pro-preview-05-06"
+                modelo = config_cache.get_config(
+                    "gerador_pecas",
+                    "modelo_geracao",
+                    db,
+                    default="google/gemini-2.5-pro-preview-05-06",
+                )
 
                 # Inicializa serviço para usar o detector do agente 2
                 service = GeradorPecasService(
@@ -1587,7 +1558,6 @@ async def processar_pdfs_stream(
                 FormatoResumo, gerar_prompt_extracao_json, gerar_prompt_extracao_json_imagem,
                 parsear_resposta_json, normalizar_json_com_schema, json_para_markdown
             )
-            from sistemas.gerador_pecas.models_resumo_json import CategoriaResumoJSON
             from services.gemini_service import chamar_gemini as chamar_gemini_async, chamar_gemini_com_imagens as chamar_gemini_com_imagens_async
 
             # Mapeia classificações por arquivo_id para acesso rápido
@@ -1598,6 +1568,7 @@ async def processar_pdfs_stream(
             documentos_processados = []
             dados_extracao_consolidados = {}
             resumos_markdown = []
+            categoria_repo = CategoriaResumoJSONRepository(db)
 
             todos_docs_selecionados = selecao.get_todos_selecionados()
 
@@ -1609,10 +1580,7 @@ async def processar_pdfs_stream(
                     continue
 
                 # Busca categoria e formato JSON
-                categoria = db.query(CategoriaResumoJSON).filter(
-                    CategoriaResumoJSON.id == clf.categoria_id,
-                    CategoriaResumoJSON.ativo == True
-                ).first()
+                categoria = categoria_repo.get_active_by_id(clf.categoria_id)
 
                 if not categoria or not categoria.formato_json:
                     # Sem formato JSON configurado - usa texto bruto
@@ -1809,11 +1777,12 @@ async def processar_pdfs_stream(
             # ==================================================================
             # ESTÁGIO 6: AGENTE 2 E 3 (mesmo fluxo anterior)
             # ==================================================================
-            config_modelo = db.query(ConfiguracaoIA).filter(
-                ConfiguracaoIA.sistema == "gerador_pecas",
-                ConfiguracaoIA.chave == "modelo_geracao"
-            ).first()
-            modelo = config_modelo.valor if config_modelo else "google/gemini-2.5-pro-preview-05-06"
+            modelo = config_cache.get_config(
+                "gerador_pecas",
+                "modelo_geracao",
+                db,
+                default="google/gemini-2.5-pro-preview-05-06",
+            )
 
             service = GeradorPecasService(
                 modelo=modelo,
@@ -3313,17 +3282,11 @@ async def curation_generate_stream(
             prompt_peca = carregar_prompt_peca(db, req.tipo_peca, grupo.id)
 
             # Carrega modulos de conteudo selecionados
-            modulos_query = db.query(PromptModulo).filter(
-                PromptModulo.id.in_(req.modulos_ids_curados),
-                PromptModulo.tipo == "conteudo",
-                PromptModulo.ativo == True
+            prompt_modulo_repo = PromptModuloReadRepository(db)
+            modulos_conteudo = prompt_modulo_repo.list_active_conteudo_by_ids(
+                req.modulos_ids_curados,
+                group_id=grupo.id if grupo.id else None,
             )
-            if grupo.id:
-                modulos_query = modulos_query.filter(PromptModulo.group_id == grupo.id)
-
-            modulos_conteudo = modulos_query.order_by(
-                PromptModulo.categoria, PromptModulo.ordem
-            ).all()
 
             # Monta prompt de conteudo curado com tag HUMAN_VALIDATED obrigatória
             # MODO SEMI-AUTOMÁTICO: Todos os argumentos selecionados recebem tag [HUMAN_VALIDATED]

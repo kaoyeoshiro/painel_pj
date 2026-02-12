@@ -10,6 +10,12 @@
   - `docs/auditoria/RELATORIO_AUDITORIA_SEMI_AUTOMATICO.md`
 - Backups temporários movidos para quarentena:
   - `docs/_archive/legacy_candidates/*`
+- Unificação concluída de pastas de documentação:
+  - `docs/decisoes/` -> `docs/decisions/`
+  - `docs/refactoring/` -> `docs/refatoracao/`
+- Rotas/templates admin legadas removidas de `main.py` e migradas para:
+  - `app/api/legacy/admin_templates.py`
+  - `app/api/legacy/registry.py`
 
 ## Organização canônica recomendada
 
@@ -20,7 +26,5 @@
 
 ## Pendências de reorganização (próxima wave)
 
-- Unificar `docs/decisoes/` -> `docs/decisions/` (com ajuste de links).
-- Unificar `docs/refactoring/` -> `docs/refatoracao/` (com ajuste de links).
-- Finalizar extração de legado de template/static de `main.py` para módulo próprio.
-
+- Reduzir `db.query(...)` direto em routers restantes (25 arquivos `router*.py` ainda com ocorrência).
+- Consolidar e simplificar documentação histórica redundante em `docs/refatoracao/README_REFACTORING_LEGADO.md`.

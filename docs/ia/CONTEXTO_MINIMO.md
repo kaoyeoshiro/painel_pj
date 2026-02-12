@@ -4,14 +4,16 @@ Use este bloco como contexto base para iniciar tarefas sem carregar o repo intei
 
 ## Estado arquitetural atual (resumo)
 - Reorganização iniciada em `app/` com compatibilidade.
-- `main.py` ainda mantém rotas/templates legados temporários.
+- `main.py` agora atua mais como facade (bootstrap + SPA), sem rotas/templates admin legados diretos.
+- Legado admin temporário foi isolado em `app/api/legacy/` (`admin_templates.py` + `registry.py`).
 - `app/api/v1/` centraliza wrappers de roteamento.
 - `app/repositories/sqlalchemy/` é o caminho-alvo de acesso a dados.
-- Nem todos os routers legados foram afinados (ainda há `db.query(...)`).
+- Nem todos os routers foram afinados: atualmente **25/37** arquivos `router*.py` ainda têm `db.query(...)`.
 
 ## Arquivos-chave (abrir primeiro)
 - `app/api/bootstrap.py`
 - `app/api/v1/routers/registry.py`
+- `app/api/legacy/admin_templates.py`
 - `app/repositories/sqlalchemy/base.py`
 - `docs/planejamento/PLANO_ORGANIZACAO_REPOSITORIO.md`
 - `docs/planejamento/RELATORIO_REFATORACAO.md`
@@ -29,4 +31,3 @@ python -m pytest tests/test_architecture_boundaries.py -q
 python scripts/check_boundaries.py
 python -c "import main; print(len(main.app.routes))"
 ```
-

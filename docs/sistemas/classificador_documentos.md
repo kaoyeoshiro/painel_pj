@@ -326,7 +326,7 @@ EM_ANDAMENTO/TRAVADO -> CANCELADO (via cancelamento manual)
 | Arquivo | Descricao |
 |---------|-----------|
 | `sistemas/classificador_documentos/watchdog.py` | Watchdog para deteccao de travamento |
-| `docs/decisoes/ADR-0010-sistema-recuperacao-execucoes-travadas.md` | Decisao arquitetural |
+| `docs/decisions/ADR-0010-sistema-recuperacao-execucoes-travadas.md` | Decisao arquitetural |
 | `tests/classificador_documentos/test_watchdog.py` | Testes automatizados |
 
 ## K) Historico de Alteracoes

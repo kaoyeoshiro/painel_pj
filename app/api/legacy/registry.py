@@ -1,17 +1,27 @@
 """
 Registro de rotas legadas temporárias.
 
-No estado atual, as rotas legadas de template/static ainda vivem em `main.py`.
-Este módulo existe para fixar o boundary e permitir migração incremental.
+Concentra os endpoints/templates legados de admin e seus static assets.
 """
+
+from pathlib import Path
+
+from fastapi.staticfiles import StaticFiles
+
+from .admin_templates import router as legacy_admin_templates_router
+
+
+BASE_DIR = Path(__file__).resolve().parents[3]
+LEGACY_STATIC_DIR = BASE_DIR / "frontend" / "static"
 
 
 def register_legacy_routers(app):
     """
-    Placeholder para inclusão de routers legados.
-
-    Atualmente não registra nada para manter comportamento idêntico
-    ao estado anterior (rotas legadas seguem em `main.py`).
+    Registra rotas legadas temporárias e assets necessários.
     """
-    return app
+    app.include_router(legacy_admin_templates_router)
 
+    if LEGACY_STATIC_DIR.exists():
+        app.mount("/static", StaticFiles(directory=str(LEGACY_STATIC_DIR)), name="static")
+
+    return app

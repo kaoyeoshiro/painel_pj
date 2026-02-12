@@ -9,5 +9,4 @@ Esta pasta concentra artefatos de refatoracao do backend.
 
 ## Nota de organizacao
 - Use esta pasta como **destino canonico** para novos relatórios de refatoração.
-- A pasta `docs/refactoring/` (inglês) permanece apenas por compatibilidade histórica.
-
+- A migração de `docs/refactoring/` para `docs/refatoracao/` foi concluída em 2026-02-12.

@@ -18,14 +18,16 @@ Status resumido apos execucao incremental:
 - ✅ Ports/adapters organizados em namespace explícito (`app/adapters/ports`, `app/adapters/outbound`, `app/adapters/inbound`).
 - ✅ Teste de compatibilidade de import adicionado (`tests/test_import_compat_repositorio.py`).
 - ✅ `sistemas/pedido_calculo/router.py` sem `db.query(...)` direto (migrado para repositories de admin/config).
-- ❌ Migração completa de rotas legadas do `main.py` para `app/api/legacy` ainda pendente (templates/static admin).
-- ❌ Remoção ampla de `db.query(...)` em routers críticos ainda pendente.
+- ✅ Rotas/templates legadas de admin migradas de `main.py` para `app/api/legacy` (`admin_templates.py` + `registry.py`, incluindo mount de `/static`).
+- ✅ `sistemas/gerador_pecas/router.py` sem `db.query(...)` direto (migrado para repositories).
+- ⚠️ Remoção ampla de `db.query(...)` em todos os routers ainda pendente (estado atual: 25 de 37 arquivos `router*.py` ainda com ocorrência).
 
 Validação executada nesta rodada:
 
-- `python -m pytest tests/test_import_compat_repositorio.py tests/test_architecture_boundaries.py -q` -> 10 passed, 4 skipped
+- `python -m pytest tests/test_import_compat_repositorio.py tests/test_pedido_calculo_stream.py tests/test_gerador_stream_services.py -q` -> 38 passed
+- `python -m pytest tests/test_architecture_boundaries.py -q` -> 6 passed, 4 skipped
 - `python -c "import main; print(len(main.app.routes))"` -> 522
-- `python scripts/check_boundaries.py` -> 0 erros
+- `python scripts/check_boundaries.py` -> 0 erros, 31 warnings
 
 ## 1) Target architecture (proposta)
 
@@ -242,3 +244,31 @@ backend/
 6. Enforcements automatizados de boundaries.
 
 Este plano prioriza reversibilidade e baixo risco operacional, preservando os contratos atuais enquanto move a arquitetura para um estado mais limpo e testavel.
+
+---
+
+## 8) Reanalise de cumprimento 100% (2026-02-12, wave 2)
+
+Pergunta objetiva: **o plano foi executado 100%?**
+
+- **Não.**
+
+Evidencias atuais:
+
+1. **Boundary estrutural já aplicado na entrada da app**  
+   `main.py` segue como facade, com bootstrap em `app/api/bootstrap.py` e legado administrativo em `app/api/legacy/*`.
+
+2. **Pendencia de data-access em routers ainda existe em escala**  
+   Medicao local em `admin`, `auth`, `sistemas`, `users`:  
+   - arquivos `router*.py`: **37**
+   - com `db.query(...)`: **25**
+
+3. **Hotspots principais desta rodada foram executados**
+   - `sistemas/pedido_calculo/router.py` -> 0 ocorrencias de `db.query(...)`.
+   - `sistemas/gerador_pecas/router.py` -> 0 ocorrencias de `db.query(...)`.
+   - rotas/templates admin legados sairam do `main.py` e passaram para `app/api/legacy/admin_templates.py`.
+
+Conclusao pratica:
+
+- O plano avancou substancialmente e removeu dois bloqueios centrais desta trilha.
+- Ainda falta uma wave de migracao por vertical slices para atingir 100% do alvo arquitetural, principalmente nos routers restantes com acesso ORM direto.
