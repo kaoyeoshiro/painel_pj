@@ -13,7 +13,8 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { useToast } from '@/components/ui/toast'
 import { useQuery } from '@tanstack/react-query'
 import { queryKeys } from '@/lib/query-client'
-import { prestacaoContasApi, getToken } from '@/lib/api'
+import { prestacaoContasApi } from '@/lib/api'
+import { useStreamingFetch } from '@/services/api/streaming'
 import { useMarkdown } from '@/hooks/useMarkdown'
 import { BreadcrumbBar } from '@/components/layout/BreadcrumbBar'
 import { ContentDialog } from '@/components/layout/ContentDialog'
@@ -107,7 +108,7 @@ export function PrestacaoContasPage() {
   const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Feedback
-  const [showFeedback, setShowFeedback] = useState(false)
+  const [, setShowFeedback] = useState(false)
   const [avaliacaoSelecionada, setAvaliacaoSelecionada] = useState<TipoAvaliacao | null>(null)
   const [comentarioFeedback, setComentarioFeedback] = useState('')
   const [isEnviandoFeedback, setIsEnviandoFeedback] = useState(false)
@@ -115,9 +116,6 @@ export function PrestacaoContasPage() {
   // Confirmacao sobrescrita
   const [showConfirmacao, setShowConfirmacao] = useState(false)
   const [verificacaoExistente, setVerificacaoExistente] = useState<VerificacaoExistente | null>(null)
-
-  // Ref para abortar stream
-  const abortControllerRef = useRef<AbortController | null>(null)
 
   // Historico
   const {
@@ -128,15 +126,6 @@ export function PrestacaoContasPage() {
     queryKey: queryKeys.prestacaoContas.historico(),
     queryFn: () => prestacaoContasApi.get<HistoricoResponse>('/historico'),
   })
-
-  // Cleanup ao desmontar
-  useEffect(() => {
-    return () => {
-      if (abortControllerRef.current) {
-        abortControllerRef.current.abort()
-      }
-    }
-  }, [])
 
   // Abre ContentDialog automaticamente quando resultado chega
   useEffect(() => {
@@ -269,63 +258,10 @@ export function PrestacaoContasPage() {
     }
   }, [numeroCNJ, toast, refetchHistorico])
 
-  const iniciarStreamSSE = useCallback(async (url: string, body: Record<string, unknown>) => {
-    const controller = new AbortController()
-    abortControllerRef.current = controller
-
-    try {
-      const token = getToken()
-      const response = await fetch(url, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { Authorization: `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify(body),
-        signal: controller.signal,
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ detail: response.statusText }))
-        throw new Error(errorData.detail || `Erro ${response.status}`)
-      }
-
-      const reader = response.body?.getReader()
-      if (!reader) {
-        throw new Error('Erro ao iniciar streaming')
-      }
-
-      const decoder = new TextDecoder()
-      let buffer = ''
-
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-
-        buffer += decoder.decode(value, { stream: true })
-        const lines = buffer.split('\n\n')
-        buffer = lines.pop() || ''
-
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            try {
-              const data = JSON.parse(line.slice(6)) as EventoSSE
-              processarEventoSSE(data)
-            } catch (e) {
-              console.warn('Erro ao parsear evento SSE:', e)
-            }
-          }
-        }
-      }
-    } catch (error) {
-      if ((error as Error).name === 'AbortError') {
-        return
-      }
-      throw error
-    } finally {
-      abortControllerRef.current = null
-    }
-  }, [processarEventoSSE])
+  // Hook de streaming SSE compartilhado (substitui iniciarStreamSSE manual)
+  const { start: iniciarStreamSSE } = useStreamingFetch<EventoSSE>({
+    onEvent: (evento) => processarEventoSSE(evento),
+  })
 
   // =====================================================
   // ACOES PRINCIPAIS
@@ -1381,9 +1317,15 @@ export function PrestacaoContasPage() {
     return (
       <Sheet>
         <SheetTrigger asChild>
-          <Button variant="ghost" size="icon" title="Historico completo" className="h-8 w-8" style={{ color: C.text500 }}>
-            <History className="h-4 w-4" />
-          </Button>
+          <button
+            className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-medium transition-colors"
+            style={{ color: C.text500, fontSize: 13 }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = C.gray100 }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
+          >
+            <Clock style={{ width: 14, height: 14 }} />
+            <span className="hidden sm:inline">Historico</span>
+          </button>
         </SheetTrigger>
         <SheetContent className="w-[400px] sm:w-[500px]">
           <SheetHeader>
@@ -1581,11 +1523,12 @@ export function PrestacaoContasPage() {
       <BreadcrumbBar
         title="Prestacao de Contas"
         icon={<Building2 style={{ width: 14, height: 14 }} />}
+        maxWidthClass="max-w-4xl"
         actions={renderHistoricoSheet()}
       />
 
-      <ContentArea>
-        <div className="max-w-4xl space-y-6">
+      <ContentArea maxWidthClass="max-w-4xl">
+        <div className="space-y-6">
           {estadoPagina === 'idle' && (
             <>
               {renderFormulario()}

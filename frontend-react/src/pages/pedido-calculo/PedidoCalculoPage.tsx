@@ -13,6 +13,7 @@ import { useToast } from '@/components/ui/toast'
 import { useQuery } from '@tanstack/react-query'
 import { queryKeys } from '@/lib/query-client'
 import { pedidoCalculoApi, getToken } from '@/lib/api'
+import { useStreamingFetch } from '@/services/api/streaming'
 import { useMarkdown } from '@/hooks/useMarkdown'
 import {
   Calculator,
@@ -111,6 +112,27 @@ export function PedidoCalculoPage() {
     }
   }, [historicoChat])
 
+  // Hook de streaming SSE compartilhado
+  const { start: startSSE } = useStreamingFetch<StreamEvent>({
+    onEvent: (event) => processarEventoStream(event),
+    onError: (err) => {
+      let mensagemErro = err.message
+
+      if (err.message.includes('502') || err.message.includes('Proxy')) {
+        mensagemErro = 'Erro de conexao com o TJ-MS (502). O servidor pode estar temporariamente indisponivel.'
+      } else if (err.message.includes('Failed to fetch') || err.message.includes('NetworkError')) {
+        mensagemErro = 'Erro de conexao com o servidor. Verifique sua internet e tente novamente.'
+      }
+
+      toast({
+        title: 'Erro',
+        description: mensagemErro,
+        variant: 'destructive',
+      })
+      setIsProcessing(false)
+    },
+  })
+
   // Funcao para processar eventos SSE
   const processarEventoStream = (event: StreamEvent) => {
     switch (event.tipo) {
@@ -146,7 +168,7 @@ export function PedidoCalculoPage() {
         setStreamingContent((prev) => prev + event.content)
         break
 
-      case 'sucesso':
+      case 'sucesso': {
         setProgressPercent(100)
         setAgentStatus((prev) => ({ ...prev, 4: 'concluido' }))
 
@@ -180,6 +202,7 @@ export function PedidoCalculoPage() {
           description: 'Pedido de cálculo gerado com sucesso!',
         })
         break
+      }
 
       case 'erro':
         setIsProcessing(false)
@@ -232,69 +255,13 @@ export function PedidoCalculoPage() {
     setProgressMessage('Conectando ao TJ-MS...')
     setProgressPercent(0)
 
-    try {
-      const response = await fetch('/pedido-calculo/api/processar-stream', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${getToken()}`,
-        },
-        body: JSON.stringify({
-          numero_cnj: numeroCNJ,
-          sobrescrever_existente: sobrescrever,
-        }),
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.detail || 'Erro ao processar')
-      }
-
-      // Le o stream SSE
-      const reader = response.body?.getReader()
-      if (!reader) {
-        throw new Error('Erro ao iniciar streaming')
-      }
-
-      const decoder = new TextDecoder()
-      let buffer = ''
-
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-
-        buffer += decoder.decode(value, { stream: true })
-        const lines = buffer.split('\n\n')
-        buffer = lines.pop() || ''
-
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            try {
-              const data = JSON.parse(line.slice(6)) as StreamEvent
-              processarEventoStream(data)
-            } catch (e) {
-              console.warn('Erro ao parsear evento SSE:', e)
-            }
-          }
-        }
-      }
-    } catch (error) {
-      const err = error as Error
-      let mensagemErro = err.message
-
-      if (err.message.includes('502') || err.message.includes('Proxy')) {
-        mensagemErro = 'Erro de conexão com o TJ-MS (502). O servidor pode estar temporariamente indisponível.'
-      } else if (err.message.includes('Failed to fetch') || err.message.includes('NetworkError')) {
-        mensagemErro = 'Erro de conexão com o servidor. Verifique sua internet e tente novamente.'
-      }
-
-      toast({
-        title: 'Erro',
-        description: mensagemErro,
-        variant: 'destructive',
-      })
-      setIsProcessing(false)
-    }
+    // Streaming SSE via hook compartilhado — erro tratado em onError do hook
+    await startSSE('/pedido-calculo/api/processar-stream', {
+      numero_cnj: numeroCNJ,
+      sobrescrever_existente: sobrescrever,
+    }).catch(() => {
+      // Erro ja tratado pelo onError do useStreamingFetch
+    })
   }
 
   // Funcao para resetar status dos agentes
@@ -371,7 +338,7 @@ export function PedidoCalculoPage() {
       if (data.historico_chat) {
         setHistoricoChat(data.historico_chat)
       }
-    } catch (error) {
+    } catch {
       toast({
         title: 'Erro',
         description: 'Erro ao abrir pedido',
@@ -439,7 +406,7 @@ export function PedidoCalculoPage() {
         title: 'Sucesso',
         description: 'Pedido copiado para a área de transferência!',
       })
-    } catch (error) {
+    } catch {
       toast({
         title: 'Erro',
         description: 'Erro ao copiar',
@@ -644,6 +611,7 @@ export function PedidoCalculoPage() {
       <BreadcrumbBar
         title="Pedido de Calculo"
         icon={<Calculator style={{ width: 14, height: 14 }} />}
+        maxWidthClass="max-w-4xl"
         actions={
           <Sheet>
             <SheetTrigger asChild>
@@ -706,7 +674,7 @@ export function PedidoCalculoPage() {
         }
       />
 
-      <ContentArea>
+      <ContentArea maxWidthClass="max-w-4xl">
           {/* Formulario Principal */}
           <div className="mb-6 overflow-hidden rounded-2xl border bg-white shadow-sm" style={{ borderColor: C.gray200 }}>
             {/* Navy accent bar */}

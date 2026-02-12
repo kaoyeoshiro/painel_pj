@@ -59,6 +59,7 @@ import {
 } from '@/hooks/useQueries'
 import { useMarkdown } from '@/hooks/useMarkdown'
 import { geradorApi, getToken } from '@/lib/api'
+import { useStreamingFetch, fetchSSEStream } from '@/services/api/streaming'
 import type {
   GeracaoDetalhe,
   SSEEvent,
@@ -143,7 +144,9 @@ export function GeradorPecasPage() {
   // --- Streaming content ---
   const [streamingContent, setStreamingContent] = useState('')
   const streamingContentRef = useRef('')
-  const abortControllerRef = useRef<AbortController | null>(null)
+
+  // Ref para despachar eventos SSE para o handler correto (auto, PDF, curadoria)
+  const sseEventHandlerRef = useRef<((event: SSEEvent) => void) | null>(null)
 
   // --- Resultado ---
   const [geracaoId, setGeracaoId] = useState<number | null>(null)
@@ -229,13 +232,6 @@ export function GeradorPecasPage() {
     }
   }, [chatMessages])
 
-  // Cleanup abort controller on unmount
-  useEffect(() => {
-    return () => {
-      abortControllerRef.current?.abort()
-    }
-  }, [])
-
   // Update subcategorias when query data changes
   useEffect(() => {
     if (subcategoriasData) {
@@ -247,117 +243,18 @@ export function GeradorPecasPage() {
   }, [subcategoriasData, selectedGroupId])
 
   // ============================================================
-  // SSE Stream Reader (POST-based)
+  // Hook compartilhado de streaming SSE (POST-based)
   // ============================================================
 
-  const readSSEStream = useCallback(async (
-    url: string,
-    body: Record<string, unknown>,
-    onEvent: (event: SSEEvent) => void,
-    signal?: AbortSignal
-  ) => {
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${getToken()}`,
-      },
-      body: JSON.stringify(body),
-      signal,
-    })
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ detail: response.statusText }))
-      throw new Error(errorData.detail || `Erro ${response.status}`)
-    }
-
-    const reader = response.body?.getReader()
-    if (!reader) {
-      throw new Error('Erro ao iniciar streaming')
-    }
-
-    const decoder = new TextDecoder()
-    let buffer = ''
-
-    while (true) {
-      const { done, value } = await reader.read()
-      if (done) break
-
-      buffer += decoder.decode(value, { stream: true })
-      const segments = buffer.split('\n\n')
-      buffer = segments.pop() || ''
-
-      for (const segment of segments) {
-        const lines = segment.split('\n')
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            try {
-              const data = JSON.parse(line.slice(6)) as SSEEvent
-              onEvent(data)
-            } catch {
-              // Ignora linhas nao-JSON (heartbeats, etc)
-            }
-          }
-        }
-      }
-    }
-  }, [])
-
-  // ============================================================
-  // SSE Stream Reader (FormData-based, for PDF upload)
-  // ============================================================
-
-  const readSSEStreamFormData = useCallback(async (
-    url: string,
-    formData: FormData,
-    onEvent: (event: SSEEvent) => void,
-    signal?: AbortSignal
-  ) => {
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${getToken()}`,
-      },
-      body: formData,
-      signal,
-    })
-
-    if (!response.ok) {
-      const errorData = await response.json().catch(() => ({ detail: response.statusText }))
-      throw new Error(errorData.detail || `Erro ${response.status}`)
-    }
-
-    const reader = response.body?.getReader()
-    if (!reader) {
-      throw new Error('Erro ao iniciar streaming')
-    }
-
-    const decoder = new TextDecoder()
-    let buffer = ''
-
-    while (true) {
-      const { done, value } = await reader.read()
-      if (done) break
-
-      buffer += decoder.decode(value, { stream: true })
-      const segments = buffer.split('\n\n')
-      buffer = segments.pop() || ''
-
-      for (const segment of segments) {
-        const lines = segment.split('\n')
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            try {
-              const data = JSON.parse(line.slice(6)) as SSEEvent
-              onEvent(data)
-            } catch {
-              // Ignora linhas nao-JSON
-            }
-          }
-        }
-      }
-    }
-  }, [])
+  const { start: startSSE, startFormData: startSSEFormData, abort: abortSSE } = useStreamingFetch<SSEEvent>({
+    onEvent: (event) => sseEventHandlerRef.current?.(event),
+    onError: (err) => {
+      const msg = err.message || 'Erro desconhecido'
+      setErrorMessage(msg)
+      setPageState('erro')
+      toast({ title: 'Erro', description: msg, variant: 'destructive' })
+    },
+  })
 
   // ============================================================
   // Processar - Modo Automatico
@@ -376,73 +273,55 @@ export function GeradorPecasPage() {
     setAgentStatuses({ 1: 'aguardando', 2: 'aguardando', 3: 'aguardando' })
     setParecerUploadId(null)
 
-    const controller = new AbortController()
-    abortControllerRef.current = controller
-
-    try {
-      await readSSEStream(
-        '/gerador-pecas/api/processar-stream',
-        {
-          numero_cnj: numeroCNJ,
-          tipo_peca: tipoPeca || undefined,
-          observacao_usuario: observacao || undefined,
-          group_id: selectedGroupId || undefined,
-          subcategoria_ids: selectedSubcategorias.length > 0 ? selectedSubcategorias : undefined,
-          parecer_upload_id: parecerUploadId || undefined,
-          parecer_user_choice_when_missing: parecerUserChoiceRef.current || undefined,
-        },
-        (event) => {
-          switch (event.tipo) {
-            case 'inicio':
-              setProgressMessage(event.mensagem)
-              break
-
-            case 'info':
-              setProgressMessage(event.mensagem)
-              break
-
-            case 'agente':
-              setAgentStatuses((prev) => ({ ...prev, [event.agente]: event.status }))
-              setProgressMessage(event.mensagem)
-              break
-
-            case 'geracao_chunk':
-              streamingContentRef.current += event.content
-              setStreamingContent(streamingContentRef.current)
-              break
-
-            case 'parecer_natjus_ausente':
-              setShowParecerDialog(true)
-              setPageState('idle')
-              break
-
-            case 'sucesso':
-              setGeracaoId(event.geracao_id)
-              setMinutaMarkdown(event.minuta_markdown || streamingContentRef.current)
-              setTipoPecaResultado(event.tipo_peca)
-              setPageState('resultado')
-              invalidateGeradorHistorico()
-              toast({ title: 'Sucesso', description: 'Peca juridica gerada com sucesso!' })
-              break
-
-            case 'erro':
-              setErrorMessage(event.mensagem)
-              setPageState('erro')
-              toast({ title: 'Erro', description: event.mensagem, variant: 'destructive' })
-              break
-          }
-        },
-        controller.signal
-      )
-      setPageState((prev) => prev === 'streaming' ? 'idle' : prev)
-    } catch (error) {
-      if ((error as Error).name === 'AbortError') return
-      const msg = (error as Error).message || 'Erro desconhecido'
-      setErrorMessage(msg)
-      setPageState('erro')
-      toast({ title: 'Erro', description: msg, variant: 'destructive' })
+    // Define handler de eventos SSE para modo automatico
+    sseEventHandlerRef.current = (event) => {
+      switch (event.tipo) {
+        case 'inicio':
+        case 'info':
+          setProgressMessage(event.mensagem)
+          break
+        case 'agente':
+          setAgentStatuses((prev) => ({ ...prev, [event.agente]: event.status }))
+          setProgressMessage(event.mensagem)
+          break
+        case 'geracao_chunk':
+          streamingContentRef.current += event.content
+          setStreamingContent(streamingContentRef.current)
+          break
+        case 'parecer_natjus_ausente':
+          setShowParecerDialog(true)
+          setPageState('idle')
+          break
+        case 'sucesso':
+          setGeracaoId(event.geracao_id)
+          setMinutaMarkdown(event.minuta_markdown || streamingContentRef.current)
+          setTipoPecaResultado(event.tipo_peca)
+          setPageState('resultado')
+          invalidateGeradorHistorico()
+          toast({ title: 'Sucesso', description: 'Peca juridica gerada com sucesso!' })
+          break
+        case 'erro':
+          setErrorMessage(event.mensagem)
+          setPageState('erro')
+          toast({ title: 'Erro', description: event.mensagem, variant: 'destructive' })
+          break
+      }
     }
-  }, [numeroCNJ, tipoPeca, observacao, selectedGroupId, selectedSubcategorias, parecerUploadId, toast, readSSEStream, invalidateGeradorHistorico])
+
+    await startSSE('/gerador-pecas/api/processar-stream', {
+      numero_cnj: numeroCNJ,
+      tipo_peca: tipoPeca || undefined,
+      observacao_usuario: observacao || undefined,
+      group_id: selectedGroupId || undefined,
+      subcategoria_ids: selectedSubcategorias.length > 0 ? selectedSubcategorias : undefined,
+      parecer_upload_id: parecerUploadId || undefined,
+      parecer_user_choice_when_missing: parecerUserChoiceRef.current || undefined,
+    }).then(() => {
+      setPageState((prev) => prev === 'streaming' ? 'idle' : prev)
+    }).catch(() => {
+      // Erro ja tratado pelo onError do hook
+    })
+  }, [numeroCNJ, tipoPeca, observacao, selectedGroupId, selectedSubcategorias, parecerUploadId, toast, startSSE, invalidateGeradorHistorico])
 
   // ============================================================
   // Processar - Modo PDF Upload
@@ -461,9 +340,6 @@ export function GeradorPecasPage() {
     setAgentStatuses({ 1: 'aguardando', 2: 'aguardando', 3: 'aguardando' })
     setParecerUploadId(null)
 
-    const controller = new AbortController()
-    abortControllerRef.current = controller
-
     const formData = new FormData()
     pdfFiles.forEach(file => formData.append('arquivos', file))
     if (tipoPeca) formData.append('tipo_peca', tipoPeca)
@@ -473,54 +349,49 @@ export function GeradorPecasPage() {
     if (parecerUploadId) formData.append('parecer_upload_id', parecerUploadId)
     if (parecerUserChoiceRef.current) formData.append('parecer_user_choice_when_missing', parecerUserChoiceRef.current)
 
-    try {
-      await readSSEStreamFormData(
-        '/gerador-pecas/api/processar-pdfs-stream',
-        formData,
-        (event) => {
-          switch (event.tipo) {
-            case 'inicio':
-            case 'info':
-              setProgressMessage(event.mensagem)
-              break
-            case 'agente':
-              setAgentStatuses((prev) => ({ ...prev, [event.agente]: event.status }))
-              setProgressMessage(event.mensagem)
-              break
-            case 'geracao_chunk':
-              streamingContentRef.current += event.content
-              setStreamingContent(streamingContentRef.current)
-              break
-            case 'parecer_natjus_ausente':
-              setShowParecerDialog(true)
-              setPageState('idle')
-              break
-            case 'sucesso':
-              setGeracaoId(event.geracao_id)
-              setMinutaMarkdown(event.minuta_markdown || streamingContentRef.current)
-              setTipoPecaResultado(event.tipo_peca)
-              setPageState('resultado')
-              invalidateGeradorHistorico()
-              toast({ title: 'Sucesso', description: 'Peca juridica gerada com sucesso!' })
-              break
-            case 'erro':
-              setErrorMessage(event.mensagem)
-              setPageState('erro')
-              toast({ title: 'Erro', description: event.mensagem, variant: 'destructive' })
-              break
-          }
-        },
-        controller.signal
-      )
-      setPageState((prev) => prev === 'streaming' ? 'idle' : prev)
-    } catch (error) {
-      if ((error as Error).name === 'AbortError') return
-      const msg = (error as Error).message || 'Erro desconhecido'
-      setErrorMessage(msg)
-      setPageState('erro')
-      toast({ title: 'Erro', description: msg, variant: 'destructive' })
+    // Define handler de eventos SSE para modo PDF
+    sseEventHandlerRef.current = (event) => {
+      switch (event.tipo) {
+        case 'inicio':
+        case 'info':
+          setProgressMessage(event.mensagem)
+          break
+        case 'agente':
+          setAgentStatuses((prev) => ({ ...prev, [event.agente]: event.status }))
+          setProgressMessage(event.mensagem)
+          break
+        case 'geracao_chunk':
+          streamingContentRef.current += event.content
+          setStreamingContent(streamingContentRef.current)
+          break
+        case 'parecer_natjus_ausente':
+          setShowParecerDialog(true)
+          setPageState('idle')
+          break
+        case 'sucesso':
+          setGeracaoId(event.geracao_id)
+          setMinutaMarkdown(event.minuta_markdown || streamingContentRef.current)
+          setTipoPecaResultado(event.tipo_peca)
+          setPageState('resultado')
+          invalidateGeradorHistorico()
+          toast({ title: 'Sucesso', description: 'Peca juridica gerada com sucesso!' })
+          break
+        case 'erro':
+          setErrorMessage(event.mensagem)
+          setPageState('erro')
+          toast({ title: 'Erro', description: event.mensagem, variant: 'destructive' })
+          break
+      }
     }
-  }, [pdfFiles, tipoPeca, observacao, selectedGroupId, selectedSubcategorias, parecerUploadId, toast, readSSEStreamFormData, invalidateGeradorHistorico])
+
+    await startSSEFormData('/gerador-pecas/api/processar-pdfs-stream', formData)
+      .then(() => {
+        setPageState((prev) => prev === 'streaming' ? 'idle' : prev)
+      })
+      .catch(() => {
+        // Erro ja tratado pelo onError do hook
+      })
+  }, [pdfFiles, tipoPeca, observacao, selectedGroupId, selectedSubcategorias, parecerUploadId, toast, startSSEFormData, invalidateGeradorHistorico])
 
   // ============================================================
   // Processar - Modo Semi-Automatico (Curadoria)
@@ -591,71 +462,60 @@ export function GeradorPecasPage() {
     setProgressMessage('Gerando peca com modulos curados...')
     setAgentStatuses({ 1: 'concluido', 2: 'concluido', 3: 'ativo' })
 
-    const controller = new AbortController()
-    abortControllerRef.current = controller
-
     const previewIds = curadoriaModulos.map((m) => m.id)
     const manuaisIds = selectedIds.filter((id) => !previewIds.includes(id))
 
-    try {
-      await readSSEStream(
-        '/gerador-pecas/api/curadoria/gerar-stream',
-        {
-          numero_cnj: numeroCNJ,
-          tipo_peca: tipoPeca,
-          modulos_ids_curados: selectedIds,
-          modulos_manuais_ids: manuaisIds.length > 0 ? manuaisIds : undefined,
-          modulos_preview_ids: previewIds,
-          resumo_consolidado: curadoriaResumo || undefined,
-          dados_extracao: Object.keys(curadoriaDados).length > 0 ? curadoriaDados : undefined,
-          decision_traces: Object.keys(curadoriaTraces).length > 0 ? curadoriaTraces : undefined,
-          variaveis_snapshot: Object.keys(curadoriaVariaveis).length > 0 ? curadoriaVariaveis : undefined,
-          parecer_context: Object.keys(curadoriaParecer).length > 0 ? curadoriaParecer : undefined,
-          observacao_usuario: observacao || undefined,
-        },
-        (event) => {
-          switch (event.tipo) {
-            case 'inicio':
-            case 'info':
-              setProgressMessage(event.mensagem)
-              break
-            case 'agente':
-              setAgentStatuses((prev) => ({ ...prev, [event.agente]: event.status }))
-              setProgressMessage(event.mensagem)
-              break
-            case 'geracao_chunk':
-              streamingContentRef.current += event.content
-              setStreamingContent(streamingContentRef.current)
-              break
-            case 'sucesso':
-              setGeracaoId(event.geracao_id)
-              setMinutaMarkdown(event.minuta_markdown || streamingContentRef.current)
-              setTipoPecaResultado(event.tipo_peca)
-              setAgentStatuses({ 1: 'concluido', 2: 'concluido', 3: 'concluido' })
-              setPageState('resultado')
-              invalidateGeradorHistorico()
-              toast({ title: 'Sucesso', description: 'Peca gerada com sucesso!' })
-              break
-            case 'erro':
-              setErrorMessage(event.mensagem)
-              setPageState('erro')
-              toast({ title: 'Erro', description: event.mensagem, variant: 'destructive' })
-              break
-          }
-        },
-        controller.signal
-      )
-    } catch (error) {
-      if ((error as Error).name === 'AbortError') return
-      const msg = (error as Error).message || 'Erro desconhecido'
-      setErrorMessage(msg)
-      setPageState('erro')
-      toast({ title: 'Erro', description: msg, variant: 'destructive' })
+    // Define handler de eventos SSE para curadoria
+    sseEventHandlerRef.current = (event) => {
+      switch (event.tipo) {
+        case 'inicio':
+        case 'info':
+          setProgressMessage(event.mensagem)
+          break
+        case 'agente':
+          setAgentStatuses((prev) => ({ ...prev, [event.agente]: event.status }))
+          setProgressMessage(event.mensagem)
+          break
+        case 'geracao_chunk':
+          streamingContentRef.current += event.content
+          setStreamingContent(streamingContentRef.current)
+          break
+        case 'sucesso':
+          setGeracaoId(event.geracao_id)
+          setMinutaMarkdown(event.minuta_markdown || streamingContentRef.current)
+          setTipoPecaResultado(event.tipo_peca)
+          setAgentStatuses({ 1: 'concluido', 2: 'concluido', 3: 'concluido' })
+          setPageState('resultado')
+          invalidateGeradorHistorico()
+          toast({ title: 'Sucesso', description: 'Peca gerada com sucesso!' })
+          break
+        case 'erro':
+          setErrorMessage(event.mensagem)
+          setPageState('erro')
+          toast({ title: 'Erro', description: event.mensagem, variant: 'destructive' })
+          break
+      }
     }
+
+    await startSSE('/gerador-pecas/api/curadoria/gerar-stream', {
+      numero_cnj: numeroCNJ,
+      tipo_peca: tipoPeca,
+      modulos_ids_curados: selectedIds,
+      modulos_manuais_ids: manuaisIds.length > 0 ? manuaisIds : undefined,
+      modulos_preview_ids: previewIds,
+      resumo_consolidado: curadoriaResumo || undefined,
+      dados_extracao: Object.keys(curadoriaDados).length > 0 ? curadoriaDados : undefined,
+      decision_traces: Object.keys(curadoriaTraces).length > 0 ? curadoriaTraces : undefined,
+      variaveis_snapshot: Object.keys(curadoriaVariaveis).length > 0 ? curadoriaVariaveis : undefined,
+      parecer_context: Object.keys(curadoriaParecer).length > 0 ? curadoriaParecer : undefined,
+      observacao_usuario: observacao || undefined,
+    }).catch(() => {
+      // Erro ja tratado pelo onError do hook
+    })
   }, [
     curadoriaSelected, curadoriaModulos, numeroCNJ, tipoPeca, observacao,
     curadoriaResumo, curadoriaDados, curadoriaTraces, curadoriaVariaveis,
-    curadoriaParecer, toast, readSSEStream, invalidateGeradorHistorico,
+    curadoriaParecer, toast, startSSE, invalidateGeradorHistorico,
   ])
 
   // ============================================================
@@ -714,58 +574,27 @@ export function GeradorPecasPage() {
     setChatMessages(novoHistorico)
 
     try {
-      const response = await fetch('/gerador-pecas/api/editar-minuta-stream', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${getToken()}`,
-        },
+      let updatedContent = ''
+      const token = getToken()
+
+      await fetchSSEStream<{ content?: string }>({
+        url: '/gerador-pecas/api/editar-minuta-stream',
         body: JSON.stringify({
           minuta_atual: minutaMarkdown,
           mensagem: mensagem,
           historico: chatMessages.map((m) => ({ role: m.role, content: m.content })),
           tipo_peca: tipoPecaResultado || tipoPeca || undefined,
         }),
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ detail: response.statusText }))
-        throw new Error(errorData.detail || `Erro ${response.status}`)
-      }
-
-      const reader = response.body?.getReader()
-      if (!reader) throw new Error('Erro ao iniciar streaming')
-
-      const decoder = new TextDecoder()
-      let buffer = ''
-      let updatedContent = ''
-
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-
-        buffer += decoder.decode(value, { stream: true })
-        const segments = buffer.split('\n\n')
-        buffer = segments.pop() || ''
-
-        for (const segment of segments) {
-          const lines = segment.split('\n')
-          for (const line of lines) {
-            if (line.startsWith('data: ')) {
-              try {
-                const data = JSON.parse(line.slice(6)) as { content?: string }
-                if (data.content) {
-                  updatedContent += data.content
-                }
-              } catch {
-                // heartbeat or non-JSON
-              }
-            } else if (line.startsWith('event: done')) {
-              // Stream finished
-            }
+        headers: {
+          'Content-Type': 'application/json',
+          ...(token ? { Authorization: `Bearer ${token}` } : {}),
+        },
+        onEvent: (data) => {
+          if (data.content) {
+            updatedContent += data.content
           }
-        }
-      }
+        },
+      })
 
       if (updatedContent) {
         setMinutaMarkdown(updatedContent)
@@ -931,7 +760,7 @@ export function GeradorPecasPage() {
   // ============================================================
 
   const voltarParaInicio = useCallback(() => {
-    abortControllerRef.current?.abort()
+    abortSSE()
     setPageState('idle')
     setStreamingContent('')
     streamingContentRef.current = ''
@@ -944,7 +773,7 @@ export function GeradorPecasPage() {
     setCuradoriaModulos([])
     setCuradoriaSelected(new Set())
     parecerUserChoiceRef.current = null
-  }, [])
+  }, [abortSSE])
 
   // ============================================================
   // Toggle curadoria module selection

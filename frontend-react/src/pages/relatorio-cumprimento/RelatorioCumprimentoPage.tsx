@@ -34,6 +34,7 @@ import { useQuery } from '@tanstack/react-query'
 import { queryKeys } from '@/lib/query-client'
 import { useMarkdown } from '@/hooks/useMarkdown'
 import { relatorioCumprimentoApi, getToken } from '@/lib/api'
+import { useStreamingFetch } from '@/services/api/streaming'
 import type {
   HistoricoItem,
   SSEEvent,
@@ -109,7 +110,6 @@ export function RelatorioCumprimentoPage() {
 
   // Refs
   const logScrollRef = useRef<HTMLDivElement>(null)
-  const abortControllerRef = useRef<AbortController | null>(null)
 
   // Buscar historico de geracoes
   const { data: historico, refetch: refetchHistorico } = useQuery<HistoricoItem[]>({
@@ -124,12 +124,6 @@ export function RelatorioCumprimentoPage() {
     }
   }, [mensagensLog])
 
-  // Cleanup do abort controller ao desmontar
-  useEffect(() => {
-    return () => {
-      abortControllerRef.current?.abort()
-    }
-  }, [])
 
   // Verificar se o processo ja existe quando o usuario termina de digitar
   const verificarProcessoExistente = useCallback(async (numero: string) => {
@@ -241,6 +235,16 @@ export function RelatorioCumprimentoPage() {
     }
   }, [refetchHistorico])
 
+  // Hook de streaming SSE compartilhado
+  const { start: startSSE, abort: abortSSE } = useStreamingFetch<SSEEvent>({
+    onEvent: (evento) => processarEventoSSE(evento),
+    onError: (error) => {
+      const msg = error.message || 'Erro inesperado'
+      setErro(msg)
+      setPageState('error')
+    },
+  })
+
   // Iniciar geracao do relatorio via SSE
   const handleIniciarGeracao = async () => {
     const numero = numeroCnj.trim()
@@ -273,75 +277,13 @@ export function RelatorioCumprimentoPage() {
     setSobrescrever(false)
     setChatMessages([])
 
-    // Criar abort controller para cancelamento
-    abortControllerRef.current?.abort()
-    const controller = new AbortController()
-    abortControllerRef.current = controller
-
-    try {
-      const token = getToken()
-      const response = await fetch(`${API_BASE}/processar-stream`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(token ? { 'Authorization': `Bearer ${token}` } : {}),
-        },
-        body: JSON.stringify({
-          numero_cnj: numero,
-          sobrescrever_existente: sobrescrever,
-        }),
-        signal: controller.signal,
-      })
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({ detail: response.statusText }))
-        throw new Error(errorData.detail || `Erro ${response.status}`)
-      }
-
-      const reader = response.body?.getReader()
-      if (!reader) throw new Error('Reader nao disponivel')
-
-      const decoder = new TextDecoder()
-      let buffer = ''
-
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-
-        buffer += decoder.decode(value, { stream: true })
-        const lines = buffer.split('\n')
-        buffer = lines.pop() || ''
-
-        for (const line of lines) {
-          if (line.startsWith('data: ')) {
-            try {
-              const evento = JSON.parse(line.slice(6)) as SSEEvent
-              processarEventoSSE(evento)
-            } catch (parseError) {
-              console.warn('Erro ao parsear evento SSE:', parseError)
-            }
-          }
-        }
-      }
-
-      // Processar buffer restante
-      if (buffer.startsWith('data: ')) {
-        try {
-          const evento = JSON.parse(buffer.slice(6)) as SSEEvent
-          processarEventoSSE(evento)
-        } catch {
-          // Ignora buffer residual invalido
-        }
-      }
-    } catch (error) {
-      if (error instanceof DOMException && error.name === 'AbortError') {
-        // Cancelamento intencional, nao mostra erro
-        return
-      }
-      const msg = error instanceof Error ? error.message : 'Erro inesperado'
-      setErro(msg)
-      setPageState('error')
-    }
+    // Streaming SSE via hook compartilhado
+    await startSSE(`${API_BASE}/processar-stream`, {
+      numero_cnj: numero,
+      sobrescrever_existente: sobrescrever,
+    }).catch(() => {
+      // Erro ja tratado pelo onError do useStreamingFetch
+    })
   }
 
   // Editar relatorio via chat
@@ -493,7 +435,7 @@ export function RelatorioCumprimentoPage() {
 
   // Reiniciar (voltar ao estado idle)
   const handleReiniciar = () => {
-    abortControllerRef.current?.abort()
+    abortSSE()
     setPageState('idle')
     setNumeroCnj('')
     setErro(null)
@@ -532,6 +474,7 @@ export function RelatorioCumprimentoPage() {
       <BreadcrumbBar
         title="Relatorio de Cumprimento"
         icon={<FileText style={{ width: 14, height: 14 }} />}
+        maxWidthClass="max-w-4xl"
         actions={
           <Sheet>
             <SheetTrigger asChild>
@@ -603,8 +546,8 @@ export function RelatorioCumprimentoPage() {
       {/* ============================================================ */}
       {/* CONTEUDO PRINCIPAL                                           */}
       {/* ============================================================ */}
-      <ContentArea>
-        <div className="max-w-4xl space-y-6">
+      <ContentArea maxWidthClass="max-w-4xl">
+        <div className="space-y-6">
 
           {/* Card de Entrada — Numero do Processo */}
           <div

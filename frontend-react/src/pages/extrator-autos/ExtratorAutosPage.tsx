@@ -26,7 +26,8 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
-import { extratorApi, getToken } from '@/lib/api'
+import { extratorApi } from '@/lib/api'
+import { useStreamingFetch } from '@/services/api/streaming'
 import { useQuery } from '@tanstack/react-query'
 import { queryKeys } from '@/lib/query-client'
 import { useToast } from '@/components/ui/toast'
@@ -309,7 +310,46 @@ export function ExtratorAutosPage() {
     return { total, selecionados }
   }, [previewDocs])
 
-  /** Iniciar download via SSE (fetch + ReadableStream) */
+  /** Processa evento SSE de download */
+  const processarEventoDownload = useCallback((evento: DownloadSSEEvent) => {
+    if (evento.tipo === 'progresso') {
+      setDownloadPercentual(evento.percentual ?? 0)
+      if (evento.mensagem) {
+        setDownloadMensagem(evento.mensagem)
+        setDownloadLogs((prev) => [...prev, `[${timestamp()}] ${evento.mensagem}`])
+      }
+    } else if (evento.tipo === 'concluido') {
+      setDownloadPercentual(100)
+      setDownloadMensagem('Download concluido!')
+      setJobId(evento.job_id ?? null)
+      setDownloadLogs((prev) => [
+        ...prev,
+        `[${timestamp()}] Download concluido! ${evento.total_docs ?? 0} documentos.`,
+      ])
+      setPageState('concluido')
+    } else if (evento.tipo === 'erro') {
+      setDownloadMensagem(evento.mensagem ?? 'Erro durante download')
+      setDownloadLogs((prev) => [
+        ...prev,
+        `[${timestamp()}] ERRO: ${evento.mensagem}`,
+      ])
+      setPageState('erro')
+      setErroMensagem(evento.mensagem ?? 'Erro durante download')
+    }
+  }, [])
+
+  // Hook de streaming SSE compartilhado para download
+  const { start: startDownloadSSE } = useStreamingFetch<DownloadSSEEvent>({
+    onEvent: (evento) => processarEventoDownload(evento),
+    onError: (err) => {
+      const msg = err.message || 'Erro de conexao'
+      setErroMensagem(msg)
+      setPageState('erro')
+      toast({ title: 'Erro no download', description: msg, variant: 'destructive' })
+    },
+  })
+
+  /** Iniciar download via SSE */
   const iniciarDownload = useCallback(async () => {
     const docsSelecionados = previewDocs.filter((d) => d.selecionado)
 
@@ -328,12 +368,8 @@ export function ExtratorAutosPage() {
     setDownloadLogs([`[${timestamp()}] Iniciando download...`])
     setJobId(null)
 
-    const token = getToken()
-    const headers: Record<string, string> = { 'Content-Type': 'application/json' }
-    if (token) headers['Authorization'] = `Bearer ${token}`
-
     let url: string
-    let body: unknown
+    let body: Record<string, unknown>
 
     if (modoLote && loteResultados) {
       url = '/extrator-autos/api/baixar-lote'
@@ -352,74 +388,11 @@ export function ExtratorAutosPage() {
       }
     }
 
-    try {
-      const response = await fetch(url, {
-        method: 'POST',
-        headers,
-        body: JSON.stringify(body),
-      })
-
-      if (!response.ok) {
-        throw new Error(`Erro ${response.status}: ${response.statusText}`)
-      }
-
-      const reader = response.body?.getReader()
-      if (!reader) throw new Error('Stream nao suportado')
-
-      const decoder = new TextDecoder()
-      let buffer = ''
-
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done) break
-
-        buffer += decoder.decode(value, { stream: true })
-        const lines = buffer.split('\n')
-        buffer = lines.pop() || ''
-
-        for (const line of lines) {
-          if (!line.startsWith('data: ')) continue
-          const jsonStr = line.slice(6).trim()
-          if (!jsonStr || jsonStr === '[DONE]') continue
-
-          try {
-            const evento = JSON.parse(jsonStr) as DownloadSSEEvent
-            if (evento.tipo === 'progresso') {
-              setDownloadPercentual(evento.percentual ?? 0)
-              if (evento.mensagem) {
-                setDownloadMensagem(evento.mensagem)
-                setDownloadLogs((prev) => [...prev, `[${timestamp()}] ${evento.mensagem}`])
-              }
-            } else if (evento.tipo === 'concluido') {
-              setDownloadPercentual(100)
-              setDownloadMensagem('Download concluido!')
-              setJobId(evento.job_id ?? null)
-              setDownloadLogs((prev) => [
-                ...prev,
-                `[${timestamp()}] Download concluido! ${evento.total_docs ?? 0} documentos.`,
-              ])
-              setPageState('concluido')
-            } else if (evento.tipo === 'erro') {
-              setDownloadMensagem(evento.mensagem ?? 'Erro durante download')
-              setDownloadLogs((prev) => [
-                ...prev,
-                `[${timestamp()}] ERRO: ${evento.mensagem}`,
-              ])
-              setPageState('erro')
-              setErroMensagem(evento.mensagem ?? 'Erro durante download')
-            }
-          } catch {
-            // Linha SSE nao parseavel — ignora
-          }
-        }
-      }
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Erro de conexao'
-      setErroMensagem(msg)
-      setPageState('erro')
-      toast({ title: 'Erro no download', description: msg, variant: 'destructive' })
-    }
-  }, [previewDocs, modoLote, loteResultados, processoInfo, downloadOpcoes, toast])
+    // Streaming SSE via hook compartilhado — erro tratado em onError do hook
+    await startDownloadSSE(url, body).catch(() => {
+      // Erro ja tratado pelo onError do useStreamingFetch
+    })
+  }, [previewDocs, modoLote, loteResultados, processoInfo, downloadOpcoes, toast, startDownloadSSE])
 
   /** Baixar ZIP concluido */
   const baixarZip = useCallback(async () => {
