@@ -9,7 +9,6 @@ Endpoints para:
 """
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
-from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from typing import List, Optional
@@ -44,7 +43,6 @@ from sistemas.gerador_pecas.schemas import (
 )
 
 router = APIRouter(prefix="/api/gerador-pecas/config", tags=["Config Peças"])
-templates = Jinja2Templates(directory="frontend/templates")
 
 
 # ===========================================
