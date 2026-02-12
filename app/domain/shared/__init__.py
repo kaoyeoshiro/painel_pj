@@ -1,0 +1,3 @@
+"""
+Domínio compartilhado entre sistemas.
+"""

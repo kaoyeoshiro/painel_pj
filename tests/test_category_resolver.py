@@ -7,6 +7,9 @@ BertClassificationResolver, CategoryResolverFactory, resolve_all_categories.
 """
 
 import pytest
+
+pytestmark = pytest.mark.unit
+
 from datetime import datetime
 
 from sistemas.extrator_autos.services_category_resolver import (

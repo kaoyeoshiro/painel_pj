@@ -11,6 +11,9 @@ Fix 1: Performance — mover a verificação para antes do Agent 1.
 import sys
 import os
 import pytest
+
+pytestmark = pytest.mark.unit
+
 from unittest.mock import AsyncMock, MagicMock, patch
 from dataclasses import dataclass
 from typing import Optional

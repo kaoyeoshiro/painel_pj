@@ -1,0 +1,3 @@
+"""
+Serviços compartilhados entre sistemas.
+"""

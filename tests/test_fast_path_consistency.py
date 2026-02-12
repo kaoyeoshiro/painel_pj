@@ -10,6 +10,9 @@ Ref: docs/diagnostico_divergencia_modulos_fast_path.md
 """
 
 import pytest
+
+pytestmark = pytest.mark.unit
+
 from unittest.mock import MagicMock, patch, AsyncMock
 from typing import Dict, Any, List
 

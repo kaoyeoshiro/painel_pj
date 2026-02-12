@@ -84,3 +84,14 @@ run_teste.bat
 # Claude local settings
 .claude/settings.local.json
 .playwright-mcp/
+
+# === Arquivos temporários do projeto ===
+tmp_*
+*.pid
+.bert_worker_token
+data/
+bert_models/
+e2e-artifacts/
+scripts/_debug_*
+test_gemini_direct.py
+%TEMP%*
