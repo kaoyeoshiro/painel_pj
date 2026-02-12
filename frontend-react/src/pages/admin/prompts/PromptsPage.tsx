@@ -17,6 +17,8 @@ import { AgentConfigSection } from './components/AgentConfigSection'
 import { ExtraConfigsSection } from './components/ExtraConfigsSection'
 import { PromptsSection } from './components/PromptsSection'
 import { PromptEditDialog } from './components/PromptEditDialog'
+import { SistemasAcessoriosSection } from './components/SistemasAcessoriosSection'
+import { GlobalConfigSection } from './components/GlobalConfigSection'
 
 export function PromptsPage() {
   const { toast } = useToast()
@@ -85,7 +87,7 @@ export function PromptsPage() {
   }, [toast])
 
   const loadPerAgent = useCallback(async (sistema: string) => {
-    if (sistema === 'global' || fetchedSistemas.current.has(sistema)) return
+    if (sistema === 'global' || sistema === 'sistemas_acessorios' || fetchedSistemas.current.has(sistema)) return
     fetchedSistemas.current.add(sistema)
     setLoadingPerAgent(prev => ({ ...prev, [sistema]: true }))
     try {
@@ -230,6 +232,8 @@ export function PromptsPage() {
 
   const getConfigsForSistema = (sistema: string): ConfigIA[] => configsIA.filter(c => c.sistema === sistema)
   const isGlobal = activeTab === 'global'
+  const isSpecialTab = (value: string) => value === 'global' || value === 'sistemas_acessorios'
+  const hasAgents = (value: string) => !isSpecialTab(value)
 
   // =============================================
   // Render
@@ -267,75 +271,100 @@ export function PromptsPage() {
                     ))}
                   </TabsList>
 
-                  {/* Expandir / Recolher tudo */}
-                  <div className="flex gap-1">
-                    <Button variant="ghost" size="sm" onClick={expandAll} className="text-xs" style={{ color: C.text500 }}>
-                      <ChevronsUpDown className="h-3.5 w-3.5 mr-1" />
-                      Expandir tudo
-                    </Button>
-                    <Button variant="ghost" size="sm" onClick={collapseAll} className="text-xs" style={{ color: C.text500 }}>
-                      Recolher tudo
-                    </Button>
-                  </div>
+                  {/* Expandir / Recolher tudo (so para abas com secoes collapsiveis) */}
+                  {!isSpecialTab(activeTab) && (
+                    <div className="flex gap-1">
+                      <Button variant="ghost" size="sm" onClick={expandAll} className="text-xs" style={{ color: C.text500 }}>
+                        <ChevronsUpDown className="h-3.5 w-3.5 mr-1" />
+                        Expandir tudo
+                      </Button>
+                      <Button variant="ghost" size="sm" onClick={collapseAll} className="text-xs" style={{ color: C.text500 }}>
+                        Recolher tudo
+                      </Button>
+                    </div>
+                  )}
                 </div>
 
                 {SISTEMAS.map(sistema => (
                   <TabsContent key={sistema.value} value={sistema.value} className="space-y-4 mt-4">
 
-                    {/* Seção: Configuração por Agente (não aparece em Global) */}
-                    {!isGlobal && sistema.value !== 'global' && (
-                      <CollapsibleSection
-                        title="Configuração por Agente"
-                        subtitle={`${Object.keys(perAgentCache[sistema.value]?.agentes || {}).length} agente(s)`}
-                        isOpen={sectionsOpen.agentes}
-                        onToggle={(open) => setSectionsOpen(prev => ({ ...prev, agentes: open }))}
-                        testId={`section-agentes-${sistema.value}`}
-                      >
-                        <AgentConfigSection
-                          perAgentData={perAgentCache[sistema.value] || null}
-                          isLoading={loadingPerAgent[sistema.value] || false}
-                          onSave={(edits) => saveAgentEdits(sistema.value, edits)}
-                          onReset={(agente) => resetAgent(sistema.value, agente)}
-                        />
-                      </CollapsibleSection>
+                    {/* Aba especial: Sistemas Acessorios */}
+                    {sistema.value === 'sistemas_acessorios' && (
+                      <SistemasAcessoriosSection
+                        values={editedExtras['sistemas_acessorios'] || {}}
+                        onChange={(chave, valor) => handleExtraChange('sistemas_acessorios', chave, valor)}
+                        onSave={() => saveExtras('sistemas_acessorios')}
+                        isSaving={isSavingExtras === 'sistemas_acessorios'}
+                      />
                     )}
 
-                    {/* Seção: Configurações Extras */}
-                    <CollapsibleSection
-                      title="Configurações Extras"
-                      isOpen={sectionsOpen.extras}
-                      onToggle={(open) => setSectionsOpen(prev => ({ ...prev, extras: open }))}
-                      testId={`section-extras-${sistema.value}`}
-                    >
-                      <ExtraConfigsSection
-                        configs={getConfigsForSistema(sistema.value)}
-                        editedValues={editedExtras[sistema.value] || {}}
-                        onValueChange={(chave, valor) => handleExtraChange(sistema.value, chave, valor)}
-                        onSave={() => saveExtras(sistema.value)}
-                        isSaving={isSavingExtras === sistema.value}
+                    {/* Aba especial: Global */}
+                    {sistema.value === 'global' && (
+                      <GlobalConfigSection
+                        values={editedExtras['global'] || {}}
+                        onChange={(chave, valor) => handleExtraChange('global', chave, valor)}
+                        onSave={() => saveExtras('global')}
+                        isSaving={isSavingExtras === 'global'}
                       />
-                    </CollapsibleSection>
+                    )}
 
-                    {/* Seção: Prompts do Sistema */}
-                    <CollapsibleSection
-                      title="Prompts do Sistema"
-                      subtitle={`${prompts.filter(p => p.sistema === sistema.value).length} prompt(s)`}
-                      isOpen={sectionsOpen.prompts}
-                      onToggle={(open) => setSectionsOpen(prev => ({ ...prev, prompts: open }))}
-                      testId={`section-prompts-${sistema.value}`}
-                    >
-                      <PromptsSection
-                        prompts={prompts}
-                        activeSistema={sistema.value}
-                        onEdit={(prompt) => {
-                          setEditingPrompt({ ...prompt })
-                          setIsEditDialogOpen(true)
-                        }}
-                        onRestore={(id) => setRestoreConfirmPromptId(id)}
-                        onCreateDefaults={createDefaultPrompts}
-                        isCreatingDefaults={isCreatingDefaults}
-                      />
-                    </CollapsibleSection>
+                    {/* Abas normais: sistemas com agentes */}
+                    {hasAgents(sistema.value) && (
+                      <>
+                        {/* Seção: Configuração por Agente */}
+                        <CollapsibleSection
+                          title="Configuração por Agente"
+                          subtitle={`${Object.keys(perAgentCache[sistema.value]?.agentes || {}).length} agente(s)`}
+                          isOpen={sectionsOpen.agentes}
+                          onToggle={(open) => setSectionsOpen(prev => ({ ...prev, agentes: open }))}
+                          testId={`section-agentes-${sistema.value}`}
+                        >
+                          <AgentConfigSection
+                            perAgentData={perAgentCache[sistema.value] || null}
+                            isLoading={loadingPerAgent[sistema.value] || false}
+                            onSave={(edits) => saveAgentEdits(sistema.value, edits)}
+                            onReset={(agente) => resetAgent(sistema.value, agente)}
+                          />
+                        </CollapsibleSection>
+
+                        {/* Seção: Configurações Extras */}
+                        <CollapsibleSection
+                          title="Configurações Extras"
+                          isOpen={sectionsOpen.extras}
+                          onToggle={(open) => setSectionsOpen(prev => ({ ...prev, extras: open }))}
+                          testId={`section-extras-${sistema.value}`}
+                        >
+                          <ExtraConfigsSection
+                            configs={getConfigsForSistema(sistema.value)}
+                            editedValues={editedExtras[sistema.value] || {}}
+                            onValueChange={(chave, valor) => handleExtraChange(sistema.value, chave, valor)}
+                            onSave={() => saveExtras(sistema.value)}
+                            isSaving={isSavingExtras === sistema.value}
+                          />
+                        </CollapsibleSection>
+
+                        {/* Seção: Prompts do Sistema */}
+                        <CollapsibleSection
+                          title="Prompts do Sistema"
+                          subtitle={`${prompts.filter(p => p.sistema === sistema.value).length} prompt(s)`}
+                          isOpen={sectionsOpen.prompts}
+                          onToggle={(open) => setSectionsOpen(prev => ({ ...prev, prompts: open }))}
+                          testId={`section-prompts-${sistema.value}`}
+                        >
+                          <PromptsSection
+                            prompts={prompts}
+                            activeSistema={sistema.value}
+                            onEdit={(prompt) => {
+                              setEditingPrompt({ ...prompt })
+                              setIsEditDialogOpen(true)
+                            }}
+                            onRestore={(id) => setRestoreConfirmPromptId(id)}
+                            onCreateDefaults={createDefaultPrompts}
+                            isCreatingDefaults={isCreatingDefaults}
+                          />
+                        </CollapsibleSection>
+                      </>
+                    )}
 
                   </TabsContent>
                 ))}

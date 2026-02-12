@@ -275,11 +275,14 @@ describe('PromptsPage', () => {
     await user.click(globalTab)
 
     await waitFor(() => {
-      expect(screen.getByTestId('section-extras-global')).toBeInTheDocument()
+      // Global agora renderiza GlobalConfigSection com SLA Fallback
+      expect(screen.getByText('SLA Fallback Automatico')).toBeInTheDocument()
     })
 
     // Seção de agentes não deve existir para Global
     expect(screen.queryByTestId('section-agentes-global')).not.toBeInTheDocument()
+    // Seções colapsáveis genéricas também não devem existir
+    expect(screen.queryByTestId('section-extras-global')).not.toBeInTheDocument()
   })
 
   it('deve abrir dialog de edição de prompt', async () => {

@@ -8,6 +8,7 @@ export const SISTEMAS = [
   { value: 'pedido_calculo', label: 'Pedido de Cálculo' },
   { value: 'prestacao_contas', label: 'Prestação de Contas' },
   { value: 'relatorio_cumprimento', label: 'Relatório de Cumprimento' },
+  { value: 'sistemas_acessorios', label: 'Sistemas Acessórios' },
   { value: 'global', label: 'Global' },
 ] as const
 
@@ -66,6 +67,26 @@ export const MODELOS_IA = [
   { value: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash' },
   { value: 'gemini-1.5-pro', label: 'Gemini 1.5 Pro' },
   { value: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash' },
+]
+
+/** Modelos de IA para selects diretos (sem opção "Herdar") */
+export const MODELOS_IA_DIRETO = [
+  { value: 'gemini-3-flash-preview', label: 'Gemini 3 Flash Preview (rápido)' },
+  { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro (preciso)' },
+  { value: 'gemini-3-pro-preview', label: 'Gemini 3 Pro Preview (avançado)' },
+  { value: 'gemini-2.5-flash-preview-05-20', label: 'Gemini 2.5 Flash Preview' },
+  { value: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash' },
+  { value: 'gemini-2.0-flash-lite', label: 'Gemini 2.0 Flash Lite (mais rápido)' },
+  { value: 'gemini-1.5-pro', label: 'Gemini 1.5 Pro' },
+  { value: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash' },
+]
+
+/** Opções de thinking_level sem "Herdar" (para configurações diretas) */
+export const THINKING_LEVELS_DIRETO = [
+  { value: 'low', label: 'Low - Direto e objetivo (Recomendado)' },
+  { value: 'minimal', label: 'Minimal - Pensamento mínimo' },
+  { value: 'medium', label: 'Medium - Análise moderada' },
+  { value: 'high', label: 'High - Análise profunda' },
 ]
 
 /**
