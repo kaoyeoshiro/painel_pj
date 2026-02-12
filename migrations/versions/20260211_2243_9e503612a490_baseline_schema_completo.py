@@ -4,15 +4,13 @@ Revision ID: 9e503612a490
 Revises: 0fc5d5f02232
 Create Date: 2026-02-11 22:43:05.630350
 
-NOTA: Esta migration e uma BASELINE — serve como ponto de referencia
-para que o Alembic saiba que o banco esta sincronizado ate aqui.
+BASELINE: Garante que todas as tabelas definidas nos models existam no banco.
 
-O autogenerate detectou diffs entre models e banco existente
-(JSONB vs JSON, colunas extras no banco, indexes manuais).
-Esses diffs serao tratados em migrations separadas com revisao manual,
-para evitar perda de dados ou regressao de performance.
+Usa Base.metadata.create_all(checkfirst=True), que e idempotente:
+- Banco existente (producao): nenhuma alteracao (tabelas ja existem)
+- Banco novo (CI, dev): cria todas as 72+ tabelas baseadas nos models
 
-Discrepancias conhecidas (tratar em migrations futuras):
+Discrepancias conhecidas entre models e banco de producao:
 - BERT models usam JSON nos models mas JSONB no banco (manter JSONB)
 - extraction_questions tem colunas fonte_verdade_* no banco mas nao nos models
 - performance_logs tem user_id/username no banco mas nao no model
@@ -34,14 +32,19 @@ depends_on: Union[str, Sequence[str], None] = None
 
 
 def upgrade() -> None:
-    """Baseline — nenhuma alteracao aplicada.
+    """Cria todas as tabelas baseadas nos models atuais.
 
-    O banco existente ja contem todas as tabelas e colunas necessarias.
-    Esta migration serve apenas como ponto de referencia para o Alembic.
+    checkfirst=True garante idempotencia: tabelas que ja existem
+    nao sao recriadas. Em bancos novos (CI), cria tudo do zero.
     """
-    pass
+    # Importa o Base que ja tem todos os models registrados
+    # (via imports no topo de migrations/env.py)
+    from database.connection import Base
+
+    bind = op.get_bind()
+    Base.metadata.create_all(bind=bind, checkfirst=True)
 
 
 def downgrade() -> None:
-    """Baseline — nenhuma alteracao a reverter."""
+    """Baseline — nao e possivel fazer downgrade alem deste ponto."""
     pass
