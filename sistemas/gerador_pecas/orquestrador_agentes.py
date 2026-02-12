@@ -14,6 +14,9 @@ import os
 import json
 import asyncio
 import httpx
+import re  # Movido do lazy import (linha 456)
+import time  # Movido do lazy import (linhas 1136, 1206)
+import traceback  # Movido do lazy import (linhas 1293, 1399)
 from typing import Dict, List, Optional, Any
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -453,11 +456,10 @@ def _montar_prompt_agente3(
     Inclui guardrails de segurança contra payloads excessivos.
     """
     # Guardrail: detectar [DOCUMENTO INTEGRAL] de NATJus - nunca deveria chegar aqui
-    import re as _re
-    natjus_integral_match = _re.search(
+    natjus_integral_match = re.search(
         r"\[DOCUMENTO INTEGRAL\s*-\s*[^\]]*(?:NATJus|NAT|CATES|Nota\s+T[eé]cnica)[^\]]*\]",
         resumo_consolidado,
-        _re.IGNORECASE,
+        re.IGNORECASE,
     )
     if natjus_integral_match:
         logger.error(
@@ -470,11 +472,11 @@ def _montar_prompt_agente3(
         )
         # Remove o bloco integral do NATJus do resumo para proteger o Agente 3
         pattern = r"\*\*\[DOCUMENTO INTEGRAL\s*-\s*[^\]]*(?:NATJus|NAT|CATES|Nota\s+T[eé]cnica)[^\]]*\]\*\*\n\n[\s\S]*?(?=\n---\n|\n## |\Z)"
-        resumo_consolidado = _re.sub(
+        resumo_consolidado = re.sub(
             pattern,
             "**[DOCUMENTO NATJUS REMOVIDO - extração JSON falhou, consultar parecer manualmente]**\n",
             resumo_consolidado,
-            flags=_re.IGNORECASE,
+            flags=re.IGNORECASE,
         )
 
     # Guardrail: tamanho total do resumo
@@ -1133,7 +1135,6 @@ class OrquestradorAgentes:
             numero_processo: Número CNJ do processo para auditoria (opcional)
         """
         resultado = ResultadoAgente2()
-        import time
         ag2_inicio = time.perf_counter()
 
         try:
@@ -1203,7 +1204,6 @@ class OrquestradorAgentes:
         Returns:
             Lista de IDs dos módulos detectados
         """
-        import time
         inicio = time.perf_counter()
 
         try:
@@ -1290,7 +1290,6 @@ class OrquestradorAgentes:
             return resultado
 
         except Exception as e:
-            import traceback
             traceback.print_exc()
             erro_str = str(e)
             if 'timeout' in erro_str.lower() or 'timed out' in erro_str.lower():
@@ -1396,7 +1395,6 @@ class OrquestradorAgentes:
             yield {"tipo": "done", "resultado": resultado}
 
         except Exception as e:
-            import traceback
             traceback.print_exc()
             erro_str = str(e)
             print(f"[AGENTE3-STREAM] ERRO: {erro_str}")

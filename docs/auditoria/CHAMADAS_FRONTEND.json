@@ -1,0 +1,1424 @@
+[
+  {
+    "path": "{id}{id}",
+    "method": "GET",
+    "file": "frontend-react/src/lib/api.ts",
+    "client": "apiRequest"
+  },
+  {
+    "path": "{id}{id}",
+    "method": "POST",
+    "file": "frontend-react/src/lib/api.ts",
+    "client": "apiRequest"
+  },
+  {
+    "path": "{id}{id}",
+    "method": "PUT",
+    "file": "frontend-react/src/lib/api.ts",
+    "client": "apiRequest"
+  },
+  {
+    "path": "{id}{id}",
+    "method": "GET",
+    "file": "frontend-react/src/lib/api.ts",
+    "client": "apiRequest"
+  },
+  {
+    "path": "{id}{id}",
+    "method": "DELETE",
+    "file": "frontend-react/src/lib/api.ts",
+    "client": "apiRequest"
+  },
+  {
+    "path": "{id}{id}",
+    "method": "DELETE",
+    "file": "frontend-react/src/lib/api.ts",
+    "client": "apiRequest"
+  },
+  {
+    "path": "/auth/login",
+    "method": "GET",
+    "file": "frontend-react/src/lib/schema-validator.ts",
+    "client": "apiRequest"
+  },
+  {
+    "path": "/gerador-pecas/api/tipos-peca",
+    "method": "GET",
+    "file": "frontend-react/src/hooks/useQueries.ts",
+    "client": "geradorApi"
+  },
+  {
+    "path": "/gerador-pecas/api/historico",
+    "method": "GET",
+    "file": "frontend-react/src/hooks/useQueries.ts",
+    "client": "geradorApi"
+  },
+  {
+    "path": "/gerador-pecas/api/historico/{id}",
+    "method": "GET",
+    "file": "frontend-react/src/hooks/useQueries.ts",
+    "client": "geradorApi"
+  },
+  {
+    "path": "/gerador-pecas/api/grupos-disponiveis",
+    "method": "GET",
+    "file": "frontend-react/src/hooks/useQueries.ts",
+    "client": "geradorApi"
+  },
+  {
+    "path": "/gerador-pecas/api/grupos/{id}/subcategorias",
+    "method": "GET",
+    "file": "frontend-react/src/hooks/useQueries.ts",
+    "client": "geradorApi"
+  },
+  {
+    "path": "/gerador-pecas/api/historico/{id}/versoes",
+    "method": "GET",
+    "file": "frontend-react/src/hooks/useQueries.ts",
+    "client": "geradorApi"
+  },
+  {
+    "path": "/gerador-pecas/api/historico/{id}",
+    "method": "DELETE",
+    "file": "frontend-react/src/hooks/useQueries.ts",
+    "client": "geradorApi"
+  },
+  {
+    "path": "/gerador-pecas/api/feedback",
+    "method": "POST",
+    "file": "frontend-react/src/hooks/useQueries.ts",
+    "client": "geradorApi"
+  },
+  {
+    "path": "/gerador-pecas/api/historico/{id}",
+    "method": "PUT",
+    "file": "frontend-react/src/hooks/useQueries.ts",
+    "client": "geradorApi"
+  },
+  {
+    "path": "/gerador-pecas/api/historico/{id}/versoes/{id}/restaurar",
+    "method": "POST",
+    "file": "frontend-react/src/hooks/useQueries.ts",
+    "client": "geradorApi"
+  },
+  {
+    "path": "/gerador-pecas/api/parecer/upload",
+    "method": "POST",
+    "file": "frontend-react/src/hooks/useQueries.ts",
+    "client": "geradorApi"
+  },
+  {
+    "path": "/gerador-pecas/api/exportar-docx",
+    "method": "POST",
+    "file": "frontend-react/src/hooks/useQueries.ts",
+    "client": "geradorApi"
+  },
+  {
+    "path": "/classificador/api/historico",
+    "method": "GET",
+    "file": "frontend-react/src/hooks/useQueries.ts",
+    "client": "classificadorApi"
+  },
+  {
+    "path": "/extrator-autos/api/historico",
+    "method": "GET",
+    "file": "frontend-react/src/hooks/useQueries.ts",
+    "client": "extratorApi"
+  },
+  {
+    "path": "/pedido-calculo/api/historico",
+    "method": "GET",
+    "file": "frontend-react/src/hooks/useQueries.ts",
+    "client": "pedidoCalculoApi"
+  },
+  {
+    "path": "/prestacao-contas/api/historico",
+    "method": "GET",
+    "file": "frontend-react/src/hooks/useQueries.ts",
+    "client": "prestacaoContasApi"
+  },
+  {
+    "path": "/relatorio-cumprimento/api/historico",
+    "method": "GET",
+    "file": "frontend-react/src/hooks/useQueries.ts",
+    "client": "relatorioCumprimentoApi"
+  },
+  {
+    "path": "/cumprimento-beta/api/historico",
+    "method": "GET",
+    "file": "frontend-react/src/hooks/useQueries.ts",
+    "client": "cumprimentoBetaApi"
+  },
+  {
+    "path": "/assistencia/api/historico",
+    "method": "GET",
+    "file": "frontend-react/src/hooks/useQueries.ts",
+    "client": "assistenciaApi"
+  },
+  {
+    "path": "/matriculas/api/historico",
+    "method": "GET",
+    "file": "frontend-react/src/hooks/useQueries.ts",
+    "client": "matriculasApi"
+  },
+  {
+    "path": "/bert-training/api/status",
+    "method": "GET",
+    "file": "frontend-react/src/hooks/useQueries.ts",
+    "client": "bertApi"
+  },
+  {
+    "path": "/bert-training/api/modelos",
+    "method": "GET",
+    "file": "frontend-react/src/hooks/useQueries.ts",
+    "client": "bertApi"
+  },
+  {
+    "path": "/admin/stats",
+    "method": "GET",
+    "file": "frontend-react/src/hooks/useQueries.ts",
+    "client": "adminApi"
+  },
+  {
+    "path": "/users/",
+    "method": "GET",
+    "file": "frontend-react/src/hooks/useQueries.ts",
+    "client": "usersApi"
+  },
+  {
+    "path": "/auth/login",
+    "method": "POST",
+    "file": "frontend-react/src/stores/auth-store.ts",
+    "client": "apiRequest"
+  },
+  {
+    "path": "/auth/me",
+    "method": "GET",
+    "file": "frontend-react/src/stores/auth-store.ts",
+    "client": "apiRequest"
+  },
+  {
+    "path": "/admin/api/categorias-resumo-json",
+    "method": "GET",
+    "file": "frontend-react/src/pages/admin/categorias-json/api.ts",
+    "client": "adminApi"
+  },
+  {
+    "path": "/admin/api/categorias-resumo-json/{id}",
+    "method": "GET",
+    "file": "frontend-react/src/pages/admin/categorias-json/api.ts",
+    "client": "adminApi"
+  },
+  {
+    "path": "/admin/api/categorias-resumo-json/{id}",
+    "method": "PUT",
+    "file": "frontend-react/src/pages/admin/categorias-json/api.ts",
+    "client": "adminApi"
+  },
+  {
+    "path": "/admin/api/categorias-resumo-json/{id}",
+    "method": "DELETE",
+    "file": "frontend-react/src/pages/admin/categorias-json/api.ts",
+    "client": "adminApi"
+  },
+  {
+    "path": "/admin/api/categorias-resumo-json/codigos-disponiveis",
+    "method": "GET",
+    "file": "frontend-react/src/pages/admin/categorias-json/api.ts",
+    "client": "adminApi"
+  },
+  {
+    "path": "/admin/api/categorias-resumo-json/fontes-especiais",
+    "method": "GET",
+    "file": "frontend-react/src/pages/admin/categorias-json/api.ts",
+    "client": "adminApi"
+  },
+  {
+    "path": "/admin/api/categorias-resumo-json/config/codigos-ignorados",
+    "method": "GET",
+    "file": "frontend-react/src/pages/admin/categorias-json/api.ts",
+    "client": "adminApi"
+  },
+  {
+    "path": "/admin/api/categorias-resumo-json/config/codigos-ignorados",
+    "method": "PUT",
+    "file": "frontend-react/src/pages/admin/categorias-json/api.ts",
+    "client": "adminApi"
+  },
+  {
+    "path": "/admin/api/extraction/categorias/{id}/perguntas",
+    "method": "GET",
+    "file": "frontend-react/src/pages/admin/categorias-json/api.ts",
+    "client": "adminApi"
+  },
+  {
+    "path": "/admin/api/extraction/perguntas",
+    "method": "POST",
+    "file": "frontend-react/src/pages/admin/categorias-json/api.ts",
+    "client": "adminApi"
+  },
+  {
+    "path": "/admin/api/extraction/perguntas/{id}",
+    "method": "PUT",
+    "file": "frontend-react/src/pages/admin/categorias-json/api.ts",
+    "client": "adminApi"
+  },
+  {
+    "path": "/admin/api/extraction/perguntas/{id}",
+    "method": "DELETE",
+    "file": "frontend-react/src/pages/admin/categorias-json/api.ts",
+    "client": "adminApi"
+  },
+  {
+    "path": "/admin/api/extraction/perguntas/lote",
+    "method": "POST",
+    "file": "frontend-react/src/pages/admin/categorias-json/api.ts",
+    "client": "adminApi"
+  },
+  {
+    "path": "/admin/api/extraction/perguntas/ordem-lote",
+    "method": "PUT",
+    "file": "frontend-react/src/pages/admin/categorias-json/api.ts",
+    "client": "adminApi"
+  },
+  {
+    "path": "/admin/api/extraction/categorias/{id}/gerar-schema",
+    "method": "POST",
+    "file": "frontend-react/src/pages/admin/categorias-json/api.ts",
+    "client": "adminApi"
+  },
+  {
+    "path": "/admin/api/extraction/categorias/{id}/sincronizar-json",
+    "method": "POST",
+    "file": "frontend-react/src/pages/admin/categorias-json/api.ts",
+    "client": "adminApi"
+  },
+  {
+    "path": "/admin/api/extraction/categorias/{id}/aplicar-json",
+    "method": "POST",
+    "file": "frontend-react/src/pages/admin/categorias-json/api.ts",
+    "client": "adminApi"
+  },
+  {
+    "path": "/admin/api/extraction/categorias/{id}/verificar-consistencia",
+    "method": "GET",
+    "file": "frontend-react/src/pages/admin/categorias-json/api.ts",
+    "client": "adminApi"
+  },
+  {
+    "path": "/admin/api/extraction/categorias/{id}/sincronizar-perguntas-json",
+    "method": "POST",
+    "file": "frontend-react/src/pages/admin/categorias-json/api.ts",
+    "client": "adminApi"
+  },
+  {
+    "path": "/admin/api/extraction/perguntas/ordenar-ia",
+    "method": "POST",
+    "file": "frontend-react/src/pages/admin/categorias-json/api.ts",
+    "client": "adminApi"
+  },
+  {
+    "path": "/admin/api/extraction/perguntas/agrupar-por-dependencias",
+    "method": "POST",
+    "file": "frontend-react/src/pages/admin/categorias-json/api.ts",
+    "client": "adminApi"
+  },
+  {
+    "path": "/admin/api/extraction/dependencias/inferir",
+    "method": "POST",
+    "file": "frontend-react/src/pages/admin/categorias-json/api.ts",
+    "client": "adminApi"
+  },
+  {
+    "path": "/admin/api/extraction/dependencias/aplicar",
+    "method": "POST",
+    "file": "frontend-react/src/pages/admin/categorias-json/api.ts",
+    "client": "adminApi"
+  },
+  {
+    "path": "/prestacao-contas/api/historico",
+    "method": "GET",
+    "file": "frontend-react/src/pages/prestacao-contas/PrestacaoContasPage.tsx",
+    "client": "prestacaoContasApi"
+  },
+  {
+    "path": "/prestacao-contas/api/verificar-existente",
+    "method": "GET",
+    "file": "frontend-react/src/pages/prestacao-contas/PrestacaoContasPage.tsx",
+    "client": "prestacaoContasApi"
+  },
+  {
+    "path": "/prestacao-contas/api/historico/{id}",
+    "method": "GET",
+    "file": "frontend-react/src/pages/prestacao-contas/PrestacaoContasPage.tsx",
+    "client": "prestacaoContasApi"
+  },
+  {
+    "path": "/prestacao-contas/api/responder-duvida",
+    "method": "POST",
+    "file": "frontend-react/src/pages/prestacao-contas/PrestacaoContasPage.tsx",
+    "client": "prestacaoContasApi"
+  },
+  {
+    "path": "/prestacao-contas/api/upload-documentos-faltantes",
+    "method": "POST",
+    "file": "frontend-react/src/pages/prestacao-contas/PrestacaoContasPage.tsx",
+    "client": "prestacaoContasApi"
+  },
+  {
+    "path": "/prestacao-contas/api/cancelar-por-falta-documentos",
+    "method": "POST",
+    "file": "frontend-react/src/pages/prestacao-contas/PrestacaoContasPage.tsx",
+    "client": "prestacaoContasApi"
+  },
+  {
+    "path": "/prestacao-contas/api/exportar-parecer",
+    "method": "POST",
+    "file": "frontend-react/src/pages/prestacao-contas/PrestacaoContasPage.tsx",
+    "client": "prestacaoContasApi"
+  },
+  {
+    "path": "/prestacao-contas/api/feedback",
+    "method": "POST",
+    "file": "frontend-react/src/pages/prestacao-contas/PrestacaoContasPage.tsx",
+    "client": "prestacaoContasApi"
+  },
+  {
+    "path": "/assistencia/api/historico",
+    "method": "GET",
+    "file": "frontend-react/src/pages/assistencia/AssistenciaPage.tsx",
+    "client": "assistenciaApi"
+  },
+  {
+    "path": "/assistencia/api/feedback/{id}",
+    "method": "GET",
+    "file": "frontend-react/src/pages/assistencia/AssistenciaPage.tsx",
+    "client": "assistenciaApi"
+  },
+  {
+    "path": "/assistencia/api/consultar",
+    "method": "POST",
+    "file": "frontend-react/src/pages/assistencia/AssistenciaPage.tsx",
+    "client": "assistenciaApi"
+  },
+  {
+    "path": "/assistencia/api/feedback",
+    "method": "POST",
+    "file": "frontend-react/src/pages/assistencia/AssistenciaPage.tsx",
+    "client": "assistenciaApi"
+  },
+  {
+    "path": "/assistencia/api/historico/{id}",
+    "method": "DELETE",
+    "file": "frontend-react/src/pages/assistencia/AssistenciaPage.tsx",
+    "client": "assistenciaApi"
+  },
+  {
+    "path": "/assistencia/api/generate-doc",
+    "method": "GET",
+    "file": "frontend-react/src/pages/assistencia/AssistenciaPage.tsx",
+    "client": "assistenciaApi"
+  },
+  {
+    "path": "/bert-training/api/datasets",
+    "method": "GET",
+    "file": "frontend-react/src/pages/bert-training/BertTrainingPage.tsx",
+    "client": "bertApi"
+  },
+  {
+    "path": "/bert-training/api/training/jobs",
+    "method": "GET",
+    "file": "frontend-react/src/pages/bert-training/BertTrainingPage.tsx",
+    "client": "bertApi"
+  },
+  {
+    "path": "/bert-training/api/inference/models",
+    "method": "GET",
+    "file": "frontend-react/src/pages/bert-training/BertTrainingPage.tsx",
+    "client": "bertApi"
+  },
+  {
+    "path": "/bert-training/api/training/jobs/{id}/metrics",
+    "method": "GET",
+    "file": "frontend-react/src/pages/bert-training/BertTrainingPage.tsx",
+    "client": "bertApi"
+  },
+  {
+    "path": "/bert-training/api/worker/gpu-info",
+    "method": "GET",
+    "file": "frontend-react/src/pages/bert-training/BertTrainingPage.tsx",
+    "client": "bertApi"
+  },
+  {
+    "path": "/bert-training/api/worker/status",
+    "method": "GET",
+    "file": "frontend-react/src/pages/bert-training/BertTrainingPage.tsx",
+    "client": "bertApi"
+  },
+  {
+    "path": "/bert-training/api/runs/{id}/logs",
+    "method": "GET",
+    "file": "frontend-react/src/pages/bert-training/BertTrainingPage.tsx",
+    "client": "bertApi"
+  },
+  {
+    "path": "/bert-training/api/training/jobs",
+    "method": "GET",
+    "file": "frontend-react/src/pages/bert-training/BertTrainingPage.tsx",
+    "client": "bertApi"
+  },
+  {
+    "path": "/bert-training/api/training/start",
+    "method": "POST",
+    "file": "frontend-react/src/pages/bert-training/BertTrainingPage.tsx",
+    "client": "bertApi"
+  },
+  {
+    "path": "/bert-training/api/training/jobs/{id}/stop",
+    "method": "POST",
+    "file": "frontend-react/src/pages/bert-training/BertTrainingPage.tsx",
+    "client": "bertApi"
+  },
+  {
+    "path": "/bert-training/api/inference/predict",
+    "method": "POST",
+    "file": "frontend-react/src/pages/bert-training/BertTrainingPage.tsx",
+    "client": "bertApi"
+  },
+  {
+    "path": "/bert-training/api/inference/batch-predict",
+    "method": "POST",
+    "file": "frontend-react/src/pages/bert-training/BertTrainingPage.tsx",
+    "client": "bertApi"
+  },
+  {
+    "path": "/bert-training/api/inference/classify-pdf",
+    "method": "POST",
+    "file": "frontend-react/src/pages/bert-training/BertTrainingPage.tsx",
+    "client": "bertApi"
+  },
+  {
+    "path": "/bert-training/api/compare/bert-vs-llm",
+    "method": "POST",
+    "file": "frontend-react/src/pages/bert-training/BertTrainingPage.tsx",
+    "client": "bertApi"
+  },
+  {
+    "path": "/bert-training/api/datasets/validate",
+    "method": "POST",
+    "file": "frontend-react/src/pages/bert-training/BertTrainingPage.tsx",
+    "client": "bertApi"
+  },
+  {
+    "path": "/bert-training/api/datasets/upload",
+    "method": "POST",
+    "file": "frontend-react/src/pages/bert-training/BertTrainingPage.tsx",
+    "client": "bertApi"
+  },
+  {
+    "path": "/classificador/api/projetos",
+    "method": "POST",
+    "file": "frontend-react/src/pages/classificador/ClassificadorPage.tsx",
+    "client": "classificadorApi"
+  },
+  {
+    "path": "/classificador/api/lotes/{id}/upload",
+    "method": "POST",
+    "file": "frontend-react/src/pages/classificador/ClassificadorPage.tsx",
+    "client": "classificadorApi"
+  },
+  {
+    "path": "/classificador/api/execucoes/{id}/resultados",
+    "method": "GET",
+    "file": "frontend-react/src/pages/classificador/ClassificadorPage.tsx",
+    "client": "classificadorApi"
+  },
+  {
+    "path": "/classificador/api/execucoes/{id}/exportar/{id}",
+    "method": "GET",
+    "file": "frontend-react/src/pages/classificador/ClassificadorPage.tsx",
+    "client": "classificadorApi"
+  },
+  {
+    "path": "/classificador/api/projetos",
+    "method": "GET",
+    "file": "frontend-react/src/pages/classificador/ClassificadorPage.tsx",
+    "client": "classificadorApi"
+  },
+  {
+    "path": "/classificador/api/execucoes-em-andamento",
+    "method": "GET",
+    "file": "frontend-react/src/pages/classificador/ClassificadorPage.tsx",
+    "client": "classificadorApi"
+  },
+  {
+    "path": "/classificador/api/projetos/{id}/codigos",
+    "method": "GET",
+    "file": "frontend-react/src/pages/classificador/ClassificadorPage.tsx",
+    "client": "classificadorApi"
+  },
+  {
+    "path": "/classificador/api/projetos/{id}/execucoes",
+    "method": "GET",
+    "file": "frontend-react/src/pages/classificador/ClassificadorPage.tsx",
+    "client": "classificadorApi"
+  },
+  {
+    "path": "/classificador/api/execucoes/{id}/resultados",
+    "method": "GET",
+    "file": "frontend-react/src/pages/classificador/ClassificadorPage.tsx",
+    "client": "classificadorApi"
+  },
+  {
+    "path": "/classificador/api/execucoes/{id}/exportar/{id}",
+    "method": "GET",
+    "file": "frontend-react/src/pages/classificador/ClassificadorPage.tsx",
+    "client": "classificadorApi"
+  },
+  {
+    "path": "/classificador/api/execucoes/{id}/cancelar",
+    "method": "POST",
+    "file": "frontend-react/src/pages/classificador/ClassificadorPage.tsx",
+    "client": "classificadorApi"
+  },
+  {
+    "path": "/classificador/api/prompts/{id}",
+    "method": "PUT",
+    "file": "frontend-react/src/pages/classificador/ClassificadorPage.tsx",
+    "client": "classificadorApi"
+  },
+  {
+    "path": "/classificador/api/prompts",
+    "method": "POST",
+    "file": "frontend-react/src/pages/classificador/ClassificadorPage.tsx",
+    "client": "classificadorApi"
+  },
+  {
+    "path": "/classificador/api/prompts/{id}",
+    "method": "DELETE",
+    "file": "frontend-react/src/pages/classificador/ClassificadorPage.tsx",
+    "client": "classificadorApi"
+  },
+  {
+    "path": "/classificador/api/classificar-avulso",
+    "method": "POST",
+    "file": "frontend-react/src/pages/classificador/ClassificadorPage.tsx",
+    "client": "classificadorApi"
+  },
+  {
+    "path": "/classificador/api/prompts",
+    "method": "GET",
+    "file": "frontend-react/src/pages/classificador/ClassificadorPage.tsx",
+    "client": "classificadorApi"
+  },
+  {
+    "path": "/classificador/api/projetos/{id}/executar${token ",
+    "method": "SSE",
+    "file": "frontend-react/src/pages/classificador/ClassificadorPage.tsx",
+    "client": "EventSource"
+  },
+  {
+    "path": "/classificador/api/projetos/{id}/executar${token ",
+    "method": "SSE",
+    "file": "frontend-react/src/pages/classificador/ClassificadorPage.tsx",
+    "client": "EventSource"
+  },
+  {
+    "path": "/cumprimento-beta/api/sessoes",
+    "method": "GET",
+    "file": "frontend-react/src/pages/cumprimento-beta/CumprimentoBetaPage.tsx",
+    "client": "cumprimentoBetaApi"
+  },
+  {
+    "path": "/cumprimento-beta/api/sessoes",
+    "method": "POST",
+    "file": "frontend-react/src/pages/cumprimento-beta/CumprimentoBetaPage.tsx",
+    "client": "cumprimentoBetaApi"
+  },
+  {
+    "path": "/cumprimento-beta/api/sessoes/{id}/processar",
+    "method": "POST",
+    "file": "frontend-react/src/pages/cumprimento-beta/CumprimentoBetaPage.tsx",
+    "client": "cumprimentoBetaApi"
+  },
+  {
+    "path": "/cumprimento-beta/api/sessoes/{id}",
+    "method": "GET",
+    "file": "frontend-react/src/pages/cumprimento-beta/CumprimentoBetaPage.tsx",
+    "client": "cumprimentoBetaApi"
+  },
+  {
+    "path": "/cumprimento-beta/api/sessoes/{id}/consolidacao",
+    "method": "GET",
+    "file": "frontend-react/src/pages/cumprimento-beta/CumprimentoBetaPage.tsx",
+    "client": "cumprimentoBetaApi"
+  },
+  {
+    "path": "/cumprimento-beta/api/sessoes/{id}/conversas",
+    "method": "GET",
+    "file": "frontend-react/src/pages/cumprimento-beta/CumprimentoBetaPage.tsx",
+    "client": "cumprimentoBetaApi"
+  },
+  {
+    "path": "/cumprimento-beta/api/sessoes/{id}/pecas",
+    "method": "GET",
+    "file": "frontend-react/src/pages/cumprimento-beta/CumprimentoBetaPage.tsx",
+    "client": "cumprimentoBetaApi"
+  },
+  {
+    "path": "/cumprimento-beta/api/sessoes/{id}",
+    "method": "GET",
+    "file": "frontend-react/src/pages/cumprimento-beta/CumprimentoBetaPage.tsx",
+    "client": "cumprimentoBetaApi"
+  },
+  {
+    "path": "/api/cumprimento-beta/sessoes/{id}/consolidar",
+    "method": "FETCH",
+    "file": "frontend-react/src/pages/cumprimento-beta/CumprimentoBetaPage.tsx",
+    "client": "fetch"
+  },
+  {
+    "path": "/api/cumprimento-beta/sessoes/{id}/chat",
+    "method": "FETCH",
+    "file": "frontend-react/src/pages/cumprimento-beta/CumprimentoBetaPage.tsx",
+    "client": "fetch"
+  },
+  {
+    "path": "/extrator-autos/api/bert/health",
+    "method": "GET",
+    "file": "frontend-react/src/pages/extrator-autos/ExtratorAutosPage.tsx",
+    "client": "extratorApi"
+  },
+  {
+    "path": "/extrator-autos/api/historico",
+    "method": "GET",
+    "file": "frontend-react/src/pages/extrator-autos/ExtratorAutosPage.tsx",
+    "client": "extratorApi"
+  },
+  {
+    "path": "/extrator-autos/api/consultar",
+    "method": "POST",
+    "file": "frontend-react/src/pages/extrator-autos/ExtratorAutosPage.tsx",
+    "client": "extratorApi"
+  },
+  {
+    "path": "/extrator-autos/api/categorias",
+    "method": "GET",
+    "file": "frontend-react/src/pages/extrator-autos/ExtratorAutosPage.tsx",
+    "client": "extratorApi"
+  },
+  {
+    "path": "/extrator-autos/api/consultar-lote",
+    "method": "POST",
+    "file": "frontend-react/src/pages/extrator-autos/ExtratorAutosPage.tsx",
+    "client": "extratorApi"
+  },
+  {
+    "path": "/extrator-autos/api/categorias",
+    "method": "GET",
+    "file": "frontend-react/src/pages/extrator-autos/ExtratorAutosPage.tsx",
+    "client": "extratorApi"
+  },
+  {
+    "path": "/extrator-autos/api/preview",
+    "method": "POST",
+    "file": "frontend-react/src/pages/extrator-autos/ExtratorAutosPage.tsx",
+    "client": "extratorApi"
+  },
+  {
+    "path": "/extrator-autos/api/download/{id}",
+    "method": "GET",
+    "file": "frontend-react/src/pages/extrator-autos/ExtratorAutosPage.tsx",
+    "client": "extratorApi"
+  },
+  {
+    "path": "/gerador-pecas/api/curadoria/preview",
+    "method": "POST",
+    "file": "frontend-react/src/pages/gerador-pecas/GeradorPecasPage.tsx",
+    "client": "geradorApi"
+  },
+  {
+    "path": "/gerador-pecas/api/historico/{id}",
+    "method": "PUT",
+    "file": "frontend-react/src/pages/gerador-pecas/GeradorPecasPage.tsx",
+    "client": "geradorApi"
+  },
+  {
+    "path": "/gerador-pecas/api/historico/{id}",
+    "method": "GET",
+    "file": "frontend-react/src/pages/gerador-pecas/GeradorPecasPage.tsx",
+    "client": "geradorApi"
+  },
+  {
+    "path": "/gerador-pecas/api/editar-minuta-stream",
+    "method": "FETCH",
+    "file": "frontend-react/src/pages/gerador-pecas/GeradorPecasPage.tsx",
+    "client": "fetch"
+  },
+  {
+    "path": "/matriculas/api/files",
+    "method": "GET",
+    "file": "frontend-react/src/pages/matriculas/MatriculasPage.tsx",
+    "client": "matriculasApi"
+  },
+  {
+    "path": "/matriculas/api/config",
+    "method": "GET",
+    "file": "frontend-react/src/pages/matriculas/MatriculasPage.tsx",
+    "client": "matriculasApi"
+  },
+  {
+    "path": "/matriculas/api/logs",
+    "method": "GET",
+    "file": "frontend-react/src/pages/matriculas/MatriculasPage.tsx",
+    "client": "matriculasApi"
+  },
+  {
+    "path": "/matriculas/api/resultado/{id}",
+    "method": "GET",
+    "file": "frontend-react/src/pages/matriculas/MatriculasPage.tsx",
+    "client": "matriculasApi"
+  },
+  {
+    "path": "/matriculas/api/files/upload",
+    "method": "POST",
+    "file": "frontend-react/src/pages/matriculas/MatriculasPage.tsx",
+    "client": "matriculasApi"
+  },
+  {
+    "path": "/matriculas/api/files/upload",
+    "method": "POST",
+    "file": "frontend-react/src/pages/matriculas/MatriculasPage.tsx",
+    "client": "matriculasApi"
+  },
+  {
+    "path": "/matriculas/api/analisar/{id}/status",
+    "method": "GET",
+    "file": "frontend-react/src/pages/matriculas/MatriculasPage.tsx",
+    "client": "matriculasApi"
+  },
+  {
+    "path": "/matriculas/api/analisar-lote",
+    "method": "POST",
+    "file": "frontend-react/src/pages/matriculas/MatriculasPage.tsx",
+    "client": "matriculasApi"
+  },
+  {
+    "path": "/matriculas/api/grupo/{id}/status",
+    "method": "GET",
+    "file": "frontend-react/src/pages/matriculas/MatriculasPage.tsx",
+    "client": "matriculasApi"
+  },
+  {
+    "path": "/matriculas/api/grupo/{id}/resultado",
+    "method": "GET",
+    "file": "frontend-react/src/pages/matriculas/MatriculasPage.tsx",
+    "client": "matriculasApi"
+  },
+  {
+    "path": "/matriculas/api/relatorio/gerar",
+    "method": "POST",
+    "file": "frontend-react/src/pages/matriculas/MatriculasPage.tsx",
+    "client": "matriculasApi"
+  },
+  {
+    "path": "/matriculas/api/feedback",
+    "method": "POST",
+    "file": "frontend-react/src/pages/matriculas/MatriculasPage.tsx",
+    "client": "matriculasApi"
+  },
+  {
+    "path": "/matriculas/api/files/{id}",
+    "method": "DELETE",
+    "file": "frontend-react/src/pages/matriculas/MatriculasPage.tsx",
+    "client": "matriculasApi"
+  },
+  {
+    "path": "/matriculas/api/files/{id}/view",
+    "method": "FETCH",
+    "file": "frontend-react/src/pages/matriculas/MatriculasPage.tsx",
+    "client": "fetch"
+  },
+  {
+    "path": "/matriculas/api{id}",
+    "method": "FETCH",
+    "file": "frontend-react/src/pages/matriculas/MatriculasPage.tsx",
+    "client": "fetch"
+  },
+  {
+    "path": "/pedido-calculo/api/historico",
+    "method": "GET",
+    "file": "frontend-react/src/pages/pedido-calculo/PedidoCalculoPage.tsx",
+    "client": "pedidoCalculoApi"
+  },
+  {
+    "path": "/pedido-calculo/api/verificar-existente",
+    "method": "GET",
+    "file": "frontend-react/src/pages/pedido-calculo/PedidoCalculoPage.tsx",
+    "client": "pedidoCalculoApi"
+  },
+  {
+    "path": "/pedido-calculo/api/historico/{id}",
+    "method": "GET",
+    "file": "frontend-react/src/pages/pedido-calculo/PedidoCalculoPage.tsx",
+    "client": "pedidoCalculoApi"
+  },
+  {
+    "path": "/pedido-calculo/api/editar-pedido",
+    "method": "POST",
+    "file": "frontend-react/src/pages/pedido-calculo/PedidoCalculoPage.tsx",
+    "client": "pedidoCalculoApi"
+  },
+  {
+    "path": "/pedido-calculo/api/exportar-docx",
+    "method": "POST",
+    "file": "frontend-react/src/pages/pedido-calculo/PedidoCalculoPage.tsx",
+    "client": "pedidoCalculoApi"
+  },
+  {
+    "path": "/pedido-calculo/api/documento/{id}/{id}",
+    "method": "GET",
+    "file": "frontend-react/src/pages/pedido-calculo/PedidoCalculoPage.tsx",
+    "client": "pedidoCalculoApi"
+  },
+  {
+    "path": "/pedido-calculo/api/feedback",
+    "method": "POST",
+    "file": "frontend-react/src/pages/pedido-calculo/PedidoCalculoPage.tsx",
+    "client": "pedidoCalculoApi"
+  },
+  {
+    "path": "/pedido-calculo/api/processar-stream",
+    "method": "FETCH",
+    "file": "frontend-react/src/pages/pedido-calculo/PedidoCalculoPage.tsx",
+    "client": "fetch"
+  },
+  {
+    "path": "/relatorio-cumprimento/api/historico",
+    "method": "GET",
+    "file": "frontend-react/src/pages/relatorio-cumprimento/RelatorioCumprimentoPage.tsx",
+    "client": "relatorioCumprimentoApi"
+  },
+  {
+    "path": "/relatorio-cumprimento/api/verificar-existente",
+    "method": "GET",
+    "file": "frontend-react/src/pages/relatorio-cumprimento/RelatorioCumprimentoPage.tsx",
+    "client": "relatorioCumprimentoApi"
+  },
+  {
+    "path": "/relatorio-cumprimento/api/feedback/{id}",
+    "method": "GET",
+    "file": "frontend-react/src/pages/relatorio-cumprimento/RelatorioCumprimentoPage.tsx",
+    "client": "relatorioCumprimentoApi"
+  },
+  {
+    "path": "/relatorio-cumprimento/api/editar",
+    "method": "POST",
+    "file": "frontend-react/src/pages/relatorio-cumprimento/RelatorioCumprimentoPage.tsx",
+    "client": "relatorioCumprimentoApi"
+  },
+  {
+    "path": "/relatorio-cumprimento/api/exportar-docx",
+    "method": "POST",
+    "file": "frontend-react/src/pages/relatorio-cumprimento/RelatorioCumprimentoPage.tsx",
+    "client": "relatorioCumprimentoApi"
+  },
+  {
+    "path": "/relatorio-cumprimento/api/exportar-pdf",
+    "method": "POST",
+    "file": "frontend-react/src/pages/relatorio-cumprimento/RelatorioCumprimentoPage.tsx",
+    "client": "relatorioCumprimentoApi"
+  },
+  {
+    "path": "/relatorio-cumprimento/api/feedback",
+    "method": "POST",
+    "file": "frontend-react/src/pages/relatorio-cumprimento/RelatorioCumprimentoPage.tsx",
+    "client": "relatorioCumprimentoApi"
+  },
+  {
+    "path": "/relatorio-cumprimento/api/processar-stream",
+    "method": "FETCH",
+    "file": "frontend-react/src/pages/relatorio-cumprimento/RelatorioCumprimentoPage.tsx",
+    "client": "fetch"
+  },
+  {
+    "path": "/auth/change-password",
+    "method": "POST",
+    "file": "frontend-react/src/pages/change-password/ChangePasswordPage.tsx",
+    "client": "authApi"
+  },
+  {
+    "path": "/api/gerador-pecas/config/categorias",
+    "method": "GET",
+    "file": "frontend-react/src/pages/admin/config-pecas/ConfigPecasPage.tsx",
+    "client": "configApi"
+  },
+  {
+    "path": "/api/gerador-pecas/config/tipos-peca",
+    "method": "GET",
+    "file": "frontend-react/src/pages/admin/config-pecas/ConfigPecasPage.tsx",
+    "client": "configApi"
+  },
+  {
+    "path": "/admin/api/config-pecas/carregar-iniciais",
+    "method": "POST",
+    "file": "frontend-react/src/pages/admin/config-pecas/ConfigPecasPage.tsx",
+    "client": "adminConfigApi"
+  },
+  {
+    "path": "/admin/api/config-pecas/sincronizar-prompts",
+    "method": "POST",
+    "file": "frontend-react/src/pages/admin/config-pecas/ConfigPecasPage.tsx",
+    "client": "adminConfigApi"
+  },
+  {
+    "path": "/api/gerador-pecas/config/categorias/{id}",
+    "method": "PUT",
+    "file": "frontend-react/src/pages/admin/config-pecas/ConfigPecasPage.tsx",
+    "client": "configApi"
+  },
+  {
+    "path": "/api/gerador-pecas/config/categorias",
+    "method": "POST",
+    "file": "frontend-react/src/pages/admin/config-pecas/ConfigPecasPage.tsx",
+    "client": "configApi"
+  },
+  {
+    "path": "/api/gerador-pecas/config/categorias/{id}",
+    "method": "DELETE",
+    "file": "frontend-react/src/pages/admin/config-pecas/ConfigPecasPage.tsx",
+    "client": "configApi"
+  },
+  {
+    "path": "/api/gerador-pecas/config/tipos-peca/{id}",
+    "method": "PUT",
+    "file": "frontend-react/src/pages/admin/config-pecas/ConfigPecasPage.tsx",
+    "client": "configApi"
+  },
+  {
+    "path": "/api/gerador-pecas/config/tipos-peca",
+    "method": "POST",
+    "file": "frontend-react/src/pages/admin/config-pecas/ConfigPecasPage.tsx",
+    "client": "configApi"
+  },
+  {
+    "path": "/api/gerador-pecas/config/tipos-peca/{id}",
+    "method": "DELETE",
+    "file": "frontend-react/src/pages/admin/config-pecas/ConfigPecasPage.tsx",
+    "client": "configApi"
+  },
+  {
+    "path": "/admin/feedbacks/dashboard",
+    "method": "GET",
+    "file": "frontend-react/src/pages/admin/feedbacks/FeedbacksPage.tsx",
+    "client": "adminApi"
+  },
+  {
+    "path": "/admin/feedbacks/evolucao",
+    "method": "GET",
+    "file": "frontend-react/src/pages/admin/feedbacks/FeedbacksPage.tsx",
+    "client": "adminApi"
+  },
+  {
+    "path": "/admin/feedbacks/exportar",
+    "method": "GET",
+    "file": "frontend-react/src/pages/admin/feedbacks/FeedbacksPage.tsx",
+    "client": "adminApi"
+  },
+  {
+    "path": "/admin/api/gerador-pecas-admin/geracoes",
+    "method": "GET",
+    "file": "frontend-react/src/pages/admin/historico-gerador/HistoricoGeradorPage.tsx",
+    "client": "geradorAdminApi"
+  },
+  {
+    "path": "/admin/api/gerador-pecas-admin/geracoes/{id}",
+    "method": "GET",
+    "file": "frontend-react/src/pages/admin/historico-gerador/HistoricoGeradorPage.tsx",
+    "client": "geradorAdminApi"
+  },
+  {
+    "path": "/admin/api/gerador-pecas-admin/geracoes/{id}/download-docx",
+    "method": "GET",
+    "file": "frontend-react/src/pages/admin/historico-gerador/HistoricoGeradorPage.tsx",
+    "client": "geradorAdminApi"
+  },
+  {
+    "path": "/pedido-calculo-admin/geracoes",
+    "method": "GET",
+    "file": "frontend-react/src/pages/admin/historico-pedido-calculo/HistoricoPedidoCalculoPage.tsx",
+    "client": "pedidoCalculoAdminApi"
+  },
+  {
+    "path": "/pedido-calculo-admin/geracoes/{id}",
+    "method": "GET",
+    "file": "frontend-react/src/pages/admin/historico-pedido-calculo/HistoricoPedidoCalculoPage.tsx",
+    "client": "pedidoCalculoAdminApi"
+  },
+  {
+    "path": "/admin/api/prestacao-admin/geracoes/{id}/documentos",
+    "method": "POST",
+    "file": "frontend-react/src/pages/admin/historico-prestacao-contas/HistoricoPrestacaoContasPage.tsx",
+    "client": "prestacaoAdminApi"
+  },
+  {
+    "path": "/admin/api/prestacao-admin/geracoes/{id}/reprocessar",
+    "method": "POST",
+    "file": "frontend-react/src/pages/admin/historico-prestacao-contas/HistoricoPrestacaoContasPage.tsx",
+    "client": "prestacaoAdminApi"
+  },
+  {
+    "path": "/admin/api/prestacao-admin/geracoes",
+    "method": "GET",
+    "file": "frontend-react/src/pages/admin/historico-prestacao-contas/HistoricoPrestacaoContasPage.tsx",
+    "client": "prestacaoAdminApi"
+  },
+  {
+    "path": "/admin/api/prestacao-admin/geracoes/{id}",
+    "method": "GET",
+    "file": "frontend-react/src/pages/admin/historico-prestacao-contas/HistoricoPrestacaoContasPage.tsx",
+    "client": "prestacaoAdminApi"
+  },
+  {
+    "path": "/admin/api/prompts-modulos/grupos",
+    "method": "GET",
+    "file": "frontend-react/src/pages/admin/modulos-tipo-peca/ModulosTipoPecaPage.tsx",
+    "client": "adminApi"
+  },
+  {
+    "path": "/admin/api/prompts-modulos/tipos-peca",
+    "method": "GET",
+    "file": "frontend-react/src/pages/admin/modulos-tipo-peca/ModulosTipoPecaPage.tsx",
+    "client": "adminApi"
+  },
+  {
+    "path": "/admin/api/prompts-modulos/resumo-configuracao-tipos-peca",
+    "method": "GET",
+    "file": "frontend-react/src/pages/admin/modulos-tipo-peca/ModulosTipoPecaPage.tsx",
+    "client": "adminApi"
+  },
+  {
+    "path": "/admin/api/prompts-modulos/modulos-por-tipo-peca/{id}",
+    "method": "GET",
+    "file": "frontend-react/src/pages/admin/modulos-tipo-peca/ModulosTipoPecaPage.tsx",
+    "client": "adminApi"
+  },
+  {
+    "path": "/admin/api/prompts-modulos/configurar-modulos-tipo-peca",
+    "method": "POST",
+    "file": "frontend-react/src/pages/admin/modulos-tipo-peca/ModulosTipoPecaPage.tsx",
+    "client": "adminApi"
+  },
+  {
+    "path": "/admin/api/prompts-modulos/resumo-configuracao-tipos-peca",
+    "method": "GET",
+    "file": "frontend-react/src/pages/admin/modulos-tipo-peca/ModulosTipoPecaPage.tsx",
+    "client": "adminApi"
+  },
+  {
+    "path": "/admin/api/prompts-modulos/configurar-modulos-tipo-peca",
+    "method": "POST",
+    "file": "frontend-react/src/pages/admin/modulos-tipo-peca/ModulosTipoPecaPage.tsx",
+    "client": "adminApi"
+  },
+  {
+    "path": "/admin/api/performance/summary",
+    "method": "GET",
+    "file": "frontend-react/src/pages/admin/performance/PerformancePage.tsx",
+    "client": "adminApi"
+  },
+  {
+    "path": "/admin/api/performance/logs",
+    "method": "GET",
+    "file": "frontend-react/src/pages/admin/performance/PerformancePage.tsx",
+    "client": "adminApi"
+  },
+  {
+    "path": "/admin/api/gemini-logs/summary",
+    "method": "GET",
+    "file": "frontend-react/src/pages/admin/performance/PerformancePage.tsx",
+    "client": "adminApi"
+  },
+  {
+    "path": "/admin/api/gemini-logs",
+    "method": "GET",
+    "file": "frontend-react/src/pages/admin/performance/PerformancePage.tsx",
+    "client": "adminApi"
+  },
+  {
+    "path": "/admin/api/performance/route-mapping",
+    "method": "GET",
+    "file": "frontend-react/src/pages/admin/performance/PerformancePage.tsx",
+    "client": "adminApi"
+  },
+  {
+    "path": "/admin/api/performance/logs/limpar",
+    "method": "DELETE",
+    "file": "frontend-react/src/pages/admin/performance/PerformancePage.tsx",
+    "client": "adminApi"
+  },
+  {
+    "path": "/admin/api/prompts-modulos/grupos",
+    "method": "GET",
+    "file": "frontend-react/src/pages/admin/prompts-modulos/PromptsModulosPage.tsx",
+    "client": "adminApi"
+  },
+  {
+    "path": "/admin/api/prompts-modulos",
+    "method": "GET",
+    "file": "frontend-react/src/pages/admin/prompts-modulos/PromptsModulosPage.tsx",
+    "client": "adminApi"
+  },
+  {
+    "path": "/admin/api/prompts-modulos/grupos/{id}/subgrupos",
+    "method": "GET",
+    "file": "frontend-react/src/pages/admin/prompts-modulos/PromptsModulosPage.tsx",
+    "client": "adminApi"
+  },
+  {
+    "path": "/admin/api/prompts-modulos/grupos/{id}/subgrupos",
+    "method": "GET",
+    "file": "frontend-react/src/pages/admin/prompts-modulos/PromptsModulosPage.tsx",
+    "client": "adminApi"
+  },
+  {
+    "path": "/admin/api/prompts-modulos/grupos/{id}/subcategorias",
+    "method": "GET",
+    "file": "frontend-react/src/pages/admin/prompts-modulos/PromptsModulosPage.tsx",
+    "client": "adminApi"
+  },
+  {
+    "path": "/admin/api/prompts-modulos/{id}",
+    "method": "PUT",
+    "file": "frontend-react/src/pages/admin/prompts-modulos/PromptsModulosPage.tsx",
+    "client": "adminApi"
+  },
+  {
+    "path": "/admin/api/prompts-modulos",
+    "method": "POST",
+    "file": "frontend-react/src/pages/admin/prompts-modulos/PromptsModulosPage.tsx",
+    "client": "adminApi"
+  },
+  {
+    "path": "/admin/api/prompts-modulos/{id}",
+    "method": "DELETE",
+    "file": "frontend-react/src/pages/admin/prompts-modulos/PromptsModulosPage.tsx",
+    "client": "adminApi"
+  },
+  {
+    "path": "/admin/api/prompts-modulos/{id}/toggle",
+    "method": "PATCH",
+    "file": "frontend-react/src/pages/admin/prompts-modulos/PromptsModulosPage.tsx",
+    "client": "adminApi"
+  },
+  {
+    "path": "/admin/api/prompts-modulos/{id}/historico",
+    "method": "GET",
+    "file": "frontend-react/src/pages/admin/prompts-modulos/PromptsModulosPage.tsx",
+    "client": "adminApi"
+  },
+  {
+    "path": "/admin/api/prompts-modulos/{id}/restaurar/{id}",
+    "method": "POST",
+    "file": "frontend-react/src/pages/admin/prompts-modulos/PromptsModulosPage.tsx",
+    "client": "adminApi"
+  },
+  {
+    "path": "/admin/api/prompts-modulos/exportar/todos",
+    "method": "GET",
+    "file": "frontend-react/src/pages/admin/prompts-modulos/PromptsModulosPage.tsx",
+    "client": "adminApi"
+  },
+  {
+    "path": "/admin/api/prompts-modulos/importar",
+    "method": "POST",
+    "file": "frontend-react/src/pages/admin/prompts-modulos/PromptsModulosPage.tsx",
+    "client": "adminApi"
+  },
+  {
+    "path": "/admin/api/prompts-modulos/grupos",
+    "method": "POST",
+    "file": "frontend-react/src/pages/admin/prompts-modulos/PromptsModulosPage.tsx",
+    "client": "adminApi"
+  },
+  {
+    "path": "/admin/config-ia",
+    "method": "GET",
+    "file": "frontend-react/src/pages/admin/prompts/PromptsPage.tsx",
+    "client": "adminApi"
+  },
+  {
+    "path": "/admin/api/prompts",
+    "method": "GET",
+    "file": "frontend-react/src/pages/admin/prompts/PromptsPage.tsx",
+    "client": "adminApi"
+  },
+  {
+    "path": "/admin/config-ia/per-agent/{id}",
+    "method": "GET",
+    "file": "frontend-react/src/pages/admin/prompts/PromptsPage.tsx",
+    "client": "adminApi"
+  },
+  {
+    "path": "/admin/config-ia/upsert",
+    "method": "POST",
+    "file": "frontend-react/src/pages/admin/prompts/PromptsPage.tsx",
+    "client": "adminApi"
+  },
+  {
+    "path": "/admin/config-ia/upsert",
+    "method": "POST",
+    "file": "frontend-react/src/pages/admin/prompts/PromptsPage.tsx",
+    "client": "adminApi"
+  },
+  {
+    "path": "/admin/config-ia/upsert",
+    "method": "POST",
+    "file": "frontend-react/src/pages/admin/prompts/PromptsPage.tsx",
+    "client": "adminApi"
+  },
+  {
+    "path": "/admin/api/prompts/{id}",
+    "method": "PUT",
+    "file": "frontend-react/src/pages/admin/prompts/PromptsPage.tsx",
+    "client": "adminApi"
+  },
+  {
+    "path": "/admin/api/prompts/{id}/restaurar-padrao",
+    "method": "POST",
+    "file": "frontend-react/src/pages/admin/prompts/PromptsPage.tsx",
+    "client": "adminApi"
+  },
+  {
+    "path": "/admin/api/prompts/criar-padrao/{id}",
+    "method": "POST",
+    "file": "frontend-react/src/pages/admin/prompts/PromptsPage.tsx",
+    "client": "adminApi"
+  },
+  {
+    "path": "/admin/api/extraction/restaurar-slugs",
+    "method": "POST",
+    "file": "frontend-react/src/pages/admin/restaurar-slugs/RestaurarSlugsPage.tsx",
+    "client": "adminApi"
+  },
+  {
+    "path": "/admin/api/teste-ativacao/tipos-peca",
+    "method": "GET",
+    "file": "frontend-react/src/pages/admin/teste-ativacao/TesteAtivacaoPage.tsx",
+    "client": "adminApi"
+  },
+  {
+    "path": "/admin/api/teste-ativacao/categorias-extracao",
+    "method": "GET",
+    "file": "frontend-react/src/pages/admin/teste-ativacao/TesteAtivacaoPage.tsx",
+    "client": "adminApi"
+  },
+  {
+    "path": "/admin/api/teste-ativacao/variaveis-processo",
+    "method": "GET",
+    "file": "frontend-react/src/pages/admin/teste-ativacao/TesteAtivacaoPage.tsx",
+    "client": "adminApi"
+  },
+  {
+    "path": "/admin/api/teste-ativacao/cenarios",
+    "method": "GET",
+    "file": "frontend-react/src/pages/admin/teste-ativacao/TesteAtivacaoPage.tsx",
+    "client": "adminApi"
+  },
+  {
+    "path": "/admin/api/teste-ativacao/simular",
+    "method": "POST",
+    "file": "frontend-react/src/pages/admin/teste-ativacao/TesteAtivacaoPage.tsx",
+    "client": "adminApi"
+  },
+  {
+    "path": "/admin/api/teste-ativacao/cenarios",
+    "method": "POST",
+    "file": "frontend-react/src/pages/admin/teste-ativacao/TesteAtivacaoPage.tsx",
+    "client": "adminApi"
+  },
+  {
+    "path": "/admin/api/teste-ativacao/cenarios",
+    "method": "GET",
+    "file": "frontend-react/src/pages/admin/teste-ativacao/TesteAtivacaoPage.tsx",
+    "client": "adminApi"
+  },
+  {
+    "path": "/admin/api/teste-categorias/categorias-ativas",
+    "method": "GET",
+    "file": "frontend-react/src/pages/admin/teste-categorias/TesteCategoriasPage.tsx",
+    "client": "adminApi"
+  },
+  {
+    "path": "/admin/api/teste-categorias/validar-processos",
+    "method": "POST",
+    "file": "frontend-react/src/pages/admin/teste-categorias/TesteCategoriasPage.tsx",
+    "client": "adminApi"
+  },
+  {
+    "path": "/admin/api/teste-categorias/classificar",
+    "method": "POST",
+    "file": "frontend-react/src/pages/admin/teste-categorias/TesteCategoriasPage.tsx",
+    "client": "adminApi"
+  },
+  {
+    "path": "/admin/api/teste-categorias/exportar",
+    "method": "GET",
+    "file": "frontend-react/src/pages/admin/teste-categorias/TesteCategoriasPage.tsx",
+    "client": "adminApi"
+  },
+  {
+    "path": "/admin/api/teste-categorias/resetar-erros",
+    "method": "POST",
+    "file": "frontend-react/src/pages/admin/teste-categorias/TesteCategoriasPage.tsx",
+    "client": "adminApi"
+  },
+  {
+    "path": "/users",
+    "method": "GET",
+    "file": "frontend-react/src/pages/admin/users/UsersPage.tsx",
+    "client": "usersApi"
+  },
+  {
+    "path": "/users/content-groups",
+    "method": "GET",
+    "file": "frontend-react/src/pages/admin/users/UsersPage.tsx",
+    "client": "usersApi"
+  },
+  {
+    "path": "/users/{id}",
+    "method": "PUT",
+    "file": "frontend-react/src/pages/admin/users/UsersPage.tsx",
+    "client": "usersApi"
+  },
+  {
+    "path": "/users/{id}",
+    "method": "DELETE",
+    "file": "frontend-react/src/pages/admin/users/UsersPage.tsx",
+    "client": "usersApi"
+  },
+  {
+    "path": "/users/{id}/reset-password",
+    "method": "POST",
+    "file": "frontend-react/src/pages/admin/users/UsersPage.tsx",
+    "client": "usersApi"
+  },
+  {
+    "path": "/admin/api/extraction/variaveis/resumo",
+    "method": "GET",
+    "file": "frontend-react/src/pages/admin/variaveis/VariaveisPage.tsx",
+    "client": "adminApi"
+  },
+  {
+    "path": "/admin/api/extraction/variaveis",
+    "method": "GET",
+    "file": "frontend-react/src/pages/admin/variaveis/VariaveisPage.tsx",
+    "client": "adminApi"
+  },
+  {
+    "path": "/admin/api/categorias-resumo-json",
+    "method": "GET",
+    "file": "frontend-react/src/pages/admin/variaveis/VariaveisPage.tsx",
+    "client": "adminApi"
+  }
+]

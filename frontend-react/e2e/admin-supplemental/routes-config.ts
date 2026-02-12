@@ -125,7 +125,7 @@ export const ADMIN_ROUTES: AdminRoute[] = [
     label: 'Feedbacks',
     anchor: 'heading >> text=/feedback/i',
     apiMocks: async (page) => {
-      await page.route('**/admin/feedbacks/dashboard**', (route) =>
+      await page.route('**/admin/api/feedbacks/dashboard**', (route) =>
         route.fulfill({
           status: 200,
           contentType: 'application/json',
@@ -137,17 +137,16 @@ export const ADMIN_ROUTES: AdminRoute[] = [
           }),
         })
       )
-      await page.route('**/admin/feedbacks/lista**', (route) =>
+      await page.route('**/admin/api/feedbacks/lista**', (route) =>
         route.fulfill({
           status: 200, contentType: 'application/json',
           body: JSON.stringify({ feedbacks: [], total: 0, page: 1, per_page: 20, total_pages: 0 }),
         })
       )
-      await page.route('**/admin/feedbacks/evolucao**', emptyArray)
-      await page.route('**/admin/feedbacks/top-usuarios**', emptyArray)
-      await page.route('**/admin/feedbacks/modelos-em-uso**', emptyArray)
-      await page.route('**/admin/feedbacks/pendentes**', emptyArray)
-      await page.route('**/admin/feedbacks/exportar**', emptyArray)
+      await page.route('**/admin/api/feedbacks/top-usuarios**', emptyArray)
+      await page.route('**/admin/api/feedbacks/modelos-em-uso**', emptyArray)
+      await page.route('**/admin/api/feedbacks/pendentes**', emptyArray)
+      await page.route('**/admin/api/feedbacks/exportar**', emptyArray)
     },
     safeButtons: [
       { selector: '[data-testid="btn-limpar-filtros"]', description: 'Limpar filtros', expectedEffect: 'filter-applied' },

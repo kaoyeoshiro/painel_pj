@@ -46,6 +46,48 @@ export const C = {
   statusWarning: '#f59e0b',
   statusError: '#ef4444',
   statusInfo: '#4A98A0',
+
+  // Status — fundos e bordas semanticos
+  successBg: '#f0fdf4',
+  successBgStrong: '#dcfce7',
+  successBorder: '#bbf7d0',
+  successText: '#166534',
+  successTextLight: '#15803d',
+
+  errorBg: '#fef2f2',
+  errorBgStrong: '#fee2e2',
+  errorBorder: '#fecaca',
+  errorText: '#991b1b',
+  errorTextLight: '#b91c1c',
+
+  warningBg: '#fef3c7',
+  warningBgAlt: '#fffbeb',
+  warningBgStrong: '#fde68a',
+  warningBorder: '#fcd34d',
+  warningText: '#92400e',
+  warningTextStrong: '#d97706',
+
+  // Rose (erros leves / inativos)
+  errorBgLight: '#fff1f2',
+  errorBorderLight: '#fecdd3',
+
+  // Greens extras (sucesso em gradientes e indicadores)
+  successAccent: '#16a34a',
+  successAccentLight: '#22c55e',
+  successAccentMuted: '#34d399',
+
+  // Acentos para graficos e visualizacoes
+  chartAmber: '#f59e0b',
+  chartStarYellow: '#facc15',
+  chartPurple: '#a855f7',
+  chartBlue: '#3b82f6',
+  chartYellow: '#eab308',
+  chartIndigo: '#6366f1',
+  chartTeal: '#14b8a6',
+  chartRed: '#dc2626',
+
+  // Utilitarios
+  terminalBg: '#0f172a',
 } as const
 
 export const FONT_UI = "var(--font-ui, 'Plus Jakarta Sans', system-ui, sans-serif)"

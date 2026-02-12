@@ -50,8 +50,8 @@ Isso permite classificar cada orfa em:
 
 | # | Rota | Legado? | Classificacao | Detalhe |
 |---|------|---------|---------------|---------|
-| 8 | `/admin/api-key` (PUT) | Nao | **NUNCA EXPOSTA** | Sem referencia em nenhum template legado. |
-| 9 | `/admin/api-key-status` (GET) | Nao | **NUNCA EXPOSTA** | Idem. |
+| 8 | `/admin/api-key` (PUT) | Nao | ~~NUNCA EXPOSTA~~ **REMOVIDO** | API key e config de servidor, nao precisa de UI. Rota deletada. |
+| 9 | `/admin/api-key-status` (GET) | Nao | ~~NUNCA EXPOSTA~~ **REMOVIDO** | Idem. Rota deletada. |
 | 10 | `/admin/modelos-ia` (GET) | **Sim** — `admin_prompts.html:1049`, `admin_feedbacks.html:1107` | **REGRESSAO** | Listava modelos disponiveis em 2 paginas admin. |
 | 11 | `/admin/modelos-ia/{sistema}` (PUT) | **Sim** — `admin_prompts.html:1081` | **REGRESSAO** | Atualizava modelo por sistema na PromptsPage legada. |
 
@@ -59,14 +59,14 @@ Isso permite classificar cada orfa em:
 
 | # | Rota | Legado? | Classificacao | Detalhe |
 |---|------|---------|---------------|---------|
-| 12 | `.../performance/actions` | **Sim** — `admin_performance.html:916` | **REGRESSAO** | Alimentava filtro de actions. |
-| 13 | `.../performance/systems` | **Sim** — `admin_performance.html:1147` | **REGRESSAO** | Alimentava filtro de sistemas. |
-| 14 | `.../performance/top-routes` | **Sim** — `admin_performance.html:1008` | **REGRESSAO** | Tabela de top rotas mais acessadas. |
-| 15 | `.../performance/cache-stats` | Nao | **NUNCA EXPOSTA** | Endpoint existe mas sem UI em nenhum front. |
-| 16 | `.../performance/cache-invalidate` | Nao | **NUNCA EXPOSTA** | Idem. |
-| 17 | `.../performance/cleanup` | **Sim** — `admin_performance.html:1162` | **REGRESSAO** | Botao "Limpar logs antigos" existia no legado. |
-| 18 | `.../performance/frontend-metrics` | **Sim** — `admin_categorias_json.html:948` | **REGRESSAO** | Enviava metricas de frontend automaticamente. |
-| 19-22 | `.../performance/route-maps` (CRUD) | **Sim** — `admin_performance.html:962,1058,1098,1125` | **REGRESSAO** | CRUD completo de mapeamento rota→sistema. 4 endpoints. |
+| 12 | `.../performance/actions` | **Sim** — `admin_performance.html:916` | ~~REGRESSAO~~ **MIGRADO** | Alimentava filtro de actions. Integrado em PerformancePage (dropdown dinamico). |
+| 13 | `.../performance/systems` | **Sim** — `admin_performance.html:1147` | ~~REGRESSAO~~ **MIGRADO** | Alimentava filtro de sistemas. Integrado em PerformancePage (dropdown dinamico). |
+| 14 | `.../performance/top-routes` | **Sim** — `admin_performance.html:1008` | ~~REGRESSAO~~ **MIGRADO** | Tabela de top rotas sem mapeamento. Integrado em PerformancePage. |
+| 15 | `.../performance/cache-stats` | Nao | ~~NUNCA EXPOSTA~~ **INTEGRADO** | Invalidacao de cache via botao no header da PerformancePage. |
+| 16 | `.../performance/cache-invalidate` | Nao | ~~NUNCA EXPOSTA~~ **INTEGRADO** | Botao "Limpar Cache" no header da PerformancePage. |
+| 17 | `.../performance/cleanup` | **Sim** — `admin_performance.html:1162` | ~~REGRESSAO~~ **MIGRADO** | Botao "Limpar" com seletor de dias. Integrado em PerformancePage. |
+| 18 | `.../performance/frontend-metrics` | **Sim** — `admin_categorias_json.html:948` | **REGRESSAO** | Enviava metricas de frontend automaticamente. (Instrumentacao global, nao UI) |
+| 19-22 | `.../performance/route-maps` (CRUD) | **Sim** — `admin_performance.html:962,1058,1098,1125` | ~~REGRESSAO~~ **MIGRADO** | CRUD completo com Dialog. Integrado em PerformancePage. |
 | 23-25 | `/admin/dashboard/api/*` | **Sim** — `dashboard_router.py:290` (consumo interno) | **LEGADO PURO** | APIs do dashboard HTML legado. Remover junto com `/admin/dashboard`. |
 
 ### GRUPO E: Extraction/Deps/Regras
