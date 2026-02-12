@@ -135,9 +135,9 @@
 
 ### 2b. Unificar acesso ao Gemini
 
-- [ ] Remover `sistemas/gerador_pecas/gemini_client.py` (wrapper local)
-- [ ] Todos os sistemas usam `services/gemini_service.py` exclusivamente
-- [ ] Mover imports de dentro de endpoints para nivel de modulo
+- [x] Remover `sistemas/gerador_pecas/gemini_client.py` (wrapper local) ✅ `4fcfef6`
+- [x] Todos os sistemas usam `services/gemini_service.py` exclusivamente ✅ `4fcfef6` (10 arquivos migrados)
+- [ ] Mover imports lazy de dentro de endpoints para nivel de modulo (adiado — risco de circular imports)
 
 ### 2c. Extrair streaming generators
 
@@ -304,4 +304,5 @@ Fase 5 (Split) pode iniciar apos Fase 2 ─────────────�
 | 2026-02-11 | 2a | 33 schemas extraidos de admin/router_prompts.py → schemas_prompts.py | `f3bb5c3` |
 | 2026-02-11 | 2a | 21 schemas: pedido_calculo (13), relatorio_cumprimento (4), assistencia_judiciaria (4) | `ad9f3c4` |
 | 2026-02-11 | 2a | 16 schemas: admin/performance (8), gemini_logs (6), admin/router (1), auth (1) | `8321e89` |
+| 2026-02-11 | 2b | Unificado Gemini: removido gemini_client.py, 10 arquivos migrados (-64 linhas) | `4fcfef6` |
 | | | | |
