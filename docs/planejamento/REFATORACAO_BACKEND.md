@@ -70,15 +70,18 @@
 
 - [ ] **0.3** Stampar banco de producao
   - `alembic stamp head` (marca sem aplicar SQL)
+  - PENDENTE: executar em producao apos deploy
 
-- [ ] **0.4** Converter `init_db.py:run_migrations()` para Alembic
-  - Verificar cada ALTER TABLE/CREATE TABLE da funcao
-  - Criar migrations individuais para grupos logicos nao cobertos
-  - Marcar cada migration como idempotente
+- [x] **0.4** Converter `init_db.py:run_migrations()` para Alembic ✅ `c558ea4`
+  - 3 ALTER COLUMN TYPE → migration `b1a2c3d4e5f6`
+  - Constraint uq_prompt_modulo → migration `c2b3d4e5f6a7` (com dedup + FK cleanup)
+  - CREATE TABLE cobertos pela baseline com `create_all(checkfirst=True)`
 
-- [ ] **0.5** Remover `create_all()` de `init_db.py`
-  - Deletar `Base.metadata.create_all(bind=engine)` (linha 95)
-  - Manter `wait_for_db()` e `seed_admin_user()`
+- [x] **0.5** Remover `create_all()` de `init_db.py` ✅ `cdefff4`
+  - `create_tables()` removido (1500+ linhas de SQL manual)
+  - `run_migrations()` removido
+  - init_db.py: 2373 → 807 linhas (-66%)
+  - Seeds mantidos (todos idempotentes)
 
 - [x] **0.6** Atualizar deploy ✅ `4918e8b`
   - `Procfile`: `web: alembic upgrade head && uvicorn main:app --host 0.0.0.0 --port $PORT`
@@ -288,4 +291,6 @@ Fase 5 (Split) pode iniciar apos Fase 2 ─────────────�
 | 2026-02-11 | 0.2 | Migration baseline (no-op) gerada e aplicada ao banco local | `5c9768a` |
 | 2026-02-11 | 2d | Removido import HTMLResponse nao usado em router_config_pecas.py | `8401dd8` |
 | 2026-02-11 | 0.6 | Procfile com `alembic upgrade head`, CI com PostgreSQL service + validacao migrations | `4918e8b` |
+| 2026-02-11 | 0.4 | 2 migrations: alter_column_types + update_constraint (idempotentes) | `c558ea4` |
+| 2026-02-11 | 0.5 | init_db.py: removido create_all() e run_migrations() (-1652 linhas, -66%) | `cdefff4` |
 | | | | |
