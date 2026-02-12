@@ -4,6 +4,28 @@ Objetivo: evoluir do layout historico atual para um layout com boundaries claros
 
 Escopo desta rodada: planejamento tecnico e estrategia incremental (sem mover codigo agora).
 
+---
+
+## Execucao Real (atualizado em 2026-02-12)
+
+Status resumido apos execucao incremental:
+
+- ✅ Estrutura `app/` expandida com boundaries principais (`api/v1`, `api/legacy`, `core`, `repositories`, `schemas`, `db`, `services`).
+- ✅ Bootstrap delegado para `app/api/v1` com compatibilidade (`app/api/bootstrap.py`).
+- ✅ Compat layer de repositories piloto aplicada:
+  - `sistemas/gerador_pecas/repositories.py` -> `app/repositories/sqlalchemy/gerador_pecas.py`
+  - `sistemas/pedido_calculo/repositories.py` -> `app/repositories/sqlalchemy/pedido_calculo.py`
+- ✅ Ports/adapters organizados em namespace explícito (`app/adapters/ports`, `app/adapters/outbound`, `app/adapters/inbound`).
+- ✅ Teste de compatibilidade de import adicionado (`tests/test_import_compat_repositorio.py`).
+- ❌ Migração completa de rotas legadas do `main.py` para `app/api/legacy` ainda pendente (templates/static admin).
+- ❌ Remoção ampla de `db.query(...)` em routers críticos ainda pendente.
+
+Validação executada nesta rodada:
+
+- `python -m pytest tests/test_import_compat_repositorio.py tests/test_architecture_boundaries.py -q` -> 10 passed, 4 skipped
+- `python -c "import main; print(len(main.app.routes))"` -> 522
+- `python scripts/check_boundaries.py` -> 0 erros
+
 ## 1) Target architecture (proposta)
 
 ```text
@@ -219,4 +241,3 @@ backend/
 6. Enforcements automatizados de boundaries.
 
 Este plano prioriza reversibilidade e baixo risco operacional, preservando os contratos atuais enquanto move a arquitetura para um estado mais limpo e testavel.
-

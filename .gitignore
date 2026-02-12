@@ -103,3 +103,21 @@ e2e-artifacts/
 scripts/_debug_*
 test_gemini_direct.py
 %TEMP%*
+
+# Artefatos locais de auditoria/refactor
+temp_diff.txt
+tmp_main_before.py
+*main_before.py
+docs/_archive/legacy_candidates/
+
+# Artefatos de testes frontend-react
+frontend-react/.vite/
+frontend-react/playwright-report/
+frontend-react/playwright-output.txt
+frontend-react/test-results/
+frontend-react/test-results.json
+frontend-react/reports/
+frontend-react/prints/
+frontend-react/vitest-check.txt
+frontend-react/vitest-final.txt
+frontend-react/vitest-output*.txt

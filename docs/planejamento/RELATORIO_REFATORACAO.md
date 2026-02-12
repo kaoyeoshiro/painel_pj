@@ -286,3 +286,108 @@ Porem, o objetivo de arquitetura limpa ainda esta em transicao: as camadas conti
 
 O plano proximo deve ser pragmatico: finalizar Fase 4 com foco nos endpoints mais longos e usar essa migracao para consolidar o modelo de pastas e imports proposto no `PLANO_ORGANIZACAO_REPOSITORIO.md`.
 
+---
+
+## 10) Reanalise complementar apos execucao do plano (2026-02-12)
+
+Premissa desta rodada: considerar o plano de `docs/planejamento/REFACTOR.md` como executado por teammate (T1-T11 e T13), com **T12 adiado**, e reavaliar o estado real do backend no codigo atual.
+
+## 10.1) Validacao objetiva executada agora
+
+- `python -m pytest -m security -q` -> **59 passed**.
+- `python -m pytest tests/test_pedido_calculo_stream.py tests/test_gemini_split.py tests/test_admin_repositories.py tests/test_gerador_stream_services.py tests/test_prestacao_stream.py tests/test_sse_common.py tests/test_adapters.py tests/test_architecture_boundaries.py -q` -> **163 passed, 3 skipped**.
+- `python -m pytest tests/test_adapters_ports.py -q` -> **20 passed**.
+- `python scripts/check_boundaries.py` -> **0 erros, 28 warnings**.
+- `python -c "import main; print(len(main.app.routes))"` -> **522 rotas carregadas**.
+
+## 10.2) O que melhorou de forma confirmada
+
+1. **Foundation / bootstrap consolidado (T1)**  
+   `main.py` delega o registro de rotas para `app/api/bootstrap.py`, com app carregando normalmente.
+
+2. **Tooling de base e markers ativos (T2/T3)**  
+   `ruff.toml` e markers no `pyproject.toml` estao presentes e a selecao de suite por marker (`security`) esta funcional.
+
+3. **Split inicial do Gemini preservando compatibilidade (T5)**  
+   Submodulos em `services/gemini/` existem e os testes de compatibilidade/import (`tests/test_gemini_split.py`) passam.
+
+4. **Boundaries automatizados (T13)**  
+   Script (`scripts/check_boundaries.py`), workflow (`.github/workflows/architecture.yml`) e testes dedicados estao ativos e passando (com skips esperados).
+
+5. **Infra de adapters e contratos compartilhados criada (T7/T11)**  
+   Estruturas em `app/domain/shared/` e `app/adapters/` foram introduzidas e possuem testes verdes.
+
+## 10.3) Pontos que seguem parciais (ou abaixo do objetivo do plano)
+
+1. **Admin ainda fortemente acoplado a ORM no router (T6 parcial)**  
+   Ainda ha uso massivo de `db.query` em:
+   - `admin/router.py` -> 94 ocorrencias
+   - `admin/router_prompts.py` -> 87 ocorrencias  
+   Ou seja, a extracao para repositories ocorreu de forma parcial.
+
+2. **Streaming ainda nao esta totalmente extraido para services (T4/T8/T9 parciais)**  
+   - `sistemas/pedido_calculo/router.py` ainda concentra `processar_stream` com **817 linhas**, e `PedidoCalculoStreamService` nao esta sendo chamado no fluxo HTTP.
+   - `sistemas/gerador_pecas/router.py` ainda tem handlers grandes de streaming (`processar_processo_stream` com 588 linhas, `processar_pdfs_stream` com 527 linhas, `curation_generate_stream` com 407 linhas); o `services_stream.py` atual atua principalmente como helper de formatacao SSE.
+   - `sistemas/prestacao_contas/services_stream.py` existe, mas os helpers de evento nao estao acoplados de forma ampla aos endpoints.
+
+3. **SSE common criado, mas com adocao de producao muito baixa (T10 parcial)**  
+   `services/shared/sse.py` esta implementado e testado, porem sem consumo relevante pelos routers/sistemas principais (uso concentrado em testes/exemplo).
+
+4. **DIP ainda pouco adotado no runtime (T11 parcial)**  
+   Os adapters/ports existem, mas o backend de negocio principal ainda nao depende deles de forma abrangente.  
+   Adicionalmente, coexistem duas trilhas de adapters (`adapters/*` e `app/adapters/*`), o que aumenta risco de duplicidade de padrao.
+
+5. **Acoplamento transversal ainda alto**  
+   Medicao atual em routers core (`admin/auth/sistemas/users`): **31 de 32** arquivos `router*.py` ainda usam `db.query(...)`.
+
+6. **Imports lazy continuam em volume elevado**  
+   Medicao local: **878 ocorrencias** (indicador de que ciclos/acoplamento ainda nao foram realmente desmontados, mesmo com ganhos pontuais).
+
+## 10.4) Ponderacao final desta reanalise
+
+Comparando o estado anterior com o codigo atual, houve ganho concreto em **fundacao (estrutura, testes, boundaries e compatibilidade)**.  
+Por outro lado, os objetivos centrais de arquitetura do plano (router thin + service layer forte + DIP em uso real) ainda ficaram **parciais** nos dominios mais criticos, com destaque para admin e streaming.
+
+Em sintese: a refatoracao avancou de forma relevante na base, mas a convergencia para a arquitetura alvo ainda depende de uma wave adicional focada em:
+
+1. finalizar a extracao de streaming para services realmente usados pelos endpoints;
+2. remover `db.query` direto dos routers de admin;
+3. consolidar um unico caminho de adapters/ports e adotar DI nos fluxos de runtime;
+4. executar o **T12 (AdminSplit)** em etapa dedicada, com baixo risco de regressao.
+
+---
+
+## 11) Atualizacao de execucao do plano de organizacao (2026-02-12)
+
+Nesta rodada foi executada uma fase adicional focada em **organizacao fisica de repositorio com compatibilidade**.
+
+### Entregas confirmadas
+
+- Commit: `ce9bc1f` (`refactor: establish app-layer structure with compatibility wrappers`)
+- Estrutura criada em `app/`:
+  - `app/api/v1/*`, `app/api/legacy/*`
+  - `app/core/*`
+  - `app/repositories/sqlalchemy/*`
+  - `app/schemas/*`
+  - `app/db/*`
+  - `app/services/*` (wrappers)
+  - `app/adapters/ports`, `app/adapters/outbound`, `app/adapters/inbound`
+- Compat layer de repositories em runtime:
+  - `sistemas/gerador_pecas/repositories.py`
+  - `sistemas/pedido_calculo/repositories.py`
+- Teste novo de compatibilidade:
+  - `tests/test_import_compat_repositorio.py`
+
+### Validacao objetiva
+
+- `python -m pytest tests/test_import_compat_repositorio.py tests/test_architecture_boundaries.py -q`  
+  Resultado: **10 passed, 4 skipped**.
+- `python -c "import main; print(len(main.app.routes))"`  
+  Resultado: **522** rotas.
+- `python scripts/check_boundaries.py`  
+  Resultado: **0 erros** (apenas warnings conhecidos de rate limit em endpoints legados).
+
+### Pendencias remanescentes (nao resolvidas nesta rodada)
+
+- Rotas/template legado ainda em `main.py` (`frontend/templates`, `frontend/static`, `/admin/*` legado).
+- Hotspots com `db.query(...)` ainda presentes em routers de alto volume.
