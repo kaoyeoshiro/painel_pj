@@ -712,7 +712,7 @@ OAB/MS nº [NÚMERO]
         Returns:
             Dict com status e minuta atualizada
         """
-        from sistemas.gerador_pecas.gemini_client import chamar_gemini_async
+        from services.gemini_service import chamar_gemini as chamar_gemini_async
 
         try:
             # Busca o prompt de sistema do banco de dados (ou usa o padrão)

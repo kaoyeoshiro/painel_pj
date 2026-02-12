@@ -22,9 +22,7 @@ from sqlalchemy.orm import Session
 
 from sistemas.gerador_pecas.agente_tjms_integrado import AgenteTJMSIntegrado, ResultadoAgente1
 from sistemas.gerador_pecas.detector_modulos import DetectorModulosIA
-from sistemas.gerador_pecas.gemini_client import chamar_gemini_async, normalizar_modelo
-# NOTA: TemplateFormatacao não é mais importado aqui - templates serão usados apenas para MD->DOCX
-from services.gemini_service import gemini_service
+from services.gemini_service import gemini_service, chamar_gemini as chamar_gemini_async, GeminiService
 from admin.models import ConfiguracaoIA
 from admin.models_prompts import PromptModulo
 from services.ia_params_resolver import get_ia_params, IAParams

@@ -20,7 +20,7 @@ from sistemas.cumprimento_beta.constants import (
 )
 from sistemas.cumprimento_beta.exceptions import PromptNaoEncontradoError, GeminiError
 from sistemas.gerador_pecas.extrator_resumo_json import obter_criterios_relevancia
-from sistemas.gerador_pecas.gemini_client import chamar_gemini_async
+from services.gemini_service import chamar_gemini as chamar_gemini_async
 
 logger = logging.getLogger(__name__)
 

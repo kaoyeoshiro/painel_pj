@@ -433,7 +433,7 @@ async def _extrair_json_upload_parecer_natjus(
             normalizar_json_com_schema,
             json_para_markdown,
         )
-        from sistemas.gerador_pecas.gemini_client import chamar_gemini_async
+        from services.gemini_service import chamar_gemini as chamar_gemini_async
 
         formato = FormatoResumo(
             categoria_id=categoria.id,
@@ -1561,7 +1561,7 @@ async def processar_pdfs_stream(
                 parsear_resposta_json, normalizar_json_com_schema, json_para_markdown
             )
             from sistemas.gerador_pecas.models_resumo_json import CategoriaResumoJSON
-            from sistemas.gerador_pecas.gemini_client import chamar_gemini_async, chamar_gemini_com_imagens_async
+            from services.gemini_service import chamar_gemini as chamar_gemini_async, chamar_gemini_com_imagens as chamar_gemini_com_imagens_async
 
             # Mapeia classificações por arquivo_id para acesso rápido
             clf_por_id = {clf.arquivo_id: clf for clf in classificacoes}

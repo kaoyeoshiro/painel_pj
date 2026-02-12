@@ -21,7 +21,7 @@ from sistemas.cumprimento_beta.constants import (
     StatusSessao, ConfigKeys, MODELO_PADRAO_CHATBOT, MAX_TOKENS_RESPOSTA
 )
 from sistemas.cumprimento_beta.exceptions import GeracaoPecaError
-from sistemas.gerador_pecas.gemini_client import chamar_gemini_async
+from services.gemini_service import chamar_gemini as chamar_gemini_async
 from sistemas.gerador_pecas.docx_converter import markdown_to_docx
 
 logger = logging.getLogger(__name__)

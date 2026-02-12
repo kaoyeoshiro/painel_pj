@@ -20,7 +20,7 @@ from datetime import datetime, timedelta
 from sqlalchemy.orm import Session
 
 from admin.models_prompts import PromptModulo, RegraDeterministicaTipoPeca
-from sistemas.gerador_pecas.gemini_client import chamar_gemini_async, normalizar_modelo
+from services.gemini_service import chamar_gemini as chamar_gemini_async, GeminiService
 from sistemas.gerador_pecas.services_deterministic import (
     avaliar_ativacao_prompt,
     _existe_regra_especifica_ativa,
@@ -63,7 +63,7 @@ class DetectorModulosIA:
             cache_ttl_minutes: Tempo de vida do cache em minutos
         """
         self.db = db
-        self.modelo = normalizar_modelo(modelo)
+        self.modelo = GeminiService.normalize_model(modelo)
         self.cache_ttl = timedelta(minutes=cache_ttl_minutes)
 
         # Cache em memória {hash_documentos: (modulos_ids, timestamp)}

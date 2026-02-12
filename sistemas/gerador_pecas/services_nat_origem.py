@@ -1053,7 +1053,7 @@ async def _processar_nat_para_markdown(
                         normalizar_json_com_schema,
                         json_para_markdown
                     )
-                    from sistemas.gerador_pecas.gemini_client import chamar_gemini_async
+                    from services.gemini_service import chamar_gemini as chamar_gemini_async
 
                     # Busca categoria NATJus por nome/correspondencia sem depender de codigo fixo
                     categoria = db_session.query(CategoriaResumoJSON).filter(
