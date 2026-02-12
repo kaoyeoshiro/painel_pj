@@ -25,9 +25,23 @@ Uso:
 from .gemini_adapter import GeminiAdapter
 from .tjms_adapter import TJMSAdapter
 from .bert_adapter import BertAdapter
+from .ports import (
+    AIServiceProtocol,
+    DocumentClassifierProtocol,
+    IBertPort,
+    IGeminiPort,
+    ITJMSPort,
+    TJMSClientProtocol,
+)
 
 __all__ = [
     "GeminiAdapter",
     "TJMSAdapter",
     "BertAdapter",
+    "AIServiceProtocol",
+    "DocumentClassifierProtocol",
+    "TJMSClientProtocol",
+    "IGeminiPort",
+    "ITJMSPort",
+    "IBertPort",
 ]
