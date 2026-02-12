@@ -9,6 +9,7 @@ Endpoints para:
 """
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
+from fastapi.responses import RedirectResponse
 from sqlalchemy.orm import Session
 from app.repositories.sqlalchemy.session_ops import session_query
 from sqlalchemy import func
@@ -493,10 +494,8 @@ async def pagina_admin_config_pecas(
             "parecer_document_codes": list(config.document_codes),
         }
 
-    return templates.TemplateResponse(
-        "admin_config_pecas.html",
-        {"request": request}
-    )
+    # Redireciona para a página React SPA equivalente
+    return RedirectResponse(url="/admin/config-pecas", status_code=302)
 
 
 def _upsert_config_ia(

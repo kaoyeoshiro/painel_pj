@@ -1,27 +1,17 @@
 """
-Registro de rotas legadas temporárias.
+Registro de rotas legadas remanescentes.
 
-Concentra os endpoints/templates legados de admin e seus static assets.
+Mantém apenas a rota _frame-bridge para sincronização de token em dev.
+Os static assets do frontend legado foram removidos — o React SPA
+serve seus próprios assets via Vite.
 """
-
-from pathlib import Path
-
-from fastapi.staticfiles import StaticFiles
 
 from .admin_templates import router as legacy_admin_templates_router
 
 
-BASE_DIR = Path(__file__).resolve().parents[3]
-LEGACY_STATIC_DIR = BASE_DIR / "frontend" / "static"
-
-
 def register_legacy_routers(app):
     """
-    Registra rotas legadas temporárias e assets necessários.
+    Registra rotas legadas remanescentes (apenas _frame-bridge).
     """
     app.include_router(legacy_admin_templates_router)
-
-    if LEGACY_STATIC_DIR.exists():
-        app.mount("/static", StaticFiles(directory=str(LEGACY_STATIC_DIR)), name="static")
-
     return app
