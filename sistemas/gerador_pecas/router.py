@@ -33,6 +33,10 @@ from utils.rate_limit import limiter, LIMITS, get_user_identifier
 # SECURITY: Quota de IA por usuario/dia
 from utils.quota_manager import check_ai_quota
 from sistemas.gerador_pecas.models import GeracaoPeca, FeedbackPeca, VersaoPeca
+from sistemas.gerador_pecas.repositories import (
+    GeracaoPecaRepository, FeedbackPecaRepository,
+    get_geracao_repo, get_feedback_repo,
+)
 from sistemas.gerador_pecas.services import GeradorPecasService
 from sistemas.gerador_pecas.schemas import (
     ProcessarProcessoRequest, ExportarDocxRequest, FeedbackRequest,
@@ -2269,16 +2273,14 @@ async def download_documento(
 @router.get("/historico")
 async def listar_historico(
     current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
+    repo: GeracaoPecaRepository = Depends(get_geracao_repo),
 ):
     """
     Lista o histórico de gerações do usuário.
     """
     try:
-        geracoes = db.query(GeracaoPeca).filter(
-            GeracaoPeca.usuario_id == current_user.id
-        ).order_by(GeracaoPeca.criado_em.desc()).limit(50).all()
-        
+        geracoes = repo.find_by_user(current_user.id)
+
         return [
             {
                 "id": g.id,
@@ -2296,28 +2298,26 @@ async def listar_historico(
 async def excluir_historico(
     geracao_id: int,
     current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
+    geracao_repo: GeracaoPecaRepository = Depends(get_geracao_repo),
+    feedback_repo: FeedbackPecaRepository = Depends(get_feedback_repo),
 ):
     """Remove uma geração do histórico do usuário - PRESERVA feedbacks."""
     try:
-        geracao = db.query(GeracaoPeca).filter(
-            GeracaoPeca.id == geracao_id,
-            GeracaoPeca.usuario_id == current_user.id
-        ).first()
+        geracao = geracao_repo.find_by_id_and_user(geracao_id, current_user.id)
 
         if not geracao:
             raise HTTPException(status_code=404, detail="Geração não encontrada")
 
         # Verifica se tem feedback associado - se tiver, não permite excluir
-        feedback = db.query(FeedbackPeca).filter(FeedbackPeca.geracao_id == geracao_id).first()
+        feedback = feedback_repo.find_by_geracao(geracao_id)
         if feedback:
             raise HTTPException(
                 status_code=400,
                 detail="Não é possível excluir geração que possui feedback registrado"
             )
 
-        db.delete(geracao)
-        db.commit()
+        geracao_repo.delete(geracao)
+        geracao_repo.commit()
 
         return {"success": True, "message": "Geração removida do histórico"}
     except HTTPException:
@@ -2330,18 +2330,15 @@ async def excluir_historico(
 async def obter_geracao(
     geracao_id: int,
     current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
+    repo: GeracaoPecaRepository = Depends(get_geracao_repo),
 ):
     """
     Obtém detalhes completos de uma geração específica.
     Permite reabrir uma peça antiga no editor.
     """
     try:
-        geracao = db.query(GeracaoPeca).filter(
-            GeracaoPeca.id == geracao_id,
-            GeracaoPeca.usuario_id == current_user.id
-        ).first()
-        
+        geracao = repo.find_by_id_and_user(geracao_id, current_user.id)
+
         if not geracao:
             raise HTTPException(status_code=404, detail="Geração não encontrada")
         
@@ -2373,7 +2370,7 @@ async def salvar_geracao(
     geracao_id: int,
     req: SalvarMinutaComVersaoRequest,
     current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
+    repo: GeracaoPecaRepository = Depends(get_geracao_repo),
 ):
     """
     Salva alterações feitas na minuta via chat.
@@ -2381,10 +2378,7 @@ async def salvar_geracao(
     e cria uma nova versão no histórico de versões.
     """
     try:
-        geracao = db.query(GeracaoPeca).filter(
-            GeracaoPeca.id == geracao_id,
-            GeracaoPeca.usuario_id == current_user.id
-        ).first()
+        geracao = repo.find_by_id_and_user(geracao_id, current_user.id)
 
         if not geracao:
             raise HTTPException(status_code=404, detail="Geração não encontrada")
@@ -2407,17 +2401,15 @@ async def salvar_geracao(
                         break
 
             # Verifica se já existe alguma versão para esta geração
-            versao_existente = db.query(VersaoPeca).filter(
-                VersaoPeca.geracao_id == geracao_id
-            ).first()
-
-            # Se não existe versão, cria a versão inicial primeiro
-            if not versao_existente:
-                criar_versao_inicial(db, geracao_id, conteudo_anterior)
+            # (versoes.py usa db diretamente — sera migrado na Fase 4)
+            from sistemas.gerador_pecas.repositories import VersaoPecaRepository
+            versao_repo = VersaoPecaRepository(repo.db)
+            if not versao_repo.has_versions(geracao_id):
+                criar_versao_inicial(repo.db, geracao_id, conteudo_anterior)
 
             # Cria a nova versão
             nova_versao, diff = criar_nova_versao(
-                db=db,
+                db=repo.db,
                 geracao_id=geracao_id,
                 conteudo_novo=conteudo_novo,
                 descricao=descricao,
@@ -2438,7 +2430,7 @@ async def salvar_geracao(
         if req.historico_chat is not None:
             geracao.historico_chat = req.historico_chat
 
-        db.commit()
+        repo.commit()
 
         response = {"success": True, "message": "Minuta salva com sucesso"}
         if versao_criada:
@@ -2459,23 +2451,19 @@ async def salvar_geracao(
 async def listar_versoes(
     geracao_id: int,
     current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
+    repo: GeracaoPecaRepository = Depends(get_geracao_repo),
 ):
     """
     Lista todas as versões de uma peça específica.
     Retorna lista ordenada da mais recente para a mais antiga.
     """
     try:
-        # Verifica se a geração pertence ao usuário
-        geracao = db.query(GeracaoPeca).filter(
-            GeracaoPeca.id == geracao_id,
-            GeracaoPeca.usuario_id == current_user.id
-        ).first()
+        geracao = repo.find_by_id_and_user(geracao_id, current_user.id)
 
         if not geracao:
             raise HTTPException(status_code=404, detail="Geração não encontrada")
 
-        versoes = obter_versoes(db, geracao_id)
+        versoes = obter_versoes(repo.db, geracao_id)
 
         return {
             "geracao_id": geracao_id,
@@ -2494,22 +2482,18 @@ async def comparar_versoes_endpoint(
     v1: int = Query(..., description="ID da primeira versão"),
     v2: int = Query(..., description="ID da segunda versão"),
     current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
+    repo: GeracaoPecaRepository = Depends(get_geracao_repo),
 ):
     """
     Compara duas versões específicas e retorna o diff entre elas.
     """
     try:
-        # Verifica se a geração pertence ao usuário
-        geracao = db.query(GeracaoPeca).filter(
-            GeracaoPeca.id == geracao_id,
-            GeracaoPeca.usuario_id == current_user.id
-        ).first()
+        geracao = repo.find_by_id_and_user(geracao_id, current_user.id)
 
         if not geracao:
             raise HTTPException(status_code=404, detail="Geração não encontrada")
 
-        resultado = comparar_versoes(db, v1, v2)
+        resultado = comparar_versoes(repo.db, v1, v2)
 
         if not resultado:
             raise HTTPException(status_code=404, detail="Uma ou ambas as versões não foram encontradas")
@@ -2526,22 +2510,18 @@ async def obter_versao(
     geracao_id: int,
     versao_id: int,
     current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
+    repo: GeracaoPecaRepository = Depends(get_geracao_repo),
 ):
     """
     Obtém detalhes completos de uma versão específica, incluindo diff.
     """
     try:
-        # Verifica se a geração pertence ao usuário
-        geracao = db.query(GeracaoPeca).filter(
-            GeracaoPeca.id == geracao_id,
-            GeracaoPeca.usuario_id == current_user.id
-        ).first()
+        geracao = repo.find_by_id_and_user(geracao_id, current_user.id)
 
         if not geracao:
             raise HTTPException(status_code=404, detail="Geração não encontrada")
 
-        versao = obter_versao_detalhada(db, versao_id)
+        versao = obter_versao_detalhada(repo.db, versao_id)
 
         if not versao or versao["geracao_id"] != geracao_id:
             raise HTTPException(status_code=404, detail="Versão não encontrada")
@@ -2558,23 +2538,19 @@ async def restaurar_versao_endpoint(
     geracao_id: int,
     versao_id: int,
     current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
+    repo: GeracaoPecaRepository = Depends(get_geracao_repo),
 ):
     """
     Restaura uma versão anterior, criando uma nova versão com o conteúdo antigo.
     A versão atual não é perdida - fica registrada no histórico.
     """
     try:
-        # Verifica se a geração pertence ao usuário
-        geracao = db.query(GeracaoPeca).filter(
-            GeracaoPeca.id == geracao_id,
-            GeracaoPeca.usuario_id == current_user.id
-        ).first()
+        geracao = repo.find_by_id_and_user(geracao_id, current_user.id)
 
         if not geracao:
             raise HTTPException(status_code=404, detail="Geração não encontrada")
 
-        nova_versao = restaurar_versao(db, geracao_id, versao_id)
+        nova_versao = restaurar_versao(repo.db, geracao_id, versao_id)
 
         if not nova_versao:
             raise HTTPException(status_code=404, detail="Versão não encontrada ou erro ao restaurar")
@@ -2602,20 +2578,17 @@ async def restaurar_versao_endpoint(
 async def enviar_feedback(
     req: FeedbackRequest,
     current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
+    geracao_repo: GeracaoPecaRepository = Depends(get_geracao_repo),
+    feedback_repo: FeedbackPecaRepository = Depends(get_feedback_repo),
 ):
     """Envia feedback sobre a peça gerada."""
     try:
-        geracao = db.query(GeracaoPeca).filter(
-            GeracaoPeca.id == req.geracao_id
-        ).first()
-        
+        geracao = geracao_repo.get_by_id(req.geracao_id)
+
         if not geracao:
             raise HTTPException(status_code=404, detail="Geração não encontrada")
-        
-        feedback_existente = db.query(FeedbackPeca).filter(
-            FeedbackPeca.geracao_id == req.geracao_id
-        ).first()
+
+        feedback_existente = feedback_repo.find_by_geracao(req.geracao_id)
 
         if feedback_existente:
             raise HTTPException(
@@ -2631,10 +2604,9 @@ async def enviar_feedback(
             comentario=req.comentario,
             campos_incorretos=req.campos_incorretos
         )
-        db.add(feedback)
-        
-        db.commit()
-        
+        feedback_repo.add(feedback)
+        feedback_repo.commit()
+
         return {"success": True, "message": "Feedback registrado com sucesso"}
     except HTTPException:
         raise
@@ -2646,17 +2618,15 @@ async def enviar_feedback(
 async def obter_feedback(
     geracao_id: int,
     current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
+    repo: FeedbackPecaRepository = Depends(get_feedback_repo),
 ):
     """Obtém o feedback de uma geração específica."""
     try:
-        feedback = db.query(FeedbackPeca).filter(
-            FeedbackPeca.geracao_id == geracao_id
-        ).first()
-        
+        feedback = repo.find_by_geracao(geracao_id)
+
         if not feedback:
             return {"has_feedback": False}
-        
+
         return {
             "has_feedback": True,
             "avaliacao": feedback.avaliacao,
@@ -2723,7 +2693,7 @@ async def listar_documentos_processo(
     numero_cnj: str,
     token: Optional[str] = Query(None),
     current_user: User = Depends(get_current_user_from_token_or_query),
-    db: Session = Depends(get_db)
+    repo: GeracaoPecaRepository = Depends(get_geracao_repo),
 ):
     """
     Lista todos os documentos de um processo para visualização.
@@ -2737,15 +2707,12 @@ async def listar_documentos_processo(
         extrair_documentos_xml,
         documento_permitido
     )
-    
+
     try:
         cnj_limpo = _limpar_cnj(numero_cnj)
-        
+
         # Busca documentos processados salvos no banco (se existir)
-        geracao = db.query(GeracaoPeca).filter(
-            GeracaoPeca.numero_cnj == cnj_limpo,
-            GeracaoPeca.documentos_processados.isnot(None)
-        ).order_by(GeracaoPeca.criado_em.desc()).first()
+        geracao = repo.find_latest_with_docs(cnj_limpo)
         
         # Mapa de ID -> descricao_ia do processamento anterior
         descricoes_ia_map = {}

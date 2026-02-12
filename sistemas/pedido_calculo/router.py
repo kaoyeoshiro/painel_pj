@@ -41,6 +41,11 @@ from .schemas import (
 )
 from utils.timezone import to_iso_utc
 from admin.models import ConfiguracaoIA, PromptConfig
+from .models import GeracaoPedidoCalculo, FeedbackPedidoCalculo
+from .repositories import (
+    GeracaoPedidoCalculoRepository, FeedbackPedidoCalculoRepository,
+    get_geracao_pedido_repo, get_feedback_pedido_repo,
+)
 
 from .services import PedidoCalculoService
 from .models import ResultadoAgente1, ResultadoAgente2
@@ -1292,23 +1297,19 @@ async def obter_documento(
 async def verificar_processo_existente(
     numero_cnj: str,
     current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
+    repo: GeracaoPedidoCalculoRepository = Depends(get_geracao_pedido_repo),
 ):
     """
     Verifica se um processo já existe no histórico do usuário.
     Retorna informações sobre o registro existente se encontrado.
     """
-    from .models import GeracaoPedidoCalculo
     from datetime import timezone, timedelta
 
     # Normaliza o número CNJ (remove formatação)
     numero_cnj_limpo = numero_cnj.replace(".", "").replace("-", "").replace("/", "").strip()
 
     # Busca registro existente
-    geracao_existente = db.query(GeracaoPedidoCalculo).filter(
-        GeracaoPedidoCalculo.numero_cnj == numero_cnj_limpo,
-        GeracaoPedidoCalculo.usuario_id == current_user.id
-    ).order_by(GeracaoPedidoCalculo.criado_em.desc()).first()
+    geracao_existente = repo.find_latest_by_cnj_and_user(numero_cnj_limpo, current_user.id)
 
     if not geracao_existente:
         return {"existe": False}
@@ -1335,21 +1336,14 @@ async def verificar_processo_existente(
 @router.get("/historico")
 async def listar_historico(
     current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
+    repo: GeracaoPedidoCalculoRepository = Depends(get_geracao_pedido_repo),
 ):
     """
     Lista histórico de pedidos de cálculo gerados pelo usuário.
     Ordenado por data de criação (mais recentes primeiro).
     """
-    from .models import GeracaoPedidoCalculo
-    from datetime import timezone, timedelta
 
-    # Timezone de Brasília (UTC-3)
-    tz_brasilia = timezone(timedelta(hours=-3))
-
-    historico = db.query(GeracaoPedidoCalculo).filter(
-        GeracaoPedidoCalculo.usuario_id == current_user.id
-    ).order_by(GeracaoPedidoCalculo.criado_em.desc()).limit(50).all()
+    historico = repo.find_by_user(current_user.id)
 
     return [
         {
@@ -1370,17 +1364,13 @@ async def listar_historico(
 async def obter_historico(
     id: int,
     current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
+    repo: GeracaoPedidoCalculoRepository = Depends(get_geracao_pedido_repo),
 ):
     """
     Obtém um pedido específico do histórico.
     """
-    from .models import GeracaoPedidoCalculo
 
-    geracao = db.query(GeracaoPedidoCalculo).filter(
-        GeracaoPedidoCalculo.id == id,
-        GeracaoPedidoCalculo.usuario_id == current_user.id
-    ).first()
+    geracao = repo.find_by_id_and_user(id, current_user.id)
 
     if not geracao:
         raise HTTPException(status_code=404, detail="Pedido não encontrado")
@@ -1658,22 +1648,17 @@ async def atualizar_modelo(
 async def enviar_feedback(
     req: FeedbackRequest,
     current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
+    geracao_repo: GeracaoPedidoCalculoRepository = Depends(get_geracao_pedido_repo),
+    feedback_repo: FeedbackPedidoCalculoRepository = Depends(get_feedback_pedido_repo),
 ):
     """Envia feedback sobre o pedido de cálculo gerado."""
     try:
-        from .models import GeracaoPedidoCalculo, FeedbackPedidoCalculo
-
-        geracao = db.query(GeracaoPedidoCalculo).filter(
-            GeracaoPedidoCalculo.id == req.geracao_id
-        ).first()
+        geracao = geracao_repo.get_by_id(req.geracao_id)
 
         if not geracao:
             raise HTTPException(status_code=404, detail="Geração não encontrada")
 
-        feedback_existente = db.query(FeedbackPedidoCalculo).filter(
-            FeedbackPedidoCalculo.geracao_id == req.geracao_id
-        ).first()
+        feedback_existente = feedback_repo.find_by_geracao(req.geracao_id)
 
         if feedback_existente:
             raise HTTPException(
@@ -1689,9 +1674,8 @@ async def enviar_feedback(
             comentario=req.comentario,
             campos_incorretos=req.campos_incorretos
         )
-        db.add(feedback)
-
-        db.commit()
+        feedback_repo.add(feedback)
+        feedback_repo.commit()
 
         return {"success": True, "message": "Feedback registrado com sucesso"}
     except HTTPException:
@@ -1704,15 +1688,11 @@ async def enviar_feedback(
 async def obter_feedback(
     geracao_id: int,
     current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
+    repo: FeedbackPedidoCalculoRepository = Depends(get_feedback_pedido_repo),
 ):
     """Obtém o feedback de uma geração específica."""
     try:
-        from .models import FeedbackPedidoCalculo
-
-        feedback = db.query(FeedbackPedidoCalculo).filter(
-            FeedbackPedidoCalculo.geracao_id == geracao_id
-        ).first()
+        feedback = repo.find_by_geracao(geracao_id)
 
         if not feedback:
             return {"has_feedback": False}
