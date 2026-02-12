@@ -41,7 +41,7 @@ function getMockJson(pathname: string): JsonValue {
   if (pathname.startsWith('/users/content-groups')) return []
   if (pathname.startsWith('/users')) return []
 
-  if (pathname.includes('/admin/feedbacks/dashboard')) {
+  if (pathname.includes('/admin/api/feedbacks/dashboard')) {
     return {
       total_consultas: 0,
       total_feedbacks: 0,
@@ -49,16 +49,27 @@ function getMockJson(pathname: string): JsonValue {
       consultas_sem_feedback: 0,
       avaliacoes: { correto: 0, parcial: 0, incorreto: 0, erro_ia: 0 },
       por_sistema: {},
+      evolucao_por_sistema: {},
+      feedbacks_por_usuario: [],
+      pendentes_feedback: [],
+      filtro_aplicado: { mes: null, ano: null, sistema: null },
     }
   }
-  if (pathname.includes('/admin/feedbacks/lista')) {
+  if (pathname.includes('/admin/modelos-ia')) {
+    return {
+      assistencia_judiciaria: { id: 1, modelo: 'gemini-2.0-flash', descricao: '' },
+      matriculas: { id: 2, modelo: 'gemini-2.0-flash', descricao: '' },
+      gerador_pecas: { id: 3, modelo: 'gemini-2.0-flash', descricao: '' },
+      pedido_calculo: { id: 4, modelo: 'gemini-2.0-flash', descricao: '' },
+    }
+  }
+  if (pathname.includes('/admin/api/feedbacks/lista')) {
     return { feedbacks: [], total: 0, page: 1, per_page: 20, total_pages: 0 }
   }
-  if (pathname.includes('/admin/feedbacks/evolucao')) return []
-  if (pathname.includes('/admin/feedbacks/top-usuarios')) return []
-  if (pathname.includes('/admin/feedbacks/modelos-em-uso')) return []
-  if (pathname.includes('/admin/feedbacks/pendentes')) return []
-  if (pathname.includes('/admin/feedbacks/')) {
+  if (pathname.includes('/admin/api/feedbacks/top-usuarios')) return []
+  if (pathname.includes('/admin/api/feedbacks/modelos-em-uso')) return []
+  if (pathname.includes('/admin/api/feedbacks/pendentes')) return []
+  if (pathname.includes('/admin/api/feedbacks/')) {
     return {
       id: 1,
       sistema: 'gerador_pecas',

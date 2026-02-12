@@ -95,10 +95,43 @@ const MOCK_FEEDBACKS_DASHBOARD = {
   total_consultas: 142,
   total_feedbacks: 89,
   taxa_acerto: 78.5,
-  sem_avaliacao: 53,
+  consultas_sem_feedback: 53,
   avaliacoes: { correto: 55, parcial: 20, incorreto: 10, erro_ia: 4 },
-  por_sistema: { gerador_pecas: 60, pedido_calculo: 30, prestacao_contas: 20, classificador: 15, relatorio_cumprimento: 10, assistencia: 7 },
-  evolucao: [],
+  por_sistema: {
+    gerador_pecas: { total: 60, feedbacks: 40 },
+    pedido_calculo: { total: 30, feedbacks: 20 },
+    prestacao_contas: { total: 20, feedbacks: 15 },
+    relatorio_cumprimento: { total: 10, feedbacks: 5 },
+    assistencia_judiciaria: { total: 15, feedbacks: 7 },
+    matriculas: { total: 7, feedbacks: 2 },
+  },
+  evolucao_por_sistema: {},
+  feedbacks_por_usuario: [
+    { nome: 'João Silva', total: 20, corretos: 15 },
+    { nome: 'Maria Santos', total: 15, corretos: 12 },
+  ],
+  pendentes_feedback: [
+    { id: 1, sistema: 'gerador_pecas', identificador: '0001234-56.2026.8.12.0001', usuario: 'João Silva', data: '2026-02-10T14:30:00', modo_ativacao: null },
+  ],
+  filtro_aplicado: { mes: null, ano: 2026, sistema: null },
+}
+
+const MOCK_FEEDBACKS_LISTA = {
+  total: 2,
+  page: 1,
+  per_page: 20,
+  total_pages: 1,
+  feedbacks: [
+    { id: 1, consulta_id: 10, sistema: 'gerador_pecas', identificador: '0001234-56.2026.8.12.0001', cnj: null, modelo: 'gemini-2.0-flash', usuario: 'João Silva', username: 'joao', avaliacao: 'correto', comentario: 'Muito bom', campos_incorretos: null, criado_em: '2026-02-10T14:30:00', modo_ativacao: null },
+    { id: 2, consulta_id: 11, sistema: 'assistencia_judiciaria', identificador: '0009876-54.2026.8.12.0001', cnj: null, modelo: 'gemini-2.0-flash', usuario: 'Maria Santos', username: 'maria', avaliacao: 'parcial', comentario: null, campos_incorretos: null, criado_em: '2026-02-09T10:00:00', modo_ativacao: null },
+  ],
+}
+
+const MOCK_MODELOS_IA = {
+  assistencia_judiciaria: { id: 1, modelo: 'gemini-2.0-flash', descricao: 'Modelo padrão' },
+  matriculas: { id: 2, modelo: 'gemini-2.0-flash', descricao: 'Modelo padrão' },
+  gerador_pecas: { id: 3, modelo: 'gemini-2.0-flash', descricao: 'Modelo padrão' },
+  pedido_calculo: { id: 4, modelo: 'gemini-2.0-flash', descricao: 'Modelo padrão' },
 }
 
 const MOCK_PERFORMANCE_SUMMARY = {
@@ -195,8 +228,9 @@ export function getMockResponse(pathname: string, method: string): { status: num
   if (pathname.includes('/admin/api/prompts-modulos/resumo-configuracao')) return { status: 200, body: MOCK_RESUMO_CONFIGURACAO as unknown as JsonValue }
   if (pathname.includes('/admin/api/prompts-modulos/modulos-por-tipo-peca')) return { status: 200, body: { modulos: MOCK_PROMPTS_MODULOS } as unknown as JsonValue }
   if (pathname.includes('/admin/api/prompts-modulos')) return { status: 200, body: MOCK_PROMPTS_MODULOS as unknown as JsonValue }
-  if (pathname.includes('/admin/feedbacks/dashboard')) return { status: 200, body: MOCK_FEEDBACKS_DASHBOARD as unknown as JsonValue }
-  if (pathname.includes('/admin/feedbacks/evolucao')) return { status: 200, body: [] }
+  if (pathname.includes('/admin/api/feedbacks/lista')) return { status: 200, body: MOCK_FEEDBACKS_LISTA as unknown as JsonValue }
+  if (pathname.includes('/admin/api/feedbacks/dashboard')) return { status: 200, body: MOCK_FEEDBACKS_DASHBOARD as unknown as JsonValue }
+  if (pathname.includes('/admin/modelos-ia')) return { status: 200, body: MOCK_MODELOS_IA as unknown as JsonValue }
   if (pathname.includes('/admin/api/performance/summary')) return { status: 200, body: MOCK_PERFORMANCE_SUMMARY as unknown as JsonValue }
   if (pathname.includes('/admin/api/performance/route-mapping')) return { status: 200, body: MOCK_ROUTE_MAPPING as unknown as JsonValue }
   if (pathname.includes('/admin/api/performance/logs')) return { status: 200, body: { logs: [] } }

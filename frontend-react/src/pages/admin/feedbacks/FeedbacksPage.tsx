@@ -1,5 +1,4 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { adminApi } from '@/lib/api'
 import { Button } from '@/components/ui/button'
 import {
   Select,
@@ -27,93 +26,54 @@ import {
   MessageSquare,
   CheckCircle2,
   Clock3,
-  ChartNoAxesColumn,
 } from 'lucide-react'
 import { BreadcrumbBar } from '@/components/layout/BreadcrumbBar'
 import { ContentArea } from '@/components/layout/ContentArea'
 import { C } from '@/lib/designTokens'
 
-interface DashboardData {
-  total_consultas: number
-  total_feedbacks: number
-  taxa_acerto: number
-  consultas_sem_feedback: number
-  avaliacoes: {
-    correto: number
-    parcial: number
-    incorreto: number
-    erro_ia: number
-  }
-}
+import { fetchDashboard, exportFeedbacks } from './api'
+import { SISTEMAS, MESES, ANOS, PIE_COLORS } from './constants'
+import type { DashboardData, FeedbackItem } from './types'
 
-interface FeedbackEvolution {
-  data: string
-  total: number
-}
-
-const SISTEMAS = [
-  { value: '', label: 'Todos os sistemas' },
-  { value: 'assistencia_judiciaria', label: 'Assistência Judiciária' },
-  { value: 'matriculas', label: 'Matrículas Confrontantes' },
-  { value: 'gerador_pecas', label: 'Gerador de Peças' },
-  { value: 'pedido_calculo', label: 'Pedido de Cálculo' },
-  { value: 'prestacao_contas', label: 'Prestação de Contas' },
-  { value: 'relatorio_cumprimento', label: 'Relatório de Cumprimento' },
-]
-
-const MESES = [
-  { value: '', label: 'Todos os meses' },
-  { value: '1', label: 'Janeiro' },
-  { value: '2', label: 'Fevereiro' },
-  { value: '3', label: 'Março' },
-  { value: '4', label: 'Abril' },
-  { value: '5', label: 'Maio' },
-  { value: '6', label: 'Junho' },
-  { value: '7', label: 'Julho' },
-  { value: '8', label: 'Agosto' },
-  { value: '9', label: 'Setembro' },
-  { value: '10', label: 'Outubro' },
-  { value: '11', label: 'Novembro' },
-  { value: '12', label: 'Dezembro' },
-]
+import { EvolutionChart } from './components/EvolutionChart'
+import { AIModelsCards } from './components/AIModelsCards'
+import { UsersFeedbackTable } from './components/UsersFeedbackTable'
+import { PendingEvaluationTable } from './components/PendingEvaluationTable'
+import { FeedbacksTable } from './components/FeedbacksTable'
+import { ReportModal } from './components/ReportModal'
+import { CommentModal } from './components/CommentModal'
+import { CurationAuditModal } from './components/CurationAuditModal'
 
 const currentYear = new Date().getFullYear()
-const ANOS = [
-  { value: '', label: 'Todos os anos' },
-  { value: String(currentYear), label: String(currentYear) },
-  { value: String(currentYear - 1), label: String(currentYear - 1) },
-  { value: String(currentYear - 2), label: String(currentYear - 2) },
-]
-
-const PIE_COLORS = ['#22c55e', '#eab308', '#ef4444', '#6b7280']
 
 export function FeedbacksPage() {
   const { toast } = useToast()
 
+  // ---------------------------------------------------------------------------
+  // Filtros globais
+  // ---------------------------------------------------------------------------
   const [mes, setMes] = useState('')
   const [ano, setAno] = useState(String(currentYear))
   const [sistema, setSistema] = useState('')
+  const [semanasEvolucao, setSemanasEvolucao] = useState('12')
 
+  // ---------------------------------------------------------------------------
+  // Dashboard
+  // ---------------------------------------------------------------------------
   const [dashboard, setDashboard] = useState<DashboardData | null>(null)
-  const [evolucao, setEvolucao] = useState<FeedbackEvolution[]>([])
   const [loading, setLoading] = useState(false)
   const [exportando, setExportando] = useState(false)
 
   const loadDashboard = useCallback(async () => {
     setLoading(true)
     try {
-      const params = new URLSearchParams()
-      if (mes) params.append('mes', mes)
-      if (ano) params.append('ano', ano)
-      if (sistema) params.append('sistema', sistema)
-
-      const [dashboardData, evolucaoData] = await Promise.all([
-        adminApi.get<DashboardData>(`/admin/feedbacks/dashboard?${params.toString()}`),
-        adminApi.get<FeedbackEvolution[]>(`/admin/feedbacks/evolucao?${params.toString()}`),
-      ])
-
-      setDashboard(dashboardData)
-      setEvolucao(Array.isArray(evolucaoData) ? evolucaoData : [])
+      const data = await fetchDashboard({
+        mes: mes || undefined,
+        ano: ano || undefined,
+        sistema: sistema || undefined,
+        semanas_evolucao: semanasEvolucao,
+      })
+      setDashboard(data)
     } catch (error) {
       toast({
         title: 'Erro ao carregar feedbacks',
@@ -121,20 +81,47 @@ export function FeedbacksPage() {
         variant: 'destructive',
       })
       setDashboard(null)
-      setEvolucao([])
     } finally {
       setLoading(false)
     }
-  }, [mes, ano, sistema, toast])
+  }, [mes, ano, sistema, semanasEvolucao, toast])
 
   useEffect(() => {
     void loadDashboard()
   }, [loadDashboard])
 
+  // ---------------------------------------------------------------------------
+  // Modais
+  // ---------------------------------------------------------------------------
+  const [reportModal, setReportModal] = useState<{ open: boolean; consultaId: number | null; sistema: string | null }>({
+    open: false, consultaId: null, sistema: null,
+  })
+  const [commentModal, setCommentModal] = useState<{ open: boolean; usuario: string; comentario: string }>({
+    open: false, usuario: '', comentario: '',
+  })
+  const [curationModal, setCurationModal] = useState<{ open: boolean; geracaoId: number | null }>({
+    open: false, geracaoId: null,
+  })
+
+  const handleViewReport = (consultaId: number, sis: string) => {
+    setReportModal({ open: true, consultaId, sistema: sis })
+  }
+
+  const handleViewComment = (fb: FeedbackItem) => {
+    setCommentModal({ open: true, usuario: fb.usuario, comentario: fb.comentario ?? '' })
+  }
+
+  const handleOpenCurationAudit = (geracaoId: number) => {
+    setCurationModal({ open: true, geracaoId })
+  }
+
+  // ---------------------------------------------------------------------------
+  // Exportar
+  // ---------------------------------------------------------------------------
   const exportarDados = async () => {
     setExportando(true)
     try {
-      const blob = await adminApi.blob('/admin/feedbacks/exportar')
+      const blob = await exportFeedbacks()
       const url = window.URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = url
@@ -154,12 +141,20 @@ export function FeedbacksPage() {
     }
   }
 
+  // ---------------------------------------------------------------------------
+  // Filtros
+  // ---------------------------------------------------------------------------
   const limparFiltros = () => {
     setMes('')
     setAno(String(currentYear))
     setSistema('')
   }
 
+  const filtroInfo = ano ? `Filtro: ${ano}` : 'Filtro: todos'
+
+  // ---------------------------------------------------------------------------
+  // Dados dos gráficos
+  // ---------------------------------------------------------------------------
   const pieData = useMemo(() => {
     const base = dashboard?.avaliacoes
     return [
@@ -171,12 +166,25 @@ export function FeedbacksPage() {
   }, [dashboard])
 
   const lineData = useMemo(() => {
-    if (evolucao.length > 0) return evolucao
-    return [{ data: ' ', total: 0 }]
-  }, [evolucao])
+    const evo = dashboard?.evolucao_por_sistema
+    if (!evo) return [{ data: ' ', total: 0 }]
 
-  const filtroInfo = ano ? `Filtro: ${ano}` : 'Filtro: todos'
+    const porSemana: Record<string, number> = {}
+    for (const semanas of Object.values(evo)) {
+      for (const s of semanas) {
+        porSemana[s.semana] = (porSemana[s.semana] ?? 0) + s.total
+      }
+    }
+    const entries = Object.entries(porSemana)
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([semana, total]) => ({ data: semana, total }))
 
+    return entries.length > 0 ? entries : [{ data: ' ', total: 0 }]
+  }, [dashboard])
+
+  // ---------------------------------------------------------------------------
+  // Render
+  // ---------------------------------------------------------------------------
   return (
     <>
       <BreadcrumbBar
@@ -195,31 +203,26 @@ export function FeedbacksPage() {
         }
       />
       <ContentArea className="space-y-6">
+        {/* ============================================================= */}
+        {/* Filtros globais                                                */}
+        {/* ============================================================= */}
         <div className="bg-white rounded-2xl shadow-sm p-4 border" style={{ borderColor: C.gray200 }}>
           <div className="flex flex-wrap items-center gap-4">
             <div className="flex items-center gap-2">
               <label className="text-sm font-medium" style={{ color: C.text700 }}>Período:</label>
               <Select value={mes || '__all_months__'} onValueChange={(v) => setMes(v === '__all_months__' ? '' : v)}>
-                <SelectTrigger className="w-[170px] h-10">
-                  <SelectValue />
-                </SelectTrigger>
+                <SelectTrigger className="w-[170px] h-10"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {MESES.map((m) => (
-                    <SelectItem key={m.value || '__all_months__'} value={m.value || '__all_months__'}>
-                      {m.label}
-                    </SelectItem>
+                    <SelectItem key={m.value || '__all_months__'} value={m.value || '__all_months__'}>{m.label}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
               <Select value={ano || '__all_years__'} onValueChange={(v) => setAno(v === '__all_years__' ? '' : v)}>
-                <SelectTrigger className="w-[120px] h-10">
-                  <SelectValue />
-                </SelectTrigger>
+                <SelectTrigger className="w-[120px] h-10"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   {ANOS.map((a) => (
-                    <SelectItem key={a.value || '__all_years__'} value={a.value || '__all_years__'}>
-                      {a.label}
-                    </SelectItem>
+                    <SelectItem key={a.value || '__all_years__'} value={a.value || '__all_years__'}>{a.label}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -228,14 +231,11 @@ export function FeedbacksPage() {
             <div className="flex items-center gap-2">
               <label className="text-sm font-medium" style={{ color: C.text700 }}>Sistema:</label>
               <Select value={sistema || '__all_systems__'} onValueChange={(v) => setSistema(v === '__all_systems__' ? '' : v)}>
-                <SelectTrigger className="w-[220px] h-10">
-                  <SelectValue />
-                </SelectTrigger>
+                <SelectTrigger className="w-[220px] h-10"><SelectValue /></SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="__all_systems__">Todos os sistemas</SelectItem>
                   {SISTEMAS.map((s) => (
-                    <SelectItem key={s.value || '__all_systems__'} value={s.value || '__all_systems__'}>
-                      {s.label}
-                    </SelectItem>
+                    <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>
                   ))}
                 </SelectContent>
               </Select>
@@ -253,6 +253,9 @@ export function FeedbacksPage() {
           </div>
         </div>
 
+        {/* ============================================================= */}
+        {/* Cards resumo                                                   */}
+        {/* ============================================================= */}
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="bg-white rounded-2xl shadow-sm p-6 border" style={{ borderColor: C.gray200 }}>
             <div className="flex items-center justify-between">
@@ -303,6 +306,9 @@ export function FeedbacksPage() {
           </div>
         </div>
 
+        {/* ============================================================= */}
+        {/* Gráficos: pizza + linha                                        */}
+        {/* ============================================================= */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div className="bg-white rounded-2xl shadow-sm p-6 border" style={{ borderColor: C.gray200 }}>
             <h3 className="text-3 font-semibold mb-4" style={{ color: C.text900 }}>Distribuição de Avaliações</h3>
@@ -342,51 +348,66 @@ export function FeedbacksPage() {
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl shadow-sm p-6 border" style={{ borderColor: C.gray200 }}>
-          <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
-            <h3 className="text-lg font-semibold flex items-center gap-2" style={{ color: C.text900 }}>
-              <ChartNoAxesColumn className="h-5 w-5" style={{ color: C.navy500 }} />
-              Evolução da Taxa de Acerto por Sistema
-            </h3>
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="flex items-center gap-2">
-                <label className="text-xs" style={{ color: C.text500 }}>Sistema:</label>
-                <Select value="__all_systems__" onValueChange={() => undefined}>
-                  <SelectTrigger className="h-8 w-[150px] text-xs"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="__all_systems__">Todos os sistemas</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex items-center gap-2">
-                <label className="text-xs" style={{ color: C.text500 }}>Período:</label>
-                <Select value="12" onValueChange={() => undefined}>
-                  <SelectTrigger className="h-8 w-[150px] text-xs"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="8">Últimas 8 semanas</SelectItem>
-                    <SelectItem value="12">Últimas 12 semanas</SelectItem>
-                    <SelectItem value="16">Últimas 16 semanas</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex items-center gap-2">
-                <label className="text-xs" style={{ color: C.text500 }}>Métrica:</label>
-                <Select value="taxa" onValueChange={() => undefined}>
-                  <SelectTrigger className="h-8 w-[160px] text-xs"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="taxa">Taxa de Acerto (%)</SelectItem>
-                    <SelectItem value="total">Total de Feedbacks</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            </div>
-          </div>
+        {/* ============================================================= */}
+        {/* Evolução por sistema (gráfico funcional)                       */}
+        {/* ============================================================= */}
+        <EvolutionChart
+          data={dashboard?.evolucao_por_sistema ?? {}}
+          loading={loading}
+          onSemanasChange={setSemanasEvolucao}
+        />
 
-          <div className="h-28 flex items-center justify-center text-lg" style={{ color: C.text500 }}>
-            {loading ? 'Carregando dados...' : 'Nenhum dado de evolução disponível no período'}
-          </div>
+        {/* ============================================================= */}
+        {/* Modelos de IA em uso                                           */}
+        {/* ============================================================= */}
+        <AIModelsCards />
+
+        {/* ============================================================= */}
+        {/* Top 10 usuários + Pendentes                                    */}
+        {/* ============================================================= */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <UsersFeedbackTable data={dashboard?.feedbacks_por_usuario ?? []} />
+          <PendingEvaluationTable
+            data={dashboard?.pendentes_feedback ?? []}
+            onViewReport={handleViewReport}
+          />
         </div>
+
+        {/* ============================================================= */}
+        {/* Tabela de feedbacks com paginação server-side                   */}
+        {/* ============================================================= */}
+        <FeedbacksTable
+          sistema={sistema}
+          mes={mes}
+          ano={ano}
+          onViewReport={handleViewReport}
+          onViewComment={handleViewComment}
+        />
       </ContentArea>
+
+      {/* ================================================================= */}
+      {/* Modais                                                            */}
+      {/* ================================================================= */}
+      <ReportModal
+        open={reportModal.open}
+        onClose={() => setReportModal({ open: false, consultaId: null, sistema: null })}
+        consultaId={reportModal.consultaId}
+        sistema={reportModal.sistema}
+        onOpenCurationAudit={handleOpenCurationAudit}
+      />
+
+      <CommentModal
+        open={commentModal.open}
+        onClose={() => setCommentModal({ open: false, usuario: '', comentario: '' })}
+        usuario={commentModal.usuario}
+        comentario={commentModal.comentario}
+      />
+
+      <CurationAuditModal
+        open={curationModal.open}
+        onClose={() => setCurationModal({ open: false, geracaoId: null })}
+        geracaoId={curationModal.geracaoId}
+      />
     </>
   )
 }

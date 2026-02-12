@@ -289,13 +289,23 @@ test.describe('03. Admin Prompts Modulos (/admin/prompts-modulos)', () => {
 test.describe('04. Admin Feedbacks (/admin/feedbacks)', () => {
   test.beforeEach(async ({ ctx }) => {
     const { page } = ctx
-    // FeedbacksPage chama adminApi.get('/admin/feedbacks/dashboard?...')
-    await page.route('**/admin/feedbacks/dashboard**', jsonResponse({
+    // FeedbacksPage chama dashboard, lista e modelos-ia
+    await page.route('**/admin/api/feedbacks/dashboard**', jsonResponse({
       total_consultas: 100, total_feedbacks: 50, taxa_acerto: 80,
       consultas_sem_feedback: 50,
       avaliacoes: { correto: 30, parcial: 10, incorreto: 5, erro_ia: 5 },
+      evolucao_por_sistema: {}, feedbacks_por_usuario: [], pendentes_feedback: [],
+      por_sistema: {}, filtro_aplicado: { mes: null, ano: 2026, sistema: null },
     }))
-    await page.route('**/admin/feedbacks/evolucao**', emptyArray)
+    await page.route('**/admin/api/feedbacks/lista**', jsonResponse({
+      feedbacks: [], total: 0, page: 1, per_page: 20, total_pages: 0,
+    }))
+    await page.route('**/admin/modelos-ia**', jsonResponse({
+      assistencia_judiciaria: { id: 1, modelo: 'gemini-2.0-flash', descricao: '' },
+      matriculas: { id: 2, modelo: 'gemini-2.0-flash', descricao: '' },
+      gerador_pecas: { id: 3, modelo: 'gemini-2.0-flash', descricao: '' },
+      pedido_calculo: { id: 4, modelo: 'gemini-2.0-flash', descricao: '' },
+    }))
     await page.goto('/admin/feedbacks')
     await page.waitForLoadState('networkidle')
   })

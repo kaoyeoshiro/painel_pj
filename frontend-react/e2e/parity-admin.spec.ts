@@ -208,9 +208,9 @@ test.describe('20. Admin: Usuários (/admin/users)', () => {
 // ---------------------------------------------------------------------------
 test.describe('21. Admin: Feedbacks (/admin/feedbacks)', () => {
   test.beforeEach(async ({ authenticatedPage: page }) => {
-    // Intercepta TODAS as requests API para /admin/feedbacks/* com dados corretos
+    // Intercepta TODAS as requests API para /admin/api/feedbacks/* com dados corretos
     // Usa glob em vez de regex para evitar interceptar módulos Vite (.tsx)
-    await page.route('**/admin/feedbacks/dashboard**', (route) =>
+    await page.route('**/admin/api/feedbacks/dashboard**', (route) =>
       route.fulfill({
         status: 200,
         contentType: 'application/json',
@@ -221,29 +221,42 @@ test.describe('21. Admin: Feedbacks (/admin/feedbacks)', () => {
           consultas_sem_feedback: 5,
           avaliacoes: { correto: 3, parcial: 1, incorreto: 1, erro_ia: 0 },
           por_sistema: {},
+          evolucao_por_sistema: {},
+          feedbacks_por_usuario: [],
+          pendentes_feedback: [],
+          filtro_aplicado: { mes: null, ano: 2026, sistema: null },
         }),
       })
     )
-    await page.route('**/admin/feedbacks/lista**', (route) =>
+    await page.route('**/admin/api/feedbacks/lista**', (route) =>
       route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({ feedbacks: [], total: 0, page: 1, per_page: 20, total_pages: 0 }),
       })
     )
-    await page.route('**/admin/feedbacks/evolucao**', (route) =>
+    await page.route('**/admin/modelos-ia**', (route) =>
+      route.fulfill({
+        status: 200,
+        contentType: 'application/json',
+        body: JSON.stringify({
+          assistencia_judiciaria: { id: 1, modelo: 'gemini-2.0-flash', descricao: '' },
+          matriculas: { id: 2, modelo: 'gemini-2.0-flash', descricao: '' },
+          gerador_pecas: { id: 3, modelo: 'gemini-2.0-flash', descricao: '' },
+          pedido_calculo: { id: 4, modelo: 'gemini-2.0-flash', descricao: '' },
+        }),
+      })
+    )
+    await page.route('**/admin/api/feedbacks/top-usuarios**', (route) =>
       route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) })
     )
-    await page.route('**/admin/feedbacks/top-usuarios**', (route) =>
+    await page.route('**/admin/api/feedbacks/modelos-em-uso**', (route) =>
       route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) })
     )
-    await page.route('**/admin/feedbacks/modelos-em-uso**', (route) =>
+    await page.route('**/admin/api/feedbacks/pendentes**', (route) =>
       route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) })
     )
-    await page.route('**/admin/feedbacks/pendentes**', (route) =>
-      route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) })
-    )
-    await page.route('**/admin/feedbacks/exportar**', (route) =>
+    await page.route('**/admin/api/feedbacks/exportar**', (route) =>
       route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) })
     )
     await page.goto('/admin/feedbacks')
