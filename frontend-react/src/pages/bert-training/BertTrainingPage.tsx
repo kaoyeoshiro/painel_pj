@@ -830,6 +830,21 @@ export function BertTrainingPage() {
     }
   }, [uploadFile, toast])
 
+  /** Reseta estado do wizard de upload */
+  const resetUploadWizard = useCallback(() => {
+    setUploadStep(1)
+    setUploadFile(null)
+    setUploadPreview([])
+    setUploadValidation(null)
+    setUploadDatasetName('')
+    setUploadDatasetDescription('')
+    setLoadingUploadValidation(false)
+    setUploading(false)
+    if (uploadInputRef.current) {
+      uploadInputRef.current.value = ''
+    }
+  }, [])
+
   /** Passo 4: Upload efetivo do dataset */
   const executarUploadDataset = useCallback(async () => {
     if (!uploadFile || !uploadDatasetName.trim()) {
@@ -856,22 +871,7 @@ export function BertTrainingPage() {
     } finally {
       setUploading(false)
     }
-  }, [uploadFile, uploadDatasetName, uploadDatasetDescription, toast, fetchDatasets])
-
-  /** Reseta estado do wizard de upload */
-  const resetUploadWizard = useCallback(() => {
-    setUploadStep(1)
-    setUploadFile(null)
-    setUploadPreview([])
-    setUploadValidation(null)
-    setUploadDatasetName('')
-    setUploadDatasetDescription('')
-    setLoadingUploadValidation(false)
-    setUploading(false)
-    if (uploadInputRef.current) {
-      uploadInputRef.current.value = ''
-    }
-  }, [])
+  }, [uploadFile, uploadDatasetName, uploadDatasetDescription, toast, fetchDatasets, resetUploadWizard])
 
   // ========================================================================
   // Dados para graficos (recharts)

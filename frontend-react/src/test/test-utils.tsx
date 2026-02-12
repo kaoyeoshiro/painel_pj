@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components -- Arquivo de utilitário de teste; exporta wrapper + re-export de @testing-library */
 /**
  * Utilitario de teste que fornece QueryClientProvider para componentes
  * que usam useQuery diretamente do @tanstack/react-query.

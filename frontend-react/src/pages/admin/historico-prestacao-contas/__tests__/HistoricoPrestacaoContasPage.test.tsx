@@ -32,8 +32,9 @@ describe('HistoricoPrestacaoContasPage', () => {
       post: vi.fn(),
       put: vi.fn(),
       delete: vi.fn(),
-      patch: vi.fn()
-    } as any)
+      patch: vi.fn(),
+      blob: vi.fn(),
+    })
   })
 
   it('deve renderizar título e descrição da página', async () => {

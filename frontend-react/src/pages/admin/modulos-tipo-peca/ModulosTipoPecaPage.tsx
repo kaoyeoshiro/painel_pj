@@ -93,6 +93,7 @@ export function ModulosTipoPecaPage() {
   // Carregar grupos ao montar
   useEffect(() => {
     carregarGrupos()
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- Carrega apenas na montagem
   }, [])
 
   // Carregar tipos de peça quando grupo mudar
@@ -100,6 +101,7 @@ export function ModulosTipoPecaPage() {
     if (grupoSelecionado !== null) {
       carregarTiposPeca()
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- Recarrega apenas quando grupo muda
   }, [grupoSelecionado])
 
   async function carregarGrupos() {

@@ -231,7 +231,6 @@ export function PromptsPage() {
   // =============================================
 
   const getConfigsForSistema = (sistema: string): ConfigIA[] => configsIA.filter(c => c.sistema === sistema)
-  const isGlobal = activeTab === 'global'
   const isSpecialTab = (value: string) => value === 'global' || value === 'sistemas_acessorios'
   const hasAgents = (value: string) => !isSpecialTab(value)
 

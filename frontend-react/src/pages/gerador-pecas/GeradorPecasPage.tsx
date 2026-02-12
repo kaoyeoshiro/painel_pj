@@ -30,7 +30,6 @@ import { BreadcrumbBar } from '@/components/layout/BreadcrumbBar'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
-import { Badge } from '@/components/ui/badge'
 import { Textarea } from '@/components/ui/textarea'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -56,14 +55,11 @@ import {
   useEnviarFeedback,
   useUploadParecer,
   useExportarDocx,
-  useAtualizarMinuta,
   useInvalidateQueries,
 } from '@/hooks/useQueries'
 import { useMarkdown } from '@/hooks/useMarkdown'
 import { geradorApi, getToken } from '@/lib/api'
 import type {
-  TipoPecaResponse,
-  HistoricoItem,
   GeracaoDetalhe,
   SSEEvent,
   ModuloPreview,
@@ -211,7 +207,6 @@ export function GeradorPecasPage() {
   const enviarFeedbackMutation = useEnviarFeedback()
   const uploadParecerMutation = useUploadParecer()
   const exportarDocxMutation = useExportarDocx()
-  const atualizarMinutaMutation = useAtualizarMinuta()
   const restaurarVersaoMutation = useRestaurarVersao()
   const { data: versoesData, refetch: refetchVersoes } = useVersoesGeracao(geracaoId)
 

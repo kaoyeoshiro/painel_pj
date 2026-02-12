@@ -66,6 +66,7 @@ export function CurationAuditModal({ open, onClose, geracaoId }: CurationAuditMo
 
   useEffect(() => {
     if (!open || !geracaoId) return
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Estado de loading para fetch assíncrono no effect
     setLoading(true)
     setError(null)
     fetchCuradoriaAudit(geracaoId)

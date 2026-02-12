@@ -129,6 +129,7 @@ export function TesteAtivacaoPage() {
 
   useEffect(() => {
     void carregarDadosIniciais()
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- Carrega apenas na montagem
   }, [])
 
   async function carregarDadosIniciais() {

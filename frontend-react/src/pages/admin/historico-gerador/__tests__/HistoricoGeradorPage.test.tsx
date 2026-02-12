@@ -71,7 +71,8 @@ describe('HistoricoGeradorPage', () => {
       put: vi.fn(),
       delete: vi.fn(),
       patch: vi.fn(),
-    } as any)
+      blob: vi.fn(),
+    })
   })
 
   it('deve carregar e exibir lista de geracoes', async () => {

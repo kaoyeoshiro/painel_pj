@@ -11,7 +11,8 @@ describe('cn()', () => {
   })
 
   it('ignora valores falsy', () => {
-    expect(cn('foo', false && 'bar', undefined, null, 'baz')).toBe('foo baz')
+    const condicao = false as boolean
+    expect(cn('foo', condicao && 'bar', undefined, null, 'baz')).toBe('foo baz')
   })
 
   it('funciona com objetos condicionais', () => {

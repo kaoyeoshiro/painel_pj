@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { ChevronDown, ChevronRight } from 'lucide-react'
+import { ChevronDown } from 'lucide-react'
 import { C } from '@/lib/designTokens'
 
 interface CollapsibleSectionProps {
@@ -33,6 +33,7 @@ export function CollapsibleSection({
 
   useEffect(() => {
     if (controlledOpen !== undefined) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Sincronização de prop controlada com estado interno
       setInternalOpen(controlledOpen)
     }
   }, [controlledOpen])

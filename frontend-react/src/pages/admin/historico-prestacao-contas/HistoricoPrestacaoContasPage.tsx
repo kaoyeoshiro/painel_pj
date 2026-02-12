@@ -229,6 +229,7 @@ export function HistoricoPrestacaoContasPage() {
   // Carregar lista de geracoes
   useEffect(() => {
     loadGeracoes()
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- Carrega apenas na montagem
   }, [])
 
   async function loadGeracoes() {

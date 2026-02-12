@@ -39,4 +39,5 @@ function Badge({ className, variant, ...props }: BadgeProps) {
   )
 }
 
+// eslint-disable-next-line react-refresh/only-export-components -- badgeVariants é usado em conjunto com Badge (padrão shadcn/ui)
 export { Badge, badgeVariants }

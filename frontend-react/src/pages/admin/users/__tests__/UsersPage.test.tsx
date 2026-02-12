@@ -29,7 +29,8 @@ vi.mock('@tanstack/react-router', () => ({
     return opts?.select ? opts.select(state) : state
   },
   Link: ({ children, to, ...props }: Record<string, unknown>) => {
-    const { createElement } = require('react')
+    // eslint-disable-next-line @typescript-eslint/no-require-imports -- vi.mock factory é hoisted; import estático não disponível
+    const { createElement } = require('react') as typeof import('react')
     return createElement('a', { href: to, ...props }, children)
   },
 }))

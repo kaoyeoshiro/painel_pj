@@ -172,6 +172,7 @@ export function ReportModal({ open, onClose, consultaId, sistema, onOpenCuration
 
   useEffect(() => {
     if (!open || !consultaId || !sistema) return
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Estado de loading para fetch assíncrono no effect
     setLoading(true)
     setError(false)
     setReport(null)

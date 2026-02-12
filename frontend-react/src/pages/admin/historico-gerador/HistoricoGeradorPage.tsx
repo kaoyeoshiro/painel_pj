@@ -57,6 +57,7 @@ export function HistoricoGeradorPage() {
 
   useEffect(() => {
     loadGeracoes()
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- Carrega apenas na montagem
   }, [])
 
   const loadGeracoes = async () => {
@@ -170,7 +171,7 @@ export function HistoricoGeradorPage() {
     try {
       const blob = await geradorAdminApi.get<Blob>(`/geracoes/${id}/download-docx`, {
         responseType: 'blob',
-      } as any)
+      })
       const url = window.URL.createObjectURL(blob as unknown as Blob)
       const link = document.createElement('a')
       link.href = url

@@ -146,9 +146,12 @@ function TreeNode({
     (n: DocumentTreeNode): boolean => {
       if (!searchTerm) return true
       const term = searchTerm.toLowerCase()
-      if (n.label.toLowerCase().includes(term)) return true
-      if (n.children) return n.children.some(matchesSearch)
-      return false
+      const check = (item: DocumentTreeNode): boolean => {
+        if (item.label.toLowerCase().includes(term)) return true
+        if (item.children) return item.children.some(check)
+        return false
+      }
+      return check(n)
     },
     [searchTerm]
   )
@@ -389,11 +392,13 @@ export function ConfigPecasPage() {
   // Carregar categorias
   useEffect(() => {
     carregarCategorias()
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- Carrega apenas na montagem
   }, [])
 
   // Carregar tipos de peca
   useEffect(() => {
     carregarTipos()
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- Carrega apenas na montagem
   }, [])
 
   const carregarCategorias = async () => {
@@ -401,7 +406,7 @@ export function ConfigPecasPage() {
       setLoadingCategorias(true)
       const response = await configApi.get<CategoriaDocumento[]>('/categorias')
       setCategorias(response)
-    } catch (error) {
+    } catch {
       toast({
         title: 'Erro ao carregar categorias',
         description: 'Não foi possível carregar as categorias de documentos',
@@ -417,7 +422,7 @@ export function ConfigPecasPage() {
       setLoadingTipos(true)
       const response = await configApi.get<TipoPeca[]>('/tipos-peca')
       setTiposPeca(response)
-    } catch (error) {
+    } catch {
       toast({
         title: 'Erro ao carregar tipos',
         description: 'Não foi possível carregar os tipos de peça',
@@ -447,7 +452,7 @@ export function ConfigPecasPage() {
       // Recarrega os dados após carregar iniciais
       carregarCategorias()
       carregarTipos()
-    } catch (error) {
+    } catch {
       toast({
         title: 'Erro ao carregar dados iniciais',
         description: 'Não foi possível carregar os dados iniciais de configuração',
@@ -470,7 +475,7 @@ export function ConfigPecasPage() {
         title: 'Sincronização concluída',
         description: 'A configuração foi sincronizada com os prompts com sucesso'
       })
-    } catch (error) {
+    } catch {
       toast({
         title: 'Erro ao sincronizar',
         description: 'Não foi possível sincronizar a configuração com os prompts',
@@ -540,7 +545,7 @@ export function ConfigPecasPage() {
 
       setDialogCategoriaOpen(false)
       carregarCategorias()
-    } catch (error) {
+    } catch {
       toast({
         title: 'Erro ao salvar categoria',
         description: 'Não foi possível salvar a categoria',
@@ -557,7 +562,7 @@ export function ConfigPecasPage() {
         description: 'Categoria excluída com sucesso'
       })
       carregarCategorias()
-    } catch (error) {
+    } catch {
       toast({
         title: 'Erro ao excluir categoria',
         description: 'Não foi possível excluir a categoria',
@@ -622,7 +627,7 @@ export function ConfigPecasPage() {
 
       setDialogTipoOpen(false)
       carregarTipos()
-    } catch (error) {
+    } catch {
       toast({
         title: 'Erro ao salvar tipo',
         description: 'Não foi possível salvar o tipo de peça',
@@ -639,7 +644,7 @@ export function ConfigPecasPage() {
         description: 'Tipo de peça excluído com sucesso'
       })
       carregarTipos()
-    } catch (error) {
+    } catch {
       toast({
         title: 'Erro ao excluir tipo',
         description: 'Não foi possível excluir o tipo de peça',

@@ -72,7 +72,7 @@ export default function MatriculasPage() {
   const [isAnalyzing, setIsAnalyzing] = useState(false)
   const [isBatchAnalyzing, setIsBatchAnalyzing] = useState(false)
   const [currentAnaliseId, setCurrentAnaliseId] = useState<number | null>(null)
-  const [currentGrupoId, setCurrentGrupoId] = useState<number | null>(null)
+  const [, setCurrentGrupoId] = useState<number | null>(null)
   const [reportText, setReportText] = useState<string | null>(null)
   const [isGeneratingReport, setIsGeneratingReport] = useState(false)
   const [showProcessingModal, setShowProcessingModal] = useState(false)
@@ -89,11 +89,11 @@ export default function MatriculasPage() {
     queryKey: queryKeys.matriculas.files(),
     queryFn: () => matriculasApi.get<FileInfo[]>('/files'),
   })
-  const { data: config } = useQuery<ConfigResponse>({
+  useQuery<ConfigResponse>({
     queryKey: queryKeys.matriculas.config(),
     queryFn: () => matriculasApi.get<ConfigResponse>('/config'),
   })
-  const { data: logs, refetch: refetchLogs } = useQuery<LogEntry[]>({
+  const { refetch: refetchLogs } = useQuery<LogEntry[]>({
     queryKey: queryKeys.matriculas.logs(),
     queryFn: () => matriculasApi.get<LogEntry[]>('/logs'),
   })
@@ -140,6 +140,7 @@ export default function MatriculasPage() {
         console.error('Erro ao carregar documento:', error)
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- generateReport é estável (não depende de estado reativo)
     [pdfViewerUrl]
   )
 
@@ -463,7 +464,7 @@ export default function MatriculasPage() {
       if (result.success) {
         toast({ title: 'Sucesso', description: 'Feedback registrado!' })
       }
-    } catch (error) {
+    } catch {
       toast({ title: 'Erro', description: 'Erro ao enviar feedback', variant: 'destructive' })
     }
   }
@@ -487,7 +488,7 @@ export default function MatriculasPage() {
         setReportText(null)
         setPdfViewerUrl(null)
       }
-    } catch (error) {
+    } catch {
       toast({ title: 'Erro', description: 'Erro ao excluir arquivo', variant: 'destructive' })
     }
   }

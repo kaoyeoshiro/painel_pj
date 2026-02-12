@@ -1,3 +1,4 @@
+/* eslint-disable react-refresh/only-export-components -- Arquivo exporta contexto, provider, hook e variantes (padrão shadcn/ui) */
 import * as React from "react"
 import { cn } from "@/lib/utils"
 import { cva, type VariantProps } from "class-variance-authority"

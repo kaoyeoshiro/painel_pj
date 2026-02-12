@@ -92,6 +92,7 @@ export function PerguntaEditorDialog({
     if (!open) return
 
     if (pergunta) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- Inicialização de formulário a partir de props ao abrir dialog
       setTexto(pergunta.pergunta)
       // Remove prefixo para exibir apenas o nome base
       const slug = pergunta.nome_variavel_sugerido || ''

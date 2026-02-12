@@ -135,6 +135,7 @@ export function UsersPage() {
   useEffect(() => {
     loadUsers()
     loadContentGroups()
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- Carrega apenas na montagem
   }, [])
 
   const loadUsers = async () => {

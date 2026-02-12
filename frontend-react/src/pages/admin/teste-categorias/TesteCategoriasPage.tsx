@@ -111,6 +111,7 @@ export function TesteCategoriasPage() {
 
   useEffect(() => {
     void carregarCategorias()
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- Carrega apenas na montagem
   }, [])
 
   // Carregar observacoes e formato ao selecionar categoria

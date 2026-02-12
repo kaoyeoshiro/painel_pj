@@ -54,6 +54,7 @@ export function VariaveisPage() {
 
   useEffect(() => {
     void carregarDados()
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- Recarrega quando filtros mudam; carregarDados é estável
   }, [busca, tipoFiltro, categoriaFiltro, showInactive])
 
   async function carregarDados() {

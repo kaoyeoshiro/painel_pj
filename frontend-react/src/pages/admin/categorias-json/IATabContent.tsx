@@ -60,7 +60,7 @@ const TIPO_BADGES: Record<string, { bg: string; text: string; label: string }> =
   list: { bg: 'bg-teal-100', text: 'text-teal-600', label: 'Lista' },
 }
 
-export function IATabContent({ categoriaId, categoriaNome, formatoJson, onJsonChange }: IATabContentProps) {
+export function IATabContent({ categoriaId, categoriaNome, onJsonChange }: IATabContentProps) {
   const { toast } = useToast()
 
   // Estado das perguntas
@@ -95,8 +95,13 @@ export function IATabContent({ categoriaId, categoriaNome, formatoJson, onJsonCh
     try {
       const data = await categoriasApi.listarPerguntas(categoriaId, false)
       setPerguntas(data.map(mapExtractionToPerguntaLocal))
-      // Verifica consistencia
-      await verificarConsistencia()
+      // Verifica consistência inline para evitar dependência circular
+      try {
+        const resultado = await categoriasApi.verificarConsistencia(categoriaId)
+        setInconsistencia(resultado.consistente ? null : resultado)
+      } catch {
+        setInconsistencia(null)
+      }
     } catch {
       console.error('Erro ao carregar perguntas')
     } finally {
@@ -107,16 +112,6 @@ export function IATabContent({ categoriaId, categoriaNome, formatoJson, onJsonCh
   useEffect(() => {
     carregarPerguntas()
   }, [carregarPerguntas])
-
-  const verificarConsistencia = async () => {
-    if (!categoriaId) return
-    try {
-      const resultado = await categoriasApi.verificarConsistencia(categoriaId)
-      setInconsistencia(resultado.consistente ? null : resultado)
-    } catch {
-      setInconsistencia(null)
-    }
-  }
 
   // Variaveis disponiveis para dependencia (slugs das perguntas atuais)
   const variaveisDisponiveis = perguntas

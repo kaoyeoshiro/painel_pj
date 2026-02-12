@@ -139,17 +139,6 @@ const TIPO_CONFIG: Record<TipoPrompt, {
   },
 }
 
-const TIPO_ORDER: TipoPrompt[] = ['base', 'peca', 'conteudo']
-
-function getTipoLabel(tipo: string) {
-  switch (tipo) {
-    case 'base': return 'Base'
-    case 'peca': return 'Peça'
-    case 'conteudo': return 'Conteúdo'
-    default: return tipo
-  }
-}
-
 function getModoBadge(modo: string) {
   if (modo === 'deterministic') {
     return { label: 'Regra', bg: C.gray100, color: C.text700 }
@@ -706,6 +695,7 @@ export function PromptsModulosPage() {
   // Carregar grupos ao montar
   useEffect(() => {
     carregarGrupos()
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- Carrega apenas na montagem
   }, [])
 
   // Carregar módulos e dados dependentes quando grupo selecionado muda
@@ -722,6 +712,7 @@ export function PromptsModulosPage() {
     setSubgrupoFiltro(null)
     setCategoriaFiltro(null)
     setAssuntosFiltro([])
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- Recarrega apenas quando grupo muda
   }, [grupoSelecionado])
 
   // Carregar subgrupos para o formulário quando grupo do form muda

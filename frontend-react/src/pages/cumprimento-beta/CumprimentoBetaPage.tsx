@@ -11,7 +11,6 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
-import { useAuthStore } from '@/stores/auth-store'
 import { useQuery } from '@tanstack/react-query'
 import { queryKeys } from '@/lib/query-client'
 import { useMarkdown } from '@/hooks/useMarkdown'
@@ -26,8 +25,6 @@ import type {
 } from '@/types/cumprimento-beta'
 
 export function CumprimentoBetaPage() {
-  const user = useAuthStore((state) => state.user)
-
   // Estado da sessao atual
   const [numeroProcesso, setNumeroProcesso] = useState('')
   const [sessaoAtual, setSessaoAtual] = useState<SessionResponse | null>(null)

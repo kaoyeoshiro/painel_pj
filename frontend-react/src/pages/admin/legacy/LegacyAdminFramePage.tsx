@@ -61,6 +61,7 @@ export function LegacyAdminFramePage({ legacyPath }: LegacyAdminFramePageProps) 
   }, [legacyPath])
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- Reset de estado ao mudar src do iframe
     setLoadState('loading')
     setLoadError(null)
 

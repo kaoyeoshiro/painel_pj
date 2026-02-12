@@ -113,7 +113,7 @@ describe('PerformancePage', () => {
     vi.clearAllMocks();
 
     // Mock padrao para todas as chamadas
-    (adminApi.get as any).mockImplementation((url: string) => {
+    vi.mocked(adminApi.get).mockImplementation((url: string) => {
       if (url.includes('/admin/api/performance/summary')) {
         return Promise.resolve(mockPerfSummary);
       }

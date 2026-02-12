@@ -92,6 +92,7 @@ export function CategoriaEditorDialog({ open, editingId, onClose, onSaved }: Cat
     }
 
     loadFontesEspeciais()
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- Executa apenas ao abrir/fechar dialog ou trocar ID
   }, [open, editingId])
 
   const resetState = () => {
