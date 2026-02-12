@@ -122,17 +122,11 @@ export default function MatriculasPage() {
         setDocumentDetails(result)
         setCurrentAnaliseId(result.analise_id || null)
 
-        // Carrega PDF
-        const token = localStorage.getItem('access_token')
-        const response = await fetch(`/matriculas/api/files/${fileId}/view`, {
-          headers: { Authorization: `Bearer ${token}` },
-        })
-        if (response.ok) {
-          const blob = await response.blob()
-          const url = URL.createObjectURL(blob)
-          if (pdfViewerUrl) URL.revokeObjectURL(pdfViewerUrl)
-          setPdfViewerUrl(url)
-        }
+        // Carrega PDF via cliente centralizado
+        const blob = await matriculasApi.blob(`/files/${fileId}/view`)
+        const url = URL.createObjectURL(blob)
+        if (pdfViewerUrl) URL.revokeObjectURL(pdfViewerUrl)
+        setPdfViewerUrl(url)
 
         // Gera relatorio
         await generateReport()
@@ -388,14 +382,8 @@ export default function MatriculasPage() {
         ? `/relatorio/download?analise_id=${currentAnaliseId}`
         : '/relatorio/download'
 
-      const token = localStorage.getItem('access_token')
-      const response = await fetch(`/matriculas/api${url}`, {
-        headers: { Authorization: `Bearer ${token}` },
-      })
-
-      if (!response.ok) throw new Error('Erro ao baixar relatorio')
-
-      const blob = await response.blob()
+      // Download via cliente centralizado (autenticacao automatica)
+      const blob = await matriculasApi.blob(url)
       const downloadUrl = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = downloadUrl

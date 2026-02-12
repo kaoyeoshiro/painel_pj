@@ -14,7 +14,7 @@ import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/co
 import { useQuery } from '@tanstack/react-query'
 import { queryKeys } from '@/lib/query-client'
 import { useMarkdown } from '@/hooks/useMarkdown'
-import { cumprimentoBetaApi } from '@/lib/api'
+import { cumprimentoBetaApi, getToken } from '@/lib/api'
 import type {
   SessionResponse,
   SessionListResponse,
@@ -170,10 +170,11 @@ export function CumprimentoBetaPage() {
       setConsolidando(true)
       setStreamContent('')
 
+      // eslint-disable-next-line no-restricted-globals -- Streaming SSE (getReader) — sera extraido para hook compartilhado (Wave 2)
       const response = await fetch(`/api/cumprimento-beta/sessoes/${sessaoId}/consolidar?streaming=true`, {
         method: 'POST',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+          'Authorization': `Bearer ${getToken()}`,
         },
       })
 
@@ -249,11 +250,12 @@ export function CumprimentoBetaPage() {
     setMensagens((prev) => [...prev, msgUsuario])
 
     try {
+      // eslint-disable-next-line no-restricted-globals -- Streaming SSE (getReader) — sera extraido para hook compartilhado (Wave 2)
       const response = await fetch(`/api/cumprimento-beta/sessoes/${sessaoAtual.id}/chat?streaming=true`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('access_token')}`,
+          'Authorization': `Bearer ${getToken()}`,
         },
         body: JSON.stringify({ conteudo: mensagemUsuario }),
       })

@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from 'react'
+import { getToken } from '@/lib/api'
 
 interface LegacyAdminFramePageProps {
   legacyPath: string
@@ -47,11 +48,8 @@ export function LegacyAdminFramePage({ legacyPath }: LegacyAdminFramePageProps) 
     // Em dev, React e backend costumam rodar em origens diferentes.
     // Usa bridge para sincronizar token no localStorage da origem legada.
     if (import.meta.env.DEV && origin) {
-      const token =
-        localStorage.getItem('access_token') ||
-        localStorage.getItem('auth_token') ||
-        sessionStorage.getItem('auth_token') ||
-        ''
+      // Usa getToken() centralizado — busca access_token e chaves legadas
+      const token = getToken() || ''
       const params = new URLSearchParams({ target: normalizedPath })
       if (token) params.set('token', token)
       return `${origin}/admin/_frame-bridge?${params.toString()}`
