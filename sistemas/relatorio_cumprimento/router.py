@@ -23,13 +23,13 @@ from typing import Optional, List, Dict, AsyncGenerator
 
 from fastapi import APIRouter, HTTPException, Depends, Query, Request
 from fastapi.responses import FileResponse, StreamingResponse
-from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from auth.dependencies import get_current_active_user, get_current_user_from_token_or_query
 from auth.models import User
 from database.connection import get_db
 from utils.timezone import to_iso_utc
+from .schemas import ProcessarRequest, ExportarDocxRequest, EditarRelatorioRequest, FeedbackRequest
 
 from .models import (
     GeracaoRelatorioCumprimento,
@@ -60,37 +60,6 @@ SISTEMA = "relatorio_cumprimento"
 # Diretório temporário para arquivos exportados
 TEMP_DIR = os.path.join(os.path.dirname(__file__), 'temp_docs')
 os.makedirs(TEMP_DIR, exist_ok=True)
-
-
-# ============================================
-# Request/Response Models
-# ============================================
-
-class ProcessarRequest(BaseModel):
-    """Request para processar processo de cumprimento"""
-    numero_cnj: str
-    sobrescrever_existente: bool = False
-
-
-class ExportarDocxRequest(BaseModel):
-    """Request para exportar markdown para DOCX"""
-    markdown: str
-    numero_processo: Optional[str] = None
-
-
-class EditarRelatorioRequest(BaseModel):
-    """Request para editar relatório via chat"""
-    geracao_id: int
-    mensagem_usuario: str
-
-
-class FeedbackRequest(BaseModel):
-    """Request para enviar feedback sobre o relatório gerado"""
-    geracao_id: int
-    avaliacao: str  # 'correto', 'parcial', 'incorreto', 'erro_ia'
-    nota: Optional[int] = None
-    comentario: Optional[str] = None
-    campos_incorretos: Optional[list] = None
 
 
 # ============================================

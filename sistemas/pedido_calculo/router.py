@@ -22,12 +22,23 @@ from typing import Optional, List, Dict, AsyncGenerator
 
 from fastapi import APIRouter, HTTPException, Depends, Query, Request
 from fastapi.responses import FileResponse, StreamingResponse
-from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from auth.dependencies import get_current_active_user, get_current_user_from_token_or_query
 from auth.models import User
 from database.connection import get_db
+from .schemas import (
+    ProcessarXMLRequest,
+    BaixarDocumentosRequest,
+    ExtrairInformacoesRequest,
+    GerarPedidoRequest,
+    ProcessarStreamRequest,
+    ExportarDocxRequest,
+    FeedbackRequest,
+    EditarPedidoRequest,
+    PromptConfigRequest,
+    ConfiguracaoRequest,
+)
 from utils.timezone import to_iso_utc
 from admin.models import ConfiguracaoIA, PromptConfig
 
@@ -131,56 +142,6 @@ SISTEMA = "pedido_calculo"
 # Diretório temporário para arquivos DOCX
 TEMP_DIR = os.path.join(os.path.dirname(__file__), 'temp_docs')
 os.makedirs(TEMP_DIR, exist_ok=True)
-
-
-# ============================================
-# Request/Response Models
-# ============================================
-
-class ProcessarXMLRequest(BaseModel):
-    """Request para processar XML do processo"""
-    xml_texto: str
-
-
-class BaixarDocumentosRequest(BaseModel):
-    """Request para baixar documentos"""
-    numero_processo: str
-    ids_sentencas: List[str] = []
-    ids_acordaos: List[str] = []
-    ids_certidoes: List[str] = []
-    ids_cumprimento: List[str] = []
-
-
-class ExtrairInformacoesRequest(BaseModel):
-    """Request para extrair informações dos documentos"""
-    textos_documentos: Dict[str, str]
-
-
-class GerarPedidoRequest(BaseModel):
-    """Request para gerar pedido de cálculo"""
-    dados_agente1: Dict
-    dados_agente2: Dict
-
-
-class ProcessarStreamRequest(BaseModel):
-    """Request para processar via stream"""
-    numero_cnj: str
-    sobrescrever_existente: bool = False  # Se True, sobrescreve registro anterior do mesmo processo
-
-
-class ExportarDocxRequest(BaseModel):
-    """Request para exportar markdown para DOCX"""
-    markdown: str
-    numero_processo: Optional[str] = None
-
-
-class FeedbackRequest(BaseModel):
-    """Request para enviar feedback sobre o pedido gerado"""
-    geracao_id: int
-    avaliacao: str  # 'correto', 'parcial', 'incorreto', 'erro_ia'
-    nota: Optional[int] = None  # Nota de 1 a 5 estrelas
-    comentario: Optional[str] = None
-    campos_incorretos: Optional[list] = None
 
 
 # ============================================
@@ -1439,15 +1400,6 @@ async def obter_historico(
     }
 
 
-class EditarPedidoRequest(BaseModel):
-    """Request para editar pedido via chat"""
-    pedido_markdown: str
-    mensagem_usuario: str
-    historico_chat: List[Dict] = []
-    dados_basicos: Dict = {}
-    dados_extracao: Dict = {}
-
-
 @router.post("/editar-pedido")
 @limiter.limit(LIMITS["ai"], key_func=get_user_identifier)
 async def editar_pedido(
@@ -1540,18 +1492,6 @@ Pedido atualizado:"""
 # ============================================
 # Endpoints de Configuração (Admin)
 # ============================================
-
-class PromptConfigRequest(BaseModel):
-    """Request para atualizar prompt"""
-    conteudo: str
-    descricao: Optional[str] = None
-
-
-class ConfiguracaoRequest(BaseModel):
-    """Request para atualizar configuração"""
-    valor: str
-    descricao: Optional[str] = None
-
 
 @router.get("/config/prompts")
 async def listar_prompts(

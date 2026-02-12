@@ -11,7 +11,6 @@ import tempfile
 from datetime import datetime
 from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends, Request
 from fastapi.responses import FileResponse
-from pydantic import BaseModel
 from typing import Optional
 from sqlalchemy.orm import Session
 
@@ -26,35 +25,12 @@ from sistemas.assistencia_judiciaria.core.logic import full_flow, DEFAULT_MODEL
 from sistemas.assistencia_judiciaria.core.document import markdown_to_docx, docx_to_pdf
 from sistemas.assistencia_judiciaria.models import ConsultaProcesso, FeedbackAnalise
 from admin.models import ConfiguracaoIA
+from .schemas import ConsultationRequest, FeedbackRequest, DocumentRequest, SettingsRequest
 
 router = APIRouter(tags=["Assistência Judiciária"])
 
 # Caminho do arquivo de configurações
 SETTINGS_FILE = os.path.join(os.path.dirname(__file__), 'settings.json')
-
-
-class ConsultationRequest(BaseModel):
-    cnj: str
-    model: str = DEFAULT_MODEL
-    force: bool = False  # Forçar nova consulta mesmo se já existir cache
-
-
-class FeedbackRequest(BaseModel):
-    consulta_id: int
-    avaliacao: str  # 'correto', 'parcial', 'incorreto', 'erro_ia'
-    comentario: Optional[str] = None
-    campos_incorretos: Optional[list] = None
-
-
-class DocumentRequest(BaseModel):
-    markdown_text: str
-    cnj: str
-    format: str  # 'docx' or 'pdf'
-
-
-class SettingsRequest(BaseModel):
-    openrouter_api_key: str = ""
-    default_model: str = "google/gemini-3-flash-preview"
 
 
 def load_settings():

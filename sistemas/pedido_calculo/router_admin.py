@@ -10,7 +10,6 @@ from fastapi import APIRouter, HTTPException, Depends, Query
 from fastapi.responses import HTMLResponse
 from sqlalchemy.orm import Session, selectinload
 from sqlalchemy import desc, func, case
-from pydantic import BaseModel
 from typing import Optional, List, Any, Dict
 from datetime import datetime
 
@@ -19,65 +18,9 @@ from auth.models import User
 from database.connection import get_db
 from utils.timezone import to_iso_utc
 from .models import GeracaoPedidoCalculo, LogChamadaIA, FeedbackPedidoCalculo
+from .schemas import LogChamadaResponse, GeracaoDetalhadaResponse, GeracaoResumoResponse
 
 router = APIRouter(prefix="/pedido-calculo-admin", tags=["Pedido de Cálculo - Admin"])
-
-
-# ==========================================
-# Schemas
-# ==========================================
-
-class LogChamadaResponse(BaseModel):
-    id: int
-    etapa: str
-    descricao: Optional[str]
-    documento_id: Optional[str]
-    prompt_enviado: Optional[str]
-    documento_texto: Optional[str]
-    resposta_ia: Optional[str]
-    resposta_parseada: Optional[Dict[str, Any]]
-    modelo_usado: Optional[str]
-    tokens_entrada: Optional[int]
-    tokens_saida: Optional[int]
-    tempo_ms: Optional[int]
-    sucesso: bool
-    erro: Optional[str]
-    criado_em: datetime
-
-    class Config:
-        from_attributes = True
-
-
-class GeracaoDetalhadaResponse(BaseModel):
-    id: int
-    numero_cnj: str
-    numero_cnj_formatado: Optional[str]
-    dados_processo: Optional[Dict[str, Any]]
-    dados_agente1: Optional[Dict[str, Any]]
-    dados_agente2: Optional[Dict[str, Any]]
-    documentos_baixados: Optional[List[Dict[str, Any]]]
-    conteudo_gerado: Optional[str]
-    modelo_usado: Optional[str]
-    tempo_processamento: Optional[int]
-    criado_em: datetime
-    logs_ia: List[LogChamadaResponse] = []
-
-    class Config:
-        from_attributes = True
-
-
-class GeracaoResumoResponse(BaseModel):
-    id: int
-    numero_cnj: str
-    numero_cnj_formatado: Optional[str]
-    modelo_usado: Optional[str]
-    tempo_processamento: Optional[int]
-    criado_em: datetime
-    total_logs: int = 0
-    tem_erro: bool = False
-
-    class Config:
-        from_attributes = True
 
 
 # ==========================================
