@@ -139,17 +139,25 @@
 - [x] Todos os sistemas usam `services/gemini_service.py` exclusivamente ✅ `4fcfef6` (10 arquivos migrados)
 - [ ] Mover imports lazy de dentro de endpoints para nivel de modulo (adiado — risco de circular imports)
 
-### 2c. Extrair streaming generators
+### 2c. Extrair streaming generators → ADIADA para Fase 4
 
-- [ ] Mover generators de 300+ linhas dos endpoints → funcoes em services
-- [ ] `router.py:858-1200` → `services/streaming.py:event_generator_geracao()`
-- [ ] Endpoint fica: `return StreamingResponse(streaming.event_generator_geracao(params))`
+> **Decisao**: 11 generators mapeados (~2.230 linhas nos 4 maiores), mas extrair closures
+> com db session, performance tracking e SSE formatting e essencialmente Service Layer (Fase 4).
+> Sera feito junto com a criacao de services injetaveis.
+
+**Generators mapeados (para referencia na Fase 4)**:
+| Router | Endpoint | Linhas | Prioridade |
+|--------|----------|--------|------------|
+| gerador_pecas/router.py | /processar-stream | ~545 | Alta |
+| gerador_pecas/router.py | /processar-pdfs-stream | ~510 | Alta |
+| gerador_pecas/router.py | /curadoria/gerar-stream | ~375 | Media |
+| pedido_calculo/router.py | /processar-stream | ~800 | Alta |
 
 ### 2d. Remover dead code
 
-- [ ] `router_config_pecas.py:13,44` — Jinja2Templates nao usado
-- [ ] Constantes mortas: `CODIGOS_PRIMEIRO_DOC`, `CODIGOS_PETICAO`
-- [ ] Imports nao usados identificados por linter
+- [x] `router_config_pecas.py:13,44` — Jinja2Templates nao usado ✅ `8401dd8` + `6dfc01d`
+- [x] Constantes mortas: `CODIGOS_PRIMEIRO_DOC`, `CODIGOS_PETICAO` (ja removidas anteriormente)
+- [ ] Imports nao usados identificados por linter (melhoria continua)
 
 **Risco**: Baixo (cada quick win e um commit atomico)
 
@@ -305,4 +313,6 @@ Fase 5 (Split) pode iniciar apos Fase 2 ─────────────�
 | 2026-02-11 | 2a | 21 schemas: pedido_calculo (13), relatorio_cumprimento (4), assistencia_judiciaria (4) | `ad9f3c4` |
 | 2026-02-11 | 2a | 16 schemas: admin/performance (8), gemini_logs (6), admin/router (1), auth (1) | `8321e89` |
 | 2026-02-11 | 2b | Unificado Gemini: removido gemini_client.py, 10 arquivos migrados (-64 linhas) | `4fcfef6` |
+| 2026-02-11 | 2d | Removido Jinja2Templates nao usado de router_config_pecas.py | `6dfc01d` |
+| 2026-02-11 | 2c | Mapeamento concluido (11 generators, ~2.230 linhas). Adiado para Fase 4 | — |
 | | | | |
