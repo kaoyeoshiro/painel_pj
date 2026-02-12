@@ -188,12 +188,10 @@ test.describe('02. Admin Prompts (/admin/prompts)', () => {
 
   test.beforeEach(async ({ ctx }) => {
     const { page } = ctx
-    // PromptsPage chama adminApi.get('/admin/prompts') → GET /admin/prompts
-    // A rota e tanto page navigation quanto API — filtrar por resourceType
-    await page.route(/\/admin\/prompts$/, (route) => {
-      if (route.request().resourceType() === 'document') return route.continue()
-      return route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ prompts: MOCK_PROMPTS, total: 1 }) })
-    })
+    // PromptsPage chama adminApi.get('/admin/api/prompts')
+    await page.route('**/admin/api/prompts', (route) =>
+      route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify({ prompts: MOCK_PROMPTS, total: 1 }) })
+    )
     // Config IA
     await page.route('**/admin/config-ia', emptyArray)
     // Restore endpoint

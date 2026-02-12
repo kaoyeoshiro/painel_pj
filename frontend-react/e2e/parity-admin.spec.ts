@@ -19,18 +19,14 @@ import { test, expect } from './fixtures/auth'
 // ---------------------------------------------------------------------------
 test.describe('14. Admin: Prompts (/admin/prompts)', () => {
   test.beforeEach(async ({ authenticatedPage: page }) => {
-    // adminApi.get('/admin/prompts') — usar regex para interceptar apenas XHR/fetch, não navegação
-    await page.route(/\/admin\/prompts$/, (route) => {
-      // Só intercepta requests fetch/XHR (não navegação de documento)
-      if (route.request().resourceType() === 'document') {
-        return route.continue()
-      }
-      return route.fulfill({
+    // adminApi.get('/admin/api/prompts') — mock da API de prompts
+    await page.route('**/admin/api/prompts', (route) =>
+      route.fulfill({
         status: 200,
         contentType: 'application/json',
         body: JSON.stringify({ prompts: [], total: 0 }),
       })
-    })
+    )
     await page.route('**/admin/config-ia', (route) =>
       route.fulfill({ status: 200, contentType: 'application/json', body: JSON.stringify([]) })
     )

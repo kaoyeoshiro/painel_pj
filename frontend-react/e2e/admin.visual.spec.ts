@@ -104,7 +104,7 @@ function getMockJson(pathname: string): JsonValue {
   if (pathname.includes('/admin/api/categorias-resumo-json')) return []
   if (pathname.includes('/admin/api/prompts-modulos/grupos')) return []
   if (pathname.includes('/admin/api/prompts-modulos')) return []
-  if (pathname.includes('/admin/prompts')) return { prompts: [], total: 0 }
+  if (pathname.includes('/admin/api/prompts') && !pathname.includes('/admin/api/prompts-modulos')) return { prompts: [], total: 0 }
   if (pathname.includes('/admin/config-ia')) return []
 
   if (pathname.includes('/api/gerador-pecas/config/categorias')) return []

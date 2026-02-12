@@ -75,7 +75,7 @@ export function PromptsPage() {
   const loadPrompts = useCallback(async () => {
     setIsLoadingPrompts(true)
     try {
-      const data = await adminApi.get<{ prompts: Prompt[]; total: number }>('/admin/prompts')
+      const data = await adminApi.get<{ prompts: Prompt[]; total: number }>('/admin/api/prompts')
       setPrompts(data.prompts)
     } catch (error) {
       toast({ title: 'Erro ao carregar prompts', description: error instanceof Error ? error.message : 'Erro desconhecido', variant: 'destructive' })
@@ -173,7 +173,7 @@ export function PromptsPage() {
     if (!editingPrompt) return
     setIsSavingPrompt(true)
     try {
-      await adminApi.put(`/admin/prompts/${editingPrompt.id}`, {
+      await adminApi.put(`/admin/api/prompts/${editingPrompt.id}`, {
         nome: editingPrompt.nome,
         descricao: editingPrompt.descricao,
         conteudo: editingPrompt.conteudo,

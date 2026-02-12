@@ -95,13 +95,12 @@ export const ADMIN_ROUTES: AdminRoute[] = [
     label: 'Prompts Config',
     anchor: 'heading',
     apiMocks: async (page) => {
-      await page.route(/\/admin\/prompts$/, (route) => {
-        if (route.request().resourceType() === 'document') return route.continue()
-        return route.fulfill({
+      await page.route('**/admin/api/prompts', (route) =>
+        route.fulfill({
           status: 200, contentType: 'application/json',
           body: JSON.stringify({ prompts: [], total: 0 }),
         })
-      })
+      )
       await page.route('**/admin/config-ia', emptyArray)
       await page.route('**/admin/api/prompts/**', successResponse)
     },

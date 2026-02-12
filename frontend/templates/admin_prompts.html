@@ -748,7 +748,7 @@
             const token = localStorage.getItem('access_token');
             const sistema = document.getElementById('filter-sistema').value;
             
-            let url = `${API_URL}/admin/prompts`;
+            let url = `${API_URL}/admin/api/prompts`;
             if (sistema) url += `?sistema=${sistema}`;
 
             console.log('[loadPrompts] Carregando de:', url);
@@ -956,7 +956,7 @@
             console.log('[savePrompt] Dados:', { nome: data.nome, descricao: data.descricao, is_active: data.is_active, conteudo_length: data.conteudo?.length });
 
             try {
-                const response = await fetch(API_URL + '/admin/prompts/' + id, {
+                const response = await fetch(API_URL + '/admin/api/prompts/' + id, {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',

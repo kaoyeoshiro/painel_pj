@@ -38,7 +38,7 @@ router = APIRouter(prefix="/admin", tags=["Administração"])
 # CRUD de Prompts
 # ============================================
 
-@router.get("/prompts", response_model=PromptListResponse)
+@router.get("/api/prompts", response_model=PromptListResponse)
 async def list_prompts(
     sistema: Optional[str] = None,
     tipo: Optional[str] = None,
@@ -58,7 +58,7 @@ async def list_prompts(
     return PromptListResponse(prompts=prompts, total=len(prompts))
 
 
-@router.get("/prompts/{prompt_id}", response_model=PromptResponse)
+@router.get("/api/prompts/{prompt_id}", response_model=PromptResponse)
 async def get_prompt(
     prompt_id: int,
     current_user: User = Depends(require_admin),
@@ -73,7 +73,7 @@ async def get_prompt(
     return prompt
 
 
-@router.post("/prompts", response_model=PromptResponse, status_code=201)
+@router.post("/api/prompts", response_model=PromptResponse, status_code=201)
 async def create_prompt(
     prompt_data: PromptCreate,
     current_user: User = Depends(require_admin),
@@ -108,7 +108,7 @@ async def create_prompt(
     return prompt
 
 
-@router.put("/prompts/{prompt_id}", response_model=PromptResponse)
+@router.put("/api/prompts/{prompt_id}", response_model=PromptResponse)
 async def update_prompt(
     prompt_id: int,
     prompt_data: PromptUpdate,
@@ -139,7 +139,7 @@ async def update_prompt(
     return prompt
 
 
-@router.delete("/prompts/{prompt_id}")
+@router.delete("/api/prompts/{prompt_id}")
 async def delete_prompt(
     prompt_id: int,
     current_user: User = Depends(require_admin),
@@ -157,7 +157,7 @@ async def delete_prompt(
     return {"success": True, "message": "Prompt excluído com sucesso"}
 
 
-@router.post("/prompts/criar-sistema/{sistema}")
+@router.post("/api/prompts/criar-sistema/{sistema}")
 async def criar_prompts_sistema(
     sistema: str,
     current_user: User = Depends(require_admin),
@@ -580,7 +580,7 @@ async def update_api_key(
 # API pública para obter prompts (usada pelos sistemas)
 # ============================================
 
-@router.get("/prompts/get/{sistema}/{tipo}")
+@router.get("/api/prompts/get/{sistema}/{tipo}")
 async def get_prompt_by_tipo(
     sistema: str,
     tipo: str,

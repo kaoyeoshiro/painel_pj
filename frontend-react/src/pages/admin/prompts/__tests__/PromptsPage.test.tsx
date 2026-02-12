@@ -137,7 +137,7 @@ const mockPrompts = {
 function setupMocks() {
   vi.mocked(adminApi.get).mockImplementation((url) => {
     if (url === '/admin/config-ia') return Promise.resolve(mockConfigsIA)
-    if (url === '/admin/prompts') return Promise.resolve(mockPrompts)
+    if (url === '/admin/api/prompts') return Promise.resolve(mockPrompts)
     if (url === '/admin/config-ia/per-agent/matriculas') return Promise.resolve(mockPerAgentMatriculas)
     if (url === '/admin/config-ia/per-agent/gerador_pecas') return Promise.resolve(mockPerAgentGerador)
     // Per-agent para outros sistemas (retorna vazio)
@@ -346,7 +346,7 @@ describe('PromptsPage', () => {
     await user.click(saveButton)
 
     await waitFor(() => {
-      expect(adminApi.put).toHaveBeenCalledWith('/admin/prompts/1', expect.objectContaining({
+      expect(adminApi.put).toHaveBeenCalledWith('/admin/api/prompts/1', expect.objectContaining({
         nome: 'Novo Nome do Prompt',
       }))
     })
@@ -355,7 +355,7 @@ describe('PromptsPage', () => {
   it('deve exibir mensagem quando não há prompts', async () => {
     vi.mocked(adminApi.get).mockImplementation((url) => {
       if (url === '/admin/config-ia') return Promise.resolve([])
-      if (url === '/admin/prompts') return Promise.resolve({ prompts: [], total: 0 })
+      if (url === '/admin/api/prompts') return Promise.resolve({ prompts: [], total: 0 })
       if ((url as string).startsWith('/admin/config-ia/per-agent/')) {
         return Promise.resolve({ sistema: (url as string).split('/').pop(), agentes: {} })
       }
