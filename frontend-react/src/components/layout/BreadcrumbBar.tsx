@@ -12,6 +12,8 @@ interface BreadcrumbBarProps {
   className?: string
   /** Remove max-w-pge para paginas com layout full-width (ex: Matriculas Confrontantes) */
   fullWidth?: boolean
+  /** Classe de max-width customizada (default: max-w-pge). Usar max-w-4xl para paginas de formulario simples */
+  maxWidthClass?: string
 }
 
 /**
@@ -19,10 +21,10 @@ interface BreadcrumbBarProps {
  * Subordinada ao Header global navy do AppLayout.
  * Altura fixa de 48px, maxWidth 1350px, accent navy.
  */
-export function BreadcrumbBar({ title, icon, actions, backTo = '/dashboard', className, fullWidth }: BreadcrumbBarProps) {
+export function BreadcrumbBar({ title, icon, actions, backTo = '/dashboard', className, fullWidth, maxWidthClass }: BreadcrumbBarProps) {
   return (
     <div className={cn('border-b border-gray-200', className)}>
-      <div className={cn('flex h-12 items-center justify-between px-4 sm:px-6 lg:px-10', !fullWidth && 'mx-auto max-w-pge')}>
+      <div className={cn('flex h-12 items-center justify-between px-4 sm:px-6 lg:px-10', !fullWidth && `mx-auto ${maxWidthClass || 'max-w-pge'}`)}>
         {/* Lado esquerdo: voltar > icone > titulo */}
         <div className="flex items-center gap-2">
           <Link
@@ -39,16 +41,16 @@ export function BreadcrumbBar({ title, icon, actions, backTo = '/dashboard', cla
             }}
             aria-label="Voltar ao Dashboard"
           >
-            <ArrowLeft style={{ width: 16, height: 16 }} />
+            <ArrowLeft className="h-4 w-4" />
           </Link>
-          <ChevronRight style={{ width: 14, height: 14, color: C.text400, margin: '0 4px' }} />
+          <ChevronRight className="mx-1 h-3.5 w-3.5" style={{ color: C.text400 }} />
           <div
-            className="flex items-center justify-center rounded-lg"
-            style={{ width: 28, height: 28, background: C.navy100, color: C.navy700 }}
+            className="flex h-7 w-7 items-center justify-center rounded-lg"
+            style={{ background: C.navy100, color: C.navy700 }}
           >
             {icon}
           </div>
-          <span className="font-semibold" style={{ fontSize: 15, color: C.text900, marginLeft: 4 }}>
+          <span className="ml-1 text-[15px] font-semibold" style={{ color: C.text900 }}>
             {title}
           </span>
         </div>

@@ -49,13 +49,12 @@ export function ContentDialog({
             </div>
             <DialogHeader className="space-y-0 p-0 text-left">
               <DialogTitle
-                className="font-bold leading-tight"
-                style={{ color: 'rgba(255,255,255,0.95)', fontSize: 17 }}
+                className="text-[17px] font-bold leading-tight text-white/95"
               >
                 {title}
               </DialogTitle>
               {subtitle && (
-                <DialogDescription style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13 }}>
+                <DialogDescription className="text-[13px] text-white/50">
                   {subtitle}
                 </DialogDescription>
               )}
@@ -67,7 +66,7 @@ export function ContentDialog({
               onClick={() => onOpenChange(false)}
               size="sm"
               className="text-white/70 hover:bg-white/10 hover:text-white"
-              style={{ background: 'transparent', border: 'none' }}
+              variant="ghost"
             >
               <X className="h-4 w-4" />
             </Button>
@@ -84,7 +83,7 @@ export function ContentDialog({
             >
               <span
                 className="text-xs font-bold uppercase tracking-wider"
-                style={{ color: C.text400, letterSpacing: '0.08em' }}
+                style={{ color: C.text400 }}
               >
                 Visualizacao
               </span>

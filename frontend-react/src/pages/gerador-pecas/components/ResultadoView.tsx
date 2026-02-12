@@ -17,7 +17,7 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
-import { C } from '@/lib/designTokens'
+import { C, FONT_DOC, FONT_UI } from '@/lib/designTokens'
 import type { UseGeradorPecasReturn } from '../hooks/useGeradorPecas'
 import { CHAT_SUGESTOES } from '../types'
 
@@ -75,8 +75,8 @@ export function ResultadoView({ h }: ResultadoViewProps) {
         </div>
 
         {/* Document card */}
-        <div className="min-h-0 flex-1 overflow-hidden rounded-2xl bg-white shadow-sm" style={{ border: `1px solid ${C.gray200}` }}>
-          <div className="custom-scroll h-full overflow-y-auto px-10 py-10" style={{ fontFamily: "var(--font-doc, 'Lora', Georgia, serif)" }}>
+        <div className="min-h-0 flex-1 overflow-hidden rounded-2xl border bg-white shadow-sm" style={{ borderColor: C.gray200 }}>
+          <div className="custom-scroll h-full overflow-y-auto px-10 py-10" style={{ fontFamily: FONT_DOC }}>
             <div
               className="prose-legal max-w-none"
               dangerouslySetInnerHTML={{ __html: h.minutaHtml }}
@@ -85,8 +85,8 @@ export function ResultadoView({ h }: ResultadoViewProps) {
             {/* Feedback — below document */}
             {!h.showFeedback && h.geracaoId && (
               <div className="mt-12 border-t border-slate-100 pt-8">
-                <div className="rounded-xl border border-slate-200/60 bg-slate-50/50 p-5 text-center" style={{ fontFamily: "var(--font-ui, 'DM Sans', system-ui, sans-serif)" }}>
-                  <p className="font-medium text-slate-600" style={{ fontSize: 15 }}>Qual a qualidade desta geracao?</p>
+                <div className="rounded-xl border border-slate-200/60 bg-slate-50/50 p-5 text-center" style={{ fontFamily: FONT_UI }}>
+                  <p className="text-[15px] font-medium text-slate-600">Qual a qualidade desta geracao?</p>
                   <p className="mt-1 text-xs text-slate-400">Sua avaliacao ajuda a melhorar o sistema</p>
                   <div className="mt-3 flex justify-center gap-1">
                     {[1, 2, 3, 4, 5].map((nota) => (
@@ -118,7 +118,7 @@ export function ResultadoView({ h }: ResultadoViewProps) {
 
       {/* -- Painel de chat -- */}
       <div className="hidden w-80 flex-shrink-0 py-5 pr-5 sm:flex">
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl bg-white shadow-sm" style={{ border: `1px solid ${C.gray200}` }}>
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden rounded-2xl border bg-white shadow-sm" style={{ borderColor: C.gray200 }}>
 
           {/* Panel header — navy */}
           <div className="flex flex-shrink-0 items-center justify-between rounded-t-2xl px-5 py-4" style={{ background: C.navy950 }}>
@@ -128,7 +128,7 @@ export function ResultadoView({ h }: ResultadoViewProps) {
               </div>
               <div>
                 <h2 className="text-sm font-semibold text-white">Assistente</h2>
-                <p className="text-xs" style={{ color: 'rgba(255,255,255,0.5)' }}>Edicao da peca</p>
+                <p className="text-xs text-white/50">Edicao da peca</p>
               </div>
             </div>
           </div>

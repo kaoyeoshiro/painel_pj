@@ -86,8 +86,8 @@ interface FormularioProps {
 
 export function Formulario({ numeroCNJ, setNumeroCNJ, estadoPagina, onSubmit }: FormularioProps) {
   return (
-    <Card className="overflow-hidden" style={{ borderRadius: 16, borderColor: C.gray200 }}>
-      <div style={{ height: 4, background: `linear-gradient(90deg, ${C.navy950}, ${C.navy500})` }} />
+    <Card className="overflow-hidden rounded-2xl" style={{ borderColor: C.gray200 }}>
+      <div className="h-1" style={{ background: `linear-gradient(90deg, ${C.navy950}, ${C.navy500})` }} />
       <CardHeader>
         <div className="flex items-center gap-3">
           <div
@@ -185,8 +185,8 @@ interface ProgressoProps {
 
 export function Progresso({ etapas, progressoMensagem, progressoPercent }: ProgressoProps) {
   return (
-    <Card className="overflow-hidden" style={{ borderRadius: 16, borderColor: C.gray200 }}>
-      <div style={{ height: 4, background: `linear-gradient(90deg, ${C.navy950}, ${C.navy500})` }} />
+    <Card className="overflow-hidden rounded-2xl" style={{ borderColor: C.gray200 }}>
+      <div className="h-1" style={{ background: `linear-gradient(90deg, ${C.navy950}, ${C.navy500})` }} />
       <CardHeader>
         <div className="flex items-center gap-3">
           <div
@@ -209,12 +209,12 @@ export function Progresso({ etapas, progressoMensagem, progressoPercent }: Progr
               className="flex items-center gap-3 rounded-lg border p-3 transition-colors"
               style={{
                 borderColor: etapa.status === 'ativo' ? C.navy200
-                  : etapa.status === 'concluido' ? '#bbf7d0'
-                  : etapa.status === 'erro' ? '#fecaca'
+                  : etapa.status === 'concluido' ? C.successBorder
+                  : etapa.status === 'erro' ? C.errorBorder
                   : C.gray200,
                 background: etapa.status === 'ativo' ? C.navy50
-                  : etapa.status === 'concluido' ? '#f0fdf4'
-                  : etapa.status === 'erro' ? '#fef2f2'
+                  : etapa.status === 'concluido' ? C.successBg
+                  : etapa.status === 'erro' ? C.errorBg
                   : C.gray50,
               }}
             >
@@ -222,12 +222,12 @@ export function Progresso({ etapas, progressoMensagem, progressoPercent }: Progr
                 className="flex h-8 w-8 items-center justify-center rounded-full"
                 style={{
                   background: etapa.status === 'ativo' ? C.navy200
-                    : etapa.status === 'concluido' ? '#bbf7d0'
-                    : etapa.status === 'erro' ? '#fecaca'
+                    : etapa.status === 'concluido' ? C.successBorder
+                    : etapa.status === 'erro' ? C.errorBorder
                     : C.gray200,
                   color: etapa.status === 'ativo' ? C.navy700
-                    : etapa.status === 'concluido' ? '#15803d'
-                    : etapa.status === 'erro' ? '#b91c1c'
+                    : etapa.status === 'concluido' ? C.successTextLight
+                    : etapa.status === 'erro' ? C.errorTextLight
                     : C.gray400,
                 }}
               >
@@ -250,9 +250,9 @@ export function Progresso({ etapas, progressoMensagem, progressoPercent }: Progr
               <Badge
                 variant="outline"
                 style={
-                  etapa.status === 'concluido' ? { background: '#dcfce7', color: '#166534', borderColor: '#bbf7d0' }
+                  etapa.status === 'concluido' ? { background: C.successBgStrong, color: C.successText, borderColor: C.successBorder }
                   : etapa.status === 'ativo' ? { background: C.navy100, color: C.navy700, borderColor: C.navy200 }
-                  : etapa.status === 'erro' ? { background: '#fee2e2', color: '#991b1b', borderColor: '#fecaca' }
+                  : etapa.status === 'erro' ? { background: C.errorBgStrong, color: C.errorText, borderColor: C.errorBorder }
                   : { borderColor: C.gray300, color: C.text400 }
                 }
               >
@@ -305,11 +305,11 @@ export function DocumentContent({ geracaoAtual, parecerBadgeStyle, parecerTexto,
       <div
         className="flex items-center justify-between rounded-xl border p-4"
         style={{
-          borderColor: geracaoAtual.parecer === 'favoravel' ? '#bbf7d0'
-            : geracaoAtual.parecer === 'desfavoravel' ? '#fecaca'
+          borderColor: geracaoAtual.parecer === 'favoravel' ? C.successBorder
+            : geracaoAtual.parecer === 'desfavoravel' ? C.errorBorder
             : C.orange200,
-          background: geracaoAtual.parecer === 'favoravel' ? '#f0fdf4'
-            : geracaoAtual.parecer === 'desfavoravel' ? '#fef2f2'
+          background: geracaoAtual.parecer === 'favoravel' ? C.successBg
+            : geracaoAtual.parecer === 'desfavoravel' ? C.errorBg
             : C.orange50,
         }}
       >
@@ -389,17 +389,17 @@ export function DocumentContent({ geracaoAtual, parecerBadgeStyle, parecerTexto,
       {geracaoAtual.irregularidades && geracaoAtual.irregularidades.length > 0 && (
         <div
           className="rounded-xl border p-4"
-          style={{ borderColor: '#fecaca', background: '#fef2f2' }}
+          style={{ borderColor: C.errorBorder, background: C.errorBg }}
         >
           <div className="mb-3 flex items-center gap-2">
             <AlertTriangle className="h-4 w-4" style={{ color: C.statusError }} />
-            <p className="text-sm font-semibold" style={{ color: '#991b1b' }}>
+            <p className="text-sm font-semibold" style={{ color: C.errorText }}>
               Irregularidades Identificadas
             </p>
           </div>
           <ul className="space-y-2">
             {geracaoAtual.irregularidades.map((irr, idx) => (
-              <li key={idx} className="flex items-start gap-2 text-sm" style={{ color: '#b91c1c' }}>
+              <li key={idx} className="flex items-start gap-2 text-sm" style={{ color: C.errorTextLight }}>
                 <XCircle className="h-4 w-4 mt-0.5 flex-shrink-0" />
                 <span>{irr}</span>
               </li>
@@ -435,9 +435,9 @@ export function FeedbackSection({ avaliacaoSelecionada, setAvaliacaoSelecionada,
       </p>
       <div className="flex flex-wrap gap-2">
         {([
-          { value: 'correto' as const, label: 'Correto', icon: Check, bg: '#dcfce7', color: '#166534', border: '#bbf7d0' },
-          { value: 'parcial' as const, label: 'Parcial', icon: AlertCircle, bg: C.orange100, color: '#92400e', border: C.orange200 },
-          { value: 'incorreto' as const, label: 'Incorreto', icon: X, bg: '#fee2e2', color: '#991b1b', border: '#fecaca' },
+          { value: 'correto' as const, label: 'Correto', icon: Check, bg: C.successBgStrong, color: C.successText, border: C.successBorder },
+          { value: 'parcial' as const, label: 'Parcial', icon: AlertCircle, bg: C.orange100, color: C.warningText, border: C.orange200 },
+          { value: 'incorreto' as const, label: 'Incorreto', icon: X, bg: C.errorBgStrong, color: C.errorText, border: C.errorBorder },
         ]).map(opt => (
           <Button
             key={opt.value}
@@ -501,8 +501,8 @@ interface DuvidasProps {
 
 export function Duvidas({ perguntas, respostas, setRespostas, isEnviandoRespostas, onEnviar, onCancelar }: DuvidasProps) {
   return (
-    <Card className="overflow-hidden" style={{ borderRadius: 16, borderColor: C.orange200 }}>
-      <div style={{ height: 4, background: `linear-gradient(90deg, ${C.orange500}, ${C.orange400})` }} />
+    <Card className="overflow-hidden rounded-2xl" style={{ borderColor: C.orange200 }}>
+      <div className="h-1" style={{ background: `linear-gradient(90deg, ${C.orange500}, ${C.orange400})` }} />
       <CardHeader>
         <div className="flex items-center gap-3">
           <div
@@ -569,8 +569,8 @@ interface DocumentosFaltantesProps {
 
 export function DocumentosFaltantes({ vm }: DocumentosFaltantesProps) {
   return (
-    <Card className="overflow-hidden" style={{ borderRadius: 16, borderColor: C.orange200 }}>
-      <div style={{ height: 4, background: `linear-gradient(90deg, ${C.orange500}, ${C.orange400})` }} />
+    <Card className="overflow-hidden rounded-2xl" style={{ borderColor: C.orange200 }}>
+      <div className="h-1" style={{ background: `linear-gradient(90deg, ${C.orange500}, ${C.orange400})` }} />
       <CardHeader>
         <div className="flex items-center gap-3">
           <div
@@ -730,8 +730,8 @@ export function HistoricoRecente({ vm }: HistoricoRecenteProps) {
   const geracoes = vm.historicoData?.geracoes || []
 
   return (
-    <Card className="overflow-hidden" style={{ borderRadius: 16, borderColor: C.gray200 }}>
-      <div style={{ height: 4, background: `linear-gradient(90deg, ${C.navy950}, ${C.navy500})` }} />
+    <Card className="overflow-hidden rounded-2xl" style={{ borderColor: C.gray200 }}>
+      <div className="h-1" style={{ background: `linear-gradient(90deg, ${C.navy950}, ${C.navy500})` }} />
       <CardHeader>
         <div className="flex items-center justify-between">
           <CardTitle className="flex items-center gap-2 text-base" style={{ color: C.text900 }}>
@@ -784,7 +784,7 @@ export function HistoricoRecente({ vm }: HistoricoRecenteProps) {
                 </div>
                 <div className="flex items-center gap-2">
                   {g.status === 'erro' ? (
-                    <Badge variant="outline" style={{ background: '#fee2e2', color: '#991b1b', borderColor: '#fecaca' }} className="text-xs">Erro</Badge>
+                    <Badge variant="outline" style={{ background: C.errorBgStrong, color: C.errorText, borderColor: C.errorBorder }} className="text-xs">Erro</Badge>
                   ) : g.parecer ? (
                     <Badge variant="outline" className="text-xs" style={vm.parecerBadgeStyle(g.parecer)}>
                       {vm.parecerTexto(g.parecer)}
@@ -820,12 +820,12 @@ export function HistoricoSheet({ vm }: HistoricoSheetProps) {
     <Sheet>
       <SheetTrigger asChild>
         <button
-          className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-medium transition-colors"
-          style={{ color: C.text500, fontSize: 13 }}
+          className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[13px] font-medium transition-colors"
+          style={{ color: C.text500 }}
           onMouseEnter={(e) => { e.currentTarget.style.background = C.gray100 }}
           onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
         >
-          <Clock style={{ width: 14, height: 14 }} />
+          <Clock className="w-3.5 h-3.5" />
           <span className="hidden sm:inline">Historico</span>
         </button>
       </SheetTrigger>
@@ -882,7 +882,7 @@ export function HistoricoSheet({ vm }: HistoricoSheetProps) {
                   </div>
                   <div className="flex flex-col items-end gap-1">
                     {g.status === 'erro' ? (
-                      <Badge variant="outline" className="text-xs" style={{ background: '#fee2e2', color: '#991b1b', borderColor: '#fecaca' }}>Erro</Badge>
+                      <Badge variant="outline" className="text-xs" style={{ background: C.errorBgStrong, color: C.errorText, borderColor: C.errorBorder }}>Erro</Badge>
                     ) : g.parecer ? (
                       <Badge variant="outline" className="text-xs" style={vm.parecerBadgeStyle(g.parecer)}>
                         {vm.parecerTexto(g.parecer)}
@@ -918,8 +918,8 @@ export function ResumoResultado({ vm }: ResumoResultadoProps) {
   if (!vm.geracaoAtual) return null
 
   return (
-    <Card className="overflow-hidden" style={{ borderRadius: 16, borderColor: C.gray200 }}>
-      <div style={{ height: 4, background: `linear-gradient(90deg, ${C.navy950}, ${C.navy500})` }} />
+    <Card className="overflow-hidden rounded-2xl" style={{ borderColor: C.gray200 }}>
+      <div className="h-1" style={{ background: `linear-gradient(90deg, ${C.navy950}, ${C.navy500})` }} />
       <CardContent className="p-6">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">

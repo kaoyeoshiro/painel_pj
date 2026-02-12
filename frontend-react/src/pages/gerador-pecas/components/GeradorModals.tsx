@@ -195,7 +195,7 @@ export function ParecerDialog({
           </p>
           <div className="space-y-3">
             <div>
-              <Label htmlFor="parecer-file" className="font-medium text-slate-600" style={{ fontSize: 15 }}>
+              <Label htmlFor="parecer-file" className="text-[15px] font-medium text-slate-600">
                 Anexar Parecer (PDF)
               </Label>
               <Input

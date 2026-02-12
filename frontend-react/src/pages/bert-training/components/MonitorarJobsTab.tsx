@@ -394,8 +394,8 @@ export function MonitorarJobsTab({
                     </div>
                     <div
                       ref={logContainerRef}
-                      className="h-64 overflow-y-auto rounded-lg border p-3 font-mono text-xs"
-                      style={{ background: '#111827', borderColor: C.gray200 }}
+                      className="h-64 overflow-y-auto rounded-lg border bg-gray-900 p-3 font-mono text-xs"
+                      style={{ borderColor: C.gray200 }}
                       data-testid="logs-container"
                     >
                       {realtimeLogs.length === 0 ? (

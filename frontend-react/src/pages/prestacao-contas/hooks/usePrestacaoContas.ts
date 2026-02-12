@@ -575,9 +575,9 @@ export function usePrestacaoContas() {
 
   const parecerBadgeStyle = (parecer?: string): React.CSSProperties => {
     switch (parecer) {
-      case 'favoravel': return { background: '#dcfce7', color: '#166534', borderColor: '#bbf7d0' }
-      case 'desfavoravel': return { background: '#fee2e2', color: '#991b1b', borderColor: '#fecaca' }
-      case 'duvida': return { background: C.orange100, color: '#92400e', borderColor: C.orange200 }
+      case 'favoravel': return { background: C.successBgStrong, color: C.successText, borderColor: C.successBorder }
+      case 'desfavoravel': return { background: C.errorBgStrong, color: C.errorText, borderColor: C.errorBorder }
+      case 'duvida': return { background: C.orange100, color: C.warningText, borderColor: C.orange200 }
       default: return { background: C.gray100, color: C.text700, borderColor: C.gray200 }
     }
   }

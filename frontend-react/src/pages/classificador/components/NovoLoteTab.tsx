@@ -240,7 +240,7 @@ export function NovoLoteTab({ prompts, promptsLoading, onProjetoCreated }: NovoL
             <CardTitle className="text-lg" style={{ color: C.text700 }}>Adicionar Documentos</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-2" style={{ borderBottom: `1px solid ${C.gray200}` }}>
+            <div className="grid grid-cols-2 border-b" style={{ borderColor: C.gray200 }}>
               <button
                 type="button"
                 onClick={() => setUploadMode('upload')}
@@ -446,7 +446,7 @@ export function NovoLoteTab({ prompts, promptsLoading, onProjetoCreated }: NovoL
               </div>
             )}
 
-            <ScrollArea className="max-h-48 rounded-md p-3" style={{ border: `1px solid ${C.gray200}` }}>
+            <ScrollArea className="max-h-48 rounded-md border p-3" style={{ borderColor: C.gray200 }}>
               {logs.map((log, idx) => {
                 let logColor: string
                 if (log.tipo === 'erro') {

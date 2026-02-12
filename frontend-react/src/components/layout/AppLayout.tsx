@@ -1,5 +1,6 @@
 import { Suspense } from 'react'
 import { Outlet, useRouterState } from '@tanstack/react-router'
+import { C } from '@/lib/designTokens'
 import { Header } from './Header'
 import { Sidebar } from './Sidebar'
 
@@ -42,7 +43,7 @@ export function AppLayout() {
   const useInlineTopbarOnMobile = shouldUseInlineTopbarOnMobile(pathname)
 
   return (
-    <div className="flex h-screen overflow-hidden" style={{ background: '#F7F8F9' }}>
+    <div className="flex h-screen overflow-hidden" style={{ background: C.gray50 }}>
       {/* Sidebar */}
       <Sidebar />
 
@@ -58,7 +59,7 @@ export function AppLayout() {
         )}
 
         {/* Área de conteúdo (renderiza as páginas) */}
-        <main className="flex-1 overflow-y-auto" style={{ background: '#F7F8F9' }}>
+        <main className="flex-1 overflow-y-auto" style={{ background: C.gray50 }}>
           <Suspense fallback={<PageLoadingFallback />}>
             <Outlet />
           </Suspense>

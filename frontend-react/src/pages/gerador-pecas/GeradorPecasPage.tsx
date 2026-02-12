@@ -37,32 +37,32 @@ export function GeradorPecasPage() {
         {/* Breadcrumb */}
         <BreadcrumbBar
           title="Gerador de Pecas"
-          icon={<Scale style={{ width: 14, height: 14 }} />}
+          icon={<Scale className="h-3.5 w-3.5" />}
           className="flex-shrink-0"
           actions={
             <>
               {(h.pageState === 'resultado' || h.pageState === 'editando') && (
                 <button
                   onClick={h.voltarParaInicio}
-                  className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-semibold text-white transition-all hover:opacity-90"
-                  style={{ background: C.navy950, fontSize: 13 }}
+                  className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[13px] font-semibold text-white transition-all hover:opacity-90"
+                  style={{ background: C.navy950 }}
                 >
-                  <Sparkles style={{ width: 14, height: 14 }} />
+                  <Sparkles className="h-3.5 w-3.5" />
                   <span className="hidden sm:inline">Nova Geracao</span>
                 </button>
               )}
               <button
                 onClick={() => h.setShowSidebar(!h.showSidebar)}
-                className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 font-medium transition-colors"
+                className="inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-[13px] font-medium transition-colors"
                 style={{
                   color: h.showSidebar ? C.text900 : C.text500,
                   background: h.showSidebar ? C.gray100 : 'transparent',
-                  fontSize: 13,
                 }}
+
                 onMouseEnter={(e) => { if (!h.showSidebar) e.currentTarget.style.background = C.gray100 }}
                 onMouseLeave={(e) => { if (!h.showSidebar) e.currentTarget.style.background = 'transparent' }}
               >
-                <Clock style={{ width: 14, height: 14 }} />
+                <Clock className="h-3.5 w-3.5" />
                 <span className="hidden sm:inline">Historico</span>
               </button>
             </>

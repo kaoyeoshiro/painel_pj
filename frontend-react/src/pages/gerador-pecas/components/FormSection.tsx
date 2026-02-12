@@ -120,7 +120,7 @@ export function FormSection({ h }: FormSectionProps) {
             {/* CNJ Input */}
             {h.inputMode === 'cnj' && (
               <div>
-                <Label htmlFor="numero-cnj" className="font-medium text-slate-600" style={{ fontSize: 15 }}>
+                <Label htmlFor="numero-cnj" className="text-[15px] font-medium text-slate-600">
                   Numero do Processo
                 </Label>
                 <Input
@@ -137,7 +137,7 @@ export function FormSection({ h }: FormSectionProps) {
             {/* PDF Upload */}
             {h.inputMode === 'pdf' && (
               <div>
-                <Label className="font-medium text-slate-600" style={{ fontSize: 15 }}>
+                <Label className="text-[15px] font-medium text-slate-600">
                   Arquivos PDF
                 </Label>
                 <div
@@ -195,7 +195,7 @@ export function FormSection({ h }: FormSectionProps) {
 
             {/* Tipo de Peca */}
             <div>
-              <Label htmlFor="tipo-peca" className="font-medium text-slate-600" style={{ fontSize: 15 }}>
+              <Label htmlFor="tipo-peca" className="text-[15px] font-medium text-slate-600">
                 Tipo de Peca
               </Label>
               {h.isLoadingTipos ? (
@@ -229,7 +229,7 @@ export function FormSection({ h }: FormSectionProps) {
             {/* Grupo (opcional) */}
             {h.gruposData && h.gruposData.grupos.length > 0 && (
               <div>
-                <Label htmlFor="grupo" className="font-medium text-slate-600" style={{ fontSize: 15 }}>
+                <Label htmlFor="grupo" className="text-[15px] font-medium text-slate-600">
                   Grupo de Argumentos
                 </Label>
                 <Select
@@ -253,7 +253,7 @@ export function FormSection({ h }: FormSectionProps) {
             {/* Subcategorias */}
             {h.subcategorias.length > 0 && (
               <div>
-                <Label className="font-medium text-slate-600" style={{ fontSize: 15 }}>Subcategorias</Label>
+                <Label className="text-[15px] font-medium text-slate-600">Subcategorias</Label>
                 <div className="mt-2.5 flex flex-wrap gap-2">
                   {h.subcategorias.map((sub) => {
                     const isSelected = h.selectedSubcategorias.includes(sub.id)
@@ -283,7 +283,7 @@ export function FormSection({ h }: FormSectionProps) {
 
             {/* Observacao */}
             <div>
-              <Label htmlFor="observacao" className="font-medium text-slate-600" style={{ fontSize: 15 }}>
+              <Label htmlFor="observacao" className="text-[15px] font-medium text-slate-600">
                 Observacoes
                 <span className="ml-1 font-normal normal-case tracking-normal text-slate-400">(opcional)</span>
               </Label>
@@ -328,7 +328,7 @@ export function FormSection({ h }: FormSectionProps) {
       {/* "Como funciona" — pipeline visual */}
       {h.pageState === 'idle' && (
         <div className="mt-8">
-          <h3 className="mb-4 font-semibold" style={{ fontSize: 15, color: C.text700 }}>Pipeline de Geracao</h3>
+          <h3 className="mb-4 text-[15px] font-semibold" style={{ color: C.text700 }}>Pipeline de Geracao</h3>
           <div className="flex items-center gap-0">
             {AGENT_META.map((agent, i) => {
               const Icon = agent.icon
@@ -336,10 +336,10 @@ export function FormSection({ h }: FormSectionProps) {
                 <div key={agent.numero} className="flex flex-1 items-center">
                   <div className="flex flex-1 flex-col items-center text-center">
                     <div className="flex h-11 w-11 items-center justify-center rounded-xl" style={{ background: C.navy100, color: C.navy700 }}>
-                      <Icon style={{ width: 18, height: 18 }} />
+                      <Icon className="h-[18px] w-[18px]" />
                     </div>
-                    <p className="mt-2.5 font-semibold" style={{ fontSize: 13, color: C.text700 }}>{agent.nome}</p>
-                    <p className="mt-0.5 leading-tight" style={{ fontSize: 12, color: C.text400 }}>{agent.descricao}</p>
+                    <p className="mt-2.5 text-[13px] font-semibold" style={{ color: C.text700 }}>{agent.nome}</p>
+                    <p className="mt-0.5 text-xs leading-tight" style={{ color: C.text400 }}>{agent.descricao}</p>
                   </div>
                   {i < AGENT_META.length - 1 && (
                     <ChevronRight className="mx-1 h-4 w-4 flex-shrink-0" style={{ color: C.gray500 }} />
@@ -355,7 +355,7 @@ export function FormSection({ h }: FormSectionProps) {
       {h.pageState === 'idle' && h.historico && h.historico.length > 0 && (
         <div className="mt-8">
           <div className="mb-3 flex items-center justify-between">
-            <h3 className="font-semibold" style={{ fontSize: 15, color: C.text700 }}>Recentes</h3>
+            <h3 className="text-[15px] font-semibold" style={{ color: C.text700 }}>Recentes</h3>
             <button
               onClick={() => h.setShowSidebar(true)}
               className="text-xs font-medium transition-colors"
@@ -401,8 +401,8 @@ export function FormSection({ h }: FormSectionProps) {
           <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-2xl" style={{ background: C.navy100, color: C.navy600 }}>
             <Scale className="h-6 w-6" />
           </div>
-          <p className="mt-4 font-medium" style={{ fontSize: 15, color: C.text500 }}>Nenhuma geracao ainda</p>
-          <p className="mt-1" style={{ fontSize: 13, color: C.text400 }}>Preencha o formulario acima para gerar sua primeira peca</p>
+          <p className="mt-4 text-[15px] font-medium" style={{ color: C.text500 }}>Nenhuma geracao ainda</p>
+          <p className="mt-1 text-[13px]" style={{ color: C.text400 }}>Preencha o formulario acima para gerar sua primeira peca</p>
         </div>
       )}
     </>

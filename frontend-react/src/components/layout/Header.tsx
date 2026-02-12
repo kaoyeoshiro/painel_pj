@@ -4,6 +4,7 @@ import { useUiStore } from '@/stores/ui-store'
 import { useNavigate } from '@tanstack/react-router'
 import { Menu, ChevronDown, KeyRound, LogOut } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { C, FONT_UI } from '@/lib/designTokens'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -33,8 +34,8 @@ export const Header = memo(function Header() {
     : 'U'
 
   return (
-    <header style={{ background: '#22314B', fontFamily: "var(--font-ui, 'Plus Jakarta Sans', system-ui, sans-serif)" }}>
-      <div className="flex items-center justify-between px-5 sm:px-7" style={{ height: 80 }}>
+    <header style={{ background: C.navy950, fontFamily: FONT_UI }}>
+      <div className="flex h-20 items-center justify-between px-5 sm:px-7">
         {/* Esquerda: hamburger (mobile) + logo PGE */}
         <div className="flex items-center gap-4">
           <Button
@@ -51,21 +52,17 @@ export const Header = memo(function Header() {
             <img
               src="/logo/logo-pge-branco.png"
               alt="PGE-MS"
-              style={{ height: 78, width: 'auto', objectFit: 'contain' }}
+              className="h-[78px] w-auto object-contain"
             />
             {/* Divider + org name */}
             <div
-              className="hidden sm:block"
-              style={{ width: 1, height: 40, background: 'rgba(255,255,255,0.18)', margin: '0 16px' }}
+              className="hidden sm:block mx-4 h-10 w-px bg-white/[0.18]"
             />
             <div className="hidden sm:block">
-              <p
-                className="font-semibold"
-                style={{ color: 'rgba(255,255,255,0.95)', fontSize: 17, lineHeight: 1.25 }}
-              >
+              <p className="font-semibold text-[17px] leading-tight text-white/95">
                 Procuradoria-Geral do Estado
               </p>
-              <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 14 }}>
+              <p className="text-sm text-white/50">
                 Mato Grosso do Sul
               </p>
             </div>
@@ -75,8 +72,7 @@ export const Header = memo(function Header() {
         {/* Direita: nome + avatar/dropdown */}
         <div className="flex items-center gap-3">
           <span
-            className="hidden sm:block font-medium"
-            style={{ color: 'rgba(255,255,255,0.7)', fontSize: 15 }}
+            className="hidden sm:block font-medium text-[15px] text-white/70"
           >
             {user?.full_name}
           </span>
@@ -84,18 +80,12 @@ export const Header = memo(function Header() {
             <DropdownMenuTrigger asChild>
               <button className="flex items-center gap-2 rounded-lg px-1 py-1 transition-colors hover:bg-white/10">
                 <div
-                  className="flex items-center justify-center rounded-full font-bold"
-                  style={{
-                    width: 44,
-                    height: 44,
-                    background: '#F58634',
-                    color: '#fff',
-                    fontSize: 14,
-                  }}
+                  className="flex h-11 w-11 items-center justify-center rounded-full text-sm font-bold text-white"
+                  style={{ background: C.orange500 }}
                 >
                   {initials}
                 </div>
-                <ChevronDown className="h-4 w-4" style={{ color: 'rgba(255,255,255,0.5)' }} />
+                <ChevronDown className="h-4 w-4 text-white/50" />
               </button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-48">
@@ -114,7 +104,7 @@ export const Header = memo(function Header() {
       </div>
 
       {/* Transition to content area */}
-      <div style={{ height: 20, background: '#F7F8F9' }} />
+      <div className="h-5" style={{ background: C.gray50 }} />
     </header>
   )
 })

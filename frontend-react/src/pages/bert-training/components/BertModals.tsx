@@ -329,7 +329,7 @@ export function UploadDatasetDialog({
                   background: step === uploadStep
                     ? C.navy950
                     : step < uploadStep
-                      ? '#dcfce7'
+                      ? C.successBgStrong
                       : C.gray100,
                   color: step > uploadStep ? C.text400 : undefined,
                 }}
@@ -337,7 +337,7 @@ export function UploadDatasetDialog({
                 {step < uploadStep ? <CheckCircle2 className="h-4 w-4" /> : step}
               </div>
               {step < 4 && (
-                <div className="h-0.5 w-8" style={{ background: step < uploadStep ? '#86efac' : C.gray200 }} />
+                <div className="h-0.5 w-8" style={{ background: step < uploadStep ? C.successBorder : C.gray200 }} />
               )}
             </div>
           ))}

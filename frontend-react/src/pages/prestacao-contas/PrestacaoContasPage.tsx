@@ -31,7 +31,7 @@ export function PrestacaoContasPage() {
     <>
       <BreadcrumbBar
         title="Prestacao de Contas"
-        icon={<Building2 style={{ width: 14, height: 14 }} />}
+        icon={<Building2 className="w-3.5 h-3.5" />}
         maxWidthClass="max-w-4xl"
         actions={<HistoricoSheet vm={vm} />}
       />

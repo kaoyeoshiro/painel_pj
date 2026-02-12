@@ -49,8 +49,8 @@ export function ChatPanel({
     <div className="flex w-96 flex-col bg-white">
       {/* Header navy */}
       <div
-        className="border-b px-4 py-3"
-        style={{ background: C.navy950, borderColor: 'rgba(255,255,255,0.1)' }}
+        className="border-b border-white/10 px-4 py-3"
+        style={{ background: C.navy950 }}
       >
         <div className="flex items-center gap-2">
           <div
@@ -60,10 +60,10 @@ export function ChatPanel({
             <Sparkles className="h-4 w-4 text-white" />
           </div>
           <div>
-            <p className="text-sm font-semibold" style={{ color: 'rgba(255,255,255,0.95)' }}>
+            <p className="text-sm font-semibold text-white/95">
               {title}
             </p>
-            <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 12 }}>{subtitle}</p>
+            <p className="text-xs text-white/50">{subtitle}</p>
           </div>
         </div>
       </div>
@@ -103,7 +103,7 @@ export function ChatPanel({
                 className="max-w-[85%] rounded-lg px-4 py-3"
                 style={{
                   background: msg.role === 'user' ? C.navy950 : C.gray100,
-                  color: msg.role === 'user' ? '#fff' : C.text700,
+                  color: msg.role === 'user' ? 'white' : C.text700,
                 }}
               >
                 <p className="text-sm">{msg.content}</p>

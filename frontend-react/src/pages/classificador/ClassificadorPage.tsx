@@ -43,14 +43,14 @@ export function ClassificadorPage() {
     <>
       <BreadcrumbBar
         title="Classificador de Documentos"
-        icon={<FileSearch style={{ width: 14, height: 14 }} />}
+        icon={<FileSearch className="h-3.5 w-3.5" />}
       />
 
       <ContentArea>
         <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as PageTab)}>
           <TabsList
-            className="grid w-full grid-cols-4 h-auto rounded-none bg-transparent p-0"
-            style={{ borderBottom: `1px solid ${C.gray200}` }}
+            className="grid w-full grid-cols-4 h-auto rounded-none border-b bg-transparent p-0"
+            style={{ borderColor: C.gray200 }}
           >
             <TabsTrigger value="novo-lote" className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:shadow-none">
               <CircleDot className="mr-2 h-4 w-4" />

@@ -44,13 +44,12 @@ export function HistorySidebar({
         className="fixed inset-0 z-40 bg-black/20 backdrop-blur-sm"
         onClick={onClose}
       />
-      <aside className="fixed right-0 top-16 z-50 flex h-[calc(100vh-4rem)] w-80 flex-col bg-white shadow-xl" style={{ borderLeft: `1px solid ${C.gray200}` }}>
+      <aside className="fixed right-0 top-16 z-50 flex h-[calc(100vh-4rem)] w-80 flex-col border-l bg-white shadow-xl" style={{ borderColor: C.gray200 }}>
         <div className="flex h-12 flex-shrink-0 items-center justify-between px-4" style={{ background: C.navy950 }}>
           <span className="text-sm font-semibold text-white">Historico</span>
           <button
             onClick={onClose}
-            className="rounded-md p-1 transition-colors hover:bg-white/10"
-            style={{ color: 'rgba(255,255,255,0.6)' }}
+            className="rounded-md p-1 text-white/60 transition-colors hover:bg-white/10"
           >
             <X className="h-4 w-4" />
           </button>

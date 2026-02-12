@@ -41,7 +41,7 @@ export function BertTrainingPage() {
     <>
       <BreadcrumbBar
         title="Treinamento de IA"
-        icon={<Brain style={{ width: 14, height: 14 }} />}
+        icon={<Brain className="h-3.5 w-3.5" />}
         actions={
           <button
             className="flex h-7 w-7 items-center justify-center rounded-lg transition-colors"
@@ -58,7 +58,7 @@ export function BertTrainingPage() {
             title="Ajuda"
             data-testid="btn-ajuda-onboarding"
           >
-            <HelpCircle style={{ width: 16, height: 16 }} />
+            <HelpCircle className="h-4 w-4" />
           </button>
         }
       />
