@@ -25,7 +25,7 @@
 | Metrica | Valor |
 |---------|-------|
 | Linhas em routers | ~28.900 |
-| Maior arquivo | `router_extraction.py` (5.267 linhas) |
+| Maior arquivo | `router.py` (3.742 linhas) — `router_extraction.py` eliminado na Fase 5a |
 | Operacoes DB diretas em routers | 48+ (so gerador_pecas) |
 | Models no Alembic env.py | ~15 de 62+ (muitos com nome errado) |
 | Migrations Alembic | 4 (cobertura ~10%) |
@@ -204,14 +204,30 @@
 
 **Objetivo**: Nenhum arquivo com mais de ~800 linhas. SRP por arquivo.
 
-### 5a. Split `router_extraction.py` (5.267 linhas)
+### 5a. Split `router_extraction.py` (5.267→0 linhas) ✅ COMPLETA
 
-- [ ] `extraction/schemas.py` (~400 linhas)
-- [ ] `extraction/router_questions.py` (~500 linhas)
-- [ ] `extraction/router_models.py` (~400 linhas)
-- [ ] `extraction/router_variables.py` (~500 linhas)
-- [ ] `extraction/router_dependencies.py` (~400 linhas)
-- [ ] `extraction/services.py` (~600 linhas)
+Arquivo original deletado. Dividido em 7 arquivos:
+
+| Arquivo | Linhas | Conteudo |
+|---------|--------|----------|
+| `schemas_extraction.py` | 614 | 52 schemas Pydantic (Fase 2a) |
+| `extraction_helpers.py` | 610 | 7 helpers puros |
+| `services_json_sync.py` | 785 | JsonSyncService (reconciliar + sincronizar JSON) |
+| `router_ext_questions.py` | 1088 | 10 endpoints (perguntas CRUD + IA ordering) |
+| `router_ext_models.py` | 614 | 7 endpoints (schema, JSON sync, consistencia) |
+| `router_ext_variables.py` | 1095 | 14 endpoints (variaveis + slugs + tipos) |
+| `router_ext_deps.py` | 772 | 14 endpoints (dependencias + regras + restore) |
+
+- [x] Schemas Pydantic extraidos → `schemas_extraction.py` ✅ `c0753fc`
+- [x] Helpers puros extraidos → `extraction_helpers.py` ✅ `1dbcac5`
+- [x] JsonSyncService extraido → `services_json_sync.py` (770 linhas de logica de negocio)
+- [x] 4 sub-routers criados, registrados em main.py com prefix `/admin/api/extraction`
+- [x] `router_extraction.py` deletado
+- [x] 195+ testes passando (81 extraction + 114 seguranca)
+- [x] Contagem de rotas preservada: 524 antes = 524 depois
+- [x] Bug fix: `_variavel_na_regra(slug, regra_json)` — funcao chamada mas nunca definida, agora em JsonSyncService
+
+**Nota**: `router_ext_questions.py` (1088) e `router_ext_variables.py` (1095) excedem 800 linhas porque os endpoints individuais sao grandes (ex: `listar_variaveis` = 245 linhas). Cada arquivo tem responsabilidade unica.
 
 ### 5b. Split `services_deterministic.py` (2.616 linhas)
 
@@ -316,4 +332,6 @@ Fase 5 (Split) pode iniciar apos Fase 2 ─────────────�
 | 2026-02-11 | 2d | Removido Jinja2Templates nao usado de router_config_pecas.py | `6dfc01d` |
 | 2026-02-11 | 2c | Mapeamento concluido (11 generators, ~2.230 linhas). Adiado para Fase 4 | — |
 | 2026-02-11 | 5a | 7 helpers extraidos de router_extraction.py → extraction_helpers.py (-459 linhas) | `1dbcac5` |
+| 2026-02-12 | 5a | JsonSyncService extraido (sincronizar + reconciliar JSON, 785 linhas) | — |
+| 2026-02-12 | 5a | Split em 4 sub-routers + deletado router_extraction.py (4.170→0 linhas) | — |
 | | | | |
