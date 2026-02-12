@@ -126,8 +126,12 @@
 
 ### 2a. Extrair schemas dos routers
 
-- [ ] Mover classes Pydantic de `router_extraction.py:1-150` → `schemas_extraction.py`
-- [ ] Mover schemas inline de outros routers → `schemas.py` do respectivo sistema
+- [x] Mover classes Pydantic de `router_extraction.py` → `schemas_extraction.py` ✅ `c0753fc` (52 schemas)
+- [x] Mover schemas de `router.py/router_config_pecas.py/router_admin.py` → `schemas.py` ✅ `6100f27` (16 schemas)
+- [x] Mover schemas de `admin/router_prompts.py` → `admin/schemas_prompts.py` ✅ `f3bb5c3` (33 schemas)
+- [x] Mover schemas dos demais routers → `schemas.py` do respectivo sistema ✅ `ad9f3c4` + `8321e89`
+  - pedido_calculo: 13 schemas, relatorio_cumprimento: 4, assistencia_judiciaria: 4
+  - admin/performance: 8, admin/gemini_logs: 6, admin/router: 1, auth/router: 1
 
 ### 2b. Unificar acesso ao Gemini
 
@@ -295,4 +299,9 @@ Fase 5 (Split) pode iniciar apos Fase 2 ─────────────�
 | 2026-02-11 | 0.4 | 2 migrations: alter_column_types + update_constraint (idempotentes) | `c558ea4` |
 | 2026-02-11 | 0.5 | init_db.py: removido create_all() e run_migrations() (-1652 linhas, -66%) | `cdefff4` |
 | 2026-02-11 | 0.7 | 9 testes de migrations Alembic (imports, cadeia, upgrade/downgrade) | `a2baa76` |
+| 2026-02-11 | 2a | 52 schemas extraidos de router_extraction.py → schemas_extraction.py (-531 linhas) | `c0753fc` |
+| 2026-02-11 | 2a | 16 schemas extraidos de router.py/router_config_pecas.py/router_admin.py → schemas.py | `6100f27` |
+| 2026-02-11 | 2a | 33 schemas extraidos de admin/router_prompts.py → schemas_prompts.py | `f3bb5c3` |
+| 2026-02-11 | 2a | 21 schemas: pedido_calculo (13), relatorio_cumprimento (4), assistencia_judiciaria (4) | `ad9f3c4` |
+| 2026-02-11 | 2a | 16 schemas: admin/performance (8), gemini_logs (6), admin/router (1), auth (1) | `8321e89` |
 | | | | |
