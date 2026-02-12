@@ -41,6 +41,7 @@ from .schemas import (
 )
 from utils.timezone import to_iso_utc
 from admin.models import ConfiguracaoIA, PromptConfig
+from services.ia_params_resolver import get_ia_params
 from .models import GeracaoPedidoCalculo, FeedbackPedidoCalculo
 from .repositories import (
     GeracaoPedidoCalculoRepository, FeedbackPedidoCalculoRepository,
@@ -1410,12 +1411,8 @@ async def editar_pedido(
             PromptConfig.is_active == True
         ).first()
         
-        # Busca modelo do banco
-        modelo_config = db.query(ConfiguracaoIA).filter(
-            ConfiguracaoIA.sistema == SISTEMA,
-            ConfiguracaoIA.chave == "modelo_edicao"
-        ).first()
-        modelo = modelo_config.valor if modelo_config else "gemini-3-flash-preview"
+        # Busca parametros de IA via resolver (hierarquia: agente → sistema → global → default)
+        ia_params = get_ia_params(db, "pedido_calculo", "edicao")
         
         # Monta prompt de edição
         if prompt_db:
@@ -1452,11 +1449,13 @@ Pedido atualizado:"""
 
         # Chama a IA via Gemini Service
         from services.gemini_service import gemini_service
-        
+
         response = await gemini_service.generate(
             prompt=prompt_edicao,
-            model=modelo,
-            temperature=0.3
+            model=ia_params.modelo,
+            temperature=ia_params.temperatura,
+            max_tokens=ia_params.max_tokens,
+            thinking_level=ia_params.thinking_level,
         )
         
         if not response.success or not response.content:

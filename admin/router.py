@@ -3,9 +3,12 @@
 Router de administração - Gerenciamento de Prompts e Configurações de IA
 """
 
+import os  # Movido do lazy import
+import sqlite3  # Movido do lazy import
+
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-from sqlalchemy import func, and_, Integer, case
+from sqlalchemy import func, and_, Integer, case, text, extract  # text/extract movidos
 from typing import List, Optional
 from datetime import datetime, timedelta
 
@@ -19,6 +22,12 @@ from admin.schemas import (
     PromptCreate, PromptUpdate, PromptResponse, PromptListResponse,
     ConfiguracaoIACreate, ConfiguracaoIAUpdate, ConfiguracaoIAResponse,
     ConfigUpsertRequest,
+)
+from admin.repositories import (
+    get_prompt_config_repo,
+    get_config_repo,
+    PromptConfigRepository,
+    ConfiguracaoIARepository,
 )
 from admin.seed_prompts import seed_default_prompts
 
@@ -43,18 +52,10 @@ async def list_prompts(
     sistema: Optional[str] = None,
     tipo: Optional[str] = None,
     current_user: User = Depends(require_admin),
-    db: Session = Depends(get_db)
+    repo: PromptConfigRepository = Depends(get_prompt_config_repo)
 ):
     """Lista todos os prompts configurados (apenas admin)"""
-    query = db.query(PromptConfig)
-    
-    if sistema:
-        query = query.filter(PromptConfig.sistema == sistema)
-    if tipo:
-        query = query.filter(PromptConfig.tipo == tipo)
-    
-    prompts = query.order_by(PromptConfig.sistema, PromptConfig.tipo).all()
-    
+    prompts = repo.list_with_filters(sistema=sistema, tipo=tipo)
     return PromptListResponse(prompts=prompts, total=len(prompts))
 
 
@@ -62,14 +63,14 @@ async def list_prompts(
 async def get_prompt(
     prompt_id: int,
     current_user: User = Depends(require_admin),
-    db: Session = Depends(get_db)
+    repo: PromptConfigRepository = Depends(get_prompt_config_repo)
 ):
     """Obtém um prompt específico"""
-    prompt = db.query(PromptConfig).filter(PromptConfig.id == prompt_id).first()
-    
+    prompt = repo.get_by_id(prompt_id)
+
     if not prompt:
         raise HTTPException(status_code=404, detail="Prompt não encontrado")
-    
+
     return prompt
 
 
@@ -501,80 +502,6 @@ async def atualizar_modelo_ia(
     return {"success": True, "sistema": sistema, "modelo": modelo}
 
 
-# ============================================
-# Configuração de API Key Global
-# ============================================
-
-@router.get("/api-key-status")
-async def get_api_key_status(
-    current_user: User = Depends(require_admin),
-    db: Session = Depends(get_db)
-):
-    """Verifica se a API key está configurada (apenas admin)"""
-    import os
-    
-    # Verifica GEMINI_KEY primeiro (nova API direta)
-    gemini_key = os.getenv("GEMINI_KEY", "")
-    if gemini_key:
-        return {"configured": True, "source": "environment (GEMINI_KEY)"}
-    
-    # Verifica ambiente OpenRouter (legado)
-    env_key = os.getenv("OPENROUTER_API_KEY", "")
-    if env_key:
-        return {"configured": True, "source": "environment (OpenRouter)"}
-    
-    # Verifica banco
-    config = db.query(ConfiguracaoIA).filter(
-        ConfiguracaoIA.sistema == "global",
-        ConfiguracaoIA.chave == "gemini_api_key"
-    ).first()
-    
-    if config and config.valor:
-        return {"configured": True, "source": "database (Gemini)"}
-    
-    # Verifica banco OpenRouter (legado)
-    config = db.query(ConfiguracaoIA).filter(
-        ConfiguracaoIA.sistema == "global",
-        ConfiguracaoIA.chave == "openrouter_api_key"
-    ).first()
-    
-    if config and config.valor:
-        return {"configured": True, "source": "database (OpenRouter)"}
-    
-    return {"configured": False, "source": None}
-
-
-@router.put("/api-key")
-async def update_api_key(
-    api_key: str,
-    current_user: User = Depends(require_admin),
-    db: Session = Depends(get_db)
-):
-    """Atualiza a API key global do Gemini (apenas admin)"""
-    if not api_key or not api_key.strip():
-        raise HTTPException(status_code=400, detail="API Key não pode estar vazia")
-    
-    config = db.query(ConfiguracaoIA).filter(
-        ConfiguracaoIA.sistema == "global",
-        ConfiguracaoIA.chave == "gemini_api_key"
-    ).first()
-    
-    if config:
-        config.valor = api_key.strip()
-    else:
-        config = ConfiguracaoIA(
-            sistema="global",
-            chave="gemini_api_key",
-            valor=api_key.strip(),
-            tipo_valor="string",
-            descricao="API Key do Google Gemini (compartilhada por todos os sistemas)"
-        )
-        db.add(config)
-    
-    db.commit()
-    
-    return {"success": True, "message": "API Key atualizada com sucesso"}
-
 
 # ============================================
 # API pública para obter prompts (usada pelos sistemas)
@@ -604,7 +531,7 @@ async def get_prompt_by_tipo(
 # Dashboard de Feedback (Admin)
 # ============================================
 
-@router.get("/feedbacks/dashboard")
+@router.get("/api/feedbacks/dashboard")
 async def dashboard_feedbacks(
     mes: Optional[int] = None,
     ano: Optional[int] = None,
@@ -1238,7 +1165,6 @@ async def dashboard_feedbacks(
         if incluir_gp:
             try:
                 # Tenta query com modo_ativacao_agente2
-                from sqlalchemy import text as sql_text
                 sql_pendentes_gp = """
                     SELECT gp.id, gp.tipo_peca, gp.numero_cnj, gp.criado_em,
                            u.username, u.full_name, gp.modo_ativacao_agente2
@@ -1429,8 +1355,6 @@ async def dashboard_feedbacks(
         # ============================================
         # Calcula taxa de acerto por semana para cada sistema
         # IMPORTANTE: Usa período independente (últimas N semanas) para garantir visualização útil
-        from sqlalchemy import extract
-
         # Define período para evolução: últimas N semanas (independente do filtro de mês/ano)
         data_fim_evolucao = datetime.utcnow()
         data_inicio_evolucao = data_fim_evolucao - timedelta(weeks=semanas_evolucao)
@@ -1577,7 +1501,7 @@ async def dashboard_feedbacks(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/feedbacks/lista")
+@router.get("/api/feedbacks/lista")
 async def listar_feedbacks(
     page: int = 1,
     per_page: int = 20,
@@ -1748,7 +1672,6 @@ async def listar_feedbacks(
                 modulos_llm = None
                 curadoria_meta = None
                 try:
-                    from sqlalchemy import text
                     result = db.execute(text("""
                         SELECT modo_ativacao_agente2, modulos_ativados_det, modulos_ativados_llm, curadoria_metadata
                         FROM geracoes_pecas WHERE id = :id
@@ -1967,7 +1890,7 @@ async def listar_feedbacks(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/feedbacks/consulta/{consulta_id}")
+@router.get("/api/feedbacks/consulta/{consulta_id}")
 async def obter_consulta_detalhes(
     consulta_id: int,
     sistema: str = "assistencia_judiciaria",
@@ -2060,7 +1983,6 @@ async def obter_consulta_detalhes(
 
         elif sistema == "gerador_pecas":
             # Query apenas com colunas que sempre existem (evita erro de coluna inexistente)
-            from sqlalchemy import text as sql_text
             geracao = db.query(
                 GeracaoPeca.id,
                 GeracaoPeca.numero_cnj,
@@ -2313,7 +2235,7 @@ async def obter_consulta_detalhes(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-@router.get("/feedbacks/exportar")
+@router.get("/api/feedbacks/exportar")
 async def exportar_feedbacks(
     formato: str = "json",
     current_user: User = Depends(require_admin),
@@ -2584,9 +2506,6 @@ async def importar_prompts_producao(
     ENDPOINT TEMPORÁRIO - Deve ser removido após uso.
     Apenas para administradores.
     """
-    import os
-    import sqlite3
-
     script_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'scripts', 'prompts_producao.sql')
 
     if not os.path.exists(script_path):
@@ -2637,8 +2556,6 @@ async def obter_glossario(
     Retorna o conteúdo do glossário de conceitos do sistema.
     O glossário está em formato Markdown.
     """
-    import os
-
     # Caminho do arquivo do glossário
     glossary_path = os.path.join(
         os.path.dirname(os.path.dirname(__file__)),
