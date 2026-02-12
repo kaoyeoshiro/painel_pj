@@ -420,13 +420,23 @@ Wave 1 (lint)
 - **Nota**: Hex em `designTokens.ts` (63) e testes (1) nao contam — sao definicoes de tokens
 
 ### Wave 7 — Preparacao para Delete do Legado
-- **Status**: PENDENTE (baixa prioridade — depende de decisao de produto)
-- **Inicio**: —
-- **Conclusao**: —
+- **Status**: CONCLUIDA
+- **Inicio**: 2026-02-12
+- **Conclusao**: 2026-02-12
+- **Commit**: `c41cd6f`
+- **Metricas pos**:
+  - Rotas TemplateResponse removidas: 16/16 (100%)
+  - Rotas de templates de sistema removidas: 8/8 (100%)
+  - Referências a Jinja2Templates: 0 (zero em todo o projeto)
+  - Mount `/static` para `frontend/static`: removido
+  - `main.py`: 728 → 574 linhas (-21%)
+  - Dead code removido: `LegacyAdminFramePage.tsx`, `safe_serve_static`, `ALLOWED_CONTENT_TYPES`
+  - Bug fix: `templates.TemplateResponse` em `router_config_pecas.py` usava variável nunca definida
+- **Pendente**: Apagão controlado (renomear `frontend/` → `frontend__DISABLED/`) — aguarda validação em produção
 
 ---
 
-## Metricas Finais (Waves 1-6 concluidas)
+## Metricas Finais (Waves 1-7 concluidas)
 
 | Metrica | Antes | Alvo | Resultado | Status |
 |---------|-------|------|-----------|--------|
@@ -482,14 +492,15 @@ Wave 1 (lint)
 | `fc36ce8` | Wave 4A: split 4 domain pages (Bert, Gerador, Classificador, Extrator) | 34 |
 | `dd95c39` | Wave 6A: styles layout, shared e top domain pages | 19 |
 | `2dc3e7d` | Wave 6B: styles admin e remaining pages | 39 |
+| `c41cd6f` | Wave 7: remove rotas legadas Jinja2 e templates de sistema | 5 |
 
-**Total**: 8 commits de execucao + 3 commits de atualizacao do plano
+**Total**: 9 commits de execucao + 4 commits de atualizacao do plano
 
 ---
 
 ## Conclusao
 
-Waves 1-6 concluidas em 2026-02-12. Os 15 problemas priorizados da auditoria foram tratados:
+Todas as 7 waves concluidas em 2026-02-12. Os 15 problemas priorizados da auditoria foram tratados:
 
 | Problema (auditoria) | Wave | Status |
 |----------------------|------|--------|
@@ -502,6 +513,6 @@ Waves 1-6 concluidas em 2026-02-12. Os 15 problemas priorizados da auditoria for
 | P7. Inline styles (1597 ocorrencias) | Wave 6 | PARCIAL (1479 sao dinamicos com tokens) |
 | P8. Testes faltantes (4 pages) | Wave 5 | RESOLVIDO (3 pages cobertas) |
 | P9-P14. Padroes arquiteturais | Waves 1-6 | RESOLVIDO |
-| P15. Legacy frontend removal | Wave 7 | PENDENTE (baixa prioridade) |
+| P15. Legacy frontend removal | Wave 7 | RESOLVIDO (rotas removidas, templates desacoplados) |
 
-Wave 7 (remocao do legado) permanece pendente por decisao de produto.
+**Pendente apenas**: Apagao controlado (renomear `frontend/` → `frontend__DISABLED/`) apos validacao em producao.
