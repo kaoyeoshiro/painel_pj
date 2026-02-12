@@ -10,29 +10,25 @@ Endpoints:
 """
 
 from fastapi import APIRouter, Depends, HTTPException
-from sqlalchemy.orm import Session
-from sqlalchemy import func, and_, Integer, case, text, extract
 from typing import Optional
 from datetime import datetime, timedelta
 
-from database.connection import get_db
 from utils.timezone import to_iso_utc
 from auth.dependencies import require_admin
 from auth.models import User
 
-from admin.models import ConfiguracaoIA
 from admin.repositories import (
     get_feedback_repo,
     FeedbackRepository,
 )
 
-# Importa modelos de feedback
-from sistemas.assistencia_judiciaria.models import ConsultaProcesso, FeedbackAnalise
-from sistemas.matriculas_confrontantes.models import Analise, FeedbackMatricula
-from sistemas.gerador_pecas.models import GeracaoPeca, FeedbackPeca, VersaoPeca
-from sistemas.pedido_calculo.models import GeracaoPedidoCalculo, FeedbackPedidoCalculo
-from sistemas.prestacao_contas.models import GeracaoAnalise, FeedbackPrestacao
-from sistemas.relatorio_cumprimento.models import GeracaoRelatorioCumprimento, FeedbackRelatorioCumprimento
+# Modelos usados apenas para referencia em evolucao_semanal
+from sistemas.assistencia_judiciaria.models import FeedbackAnalise
+from sistemas.matriculas_confrontantes.models import FeedbackMatricula
+from sistemas.gerador_pecas.models import FeedbackPeca
+from sistemas.pedido_calculo.models import FeedbackPedidoCalculo
+from sistemas.prestacao_contas.models import FeedbackPrestacao
+from sistemas.relatorio_cumprimento.models import FeedbackRelatorioCumprimento
 
 
 router = APIRouter()
@@ -156,21 +152,8 @@ async def dashboard_feedbacks(
             )
 
         # === Sistema Relatório de Cumprimento ===
-        # NOTA: count_geracoes_rc do repo NAO filtra por status=='concluido',
-        # entao usamos feedback_repo.db.query() para manter semantica exata
         if incluir_rc:
-            query_total_rc = feedback_repo.db.query(GeracaoRelatorioCumprimento).filter(
-                GeracaoRelatorioCumprimento.status == 'concluido'
-            )
-            if ids_excluir:
-                query_total_rc = query_total_rc.filter(~GeracaoRelatorioCumprimento.usuario_id.in_(ids_excluir))
-            if data_inicio and data_fim:
-                query_total_rc = query_total_rc.filter(
-                    GeracaoRelatorioCumprimento.criado_em >= data_inicio,
-                    GeracaoRelatorioCumprimento.criado_em < data_fim
-                )
-            total_geracoes_rc = query_total_rc.count()
-
+            total_geracoes_rc = feedback_repo.count_geracoes_rc_concluido(ids_excluir, data_inicio, data_fim)
             total_feedbacks_rc = feedback_repo.count_feedbacks_rc(ids_excluir, data_inicio, data_fim)
             feedbacks_por_avaliacao_rc = feedback_repo.get_avaliacoes_por_sistema(
                 'relatorio_cumprimento', ids_excluir, data_inicio, data_fim
@@ -227,76 +210,17 @@ async def dashboard_feedbacks(
         feedbacks_recentes_rc = []
 
         if incluir_aj:
-            query_recentes_aj = feedback_repo.db.query(
-                func.date(FeedbackAnalise.criado_em).label('data'),
-                func.count(FeedbackAnalise.id).label('count')
-            ).filter(
-                FeedbackAnalise.criado_em >= data_limite_recentes,
-                FeedbackAnalise.criado_em < data_fim_recentes
-            )
-            if ids_excluir:
-                query_recentes_aj = query_recentes_aj.filter(~FeedbackAnalise.usuario_id.in_(ids_excluir))
-            feedbacks_recentes_aj = query_recentes_aj.group_by(func.date(FeedbackAnalise.criado_em)).all()
-
+            feedbacks_recentes_aj = feedback_repo.feedbacks_recentes_aj(ids_excluir, data_limite_recentes, data_fim_recentes)
         if incluir_mat:
-            query_recentes_mat = feedback_repo.db.query(
-                func.date(FeedbackMatricula.criado_em).label('data'),
-                func.count(FeedbackMatricula.id).label('count')
-            ).filter(
-                FeedbackMatricula.criado_em >= data_limite_recentes,
-                FeedbackMatricula.criado_em < data_fim_recentes
-            )
-            if ids_excluir:
-                query_recentes_mat = query_recentes_mat.filter(~FeedbackMatricula.usuario_id.in_(ids_excluir))
-            feedbacks_recentes_mat = query_recentes_mat.group_by(func.date(FeedbackMatricula.criado_em)).all()
-
+            feedbacks_recentes_mat = feedback_repo.feedbacks_recentes_mat(ids_excluir, data_limite_recentes, data_fim_recentes)
         if incluir_gp:
-            query_recentes_gp = feedback_repo.db.query(
-                func.date(FeedbackPeca.criado_em).label('data'),
-                func.count(FeedbackPeca.id).label('count')
-            ).filter(
-                FeedbackPeca.criado_em >= data_limite_recentes,
-                FeedbackPeca.criado_em < data_fim_recentes
-            )
-            if ids_excluir:
-                query_recentes_gp = query_recentes_gp.filter(~FeedbackPeca.usuario_id.in_(ids_excluir))
-            feedbacks_recentes_gp = query_recentes_gp.group_by(func.date(FeedbackPeca.criado_em)).all()
-
+            feedbacks_recentes_gp = feedback_repo.feedbacks_recentes_gp(ids_excluir, data_limite_recentes, data_fim_recentes)
         if incluir_pc:
-            query_recentes_pc = feedback_repo.db.query(
-                func.date(FeedbackPedidoCalculo.criado_em).label('data'),
-                func.count(FeedbackPedidoCalculo.id).label('count')
-            ).filter(
-                FeedbackPedidoCalculo.criado_em >= data_limite_recentes,
-                FeedbackPedidoCalculo.criado_em < data_fim_recentes
-            )
-            if ids_excluir:
-                query_recentes_pc = query_recentes_pc.filter(~FeedbackPedidoCalculo.usuario_id.in_(ids_excluir))
-            feedbacks_recentes_pc = query_recentes_pc.group_by(func.date(FeedbackPedidoCalculo.criado_em)).all()
-
+            feedbacks_recentes_pc = feedback_repo.feedbacks_recentes_pc(ids_excluir, data_limite_recentes, data_fim_recentes)
         if incluir_prest:
-            query_recentes_prest = feedback_repo.db.query(
-                func.date(FeedbackPrestacao.criado_em).label('data'),
-                func.count(FeedbackPrestacao.id).label('count')
-            ).filter(
-                FeedbackPrestacao.criado_em >= data_limite_recentes,
-                FeedbackPrestacao.criado_em < data_fim_recentes
-            )
-            if ids_excluir:
-                query_recentes_prest = query_recentes_prest.filter(~FeedbackPrestacao.usuario_id.in_(ids_excluir))
-            feedbacks_recentes_prest = query_recentes_prest.group_by(func.date(FeedbackPrestacao.criado_em)).all()
-
+            feedbacks_recentes_prest = feedback_repo.feedbacks_recentes_prest(ids_excluir, data_limite_recentes, data_fim_recentes)
         if incluir_rc:
-            query_recentes_rc = feedback_repo.db.query(
-                func.date(FeedbackRelatorioCumprimento.criado_em).label('data'),
-                func.count(FeedbackRelatorioCumprimento.id).label('count')
-            ).filter(
-                FeedbackRelatorioCumprimento.criado_em >= data_limite_recentes,
-                FeedbackRelatorioCumprimento.criado_em < data_fim_recentes
-            )
-            if ids_excluir:
-                query_recentes_rc = query_recentes_rc.filter(~FeedbackRelatorioCumprimento.usuario_id.in_(ids_excluir))
-            feedbacks_recentes_rc = query_recentes_rc.group_by(func.date(FeedbackRelatorioCumprimento.criado_em)).all()
+            feedbacks_recentes_rc = feedback_repo.feedbacks_recentes_rc(ids_excluir, data_limite_recentes, data_fim_recentes)
 
         # Combina feedbacks recentes por data
         feedbacks_por_data = {}
@@ -324,100 +248,17 @@ async def dashboard_feedbacks(
         feedbacks_por_usuario_rc = []
 
         if incluir_aj:
-            query_usuarios_aj = feedback_repo.db.query(
-                User.username,
-                User.full_name,
-                func.count(FeedbackAnalise.id).label('total'),
-                func.sum(case((FeedbackAnalise.avaliacao == 'correto', 1), else_=0)).label('corretos')
-            ).join(FeedbackAnalise, FeedbackAnalise.usuario_id == User.id)
-            if ids_excluir:
-                query_usuarios_aj = query_usuarios_aj.filter(~User.id.in_(ids_excluir))
-            if data_inicio and data_fim:
-                query_usuarios_aj = query_usuarios_aj.filter(
-                    FeedbackAnalise.criado_em >= data_inicio,
-                    FeedbackAnalise.criado_em < data_fim
-                )
-            feedbacks_por_usuario_aj = query_usuarios_aj.group_by(User.id, User.username, User.full_name).all()
-
+            feedbacks_por_usuario_aj = feedback_repo.feedbacks_por_usuario_aj(ids_excluir, data_inicio, data_fim)
         if incluir_mat:
-            query_usuarios_mat = feedback_repo.db.query(
-                User.username,
-                User.full_name,
-                func.count(FeedbackMatricula.id).label('total'),
-                func.sum(case((FeedbackMatricula.avaliacao == 'correto', 1), else_=0)).label('corretos')
-            ).join(FeedbackMatricula, FeedbackMatricula.usuario_id == User.id)
-            if ids_excluir:
-                query_usuarios_mat = query_usuarios_mat.filter(~User.id.in_(ids_excluir))
-            if data_inicio and data_fim:
-                query_usuarios_mat = query_usuarios_mat.filter(
-                    FeedbackMatricula.criado_em >= data_inicio,
-                    FeedbackMatricula.criado_em < data_fim
-                )
-            feedbacks_por_usuario_mat = query_usuarios_mat.group_by(User.id, User.username, User.full_name).all()
-
+            feedbacks_por_usuario_mat = feedback_repo.feedbacks_por_usuario_mat(ids_excluir, data_inicio, data_fim)
         if incluir_gp:
-            query_usuarios_gp = feedback_repo.db.query(
-                User.username,
-                User.full_name,
-                func.count(FeedbackPeca.id).label('total'),
-                func.sum(case((FeedbackPeca.avaliacao == 'correto', 1), else_=0)).label('corretos')
-            ).join(FeedbackPeca, FeedbackPeca.usuario_id == User.id)
-            if ids_excluir:
-                query_usuarios_gp = query_usuarios_gp.filter(~User.id.in_(ids_excluir))
-            if data_inicio and data_fim:
-                query_usuarios_gp = query_usuarios_gp.filter(
-                    FeedbackPeca.criado_em >= data_inicio,
-                    FeedbackPeca.criado_em < data_fim
-                )
-            feedbacks_por_usuario_gp = query_usuarios_gp.group_by(User.id, User.username, User.full_name).all()
-
+            feedbacks_por_usuario_gp = feedback_repo.feedbacks_por_usuario_gp(ids_excluir, data_inicio, data_fim)
         if incluir_pc:
-            query_usuarios_pc = feedback_repo.db.query(
-                User.username,
-                User.full_name,
-                func.count(FeedbackPedidoCalculo.id).label('total'),
-                func.sum(case((FeedbackPedidoCalculo.avaliacao == 'correto', 1), else_=0)).label('corretos')
-            ).join(FeedbackPedidoCalculo, FeedbackPedidoCalculo.usuario_id == User.id)
-            if ids_excluir:
-                query_usuarios_pc = query_usuarios_pc.filter(~User.id.in_(ids_excluir))
-            if data_inicio and data_fim:
-                query_usuarios_pc = query_usuarios_pc.filter(
-                    FeedbackPedidoCalculo.criado_em >= data_inicio,
-                    FeedbackPedidoCalculo.criado_em < data_fim
-                )
-            feedbacks_por_usuario_pc = query_usuarios_pc.group_by(User.id, User.username, User.full_name).all()
-
+            feedbacks_por_usuario_pc = feedback_repo.feedbacks_por_usuario_pc(ids_excluir, data_inicio, data_fim)
         if incluir_prest:
-            query_usuarios_prest = feedback_repo.db.query(
-                User.username,
-                User.full_name,
-                func.count(FeedbackPrestacao.id).label('total'),
-                func.sum(case((FeedbackPrestacao.avaliacao == 'correto', 1), else_=0)).label('corretos')
-            ).join(FeedbackPrestacao, FeedbackPrestacao.usuario_id == User.id)
-            if ids_excluir:
-                query_usuarios_prest = query_usuarios_prest.filter(~User.id.in_(ids_excluir))
-            if data_inicio and data_fim:
-                query_usuarios_prest = query_usuarios_prest.filter(
-                    FeedbackPrestacao.criado_em >= data_inicio,
-                    FeedbackPrestacao.criado_em < data_fim
-                )
-            feedbacks_por_usuario_prest = query_usuarios_prest.group_by(User.id, User.username, User.full_name).all()
-
+            feedbacks_por_usuario_prest = feedback_repo.feedbacks_por_usuario_prest(ids_excluir, data_inicio, data_fim)
         if incluir_rc:
-            query_usuarios_rc = feedback_repo.db.query(
-                User.username,
-                User.full_name,
-                func.count(FeedbackRelatorioCumprimento.id).label('total'),
-                func.sum(case((FeedbackRelatorioCumprimento.avaliacao == 'correto', 1), else_=0)).label('corretos')
-            ).join(FeedbackRelatorioCumprimento, FeedbackRelatorioCumprimento.usuario_id == User.id)
-            if ids_excluir:
-                query_usuarios_rc = query_usuarios_rc.filter(~User.id.in_(ids_excluir))
-            if data_inicio and data_fim:
-                query_usuarios_rc = query_usuarios_rc.filter(
-                    FeedbackRelatorioCumprimento.criado_em >= data_inicio,
-                    FeedbackRelatorioCumprimento.criado_em < data_fim
-                )
-            feedbacks_por_usuario_rc = query_usuarios_rc.group_by(User.id, User.username, User.full_name).all()
+            feedbacks_por_usuario_rc = feedback_repo.feedbacks_por_usuario_rc(ids_excluir, data_inicio, data_fim)
 
         # Combina por usuário
         usuarios_stats = {}
@@ -466,188 +307,18 @@ async def dashboard_feedbacks(
         geracoes_sem_feedback_prest = []
         geracoes_sem_feedback_rc = []
 
-        # Assistência Judiciária
         if incluir_aj:
-            query_pendentes_aj = feedback_repo.db.query(
-                ConsultaProcesso.id,
-                ConsultaProcesso.cnj_formatado,
-                ConsultaProcesso.cnj,
-                ConsultaProcesso.consultado_em,
-                User.username,
-                User.full_name
-            ).outerjoin(
-                FeedbackAnalise, FeedbackAnalise.consulta_id == ConsultaProcesso.id
-            ).join(
-                User, ConsultaProcesso.usuario_id == User.id
-            ).filter(
-                FeedbackAnalise.id == None,
-                ConsultaProcesso.relatorio.isnot(None)
-            )
-            if ids_excluir:
-                query_pendentes_aj = query_pendentes_aj.filter(~ConsultaProcesso.usuario_id.in_(ids_excluir))
-            if data_inicio and data_fim:
-                query_pendentes_aj = query_pendentes_aj.filter(
-                    ConsultaProcesso.consultado_em >= data_inicio,
-                    ConsultaProcesso.consultado_em < data_fim
-                )
-            consultas_sem_feedback_aj = query_pendentes_aj.order_by(ConsultaProcesso.consultado_em.desc()).limit(20).all()
-
-        # Matrículas
+            consultas_sem_feedback_aj = feedback_repo.pendentes_aj(ids_excluir, data_inicio, data_fim)
         if incluir_mat:
-            query_pendentes_mat = feedback_repo.db.query(
-                Analise.id,
-                Analise.file_name,
-                Analise.matricula_principal,
-                Analise.analisado_em,
-                User.username,
-                User.full_name
-            ).outerjoin(
-                FeedbackMatricula, FeedbackMatricula.analise_id == Analise.id
-            ).join(
-                User, Analise.usuario_id == User.id
-            ).filter(
-                FeedbackMatricula.id == None,
-                Analise.resultado_json.isnot(None)
-            )
-            if ids_excluir:
-                query_pendentes_mat = query_pendentes_mat.filter(~Analise.usuario_id.in_(ids_excluir))
-            if data_inicio and data_fim:
-                query_pendentes_mat = query_pendentes_mat.filter(
-                    Analise.analisado_em >= data_inicio,
-                    Analise.analisado_em < data_fim
-                )
-            analises_sem_feedback_mat = query_pendentes_mat.order_by(Analise.analisado_em.desc()).limit(20).all()
-
-        # Gerador de Peças - usa SQL direto para incluir modo_ativacao_agente2 de forma resiliente
+            analises_sem_feedback_mat = feedback_repo.pendentes_mat(ids_excluir, data_inicio, data_fim)
         if incluir_gp:
-            try:
-                # Tenta query com modo_ativacao_agente2
-                sql_pendentes_gp = """
-                    SELECT gp.id, gp.tipo_peca, gp.numero_cnj, gp.criado_em,
-                           u.username, u.full_name, gp.modo_ativacao_agente2
-                    FROM geracoes_pecas gp
-                    LEFT JOIN feedbacks_pecas fp ON fp.geracao_id = gp.id
-                    JOIN users u ON gp.usuario_id = u.id
-                    WHERE fp.id IS NULL
-                      AND gp.conteudo_gerado IS NOT NULL
-                """
-                params = {}
-                if ids_excluir:
-                    sql_pendentes_gp += " AND gp.usuario_id NOT IN :ids_excluir"
-                    params["ids_excluir"] = tuple(ids_excluir)
-                if data_inicio and data_fim:
-                    sql_pendentes_gp += " AND gp.criado_em >= :data_inicio AND gp.criado_em < :data_fim"
-                    params["data_inicio"] = data_inicio
-                    params["data_fim"] = data_fim
-                sql_pendentes_gp += " ORDER BY gp.criado_em DESC LIMIT 20"
-
-                result = feedback_repo.db.execute(text(sql_pendentes_gp), params).fetchall()
-                geracoes_sem_feedback_gp = [(r[0], r[1], r[2], r[3], r[4], r[5], r[6]) for r in result]
-            except Exception:
-                # Fallback: query sem modo_ativacao_agente2
-                query_pendentes_gp = feedback_repo.db.query(
-                    GeracaoPeca.id,
-                    GeracaoPeca.tipo_peca,
-                    GeracaoPeca.numero_cnj,
-                    GeracaoPeca.criado_em,
-                    User.username,
-                    User.full_name
-                ).outerjoin(
-                    FeedbackPeca, FeedbackPeca.geracao_id == GeracaoPeca.id
-                ).join(
-                    User, GeracaoPeca.usuario_id == User.id
-                ).filter(
-                    FeedbackPeca.id == None,
-                    GeracaoPeca.conteudo_gerado.isnot(None)
-                )
-                if ids_excluir:
-                    query_pendentes_gp = query_pendentes_gp.filter(~GeracaoPeca.usuario_id.in_(ids_excluir))
-                if data_inicio and data_fim:
-                    query_pendentes_gp = query_pendentes_gp.filter(
-                        GeracaoPeca.criado_em >= data_inicio,
-                        GeracaoPeca.criado_em < data_fim
-                    )
-                result = query_pendentes_gp.order_by(GeracaoPeca.criado_em.desc()).limit(20).all()
-                geracoes_sem_feedback_gp = [(r[0], r[1], r[2], r[3], r[4], r[5], None) for r in result]
-
-        # Pedido de Cálculo
+            geracoes_sem_feedback_gp = feedback_repo.pendentes_gp(ids_excluir, data_inicio, data_fim)
         if incluir_pc:
-            query_pendentes_pc = feedback_repo.db.query(
-                GeracaoPedidoCalculo.id,
-                GeracaoPedidoCalculo.numero_cnj_formatado,
-                GeracaoPedidoCalculo.numero_cnj,
-                GeracaoPedidoCalculo.criado_em,
-                User.username,
-                User.full_name
-            ).outerjoin(
-                FeedbackPedidoCalculo, FeedbackPedidoCalculo.geracao_id == GeracaoPedidoCalculo.id
-            ).join(
-                User, GeracaoPedidoCalculo.usuario_id == User.id
-            ).filter(
-                FeedbackPedidoCalculo.id == None,
-                GeracaoPedidoCalculo.conteudo_gerado.isnot(None)
-            )
-            if ids_excluir:
-                query_pendentes_pc = query_pendentes_pc.filter(~GeracaoPedidoCalculo.usuario_id.in_(ids_excluir))
-            if data_inicio and data_fim:
-                query_pendentes_pc = query_pendentes_pc.filter(
-                    GeracaoPedidoCalculo.criado_em >= data_inicio,
-                    GeracaoPedidoCalculo.criado_em < data_fim
-                )
-            geracoes_sem_feedback_pc = query_pendentes_pc.order_by(GeracaoPedidoCalculo.criado_em.desc()).limit(20).all()
-
-        # Prestação de Contas
+            geracoes_sem_feedback_pc = feedback_repo.pendentes_pc(ids_excluir, data_inicio, data_fim)
         if incluir_prest:
-            query_pendentes_prest = feedback_repo.db.query(
-                GeracaoAnalise.id,
-                GeracaoAnalise.numero_cnj_formatado,
-                GeracaoAnalise.numero_cnj,
-                GeracaoAnalise.criado_em,
-                User.username,
-                User.full_name
-            ).outerjoin(
-                FeedbackPrestacao, FeedbackPrestacao.geracao_id == GeracaoAnalise.id
-            ).join(
-                User, GeracaoAnalise.usuario_id == User.id
-            ).filter(
-                FeedbackPrestacao.id == None,
-                GeracaoAnalise.fundamentacao.isnot(None)
-            )
-            if ids_excluir:
-                query_pendentes_prest = query_pendentes_prest.filter(~GeracaoAnalise.usuario_id.in_(ids_excluir))
-            if data_inicio and data_fim:
-                query_pendentes_prest = query_pendentes_prest.filter(
-                    GeracaoAnalise.criado_em >= data_inicio,
-                    GeracaoAnalise.criado_em < data_fim
-                )
-            geracoes_sem_feedback_prest = query_pendentes_prest.order_by(GeracaoAnalise.criado_em.desc()).limit(20).all()
-
-        # Relatório de Cumprimento
+            geracoes_sem_feedback_prest = feedback_repo.pendentes_prest(ids_excluir, data_inicio, data_fim)
         if incluir_rc:
-            query_pendentes_rc = feedback_repo.db.query(
-                GeracaoRelatorioCumprimento.id,
-                GeracaoRelatorioCumprimento.numero_cumprimento_formatado,
-                GeracaoRelatorioCumprimento.numero_cumprimento,
-                GeracaoRelatorioCumprimento.criado_em,
-                User.username,
-                User.full_name
-            ).outerjoin(
-                FeedbackRelatorioCumprimento, FeedbackRelatorioCumprimento.geracao_id == GeracaoRelatorioCumprimento.id
-            ).join(
-                User, GeracaoRelatorioCumprimento.usuario_id == User.id
-            ).filter(
-                FeedbackRelatorioCumprimento.id == None,
-                GeracaoRelatorioCumprimento.conteudo_gerado.isnot(None),
-                GeracaoRelatorioCumprimento.status == 'concluido'
-            )
-            if ids_excluir:
-                query_pendentes_rc = query_pendentes_rc.filter(~GeracaoRelatorioCumprimento.usuario_id.in_(ids_excluir))
-            if data_inicio and data_fim:
-                query_pendentes_rc = query_pendentes_rc.filter(
-                    GeracaoRelatorioCumprimento.criado_em >= data_inicio,
-                    GeracaoRelatorioCumprimento.criado_em < data_fim
-                )
-            geracoes_sem_feedback_rc = query_pendentes_rc.order_by(GeracaoRelatorioCumprimento.criado_em.desc()).limit(20).all()
+            geracoes_sem_feedback_rc = feedback_repo.pendentes_rc(ids_excluir, data_inicio, data_fim)
 
         # Combina e formata
         pendentes_feedback = []
@@ -733,26 +404,9 @@ async def dashboard_feedbacks(
 
         def calcular_evolucao_semanal(feedback_model, ids_excluir):
             """Calcula taxa de acerto por semana para um modelo de feedback (últimas N semanas)."""
-            query = feedback_repo.db.query(
-                extract('isoyear', feedback_model.criado_em).label('ano'),
-                extract('week', feedback_model.criado_em).label('semana'),
-                func.count(feedback_model.id).label('total'),
-                func.sum(case((feedback_model.avaliacao == 'correto', 1), else_=0)).label('corretos'),
-                func.sum(case((feedback_model.avaliacao == 'parcial', 1), else_=0)).label('parciais'),
-                func.sum(case((feedback_model.avaliacao == 'incorreto', 1), else_=0)).label('incorretos')
-            ).filter(
-                feedback_model.criado_em >= data_inicio_evolucao,
-                feedback_model.criado_em <= data_fim_evolucao
+            return feedback_repo.evolucao_semanal(
+                feedback_model, ids_excluir, data_inicio_evolucao, data_fim_evolucao
             )
-            if ids_excluir:
-                query = query.filter(~feedback_model.usuario_id.in_(ids_excluir))
-            return query.group_by(
-                extract('isoyear', feedback_model.criado_em),
-                extract('week', feedback_model.criado_em)
-            ).order_by(
-                extract('isoyear', feedback_model.criado_em),
-                extract('week', feedback_model.criado_em)
-            ).all()
 
         def formatar_dados_evolucao(dados_raw, todas_semanas):
             """Formata dados de evolução preenchendo semanas sem dados com zeros."""
@@ -897,32 +551,9 @@ async def listar_feedbacks(
 
         # Feedbacks de Assistência Judiciária
         if sistema is None or sistema == 'assistencia_judiciaria':
-            query_aj = feedback_repo.db.query(
-                FeedbackAnalise,
-                ConsultaProcesso.cnj_formatado,
-                ConsultaProcesso.cnj,
-                ConsultaProcesso.modelo_usado,
-                User.username,
-                User.full_name
-            ).join(
-                ConsultaProcesso, FeedbackAnalise.consulta_id == ConsultaProcesso.id
-            ).join(
-                User, FeedbackAnalise.usuario_id == User.id
-            )
-
-            if ids_excluir:
-                query_aj = query_aj.filter(~FeedbackAnalise.usuario_id.in_(ids_excluir))
-            if data_inicio and data_fim:
-                query_aj = query_aj.filter(
-                    FeedbackAnalise.criado_em >= data_inicio,
-                    FeedbackAnalise.criado_em < data_fim
-                )
-            if avaliacao:
-                query_aj = query_aj.filter(FeedbackAnalise.avaliacao == avaliacao)
-            if usuario_id:
-                query_aj = query_aj.filter(FeedbackAnalise.usuario_id == usuario_id)
-
-            for fb, cnj_fmt, cnj, modelo, username, full_name in query_aj.all():
+            for fb, cnj_fmt, cnj, modelo, username, full_name in feedback_repo.listar_feedbacks_aj(
+                ids_excluir, data_inicio, data_fim, avaliacao, usuario_id
+            ):
                 feedbacks_combinados.append({
                     "id": fb.id,
                     "consulta_id": fb.consulta_id,
@@ -941,39 +572,11 @@ async def listar_feedbacks(
 
         # Feedbacks de Matrículas
         if sistema is None or sistema == 'matriculas':
-            query_mat = feedback_repo.db.query(
-                FeedbackMatricula,
-                Analise.file_name,
-                Analise.matricula_principal,
-                Analise.modelo_usado,
-                User.username,
-                User.full_name
-            ).join(
-                Analise, FeedbackMatricula.analise_id == Analise.id
-            ).join(
-                User, FeedbackMatricula.usuario_id == User.id
-            )
+            modelo_matriculas_default = feedback_repo.get_modelo_matriculas_default()
 
-            if ids_excluir:
-                query_mat = query_mat.filter(~FeedbackMatricula.usuario_id.in_(ids_excluir))
-            if data_inicio and data_fim:
-                query_mat = query_mat.filter(
-                    FeedbackMatricula.criado_em >= data_inicio,
-                    FeedbackMatricula.criado_em < data_fim
-                )
-            if avaliacao:
-                query_mat = query_mat.filter(FeedbackMatricula.avaliacao == avaliacao)
-            if usuario_id:
-                query_mat = query_mat.filter(FeedbackMatricula.usuario_id == usuario_id)
-
-            # Modelo padrão caso não esteja salvo na análise
-            modelo_mat_config = feedback_repo.db.query(ConfiguracaoIA).filter(
-                ConfiguracaoIA.sistema == "matriculas",
-                ConfiguracaoIA.chave == "modelo_relatorio"
-            ).first()
-            modelo_matriculas_default = modelo_mat_config.valor if modelo_mat_config else "gemini-3-flash-preview"
-
-            for fb, file_name, matricula, modelo_usado, username, full_name in query_mat.all():
+            for fb, file_name, matricula, modelo_usado, username, full_name in feedback_repo.listar_feedbacks_mat(
+                ids_excluir, data_inicio, data_fim, avaliacao, usuario_id
+            ):
                 feedbacks_combinados.append({
                     "id": fb.id,
                     "consulta_id": fb.analise_id,
@@ -992,49 +595,11 @@ async def listar_feedbacks(
 
         # Feedbacks de Gerador de Peças
         if sistema is None or sistema == 'gerador_pecas':
-            # Query básica sem colunas de curadoria (que podem não existir no banco)
-            query_gp = feedback_repo.db.query(
-                FeedbackPeca,
-                GeracaoPeca.tipo_peca,
-                GeracaoPeca.numero_cnj,
-                GeracaoPeca.modelo_usado,
-                GeracaoPeca.id.label('geracao_id_ref'),
-                User.username,
-                User.full_name
-            ).join(
-                GeracaoPeca, FeedbackPeca.geracao_id == GeracaoPeca.id
-            ).join(
-                User, FeedbackPeca.usuario_id == User.id
-            )
-
-            if ids_excluir:
-                query_gp = query_gp.filter(~FeedbackPeca.usuario_id.in_(ids_excluir))
-            if data_inicio and data_fim:
-                query_gp = query_gp.filter(
-                    FeedbackPeca.criado_em >= data_inicio,
-                    FeedbackPeca.criado_em < data_fim
-                )
-            if avaliacao:
-                query_gp = query_gp.filter(FeedbackPeca.avaliacao == avaliacao)
-            if usuario_id:
-                query_gp = query_gp.filter(FeedbackPeca.usuario_id == usuario_id)
-
-            for fb, tipo_peca, numero_cnj, modelo_usado, geracao_id_ref, username, full_name in query_gp.all():
-                # Busca dados de curadoria usando SQL direto (evita erro se colunas não existem)
-                modo_ativacao = None
-                modulos_det = None
-                modulos_llm = None
-                curadoria_meta = None
-                try:
-                    result = feedback_repo.db.execute(text("""
-                        SELECT modo_ativacao_agente2, modulos_ativados_det, modulos_ativados_llm, curadoria_metadata
-                        FROM geracoes_pecas WHERE id = :id
-                    """), {"id": geracao_id_ref}).fetchone()
-                    if result:
-                        modo_ativacao, modulos_det, modulos_llm, curadoria_meta = result
-                except Exception:
-                    # Colunas não existem no banco - ignora silenciosamente
-                    pass
+            for fb, tipo_peca, numero_cnj, modelo_usado, geracao_id_ref, username, full_name in feedback_repo.listar_feedbacks_gp(
+                ids_excluir, data_inicio, data_fim, avaliacao, usuario_id
+            ):
+                # Busca dados de curadoria (colunas podem nao existir no banco)
+                modo_ativacao, modulos_det, modulos_llm, curadoria_meta = feedback_repo.get_curadoria_metadata_gp(geracao_id_ref)
                 # Dados específicos do modo semi-automático
                 modo_info = None
                 if modo_ativacao == 'semi_automatico':
@@ -1081,32 +646,9 @@ async def listar_feedbacks(
 
         # Feedbacks de Pedido de Cálculo
         if sistema is None or sistema == 'pedido_calculo':
-            query_pc = feedback_repo.db.query(
-                FeedbackPedidoCalculo,
-                GeracaoPedidoCalculo.numero_cnj_formatado,
-                GeracaoPedidoCalculo.numero_cnj,
-                GeracaoPedidoCalculo.modelo_usado,
-                User.username,
-                User.full_name
-            ).join(
-                GeracaoPedidoCalculo, FeedbackPedidoCalculo.geracao_id == GeracaoPedidoCalculo.id
-            ).join(
-                User, FeedbackPedidoCalculo.usuario_id == User.id
-            )
-
-            if ids_excluir:
-                query_pc = query_pc.filter(~FeedbackPedidoCalculo.usuario_id.in_(ids_excluir))
-            if data_inicio and data_fim:
-                query_pc = query_pc.filter(
-                    FeedbackPedidoCalculo.criado_em >= data_inicio,
-                    FeedbackPedidoCalculo.criado_em < data_fim
-                )
-            if avaliacao:
-                query_pc = query_pc.filter(FeedbackPedidoCalculo.avaliacao == avaliacao)
-            if usuario_id:
-                query_pc = query_pc.filter(FeedbackPedidoCalculo.usuario_id == usuario_id)
-
-            for fb, numero_cnj_fmt, numero_cnj, modelo_usado, username, full_name in query_pc.all():
+            for fb, numero_cnj_fmt, numero_cnj, modelo_usado, username, full_name in feedback_repo.listar_feedbacks_pc(
+                ids_excluir, data_inicio, data_fim, avaliacao, usuario_id
+            ):
                 feedbacks_combinados.append({
                     "id": fb.id,
                     "consulta_id": fb.geracao_id,
@@ -1125,32 +667,9 @@ async def listar_feedbacks(
 
         # Feedbacks de Prestação de Contas
         if sistema is None or sistema == 'prestacao_contas':
-            query_prest = feedback_repo.db.query(
-                FeedbackPrestacao,
-                GeracaoAnalise.numero_cnj_formatado,
-                GeracaoAnalise.numero_cnj,
-                GeracaoAnalise.modelo_usado,
-                User.username,
-                User.full_name
-            ).join(
-                GeracaoAnalise, FeedbackPrestacao.geracao_id == GeracaoAnalise.id
-            ).join(
-                User, FeedbackPrestacao.usuario_id == User.id
-            )
-
-            if ids_excluir:
-                query_prest = query_prest.filter(~FeedbackPrestacao.usuario_id.in_(ids_excluir))
-            if data_inicio and data_fim:
-                query_prest = query_prest.filter(
-                    FeedbackPrestacao.criado_em >= data_inicio,
-                    FeedbackPrestacao.criado_em < data_fim
-                )
-            if avaliacao:
-                query_prest = query_prest.filter(FeedbackPrestacao.avaliacao == avaliacao)
-            if usuario_id:
-                query_prest = query_prest.filter(FeedbackPrestacao.usuario_id == usuario_id)
-
-            for fb, numero_cnj_fmt, numero_cnj, modelo_usado, username, full_name in query_prest.all():
+            for fb, numero_cnj_fmt, numero_cnj, modelo_usado, username, full_name in feedback_repo.listar_feedbacks_prest(
+                ids_excluir, data_inicio, data_fim, avaliacao, usuario_id
+            ):
                 # Constrói campos_incorretos a partir dos booleanos específicos
                 campos_incorretos = []
                 if fb.parecer_correto is False:
@@ -1178,32 +697,9 @@ async def listar_feedbacks(
 
         # Feedbacks de Relatório de Cumprimento
         if sistema is None or sistema == 'relatorio_cumprimento':
-            query_rc = feedback_repo.db.query(
-                FeedbackRelatorioCumprimento,
-                GeracaoRelatorioCumprimento.numero_cumprimento_formatado,
-                GeracaoRelatorioCumprimento.numero_cumprimento,
-                GeracaoRelatorioCumprimento.modelo_usado,
-                User.username,
-                User.full_name
-            ).join(
-                GeracaoRelatorioCumprimento, FeedbackRelatorioCumprimento.geracao_id == GeracaoRelatorioCumprimento.id
-            ).join(
-                User, FeedbackRelatorioCumprimento.usuario_id == User.id
-            )
-
-            if ids_excluir:
-                query_rc = query_rc.filter(~FeedbackRelatorioCumprimento.usuario_id.in_(ids_excluir))
-            if data_inicio and data_fim:
-                query_rc = query_rc.filter(
-                    FeedbackRelatorioCumprimento.criado_em >= data_inicio,
-                    FeedbackRelatorioCumprimento.criado_em < data_fim
-                )
-            if avaliacao:
-                query_rc = query_rc.filter(FeedbackRelatorioCumprimento.avaliacao == avaliacao)
-            if usuario_id:
-                query_rc = query_rc.filter(FeedbackRelatorioCumprimento.usuario_id == usuario_id)
-
-            for fb, numero_cnj_fmt, numero_cnj, modelo_usado, username, full_name in query_rc.all():
+            for fb, numero_cnj_fmt, numero_cnj, modelo_usado, username, full_name in feedback_repo.listar_feedbacks_rc(
+                ids_excluir, data_inicio, data_fim, avaliacao, usuario_id
+            ):
                 feedbacks_combinados.append({
                     "id": fb.id,
                     "consulta_id": fb.geracao_id,
@@ -1257,15 +753,7 @@ async def obter_consulta_detalhes(
     """
     try:
         if sistema == "assistencia_judiciaria":
-            consulta = feedback_repo.db.query(
-                ConsultaProcesso,
-                User.username,
-                User.full_name
-            ).join(
-                User, ConsultaProcesso.usuario_id == User.id
-            ).filter(
-                ConsultaProcesso.id == consulta_id
-            ).first()
+            consulta = feedback_repo.detalhe_consulta_aj(consulta_id)
 
             if not consulta:
                 raise HTTPException(status_code=404, detail="Consulta não encontrada")
@@ -1273,9 +761,7 @@ async def obter_consulta_detalhes(
             c, username, full_name = consulta
 
             # Busca feedback se existir
-            feedback = feedback_repo.db.query(FeedbackAnalise).filter(
-                FeedbackAnalise.consulta_id == consulta_id
-            ).first()
+            feedback = feedback_repo.detalhe_feedback_aj(consulta_id)
 
             return {
                 "id": c.id,
@@ -1296,15 +782,7 @@ async def obter_consulta_detalhes(
             }
 
         elif sistema == "matriculas":
-            analise = feedback_repo.db.query(
-                Analise,
-                User.username,
-                User.full_name
-            ).join(
-                User, Analise.usuario_id == User.id
-            ).filter(
-                Analise.id == consulta_id
-            ).first()
+            analise = feedback_repo.detalhe_analise_mat(consulta_id)
 
             if not analise:
                 raise HTTPException(status_code=404, detail="Análise não encontrada")
@@ -1312,9 +790,7 @@ async def obter_consulta_detalhes(
             a, username, full_name = analise
 
             # Busca feedback se existir
-            feedback = feedback_repo.db.query(FeedbackMatricula).filter(
-                FeedbackMatricula.analise_id == consulta_id
-            ).first()
+            feedback = feedback_repo.detalhe_feedback_mat(consulta_id)
 
             return {
                 "id": a.id,
@@ -1336,27 +812,7 @@ async def obter_consulta_detalhes(
             }
 
         elif sistema == "gerador_pecas":
-            # Query apenas com colunas que sempre existem (evita erro de coluna inexistente)
-            geracao = feedback_repo.db.query(
-                GeracaoPeca.id,
-                GeracaoPeca.numero_cnj,
-                GeracaoPeca.numero_cnj_formatado,
-                GeracaoPeca.tipo_peca,
-                GeracaoPeca.dados_processo,
-                GeracaoPeca.conteudo_gerado,
-                GeracaoPeca.prompt_enviado,
-                GeracaoPeca.resumo_consolidado,
-                GeracaoPeca.historico_chat,
-                GeracaoPeca.modelo_usado,
-                GeracaoPeca.tempo_processamento,
-                GeracaoPeca.criado_em,
-                User.username,
-                User.full_name
-            ).join(
-                User, GeracaoPeca.usuario_id == User.id
-            ).filter(
-                GeracaoPeca.id == consulta_id
-            ).first()
+            geracao = feedback_repo.detalhe_geracao_gp(consulta_id)
 
             if not geracao:
                 raise HTTPException(status_code=404, detail="Geração não encontrada")
@@ -1365,14 +821,10 @@ async def obter_consulta_detalhes(
              g_historico, g_modelo, g_tempo, g_criado, username, full_name) = geracao
 
             # Busca feedback se existir
-            feedback = feedback_repo.db.query(FeedbackPeca).filter(
-                FeedbackPeca.geracao_id == consulta_id
-            ).first()
+            feedback = feedback_repo.detalhe_feedback_gp(consulta_id)
 
             # Busca versões da peça
-            versoes = feedback_repo.db.query(VersaoPeca).filter(
-                VersaoPeca.geracao_id == consulta_id
-            ).order_by(VersaoPeca.numero_versao).all()
+            versoes = feedback_repo.detalhe_versoes_gp(consulta_id)
 
             # Formata histórico de chat filtrando apenas mensagens do usuário (role: user)
             # para evitar contagem duplicada (respostas do assistente não são edições)
@@ -1382,20 +834,8 @@ async def obter_consulta_detalhes(
                 if isinstance(msg, dict) and msg.get('role') == 'user'
             ]
 
-            # Obtém dados de curadoria usando SQL direto (colunas podem não existir no banco)
-            modo_ativacao = None
-            modulos_det = None
-            modulos_llm = None
-            curadoria_meta = None
-            try:
-                result = feedback_repo.db.execute(text("""
-                    SELECT modo_ativacao_agente2, modulos_ativados_det, modulos_ativados_llm, curadoria_metadata
-                    FROM geracoes_pecas WHERE id = :id
-                """), {"id": consulta_id}).fetchone()
-                if result:
-                    modo_ativacao, modulos_det, modulos_llm, curadoria_meta = result
-            except Exception:
-                pass
+            # Obtém dados de curadoria (colunas podem nao existir no banco)
+            modo_ativacao, modulos_det, modulos_llm, curadoria_meta = feedback_repo.get_curadoria_metadata_gp(consulta_id)
 
             # Monta informações do modo
             modo_info = None
@@ -1457,15 +897,7 @@ async def obter_consulta_detalhes(
             }
 
         elif sistema == "pedido_calculo":
-            geracao = feedback_repo.db.query(
-                GeracaoPedidoCalculo,
-                User.username,
-                User.full_name
-            ).join(
-                User, GeracaoPedidoCalculo.usuario_id == User.id
-            ).filter(
-                GeracaoPedidoCalculo.id == consulta_id
-            ).first()
+            geracao = feedback_repo.detalhe_geracao_pc(consulta_id)
 
             if not geracao:
                 raise HTTPException(status_code=404, detail="Geração não encontrada")
@@ -1473,9 +905,7 @@ async def obter_consulta_detalhes(
             p, username, full_name = geracao
 
             # Busca feedback se existir
-            feedback = feedback_repo.db.query(FeedbackPedidoCalculo).filter(
-                FeedbackPedidoCalculo.geracao_id == consulta_id
-            ).first()
+            feedback = feedback_repo.detalhe_feedback_pc(consulta_id)
 
             return {
                 "id": p.id,
@@ -1497,15 +927,7 @@ async def obter_consulta_detalhes(
             }
 
         elif sistema == "prestacao_contas":
-            geracao = feedback_repo.db.query(
-                GeracaoAnalise,
-                User.username,
-                User.full_name
-            ).join(
-                User, GeracaoAnalise.usuario_id == User.id
-            ).filter(
-                GeracaoAnalise.id == consulta_id
-            ).first()
+            geracao = feedback_repo.detalhe_geracao_prest(consulta_id)
 
             if not geracao:
                 raise HTTPException(status_code=404, detail="Análise não encontrada")
@@ -1513,9 +935,7 @@ async def obter_consulta_detalhes(
             g, username, full_name = geracao
 
             # Busca feedback se existir
-            feedback = feedback_repo.db.query(FeedbackPrestacao).filter(
-                FeedbackPrestacao.geracao_id == consulta_id
-            ).first()
+            feedback = feedback_repo.detalhe_feedback_prest(consulta_id)
 
             return {
                 "id": g.id,
@@ -1537,15 +957,7 @@ async def obter_consulta_detalhes(
             }
 
         elif sistema == "relatorio_cumprimento":
-            geracao = feedback_repo.db.query(
-                GeracaoRelatorioCumprimento,
-                User.username,
-                User.full_name
-            ).join(
-                User, GeracaoRelatorioCumprimento.usuario_id == User.id
-            ).filter(
-                GeracaoRelatorioCumprimento.id == consulta_id
-            ).first()
+            geracao = feedback_repo.detalhe_geracao_rc(consulta_id)
 
             if not geracao:
                 raise HTTPException(status_code=404, detail="Relatório não encontrado")
@@ -1553,9 +965,7 @@ async def obter_consulta_detalhes(
             g, username, full_name = geracao
 
             # Busca feedback se existir
-            feedback = feedback_repo.db.query(FeedbackRelatorioCumprimento).filter(
-                FeedbackRelatorioCumprimento.geracao_id == consulta_id
-            ).first()
+            feedback = feedback_repo.detalhe_feedback_rc(consulta_id)
 
             return {
                 "id": g.id,
@@ -1603,21 +1013,7 @@ async def exportar_feedbacks(
         data = []
 
         # Feedbacks de Assistência Judiciária
-        feedbacks_aj = feedback_repo.db.query(
-            FeedbackAnalise,
-            ConsultaProcesso.cnj_formatado,
-            ConsultaProcesso.cnj,
-            User.username,
-            User.full_name
-        ).join(
-            ConsultaProcesso, FeedbackAnalise.consulta_id == ConsultaProcesso.id
-        ).join(
-            User, FeedbackAnalise.usuario_id == User.id
-        ).order_by(
-            FeedbackAnalise.criado_em.desc()
-        ).all()
-
-        for fb, cnj_fmt, cnj, username, full_name in feedbacks_aj:
+        for fb, cnj_fmt, cnj, username, full_name in feedback_repo.exportar_feedbacks_aj():
             data.append({
                 "id": fb.id,
                 "sistema": "assistencia_judiciaria",
@@ -1630,21 +1026,7 @@ async def exportar_feedbacks(
             })
 
         # Feedbacks de Matrículas
-        feedbacks_mat = feedback_repo.db.query(
-            FeedbackMatricula,
-            Analise.file_name,
-            Analise.matricula_principal,
-            User.username,
-            User.full_name
-        ).join(
-            Analise, FeedbackMatricula.analise_id == Analise.id
-        ).join(
-            User, FeedbackMatricula.usuario_id == User.id
-        ).order_by(
-            FeedbackMatricula.criado_em.desc()
-        ).all()
-
-        for fb, file_name, matricula, username, full_name in feedbacks_mat:
+        for fb, file_name, matricula, username, full_name in feedback_repo.exportar_feedbacks_mat():
             data.append({
                 "id": fb.id,
                 "sistema": "matriculas",
@@ -1657,21 +1039,7 @@ async def exportar_feedbacks(
             })
 
         # Feedbacks de Gerador de Peças
-        feedbacks_gp = feedback_repo.db.query(
-            FeedbackPeca,
-            GeracaoPeca.numero_cnj,
-            GeracaoPeca.tipo_peca,
-            User.username,
-            User.full_name
-        ).join(
-            GeracaoPeca, FeedbackPeca.geracao_id == GeracaoPeca.id
-        ).join(
-            User, FeedbackPeca.usuario_id == User.id
-        ).order_by(
-            FeedbackPeca.criado_em.desc()
-        ).all()
-
-        for fb, numero_cnj, tipo_peca, username, full_name in feedbacks_gp:
+        for fb, numero_cnj, tipo_peca, username, full_name in feedback_repo.exportar_feedbacks_gp():
             data.append({
                 "id": fb.id,
                 "sistema": "gerador_pecas",
@@ -1684,21 +1052,7 @@ async def exportar_feedbacks(
             })
 
         # Feedbacks de Pedido de Cálculo
-        feedbacks_pc = feedback_repo.db.query(
-            FeedbackPedidoCalculo,
-            GeracaoPedidoCalculo.numero_cnj_formatado,
-            GeracaoPedidoCalculo.numero_cnj,
-            User.username,
-            User.full_name
-        ).join(
-            GeracaoPedidoCalculo, FeedbackPedidoCalculo.geracao_id == GeracaoPedidoCalculo.id
-        ).join(
-            User, FeedbackPedidoCalculo.usuario_id == User.id
-        ).order_by(
-            FeedbackPedidoCalculo.criado_em.desc()
-        ).all()
-
-        for fb, numero_cnj_fmt, numero_cnj, username, full_name in feedbacks_pc:
+        for fb, numero_cnj_fmt, numero_cnj, username, full_name in feedback_repo.exportar_feedbacks_pc():
             data.append({
                 "id": fb.id,
                 "sistema": "pedido_calculo",

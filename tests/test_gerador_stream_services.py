@@ -261,6 +261,93 @@ class TestGeradorStreamHelper:
         assert data["nested"]["key"] == "value"
         assert data["nested"]["num"] == 42
 
+    # ===== Testes format_agente_erro =====
+
+    def test_format_agente_erro_retorna_tupla(self):
+        """Testa que format_agente_erro retorna tupla com dois eventos."""
+        resultado = GeradorStreamHelper.format_agente_erro(3, "Falha na geração")
+
+        assert isinstance(resultado, tuple)
+        assert len(resultado) == 2
+
+        evt_agente, evt_erro = resultado
+
+        # Primeiro evento: agente com status erro
+        data_agente = self._parse_sse(evt_agente)
+        assert data_agente["tipo"] == "agente"
+        assert data_agente["agente"] == 3
+        assert data_agente["status"] == "erro"
+        assert data_agente["mensagem"] == "Falha na geração"
+
+        # Segundo evento: erro genérico
+        data_erro = self._parse_sse(evt_erro)
+        assert data_erro["tipo"] == "erro"
+        assert data_erro["mensagem"] == "Falha na geração"
+
+    def test_format_agente_erro_todos_agentes(self):
+        """Testa format_agente_erro para cada número de agente."""
+        for agente in [1, 2, 3]:
+            evt_agente, evt_erro = GeradorStreamHelper.format_agente_erro(agente, f"Erro agente {agente}")
+
+            data_agente = self._parse_sse(evt_agente)
+            assert data_agente["agente"] == agente
+            assert data_agente["status"] == "erro"
+
+            data_erro = self._parse_sse(evt_erro)
+            assert data_erro["tipo"] == "erro"
+
+    def test_format_agente_erro_mensagem_preservada(self):
+        """Testa que a mesma mensagem aparece em ambos os eventos."""
+        msg = "Timeout ao consultar TJ-MS após 30s"
+        evt_agente, evt_erro = GeradorStreamHelper.format_agente_erro(1, msg)
+
+        data_agente = self._parse_sse(evt_agente)
+        data_erro = self._parse_sse(evt_erro)
+
+        assert data_agente["mensagem"] == msg
+        assert data_erro["mensagem"] == msg
+
+    # ===== Testes format_raw =====
+
+    def test_format_raw_dict_simples(self):
+        """Testa format_raw com dict simples."""
+        data = {"resultado": "ok", "total": 5}
+        result = GeradorStreamHelper.format_raw(data)
+
+        assert result.startswith("data: {")
+        assert result.endswith("}\n\n")
+
+        parsed = json.loads(result.replace("data: ", "").replace("\n\n", ""))
+        assert parsed["resultado"] == "ok"
+        assert parsed["total"] == 5
+
+    def test_format_raw_sem_campo_tipo(self):
+        """Testa que format_raw NAO injeta campo 'tipo' automaticamente."""
+        data = {"foo": "bar"}
+        result = GeradorStreamHelper.format_raw(data)
+
+        parsed = json.loads(result.replace("data: ", "").replace("\n\n", ""))
+        assert "tipo" not in parsed
+        assert parsed["foo"] == "bar"
+
+    def test_format_raw_preserva_unicode(self):
+        """Testa que format_raw preserva caracteres unicode."""
+        data = {"mensagem": "Ação com acentuação"}
+        result = GeradorStreamHelper.format_raw(data)
+
+        assert "Ação" in result
+        assert "acentuação" in result
+        assert "\\u" not in result
+
+    def test_format_raw_com_tipo_existente(self):
+        """Testa que format_raw preserva campo 'tipo' se já existir no dict."""
+        data = {"tipo": "custom_event", "dados": [1, 2, 3]}
+        result = GeradorStreamHelper.format_raw(data)
+
+        parsed = json.loads(result.replace("data: ", "").replace("\n\n", ""))
+        assert parsed["tipo"] == "custom_event"
+        assert parsed["dados"] == [1, 2, 3]
+
     # ===== Helpers =====
 
     def _parse_sse(self, sse_event: str) -> dict:

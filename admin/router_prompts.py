@@ -48,7 +48,7 @@ import difflib
 from utils.timezone import to_iso_utc, now_utc
 from auth.models import User
 from auth.dependencies import get_current_active_user, require_admin
-from admin.models_prompts import PromptModulo, PromptModuloHistorico, ModuloTipoPeca, RegraDeterministicaTipoPeca, prompt_modulo_subcategorias
+from admin.models_prompts import PromptModulo, PromptModuloHistorico, ModuloTipoPeca, RegraDeterministicaTipoPeca
 from admin.models_prompt_groups import PromptGroup, PromptSubgroup, PromptSubcategoria, CategoriaOrdem
 from admin.repositories import (
     get_prompt_modulo_repo,
@@ -230,9 +230,7 @@ async def listar_modulos(
     # Filtro por subcategorias (assuntos) - lógica OR (qualquer um dos assuntos selecionados)
     # NOTA: Usa subquery para evitar DISTINCT em colunas JSON (PostgreSQL não suporta)
     if subcategoria_ids:
-        subquery_ids = modulo_repo.db.query(prompt_modulo_subcategorias.c.modulo_id).filter(
-            prompt_modulo_subcategorias.c.subcategoria_id.in_(subcategoria_ids)
-        ).distinct().subquery()
+        subquery_ids = modulo_repo.get_subcategoria_modulo_ids(subcategoria_ids)
         query = query.filter(PromptModulo.id.in_(subquery_ids))
 
     if busca:
@@ -315,16 +313,7 @@ async def listar_categorias(
     modulo_repo: PromptModuloRepository = Depends(get_prompt_modulo_repo),
 ):
     """Lista todas as categorias disponíveis (de módulos ativos por padrão)"""
-    query = modulo_repo.db.query(PromptModulo.categoria).distinct().filter(
-        PromptModulo.categoria.isnot(None),
-        PromptModulo.tipo.in_(["base", "peca", "conteudo"])  # Apenas tipos válidos
-    )
-    if apenas_ativos:
-        query = query.filter(PromptModulo.ativo == True)
-    if group_id:
-        query = query.filter(PromptModulo.group_id == group_id)
-    categorias = query.all()
-    return [c[0] for c in categorias if c[0]]
+    return modulo_repo.get_distinct_categorias_for_listing(group_id, apenas_ativos)
 
 
 @router.get("/tipos")
@@ -376,8 +365,6 @@ async def resumo_configuracao_tipos_peca(
     Mostra quantos módulos estão ativos para cada tipo.
     O group_id filtra apenas os módulos de conteúdo, não os tipos de peça.
     """
-    from sqlalchemy import func, case
-
     # Busca tipos de peça (são globais, não filtra por grupo)
     tipos_peca = modulo_repo.query().filter(
         PromptModulo.tipo == "peca",
@@ -394,22 +381,7 @@ async def resumo_configuracao_tipos_peca(
     total_modulos = query_conteudo.count()
 
     # Query única para contar ativos/inativos por tipo_peca (evita N+1)
-    # Importante: filtra por group_id quando especificado para manter consistência
-    # com total_modulos que também é filtrado
-    query_contagens = modulo_repo.db.query(
-        ModuloTipoPeca.tipo_peca,
-        func.sum(case((ModuloTipoPeca.ativo == True, 1), else_=0)).label('ativos'),
-        func.sum(case((ModuloTipoPeca.ativo == False, 1), else_=0)).label('inativos')
-    ).join(
-        PromptModulo,
-        ModuloTipoPeca.modulo_id == PromptModulo.id
-    ).filter(
-        PromptModulo.tipo == "conteudo",
-        PromptModulo.ativo == True
-    )
-    if group_id:
-        query_contagens = query_contagens.filter(PromptModulo.group_id == group_id)
-    contagens = query_contagens.group_by(ModuloTipoPeca.tipo_peca).all()
+    contagens = modulo_repo.get_resumo_contagens_tipo_peca(group_id)
 
     # Mapeia resultados
     contagens_map = {c.tipo_peca: {'ativos': int(c.ativos or 0), 'inativos': int(c.inativos or 0)} for c in contagens}
@@ -641,14 +613,10 @@ async def deletar_subgrupo(
         if force:
             # Remove referência nos módulos
             if modulos_usando > 0:
-                subgroup_repo.db.query(PromptModulo).filter(
-                    PromptModulo.subgroup_id == subgroup_id
-                ).update({PromptModulo.subgroup_id: None}, synchronize_session=False)
+                subgroup_repo.clear_subgroup_references(subgroup_id)
 
             # Remove referência no histórico de módulos (foreign key constraint)
-            subgroup_repo.db.query(PromptModuloHistorico).filter(
-                PromptModuloHistorico.subgroup_id == subgroup_id
-            ).update({PromptModuloHistorico.subgroup_id: None}, synchronize_session=False)
+            subgroup_repo.clear_subgroup_references_historico(subgroup_id)
 
         nome = subgrupo.name
         subgroup_repo.delete(subgrupo)
@@ -677,10 +645,7 @@ async def listar_todas_subcategorias(
     group_repo: PromptGroupRepository = Depends(get_prompt_group_repo),
 ):
     """Lista todas as subcategorias (assuntos) de todos os grupos"""
-    query = subcategoria_repo.db.query(PromptSubcategoria).join(PromptGroup)
-    if apenas_ativas:
-        query = query.filter(PromptSubcategoria.active == True)
-    subcategorias = query.order_by(PromptGroup.name, PromptSubcategoria.order, PromptSubcategoria.nome).all()
+    subcategorias = subcategoria_repo.list_all_with_group_join(apenas_ativas)
 
     # Retorna com nome do grupo para facilitar exibição
     result = []
@@ -2340,14 +2305,7 @@ async def listar_categorias_ordem(
     categorias_config = cat_ordem_repo.list_by_group(group_id)
 
     # Busca categorias existentes nos módulos de conteúdo deste grupo
-    categorias_modulos = modulo_repo.db.query(PromptModulo.categoria).distinct().filter(
-        PromptModulo.group_id == group_id,
-        PromptModulo.tipo == "conteudo",
-        PromptModulo.ativo == True,
-        PromptModulo.categoria.isnot(None),
-        PromptModulo.categoria != ""
-    ).all()
-    categorias_existentes = {c[0] for c in categorias_modulos if c[0]}
+    categorias_existentes = set(modulo_repo.get_categorias_conteudo_by_group(group_id))
 
     # Mapa de categorias configuradas
     config_map = {c.nome: c for c in categorias_config}

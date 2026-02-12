@@ -9,7 +9,12 @@ import json
 import uuid
 import asyncio
 import logging
+import traceback  # Movido do lazy import (múltiplas linhas)
+import base64  # Movido do lazy import (linha 1643, 2780)
+import aiohttp  # Movido do lazy import (linha 2700, 2779)
+import xml.etree.ElementTree as ET  # Movido do lazy import (linha 2782)
 from datetime import datetime
+from collections import defaultdict  # Movido do lazy import (linha 2647)
 from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends, Query, UploadFile, File, Form, status, Request
 from fastapi.responses import FileResponse, StreamingResponse
 from typing import Optional, List, Dict, Any, AsyncGenerator
@@ -62,6 +67,7 @@ from sistemas.gerador_pecas.services_parecer_natjus import (
     load_parecer_natjus_config,
     piece_requires_parecer,
 )
+from app.services.gerador_pecas.stream_helper import stream_helper
 
 router = APIRouter(tags=["Gerador de Peças"])
 logger = logging.getLogger(__name__)
@@ -768,9 +774,8 @@ async def processar_processo(
         )
         
         return resultado
-        
+
     except Exception as e:
-        import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -844,7 +849,7 @@ async def processar_processo_stream(
             )
 
             # Evento inicial
-            yield f"data: {json.dumps({'tipo': 'inicio', 'mensagem': 'Iniciando processamento...', 'request_id': tracker.request_id})}\n\n"
+            yield stream_helper.format_inicio(request_id=tracker.request_id)
 
             if req.parecer_upload_id:
                 try:
@@ -858,14 +863,14 @@ async def processar_processo_stream(
                     )
                     tracker.set_metadata("parecer_upload_id", req.parecer_upload_id)
                     nome_upload = parecer_upload_metadata.get("filename")
-                    yield f"data: {json.dumps({'tipo': 'info', 'mensagem': f'Parecer NATJus carregado do upload: {nome_upload}'})}\n\n"
+                    yield stream_helper.format_info(f'Parecer NATJus carregado do upload: {nome_upload}')
                 except HTTPException as upload_error:
                     mensagem_upload = (
                         upload_error.detail
                         if isinstance(upload_error.detail, str)
                         else "Erro ao carregar upload de parecer NATJus."
                     )
-                    yield f"data: {json.dumps({'tipo': 'erro', 'mensagem': mensagem_upload})}\n\n"
+                    yield stream_helper.format_erro(mensagem_upload)
                     return
             
             # Busca configurações (com cache)
@@ -906,16 +911,15 @@ async def processar_processo_stream(
                             codigos_primeiro = filtro.get_codigos_primeiro_documento(tipo_peca_inicial)
                             if codigos:
                                 orq.agente1.atualizar_codigos_permitidos(codigos, codigos_primeiro)
-                                yield f"data: {json.dumps({'tipo': 'info', 'mensagem': f'Filtro ativado: {len(codigos)} categorias para {tipo_peca_inicial}'})}\n\n"
+                                yield stream_helper.format_info(f'Filtro ativado: {len(codigos)} categorias para {tipo_peca_inicial}')
                     except Exception as e:
-                        import traceback
                         print(f"[ROUTER] ERRO ao carregar filtro de categorias: {e}")
                         print(f"[ROUTER] Traceback: {traceback.format_exc()}")
                 
                 # === EARLY PARECER CHECK (pré-Agent 1) ===
                 parecer_config_early = load_parecer_natjus_config(db, use_cache=False)
                 if piece_requires_parecer(tipo_peca_inicial, parecer_config_early) and not req.parecer_upload_id and req.parecer_user_choice_when_missing != "continue_without":
-                    yield f"data: {json.dumps({'tipo': 'info', 'mensagem': 'Verificando documentos do processo...'})}\n\n"
+                    yield stream_helper.format_info('Verificando documentos do processo...')
                     try:
                         docs_metadata = await orq.agente1.consultar_codigos_documentos(cnj_limpo)
                         parecer_status_early = evaluate_parecer_status(
@@ -929,7 +933,10 @@ async def processar_processo_stream(
                                 "[PARECER-NATJUS] Early check: parecer ausente (pre-Agent 1): cnj=%s tipo_peca=%s",
                                 cnj_limpo, tipo_peca_inicial,
                             )
-                            yield f"data: {json.dumps({'tipo': 'parecer_natjus_ausente', 'titulo': 'Parecer NATJus não encontrado', 'mensagem': 'Não foi encontrado parecer NATJus no processo. Ele é essencial para a geração adequada desta peça.', 'instrucao': 'Anexe o parecer em PDF para prosseguir.', 'tipo_peca': tipo_peca_inicial, 'modo_atual': 'automatico', 'parecer_required': True, 'parecer_found': False, 'parecer_document_codes': parecer_status_early.get('parecer_document_codes', [])})}\n\n"
+                            yield stream_helper.format_parecer_natjus_ausente(
+                                tipo_peca=tipo_peca_inicial,
+                                parecer_document_codes=parecer_status_early.get('parecer_document_codes', []),
+                            )
                             return
                     except Exception as e:
                         logger.warning("[PARECER-NATJUS] Early check falhou, continuando com pipeline normal: %s", e)
@@ -937,7 +944,7 @@ async def processar_processo_stream(
                 # Agente 1: Coletor TJ-MS
                 print(f"[ROUTER] >>> Iniciando Agente 1...")
                 tracker.mark("agente1_start")
-                yield f"data: {json.dumps({'tipo': 'agente', 'agente': 1, 'status': 'ativo', 'mensagem': 'Baixando documentos do TJ-MS...'})}\n\n"
+                yield stream_helper.format_agente(1, "ativo", "Baixando documentos do TJ-MS...")
 
                 resultado_agente1 = await orq.agente1.coletar_e_resumir(cnj_limpo)
 
@@ -950,11 +957,12 @@ async def processar_processo_stream(
 
                 if resultado_agente1.erro:
                     print(f"[ROUTER] Agente 1 retornou erro: {resultado_agente1.erro}")
-                    yield f"data: {json.dumps({'tipo': 'agente', 'agente': 1, 'status': 'erro', 'mensagem': resultado_agente1.erro})}\n\n"
-                    yield f"data: {json.dumps({'tipo': 'erro', 'mensagem': resultado_agente1.erro})}\n\n"
+                    evt_agente, evt_erro = stream_helper.format_agente_erro(1, resultado_agente1.erro)
+                    yield evt_agente
+                    yield evt_erro
                     return
 
-                yield f"data: {json.dumps({'tipo': 'agente', 'agente': 1, 'status': 'concluido', 'mensagem': f'{resultado_agente1.documentos_analisados} documentos processados'})}\n\n"
+                yield stream_helper.format_agente(1, "concluido", f'{resultado_agente1.documentos_analisados} documentos processados')
                 
                 # Usa o tipo de peça inicial (já determinado acima)
                 tipo_peca = tipo_peca_inicial
@@ -966,7 +974,7 @@ async def processar_processo_stream(
                 
                 if not tipo_peca:
                     modo_automatico = True
-                    yield f"data: {json.dumps({'tipo': 'agente', 'agente': 2, 'status': 'ativo', 'mensagem': 'Detectando tipo de peça automaticamente...'})}\n\n"
+                    yield stream_helper.format_agente(2, "ativo", "Detectando tipo de peça automaticamente...")
                     
                     # Detecta o tipo de peça via IA
                     deteccao_tipo = await orq.agente2.detectar_tipo_peca(resultado_agente1.resumo_consolidado)
@@ -975,18 +983,18 @@ async def processar_processo_stream(
                     if tipo_peca:
                         confianca = deteccao_tipo.get("confianca", "media")
                         justificativa = deteccao_tipo.get("justificativa", "")
-                        yield f"data: {json.dumps({'tipo': 'info', 'mensagem': f'Tipo detectado: {tipo_peca} (confiança: {confianca})'})}\n\n"
+                        yield stream_helper.format_info(f'Tipo detectado: {tipo_peca} (confiança: {confianca})')
                     else:
                         # Fallback se não conseguiu detectar
                         tipo_peca = "contestacao"
-                        yield f"data: {json.dumps({'tipo': 'info', 'mensagem': 'Não foi possível detectar automaticamente. Usando: contestação'})}\n\n"
+                        yield stream_helper.format_info('Não foi possível detectar automaticamente. Usando: contestação')
                 
                 # No modo automático, após detectar o tipo, filtra os resumos
                 if modo_automatico and tipo_peca:
                     try:
                         codigos_tipo = filtro.get_codigos_permitidos(tipo_peca) if filtro.tem_configuracao() else None
                         if codigos_tipo:
-                            yield f"data: {json.dumps({'tipo': 'info', 'mensagem': f'Filtrando resumos para {tipo_peca}: {len(codigos_tipo)} categorias'})}\n\n"
+                            yield stream_helper.format_info(f'Filtrando resumos para {tipo_peca}: {len(codigos_tipo)} categorias')
                             
                             # Usa o método do agente para filtrar e remontar o resumo
                             resumo_para_geracao = orq.agente1.filtrar_e_remontar_resumo(
@@ -1006,7 +1014,7 @@ async def processar_processo_stream(
                         upload_metadata=parecer_upload_metadata,
                     )
                     if parecer_upload_extracao.get("success"):
-                        yield f"data: {json.dumps({'tipo': 'info', 'mensagem': 'Parecer NATJus do upload processado em JSON tecnico (categorias-resumo-json).'})}\n\n"
+                        yield stream_helper.format_info('Parecer NATJus do upload processado em JSON tecnico (categorias-resumo-json).')
                         tracker.set_metadata("natjus_extraction_success", True)
                         logger.info(
                             "[PARECER-NATJUS] Extração JSON bem-sucedida: upload_id=%s "
@@ -1060,7 +1068,7 @@ async def processar_processo_stream(
                         tipo_peca,
                         config_error_message,
                     )
-                    yield f"data: {json.dumps({'tipo': 'erro', 'mensagem': config_error_message})}\n\n"
+                    yield stream_helper.format_erro(config_error_message)
                     return
 
                 if parecer_status.get("parecer_required") and not parecer_status.get("parecer_found") and req.parecer_user_choice_when_missing != "continue_without":
@@ -1070,11 +1078,14 @@ async def processar_processo_stream(
                         tipo_peca,
                         parecer_status.get("parecer_document_codes"),
                     )
-                    yield f"data: {json.dumps({'tipo': 'parecer_natjus_ausente', 'titulo': 'Parecer NATJus não encontrado', 'mensagem': 'Não foi encontrado parecer NATJus no processo. Ele é essencial para a geração adequada desta peça.', 'instrucao': 'Anexe o parecer em PDF para prosseguir.', 'tipo_peca': tipo_peca, 'modo_atual': 'automatico', 'parecer_required': True, 'parecer_found': False, 'parecer_document_codes': parecer_status.get('parecer_document_codes', [])})}\n\n"
+                    yield stream_helper.format_parecer_natjus_ausente(
+                        tipo_peca=tipo_peca,
+                        parecer_document_codes=parecer_status.get('parecer_document_codes', []),
+                    )
                     return
-                
+
                 tracker.mark("agente2_start")
-                yield f"data: {json.dumps({'tipo': 'agente', 'agente': 2, 'status': 'ativo', 'mensagem': 'Analisando e ativando prompts...'})}\n\n"
+                yield stream_helper.format_agente(2, "ativo", "Analisando e ativando prompts...")
 
                 # Extrai dados das variáveis dos resumos JSON para avaliação determinística
                 dados_extracao = consolidar_dados_extracao(resultado_agente1)
@@ -1114,12 +1125,13 @@ async def processar_processo_stream(
                 tracker.mark("agente2_done", modulos=len(resultado_agente2.modulos_ids) if not resultado_agente2.erro else 0)
 
                 if resultado_agente2.erro:
-                    yield f"data: {json.dumps({'tipo': 'agente', 'agente': 2, 'status': 'erro', 'mensagem': resultado_agente2.erro})}\n\n"
-                    yield f"data: {json.dumps({'tipo': 'erro', 'mensagem': resultado_agente2.erro})}\n\n"
+                    evt_agente, evt_erro = stream_helper.format_agente_erro(2, resultado_agente2.erro)
+                    yield evt_agente
+                    yield evt_erro
                     return
-                
-                yield f"data: {json.dumps({'tipo': 'agente', 'agente': 2, 'status': 'concluido', 'mensagem': f'{len(resultado_agente2.modulos_ids)} módulos ativados'})}\n\n"
-                
+
+                yield stream_helper.format_agente(2, "concluido", f'{len(resultado_agente2.modulos_ids)} módulos ativados')
+
                 # Agente 3: Gerador (COM STREAMING REAL)
                 tracker.mark("prompt_build_start")
 
@@ -1131,11 +1143,11 @@ async def processar_processo_stream(
                 )
                 tracker.set_metadata("agent3_resumo_size", _resumo_size)
 
-                yield f"data: {json.dumps({'tipo': 'agente', 'agente': 3, 'status': 'ativo', 'mensagem': 'Gerando peça jurídica com IA...'})}\n\n"
+                yield stream_helper.format_agente(3, "ativo", "Gerando peça jurídica com IA...")
 
                 # Log se há observação do usuário
                 if req.observacao_usuario:
-                    yield f"data: {json.dumps({'tipo': 'info', 'mensagem': 'Observações do usuário serão consideradas na geração'})}\n\n"
+                    yield stream_helper.format_info('Observações do usuário serão consideradas na geração')
 
                 # Usa versão STREAMING do Agente 3 para TTFT rápido
                 tracker.mark("prompt_build_done")
@@ -1160,7 +1172,7 @@ async def processar_processo_stream(
                         tracker.record_chunk(event['content'])
 
                         # Envia chunk de texto para o frontend em tempo real
-                        yield f"data: {json.dumps({'tipo': 'geracao_chunk', 'content': event['content']})}\n\n"
+                        yield stream_helper.format_geracao_chunk(event['content'])
 
                     elif event["tipo"] == "done":
                         tracker.mark("last_token")
@@ -1169,13 +1181,15 @@ async def processar_processo_stream(
                     elif event["tipo"] == "error":
                         tracker.mark("last_token")
                         resultado_agente3 = event["resultado"]
-                        yield f"data: {json.dumps({'tipo': 'agente', 'agente': 3, 'status': 'erro', 'mensagem': event['error']})}\n\n"
-                        yield f"data: {json.dumps({'tipo': 'erro', 'mensagem': event['error']})}\n\n"
+                        evt_agente, evt_erro = stream_helper.format_agente_erro(3, event['error'])
+                        yield evt_agente
+                        yield evt_erro
                         return
 
                 if resultado_agente3 and resultado_agente3.erro:
-                    yield f"data: {json.dumps({'tipo': 'agente', 'agente': 3, 'status': 'erro', 'mensagem': resultado_agente3.erro})}\n\n"
-                    yield f"data: {json.dumps({'tipo': 'erro', 'mensagem': resultado_agente3.erro})}\n\n"
+                    evt_agente, evt_erro = stream_helper.format_agente_erro(3, resultado_agente3.erro)
+                    yield evt_agente
+                    yield evt_erro
                     return
 
                 # BUGFIX: Verifica se conteúdo foi gerado (pode estar vazio se streaming falhou silenciosamente)
@@ -1185,11 +1199,12 @@ async def processar_processo_stream(
                     print(f"[AGENTE3]    - resultado_agente3 exists: {resultado_agente3 is not None}")
                     if resultado_agente3:
                         print(f"[AGENTE3]    - conteudo_markdown length: {len(resultado_agente3.conteudo_markdown) if resultado_agente3.conteudo_markdown else 'None'}")
-                    yield f"data: {json.dumps({'tipo': 'agente', 'agente': 3, 'status': 'erro', 'mensagem': erro_msg})}\n\n"
-                    yield f"data: {json.dumps({'tipo': 'erro', 'mensagem': erro_msg})}\n\n"
+                    evt_agente, evt_erro = stream_helper.format_agente_erro(3, erro_msg)
+                    yield evt_agente
+                    yield evt_erro
                     return
 
-                yield f"data: {json.dumps({'tipo': 'agente', 'agente': 3, 'status': 'concluido', 'mensagem': 'Peça gerada com sucesso!'})}\n\n"
+                yield stream_helper.format_agente(3, "concluido", "Peça gerada com sucesso!")
 
                 # Prepara lista de documentos processados para salvar
                 tracker.mark("postprocess_start")
@@ -1327,10 +1342,19 @@ async def processar_processo_stream(
                 except Exception as e:
                     print(f"[PERF] Erro ao salvar log: {e}")
 
-                yield f"data: {json.dumps({'tipo': 'sucesso', 'geracao_id': geracao.id, 'tipo_peca': tipo_peca, 'minuta_markdown': resultado_agente3.conteudo_markdown, 'performance': {'ttft_ms': perf_report['metrics'].get('ttft_ms'), 'total_ms': perf_report['total_ms'], 'request_id': tracker.request_id}})}\n\n"
+                yield stream_helper.format_sucesso(
+                    geracao_id=geracao.id,
+                    tipo_peca=tipo_peca,
+                    minuta_markdown=resultado_agente3.conteudo_markdown,
+                    performance={
+                        'ttft_ms': perf_report['metrics'].get('ttft_ms'),
+                        'total_ms': perf_report['total_ms'],
+                        'request_id': tracker.request_id,
+                    },
+                )
             else:
                 # Fallback sem orquestrador
-                yield f"data: {json.dumps({'tipo': 'info', 'mensagem': 'Usando modo simplificado...'})}\n\n"
+                yield stream_helper.format_info('Usando modo simplificado...')
                 resultado = await service.processar_processo(
                     numero_cnj=cnj_limpo,
                     numero_cnj_formatado=cnj_limpo,
@@ -1338,14 +1362,12 @@ async def processar_processo_stream(
                     resposta_usuario=req.resposta_usuario,
                     usuario_id=current_user.id
                 )
-                yield f"data: {json.dumps(resultado)}\n\n"
+                yield stream_helper.format_raw(resultado)
                 
         except asyncio.TimeoutError:
-            import traceback
             traceback.print_exc()
-            yield f"data: {json.dumps({'tipo': 'erro', 'mensagem': 'A solicitação demorou mais que o esperado. Tente com um pedido menor ou divida em partes.'})}\n\n"
+            yield stream_helper.format_erro('A solicitação demorou mais que o esperado. Tente com um pedido menor ou divida em partes.')
         except Exception as e:
-            import traceback
             traceback.print_exc()
             # Mensagem mais amigável para erros comuns
             erro_str = str(e)
@@ -1357,8 +1379,8 @@ async def processar_processo_stream(
                 mensagem_erro = 'Erro de conexão com o servidor. Verifique sua internet e tente novamente.'
             else:
                 mensagem_erro = f'Erro ao processar: {erro_str}'
-            yield f"data: {json.dumps({'tipo': 'erro', 'mensagem': mensagem_erro})}\n\n"
-    
+            yield stream_helper.format_erro(mensagem_erro)
+
     return StreamingResponse(
         event_generator(),
         media_type="text/event-stream",
@@ -1470,18 +1492,18 @@ async def processar_pdfs_stream(
     async def event_generator() -> AsyncGenerator[str, None]:
         try:
             # Evento inicial
-            yield f"data: {json.dumps({'tipo': 'inicio', 'mensagem': 'Processando arquivos PDF...'})}\n\n"
+            yield stream_helper.format_inicio(mensagem="Processando arquivos PDF...")
 
             # ==================================================================
             # ESTÁGIO 1: LEITURA E CLASSIFICAÇÃO DE DOCUMENTOS
             # ==================================================================
-            yield f"data: {json.dumps({'tipo': 'agente', 'agente': 1, 'status': 'ativo', 'mensagem': f'Lendo {len(arquivos)} arquivo(s)...'})}\n\n"
+            yield stream_helper.format_agente(1, "ativo", f'Lendo {len(arquivos)} arquivo(s)...')
 
             # Lê bytes de todos os PDFs
             documentos_bytes = []
             for i, arquivo in enumerate(arquivos):
                 if not arquivo.filename.lower().endswith('.pdf'):
-                    yield f"data: {json.dumps({'tipo': 'info', 'mensagem': f'Ignorando arquivo não-PDF: {arquivo.filename}'})}\n\n"
+                    yield stream_helper.format_info(f'Ignorando arquivo não-PDF: {arquivo.filename}')
                     continue
 
                 conteudo = await arquivo.read()
@@ -1491,14 +1513,14 @@ async def processar_pdfs_stream(
                     "bytes": conteudo,
                     "ordem": i + 1
                 })
-                yield f"data: {json.dumps({'tipo': 'info', 'mensagem': f'Lido: {arquivo.filename} ({len(conteudo)} bytes)'})}\n\n"
+                yield stream_helper.format_info(f'Lido: {arquivo.filename} ({len(conteudo)} bytes)')
 
             if not documentos_bytes:
-                yield f"data: {json.dumps({'tipo': 'erro', 'mensagem': 'Nenhum arquivo PDF válido encontrado.'})}\n\n"
+                yield stream_helper.format_erro('Nenhum arquivo PDF válido encontrado.')
                 return
 
             # Classifica cada documento
-            yield f"data: {json.dumps({'tipo': 'info', 'mensagem': 'Classificando documentos por categoria...'})}\n\n"
+            yield stream_helper.format_info('Classificando documentos por categoria...')
 
             from sistemas.gerador_pecas.document_classifier import DocumentClassifier
             from sistemas.gerador_pecas.document_selector import DocumentSelector
@@ -1510,7 +1532,7 @@ async def processar_pdfs_stream(
             for clf in classificacoes:
                 status = "fallback" if clf.fallback_aplicado else f"conf: {clf.confianca:.0%}"
                 source_label = {"text": "TEXTO", "ocr_text": "OCR", "full_image": "IMAGEM"}.get(clf.source.value, clf.source.value)
-                yield f"data: {json.dumps({'tipo': 'info', 'mensagem': f'• {clf.arquivo_nome}: {clf.categoria_nome} ({status}) [{source_label}]'})}\n\n"
+                yield stream_helper.format_info(f'• {clf.arquivo_nome}: {clf.categoria_nome} ({status}) [{source_label}]')
 
             # ==================================================================
             # ESTÁGIO 2: SELEÇÃO DE DOCUMENTOS (após saber tipo de peça)
@@ -1519,7 +1541,7 @@ async def processar_pdfs_stream(
 
             # Se não tem tipo de peça, detecta automaticamente
             if not tipo_peca_final:
-                yield f"data: {json.dumps({'tipo': 'info', 'mensagem': 'Detectando tipo de peça automaticamente...'})}\n\n"
+                yield stream_helper.format_info('Detectando tipo de peça automaticamente...')
 
                 # Busca configurações do modelo de geração
                 config_modelo = db.query(ConfiguracaoIA).filter(
@@ -1545,21 +1567,21 @@ async def processar_pdfs_stream(
                     deteccao = await service.orquestrador.agente2.detectar_tipo_peca(texto_resumo)
                     tipo_peca_final = deteccao.get("tipo_peca") or "contestacao"
                     confianca_tipo = deteccao.get("confianca", "media")
-                    yield f"data: {json.dumps({'tipo': 'info', 'mensagem': f'Tipo detectado: {tipo_peca_final} (confiança: {confianca_tipo})'})}\n\n"
+                    yield stream_helper.format_info(f'Tipo detectado: {tipo_peca_final} (confiança: {confianca_tipo})')
                 else:
                     tipo_peca_final = "contestacao"
-                    yield f"data: {json.dumps({'tipo': 'info', 'mensagem': 'Usando tipo padrão: contestação'})}\n\n"
+                    yield stream_helper.format_info('Usando tipo padrão: contestação')
 
             # Seleciona documentos primários e secundários
             seletor = DocumentSelector(db)
             selecao = seletor.selecionar_documentos(classificacoes, tipo_peca_final)
 
-            yield f"data: {json.dumps({'tipo': 'info', 'mensagem': f'Seleção: {len(selecao.documentos_primarios)} primário(s), {len(selecao.documentos_secundarios)} secundário(s)'})}\n\n"
+            yield stream_helper.format_info(f'Seleção: {len(selecao.documentos_primarios)} primário(s), {len(selecao.documentos_secundarios)} secundário(s)')
 
             # ==================================================================
             # ESTÁGIO 3: EXTRAÇÃO DE JSON POR CATEGORIA
             # ==================================================================
-            yield f"data: {json.dumps({'tipo': 'info', 'mensagem': 'Extraindo dados estruturados dos documentos...'})}\n\n"
+            yield stream_helper.format_info('Extraindo dados estruturados dos documentos...')
 
             from sistemas.gerador_pecas.extrator_resumo_json import (
                 FormatoResumo, gerar_prompt_extracao_json, gerar_prompt_extracao_json_imagem,
@@ -1621,7 +1643,7 @@ async def processar_pdfs_stream(
                 conteudo_pdf = extrair_conteudo_pdf(doc_data["bytes"])
 
                 # Prepara chamada de extração baseado no tipo de conteúdo
-                yield f"data: {json.dumps({'tipo': 'info', 'mensagem': f'Extraindo JSON de: {clf.arquivo_nome}...'})}\n\n"
+                yield stream_helper.format_info(f'Extraindo JSON de: {clf.arquivo_nome}...')
 
                 try:
                     if conteudo_pdf.tem_texto and conteudo_pdf.texto_qualidade == "good":
@@ -1640,7 +1662,6 @@ async def processar_pdfs_stream(
                         prompt = gerar_prompt_extracao_json_imagem(formato, db)
 
                         # Converte imagens para base64
-                        import base64
                         imagens_b64 = [base64.b64encode(img).decode() for img in conteudo_pdf.imagens[:5]]
 
                         resposta = await chamar_gemini_com_imagens_async(
@@ -1707,7 +1728,7 @@ async def processar_pdfs_stream(
                     "justificativa": clf.justificativa
                 })
 
-            yield f"data: {json.dumps({'tipo': 'agente', 'agente': 1, 'status': 'concluido', 'mensagem': f'{len(documentos_processados)} documento(s) processado(s) com extração JSON'})}\n\n"
+            yield stream_helper.format_agente(1, "concluido", f'{len(documentos_processados)} documento(s) processado(s) com extração JSON')
 
             # ==================================================================
             # ESTÁGIO 4: BUSCAR NAT NO PROCESSO DE ORIGEM (SE AGRAVO)
@@ -1725,12 +1746,12 @@ async def processar_pdfs_stream(
                 )
 
                 if nat_result.busca_realizada:
-                    yield f"data: {json.dumps({'tipo': 'info', 'mensagem': f'[NAT-ORIGEM] Buscando Parecer NAT no processo de origem: {nat_result.numero_processo_origem}...'})}\n\n"
+                    yield stream_helper.format_info(f'[NAT-ORIGEM] Buscando Parecer NAT no processo de origem: {nat_result.numero_processo_origem}...')
 
                 if nat_result.nat_encontrado and nat_result.nat_source == "origem":
                     # NAT encontrado no processo de origem - adiciona ao resumo
                     nat_source = "origem"
-                    yield f"data: {json.dumps({'tipo': 'info', 'mensagem': f'[NAT-ORIGEM] ✅ Parecer NAT encontrado no processo de origem!'})}\n\n"
+                    yield stream_helper.format_info('[NAT-ORIGEM] Parecer NAT encontrado no processo de origem!')
 
                     # Adiciona resumo do NAT aos resumos markdown
                     if nat_result.resumo_markdown:
@@ -1761,17 +1782,16 @@ async def processar_pdfs_stream(
 
                 elif nat_result.nat_encontrado and nat_result.nat_source == "pdfs_anexados":
                     nat_source = "pdfs_anexados"
-                    yield f"data: {json.dumps({'tipo': 'info', 'mensagem': '[NAT-ORIGEM] Parecer NAT já presente nos PDFs anexados'})}\n\n"
+                    yield stream_helper.format_info('[NAT-ORIGEM] Parecer NAT já presente nos PDFs anexados')
 
                 elif nat_result.busca_realizada and not nat_result.nat_encontrado:
-                    yield f"data: {json.dumps({'tipo': 'info', 'mensagem': f'[NAT-ORIGEM] ⚠ {nat_result.motivo}'})}\n\n"
+                    yield stream_helper.format_info(f'[NAT-ORIGEM] {nat_result.motivo}')
 
             except Exception as e:
                 print(f"[NAT-ORIGEM] Erro na busca de NAT para PDFs: {e}")
-                import traceback
                 traceback.print_exc()
                 # Não interrompe o fluxo - apenas loga o erro
-                yield f"data: {json.dumps({'tipo': 'info', 'mensagem': f'[NAT-ORIGEM] Busca de NAT não disponível: {str(e)}'})}\n\n"
+                yield stream_helper.format_info(f'[NAT-ORIGEM] Busca de NAT não disponível: {str(e)}')
 
             # ==================================================================
             # ESTÁGIO 5: MONTAR RESUMO CONSOLIDADO
@@ -1805,7 +1825,7 @@ async def processar_pdfs_stream(
             if service.orquestrador:
                 orq = service.orquestrador
 
-                yield f"data: {json.dumps({'tipo': 'agente', 'agente': 2, 'status': 'ativo', 'mensagem': 'Analisando e ativando prompts...'})}\n\n"
+                yield stream_helper.format_agente(2, "ativo", "Analisando e ativando prompts...")
 
                 # Log detalhado das variáveis extraídas para debug
                 if dados_extracao_consolidados:
@@ -1825,21 +1845,22 @@ async def processar_pdfs_stream(
                 )
 
                 if resultado_agente2.erro:
-                    yield f"data: {json.dumps({'tipo': 'agente', 'agente': 2, 'status': 'erro', 'mensagem': resultado_agente2.erro})}\n\n"
-                    yield f"data: {json.dumps({'tipo': 'erro', 'mensagem': resultado_agente2.erro})}\n\n"
+                    evt_agente, evt_erro = stream_helper.format_agente_erro(2, resultado_agente2.erro)
+                    yield evt_agente
+                    yield evt_erro
                     return
 
                 # Info sobre modo de ativação
                 modo_info = resultado_agente2.modo_ativacao or "llm"
                 det_count = resultado_agente2.modulos_ativados_det or 0
                 llm_count = resultado_agente2.modulos_ativados_llm or 0
-                yield f"data: {json.dumps({'tipo': 'agente', 'agente': 2, 'status': 'concluido', 'mensagem': f'{len(resultado_agente2.modulos_ids)} módulos ({det_count} det, {llm_count} LLM)'})}\n\n"
+                yield stream_helper.format_agente(2, "concluido", f'{len(resultado_agente2.modulos_ids)} módulos ({det_count} det, {llm_count} LLM)')
 
                 # Agente 3: Gerador
-                yield f"data: {json.dumps({'tipo': 'agente', 'agente': 3, 'status': 'ativo', 'mensagem': 'Gerando peça jurídica com IA...'})}\n\n"
+                yield stream_helper.format_agente(3, "ativo", "Gerando peça jurídica com IA...")
 
                 if observacao_usuario:
-                    yield f"data: {json.dumps({'tipo': 'info', 'mensagem': 'Observações do usuário serão consideradas na geração'})}\n\n"
+                    yield stream_helper.format_info('Observações do usuário serão consideradas na geração')
 
                 # Usa versão STREAMING do Agente 3 para TTFT rápido
                 resultado_agente3 = None
@@ -1853,31 +1874,34 @@ async def processar_pdfs_stream(
                 ):
                     if event["tipo"] == "chunk":
                         # Envia chunk de texto para o frontend em tempo real
-                        yield f"data: {json.dumps({'tipo': 'geracao_chunk', 'content': event['content']})}\n\n"
+                        yield stream_helper.format_geracao_chunk(event['content'])
 
                     elif event["tipo"] == "done":
                         resultado_agente3 = event["resultado"]
 
                     elif event["tipo"] == "error":
                         resultado_agente3 = event["resultado"]
-                        yield f"data: {json.dumps({'tipo': 'agente', 'agente': 3, 'status': 'erro', 'mensagem': event['error']})}\n\n"
-                        yield f"data: {json.dumps({'tipo': 'erro', 'mensagem': event['error']})}\n\n"
+                        evt_agente, evt_erro = stream_helper.format_agente_erro(3, event['error'])
+                        yield evt_agente
+                        yield evt_erro
                         return
 
                 if resultado_agente3 and resultado_agente3.erro:
-                    yield f"data: {json.dumps({'tipo': 'agente', 'agente': 3, 'status': 'erro', 'mensagem': resultado_agente3.erro})}\n\n"
-                    yield f"data: {json.dumps({'tipo': 'erro', 'mensagem': resultado_agente3.erro})}\n\n"
+                    evt_agente, evt_erro = stream_helper.format_agente_erro(3, resultado_agente3.erro)
+                    yield evt_agente
+                    yield evt_erro
                     return
 
                 # BUGFIX: Verifica se conteúdo foi gerado (pode estar vazio se streaming falhou silenciosamente)
                 if not resultado_agente3 or not resultado_agente3.conteudo_markdown or not resultado_agente3.conteudo_markdown.strip():
                     erro_msg = "A geração não retornou conteúdo. Possível timeout ou erro na API de IA. Tente novamente."
                     print(f"[AGENTE3] ERRO: Conteúdo vazio após streaming (curadoria)!")
-                    yield f"data: {json.dumps({'tipo': 'agente', 'agente': 3, 'status': 'erro', 'mensagem': erro_msg})}\n\n"
-                    yield f"data: {json.dumps({'tipo': 'erro', 'mensagem': erro_msg})}\n\n"
+                    evt_agente, evt_erro = stream_helper.format_agente_erro(3, erro_msg)
+                    yield evt_agente
+                    yield evt_erro
                     return
 
-                yield f"data: {json.dumps({'tipo': 'agente', 'agente': 3, 'status': 'concluido', 'mensagem': 'Peça gerada com sucesso!'})}\n\n"
+                yield stream_helper.format_agente(3, "concluido", "Peça gerada com sucesso!")
 
                 # Salva no banco
                 geracao = GeracaoPeca(
@@ -1907,16 +1931,14 @@ async def processar_pdfs_stream(
 
                 criar_versao_inicial(db, geracao.id, resultado_agente3.conteudo_markdown)
 
-                yield f"data: {json.dumps({'tipo': 'sucesso', 'geracao_id': geracao.id, 'tipo_peca': tipo_peca_final, 'minuta_markdown': resultado_agente3.conteudo_markdown})}\n\n"
+                yield stream_helper.format_sucesso(geracao.id, tipo_peca_final, resultado_agente3.conteudo_markdown)
             else:
-                yield f"data: {json.dumps({'tipo': 'erro', 'mensagem': 'Orquestrador de agentes não disponível'})}\n\n"
+                yield stream_helper.format_erro('Orquestrador de agentes não disponível')
 
         except asyncio.TimeoutError:
-            import traceback
             traceback.print_exc()
-            yield f"data: {json.dumps({'tipo': 'erro', 'mensagem': 'A solicitação demorou mais que o esperado. Tente com menos arquivos ou documentos menores.'})}\n\n"
+            yield stream_helper.format_erro('A solicitação demorou mais que o esperado. Tente com menos arquivos ou documentos menores.')
         except Exception as e:
-            import traceback
             traceback.print_exc()
             # Mensagem mais amigável para erros comuns
             erro_str = str(e)
@@ -1928,7 +1950,7 @@ async def processar_pdfs_stream(
                 mensagem_erro = 'Erro de conexão com o servidor. Verifique sua internet e tente novamente.'
             else:
                 mensagem_erro = f'Erro ao processar: {erro_str}'
-            yield f"data: {json.dumps({'tipo': 'erro', 'mensagem': mensagem_erro})}\n\n"
+            yield stream_helper.format_erro(mensagem_erro)
 
     return StreamingResponse(
         event_generator(),
@@ -2058,14 +2080,12 @@ async def editar_minuta(
         return resultado
         
     except asyncio.TimeoutError:
-        import traceback
         traceback.print_exc()
         return {
             "status": "erro",
             "mensagem": "A edição demorou mais que o esperado. Tente um pedido de alteração mais simples."
         }
     except Exception as e:
-        import traceback
         traceback.print_exc()
         erro_str = str(e)
         # Mensagem mais amigável para erros comuns
@@ -2148,7 +2168,6 @@ async def editar_minuta_stream(
         )
 
     except Exception as e:
-        import traceback
         traceback.print_exc()
 
         # Retorna erro como SSE para compatibilidade
@@ -2228,7 +2247,6 @@ async def exportar_docx(
             detail=f"Módulo de conversão não disponível: {str(e)}"
         )
     except Exception as e:
-        import traceback
         traceback.print_exc()
         raise HTTPException(
             status_code=500,
@@ -2251,13 +2269,7 @@ async def download_documento(
             detail="Documento não encontrado ou expirado"
         )
     
-    # Determina nome amigável do arquivo
-    # Extrai informações do nome do arquivo se disponível
-    if filename.startswith('peca_juridica_'):
-        download_name = filename
-    else:
-        # Nome já é amigável (contestacao_12345678_abc.docx)
-        download_name = filename
+    download_name = filename
     
     return FileResponse(
         filepath,
@@ -2644,8 +2656,6 @@ def _agrupar_documentos_por_descricao(docs: List) -> List:
     Agrupa documentos com mesma descrição juntados no mesmo minuto.
     Retorna lista de documentos agrupados (cada item pode ter múltiplos IDs).
     """
-    from collections import defaultdict
-    
     grupos = defaultdict(list)
     
     for doc in docs:
@@ -2697,7 +2707,6 @@ async def listar_documentos_processo(
     Documentos com mesma descrição e data (até 1 min) são agrupados.
     Se houver processamento anterior, usa descrição identificada pela IA.
     """
-    import aiohttp
     from sistemas.gerador_pecas.agente_tjms import (
         consultar_processo_async,
         extrair_documentos_xml,
@@ -2758,7 +2767,6 @@ async def listar_documentos_processo(
         }
         
     except Exception as e:
-        import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -2776,11 +2784,7 @@ async def baixar_documento_processo(
     Se ids contiver múltiplos IDs (separados por vírgula), faz merge dos PDFs.
     Retorna o PDF diretamente para visualização no navegador.
     """
-    import aiohttp
-    import base64
     from sistemas.gerador_pecas.agente_tjms import baixar_documentos_async
-    import xml.etree.ElementTree as ET
-    
     try:
         cnj_limpo = _limpar_cnj(numero_cnj)
         
@@ -2822,8 +2826,6 @@ async def baixar_documento_processo(
             pdf_bytes = pdfs_bytes[0][1]
         else:
             # Faz merge dos PDFs usando PyMuPDF
-            import fitz
-            
             # Ordena os PDFs pela ordem dos IDs na lista original
             id_order = {id: i for i, id in enumerate(lista_ids)}
             pdfs_bytes.sort(key=lambda x: id_order.get(x[0], 999))
@@ -2855,7 +2857,6 @@ async def baixar_documento_processo(
     except HTTPException:
         raise
     except Exception as e:
-        import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -3148,7 +3149,6 @@ async def curation_preview(
     except HTTPException:
         raise
     except Exception as e:
-        import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -3195,7 +3195,6 @@ async def curation_search(
         }
 
     except Exception as e:
-        import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
@@ -3241,7 +3240,7 @@ async def curation_generate_stream(
             tracker.set_metadata("numero_cnj", cnj_limpo)
             tracker.set_metadata("modo", "semi_automatico")
 
-            yield f"data: {json.dumps({'tipo': 'inicio', 'mensagem': 'Iniciando geracao com modulos curados...'})}\n\n"
+            yield stream_helper.format_inicio(mensagem="Iniciando geracao com modulos curados...")
 
             # Busca modelo configurado
             modelo = config_cache.get_config(
@@ -3264,7 +3263,7 @@ async def curation_generate_stream(
             tracker.set_metadata("parecer_source", parecer_context.get("parecer_source"))
 
             if not resumo_consolidado:
-                yield f"data: {json.dumps({'tipo': 'agente', 'agente': 1, 'status': 'ativo', 'mensagem': 'Coletando documentos...'})}\n\n"
+                yield stream_helper.format_agente(1, "ativo", "Coletando documentos...")
 
                 service = GeradorPecasService(
                     modelo=modelo,
@@ -3274,7 +3273,7 @@ async def curation_generate_stream(
                 )
 
                 if not service.orquestrador:
-                    yield f"data: {json.dumps({'tipo': 'erro', 'mensagem': 'Orquestrador nao disponivel'})}\n\n"
+                    yield stream_helper.format_erro('Orquestrador nao disponivel')
                     return
 
                 orq = service.orquestrador
@@ -3294,7 +3293,7 @@ async def curation_generate_stream(
                 resultado_agente1 = await orq.agente1.coletar_e_resumir(cnj_limpo)
 
                 if resultado_agente1.erro:
-                    yield f"data: {json.dumps({'tipo': 'erro', 'mensagem': resultado_agente1.erro})}\n\n"
+                    yield stream_helper.format_erro(resultado_agente1.erro)
                     return
 
                 resumo_consolidado = resultado_agente1.resumo_consolidado
@@ -3302,10 +3301,10 @@ async def curation_generate_stream(
                 if "_parecer_natjus" not in dados_extracao:
                     dados_extracao["_parecer_natjus"] = parecer_context
 
-                yield f"data: {json.dumps({'tipo': 'agente', 'agente': 1, 'status': 'concluido', 'mensagem': f'{resultado_agente1.documentos_analisados} docs'})}\n\n"
+                yield stream_helper.format_agente(1, "concluido", f'{resultado_agente1.documentos_analisados} docs')
 
             # ====== MONTA PROMPT CURADO ======
-            yield f"data: {json.dumps({'tipo': 'info', 'mensagem': f'Montando prompt com {len(req.modulos_ids_curados)} modulos curados...'})}\n\n"
+            yield stream_helper.format_info(f'Montando prompt com {len(req.modulos_ids_curados)} modulos curados...')
 
             # Carrega prompts base e de peca via loader centralizado
             from sistemas.gerador_pecas.services_prompt_loader import carregar_prompt_sistema, carregar_prompt_peca
@@ -3410,10 +3409,10 @@ async def curation_generate_stream(
             prompt_conteudo = "\n".join(partes_conteudo)
 
             # ====== AGENTE 3: GERACAO (STREAMING) ======
-            yield f"data: {json.dumps({'tipo': 'agente', 'agente': 3, 'status': 'ativo', 'mensagem': 'Gerando peca juridica...'})}\n\n"
+            yield stream_helper.format_agente(3, "ativo", "Gerando peca juridica...")
 
             if req.observacao_usuario:
-                yield f"data: {json.dumps({'tipo': 'info', 'mensagem': 'Observacoes do usuario serao consideradas'})}\n\n"
+                yield stream_helper.format_info('Observacoes do usuario serao consideradas')
 
             # Inicializa servico para usar _executar_agente3_stream
             service = GeradorPecasService(
@@ -3424,7 +3423,7 @@ async def curation_generate_stream(
             )
 
             if not service.orquestrador:
-                yield f"data: {json.dumps({'tipo': 'erro', 'mensagem': 'Orquestrador nao disponivel'})}\n\n"
+                yield stream_helper.format_erro('Orquestrador nao disponivel')
                 return
 
             orq = service.orquestrador
@@ -3447,18 +3446,18 @@ async def curation_generate_stream(
                         tracker.mark("first_token")
                         first_chunk = True
                     tracker.record_chunk(event['content'])
-                    yield f"data: {json.dumps({'tipo': 'geracao_chunk', 'content': event['content']})}\n\n"
+                    yield stream_helper.format_geracao_chunk(event['content'])
                 elif event["tipo"] == "done":
                     tracker.mark("last_token")
                     resultado_agente3 = event["resultado"]
                 elif event["tipo"] == "error":
                     tracker.mark("last_token")
                     resultado_agente3 = event["resultado"]
-                    yield f"data: {json.dumps({'tipo': 'erro', 'mensagem': event['error']})}\n\n"
+                    yield stream_helper.format_erro(event['error'])
                     return
 
             if resultado_agente3 and resultado_agente3.erro:
-                yield f"data: {json.dumps({'tipo': 'erro', 'mensagem': resultado_agente3.erro})}\n\n"
+                yield stream_helper.format_erro(resultado_agente3.erro)
                 return
 
             # BUGFIX: Verifica se conteúdo foi gerado (pode estar vazio se streaming falhou silenciosamente)
@@ -3468,11 +3467,12 @@ async def curation_generate_stream(
                 print(f"[AGENTE3-CURADO]    - resultado_agente3 exists: {resultado_agente3 is not None}")
                 if resultado_agente3:
                     print(f"[AGENTE3-CURADO]    - conteudo_markdown length: {len(resultado_agente3.conteudo_markdown) if resultado_agente3.conteudo_markdown else 'None'}")
-                yield f"data: {json.dumps({'tipo': 'agente', 'agente': 3, 'status': 'erro', 'mensagem': erro_msg})}\n\n"
-                yield f"data: {json.dumps({'tipo': 'erro', 'mensagem': erro_msg})}\n\n"
+                evt_agente, evt_erro = stream_helper.format_agente_erro(3, erro_msg)
+                yield evt_agente
+                yield evt_erro
                 return
 
-            yield f"data: {json.dumps({'tipo': 'agente', 'agente': 3, 'status': 'concluido', 'mensagem': 'Peca gerada!'})}\n\n"
+            yield stream_helper.format_agente(3, "concluido", "Peca gerada!")
 
             # ====== SALVA NO BANCO ======
             tracker.mark("db_save_start")
@@ -3594,12 +3594,21 @@ async def curation_generate_stream(
             except Exception:
                 pass
 
-            yield f"data: {json.dumps({'tipo': 'sucesso', 'geracao_id': geracao.id, 'tipo_peca': req.tipo_peca, 'modo': 'semi_automatico', 'modulos_curados': len(req.modulos_ids_curados), 'minuta_markdown': resultado_agente3.conteudo_markdown, 'performance': {'ttft_ms': perf_report['metrics'].get('ttft_ms'), 'total_ms': perf_report['total_ms']}})}\n\n"
+            yield stream_helper.format_sucesso(
+                geracao_id=geracao.id,
+                tipo_peca=req.tipo_peca,
+                minuta_markdown=resultado_agente3.conteudo_markdown,
+                performance={
+                    'ttft_ms': perf_report['metrics'].get('ttft_ms'),
+                    'total_ms': perf_report['total_ms'],
+                },
+                modo='semi_automatico',
+                modulos_curados=len(req.modulos_ids_curados),
+            )
 
         except Exception as e:
-            import traceback
             traceback.print_exc()
-            yield f"data: {json.dumps({'tipo': 'erro', 'mensagem': str(e)})}\n\n"
+            yield stream_helper.format_erro(str(e))
 
     return StreamingResponse(
         event_generator(),

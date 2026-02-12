@@ -15,12 +15,9 @@ Endpoints:
 """
 
 from fastapi import APIRouter, Depends, Query, HTTPException, Request
-from sqlalchemy.orm import Session
-from sqlalchemy import func, desc
 from typing import Optional, List
 from datetime import datetime, timedelta
 
-from database.connection import get_db
 from auth.dependencies import require_admin, get_optional_user
 from auth.models import User
 from admin.models_performance import PerformanceLog, RouteSystemMap
@@ -28,6 +25,9 @@ from admin.schemas_performance import (
     LogsResponse, SummaryResponse, CleanupResponse,
     RouteMapCreate, RouteMapUpdate, RouteMapResponse,
     TopRoutesResponse, FrontendMetricsRequest,
+)
+from admin.repositories_performance import (
+    PerformanceRepository, get_performance_repository,
 )
 from utils.timezone import to_iso_utc
 
@@ -98,7 +98,7 @@ async def list_logs(
     limit: int = Query(100, ge=1, le=500),
     offset: int = Query(0, ge=0),
     current_user: User = Depends(require_admin),
-    db: Session = Depends(get_db)
+    repo: PerformanceRepository = Depends(get_performance_repository)
 ):
     """
     Lista logs de performance com filtros.
@@ -114,26 +114,18 @@ async def list_logs(
     start_date = datetime.utcnow() - timedelta(hours=hours)
 
     # Carrega mapeamentos de rota->sistema
-    mappings = db.query(RouteSystemMap).all()
+    mappings = repo.listar_mapeamentos_simples()
 
-    query = db.query(PerformanceLog).filter(
-        PerformanceLog.created_at >= start_date
-    )
-
-    # Filtros
-    if route:
-        query = query.filter(PerformanceLog.route.contains(route))
-    if action:
-        query = query.filter(PerformanceLog.action == action)
-    if status:
-        query = query.filter(PerformanceLog.status == status)
-
-    # Ordena por data decrescente
-    query = query.order_by(desc(PerformanceLog.created_at))
-
-    # Executa query (busca mais para filtros calculados)
     fetch_multiplier = 2 if (bottleneck or system) else 1
-    logs = query.offset(offset).limit(limit * fetch_multiplier).all()
+    logs = repo.listar_logs(
+        start_date=start_date,
+        route=route,
+        action=action,
+        status=status,
+        limit=limit,
+        offset=offset,
+        fetch_multiplier=fetch_multiplier,
+    )
 
     # Converte para dict e aplica filtros calculados (bottleneck e system)
     result = []
@@ -165,7 +157,7 @@ async def list_logs(
 async def get_summary(
     hours: int = Query(24, ge=1, le=168, description="Periodo em horas"),
     current_user: User = Depends(require_admin),
-    db: Session = Depends(get_db)
+    repo: PerformanceRepository = Depends(get_performance_repository)
 ):
     """
     Retorna resumo estatistico focado em identificar gargalos.
@@ -179,31 +171,13 @@ async def get_summary(
     start_date = datetime.utcnow() - timedelta(hours=hours)
 
     # Total de logs
-    total_logs = db.query(func.count(PerformanceLog.id)).filter(
-        PerformanceLog.created_at >= start_date
-    ).scalar() or 0
+    total_logs = repo.contar_logs(start_date)
 
     # Medias de tempo
-    avg_query = db.query(
-        func.avg(PerformanceLog.total_ms).label('total'),
-        func.avg(PerformanceLog.llm_request_ms).label('llm'),
-        func.avg(PerformanceLog.db_total_ms).label('db'),
-        func.avg(PerformanceLog.json_parse_ms).label('parse'),
-    ).filter(
-        PerformanceLog.created_at >= start_date
-    ).first()
-
-    avg_times = {
-        'total': round(avg_query.total or 0, 1),
-        'llm': round(avg_query.llm or 0, 1),
-        'db': round(avg_query.db or 0, 1),
-        'parse': round(avg_query.parse or 0, 1),
-    }
+    avg_times = repo.obter_medias_tempo(start_date)
 
     # Busca logs para calcular bottleneck (campo calculado, nao pode filtrar direto)
-    logs = db.query(PerformanceLog).filter(
-        PerformanceLog.created_at >= start_date
-    ).order_by(desc(PerformanceLog.total_ms)).limit(500).all()
+    logs = repo.listar_logs_por_total_ms(start_date, limit=500)
 
     # Calcula distribuicao de bottleneck
     bottleneck_counts = {'LLM': 0, 'DB': 0, 'PARSE': 0, 'OUTRO': 0, '-': 0}
@@ -229,10 +203,7 @@ async def get_summary(
     del bottleneck_counts['-']
 
     # Erros recentes
-    errors = db.query(PerformanceLog).filter(
-        PerformanceLog.created_at >= start_date,
-        PerformanceLog.status == 'error'
-    ).order_by(desc(PerformanceLog.created_at)).limit(10).all()
+    errors = repo.listar_erros_recentes(start_date, limit=10)
 
     recent_errors = [{
         'route': e.route,
@@ -255,16 +226,12 @@ async def get_summary(
 @router.get("/actions")
 async def list_actions(
     current_user: User = Depends(require_admin),
-    db: Session = Depends(get_db)
+    repo: PerformanceRepository = Depends(get_performance_repository)
 ):
     """
     Lista todas as actions disponiveis para filtro.
     """
-    result = db.query(PerformanceLog.action).distinct().filter(
-        PerformanceLog.action.isnot(None)
-    ).all()
-
-    return {"actions": [r[0] for r in result if r[0]]}
+    return {"actions": repo.listar_actions_distintas()}
 
 
 @router.delete("/cleanup", response_model=CleanupResponse)
@@ -272,7 +239,7 @@ async def cleanup_logs(
     days: int = Query(7, ge=1, le=30, description="Remover logs mais antigos que X dias"),
     max_logs: Optional[int] = Query(10000, ge=100, le=50000, description="Manter apenas X logs mais recentes"),
     current_user: User = Depends(require_admin),
-    db: Session = Depends(get_db)
+    repo: PerformanceRepository = Depends(get_performance_repository)
 ):
     """
     Limpa logs antigos ou excedentes.
@@ -283,27 +250,15 @@ async def cleanup_logs(
     cutoff_date = datetime.utcnow() - timedelta(days=days)
 
     # Limpeza por idade
-    deleted += db.query(PerformanceLog).filter(
-        PerformanceLog.created_at < cutoff_date
-    ).delete(synchronize_session=False)
-
-    db.commit()
+    deleted += repo.remover_logs_antigos(cutoff_date)
 
     # Limpeza por quantidade
     if max_logs:
-        total = db.query(func.count(PerformanceLog.id)).scalar() or 0
+        total = repo.contar_total_logs()
         if total > max_logs:
-            # Encontra ID de corte
-            cutoff_log = db.query(PerformanceLog.id).order_by(
-                desc(PerformanceLog.created_at)
-            ).offset(max_logs).first()
-
-            if cutoff_log:
-                excess_deleted = db.query(PerformanceLog).filter(
-                    PerformanceLog.id < cutoff_log[0]
-                ).delete(synchronize_session=False)
-                deleted += excess_deleted
-                db.commit()
+            cutoff_id = repo.buscar_id_corte(max_logs)
+            if cutoff_id:
+                deleted += repo.remover_logs_por_id(cutoff_id)
 
     return CleanupResponse(
         deleted_count=deleted,
@@ -318,16 +273,12 @@ async def cleanup_logs(
 @router.get("/route-maps")
 async def list_route_maps(
     current_user: User = Depends(require_admin),
-    db: Session = Depends(get_db)
+    repo: PerformanceRepository = Depends(get_performance_repository)
 ):
     """
     Lista todos os mapeamentos de rota -> sistema.
     """
-    mappings = db.query(RouteSystemMap).order_by(
-        desc(RouteSystemMap.priority),
-        RouteSystemMap.route_pattern
-    ).all()
-
+    mappings = repo.listar_mapeamentos()
     return {"mappings": [m.to_dict() for m in mappings]}
 
 
@@ -335,15 +286,13 @@ async def list_route_maps(
 async def create_route_map(
     data: RouteMapCreate,
     current_user: User = Depends(require_admin),
-    db: Session = Depends(get_db)
+    repo: PerformanceRepository = Depends(get_performance_repository)
 ):
     """
     Cria um novo mapeamento de rota -> sistema.
     """
     # Verifica se ja existe
-    existing = db.query(RouteSystemMap).filter(
-        RouteSystemMap.route_pattern == data.route_pattern
-    ).first()
+    existing = repo.buscar_mapeamento_por_pattern(data.route_pattern)
     if existing:
         raise HTTPException(
             status_code=400,
@@ -367,9 +316,7 @@ async def create_route_map(
         match_type=data.match_type,
         priority=data.priority
     )
-    db.add(mapping)
-    db.commit()
-    db.refresh(mapping)
+    repo.criar_mapeamento(mapping)
 
     return mapping.to_dict()
 
@@ -379,21 +326,18 @@ async def update_route_map(
     map_id: int,
     data: RouteMapUpdate,
     current_user: User = Depends(require_admin),
-    db: Session = Depends(get_db)
+    repo: PerformanceRepository = Depends(get_performance_repository)
 ):
     """
     Atualiza um mapeamento existente.
     """
-    mapping = db.query(RouteSystemMap).filter(RouteSystemMap.id == map_id).first()
+    mapping = repo.buscar_mapeamento_por_id(map_id)
     if not mapping:
         raise HTTPException(status_code=404, detail="Mapeamento nao encontrado")
 
     # Verifica duplicidade de route_pattern se estiver alterando
     if data.route_pattern and data.route_pattern != mapping.route_pattern:
-        existing = db.query(RouteSystemMap).filter(
-            RouteSystemMap.route_pattern == data.route_pattern,
-            RouteSystemMap.id != map_id
-        ).first()
+        existing = repo.buscar_mapeamento_por_pattern(data.route_pattern, excluir_id=map_id)
         if existing:
             raise HTTPException(
                 status_code=400,
@@ -423,8 +367,7 @@ async def update_route_map(
     if data.priority is not None:
         mapping.priority = data.priority
 
-    db.commit()
-    db.refresh(mapping)
+    repo.atualizar_mapeamento(mapping)
 
     return mapping.to_dict()
 
@@ -433,17 +376,16 @@ async def update_route_map(
 async def delete_route_map(
     map_id: int,
     current_user: User = Depends(require_admin),
-    db: Session = Depends(get_db)
+    repo: PerformanceRepository = Depends(get_performance_repository)
 ):
     """
     Remove um mapeamento.
     """
-    mapping = db.query(RouteSystemMap).filter(RouteSystemMap.id == map_id).first()
+    mapping = repo.buscar_mapeamento_por_id(map_id)
     if not mapping:
         raise HTTPException(status_code=404, detail="Mapeamento nao encontrado")
 
-    db.delete(mapping)
-    db.commit()
+    repo.remover_mapeamento(mapping)
 
     return {"message": "Mapeamento removido", "id": map_id}
 
@@ -453,7 +395,7 @@ async def get_top_routes(
     hours: int = Query(24, ge=1, le=168, description="Periodo em horas"),
     limit: int = Query(20, ge=1, le=100, description="Quantidade de rotas"),
     current_user: User = Depends(require_admin),
-    db: Session = Depends(get_db)
+    repo: PerformanceRepository = Depends(get_performance_repository)
 ):
     """
     Lista as rotas mais frequentes com contagem.
@@ -463,19 +405,10 @@ async def get_top_routes(
     start_date = datetime.utcnow() - timedelta(hours=hours)
 
     # Carrega mapeamentos existentes
-    mappings = db.query(RouteSystemMap).all()
+    mappings = repo.listar_mapeamentos_simples()
 
     # Agrupa por rota
-    routes = db.query(
-        PerformanceLog.route,
-        func.count(PerformanceLog.id).label('count')
-    ).filter(
-        PerformanceLog.created_at >= start_date
-    ).group_by(
-        PerformanceLog.route
-    ).order_by(
-        desc('count')
-    ).limit(limit).all()
+    routes = repo.agrupar_rotas(start_date, limit=limit)
 
     result = []
     for route, count in routes:
@@ -493,13 +426,12 @@ async def get_top_routes(
 @router.get("/systems")
 async def list_systems(
     current_user: User = Depends(require_admin),
-    db: Session = Depends(get_db)
+    repo: PerformanceRepository = Depends(get_performance_repository)
 ):
     """
     Lista todos os nomes de sistema disponiveis para filtro.
     """
-    mappings = db.query(RouteSystemMap.system_name).distinct().all()
-    systems = [m[0] for m in mappings if m[0]]
+    systems = repo.listar_nomes_sistemas()
     # Adiciona 'unknown' para filtrar logs sem mapeamento
     systems.append("unknown")
     return {"systems": sorted(set(systems))}
@@ -513,8 +445,8 @@ async def list_systems(
 async def receive_frontend_metrics(
     metrics: FrontendMetricsRequest,
     request: Request,
-    db: Session = Depends(get_db),
-    current_user: Optional[User] = Depends(get_optional_user)
+    current_user: Optional[User] = Depends(get_optional_user),
+    repo: PerformanceRepository = Depends(get_performance_repository)
 ):
     """
     Recebe métricas de performance coletadas no frontend.
@@ -556,8 +488,7 @@ async def receive_frontend_metrics(
             json_size_chars=int(metrics.click_to_request_ms)
         )
 
-        db.add(log)
-        db.commit()
+        repo.salvar_log(log)
 
         logger.info(
             f"[PERF-FRONTEND] {metrics.action}: "

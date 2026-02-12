@@ -2,19 +2,19 @@
 """
 Serviço de streaming para o Gerador de Peças.
 
-Este módulo contém helpers de formatação de eventos SSE (Server-Sent Events)
+Centraliza TODA a formatação de eventos SSE (Server-Sent Events)
 para os endpoints de streaming do gerador de peças.
 
 Delega formatação base ao SSEEventFormatter compartilhado.
 Métodos específicos do domínio (ex: parecer NATJus) estendem o formatador base.
 
-IMPORTANTE: Este módulo contém APENAS helpers de formatação.
-A lógica dos generators permanece no router.py devido à complexidade
-e acoplamento com orquestradores e dependências.
+Os generators permanecem no router.py, mas TODOS os yields passam por este helper,
+eliminando json.dumps inline e padronizando o formato dos eventos.
 """
+import json
 from typing import Any
 
-from services.shared.sse import SSEEventFormatter
+from app.services.shared.sse import SSEEventFormatter
 
 
 class GeradorStreamHelper:
@@ -47,6 +47,21 @@ class GeradorStreamHelper:
             String formatada no padrão SSE: "data: {json}\\n\\n"
         """
         return SSEEventFormatter.format(event_type, data)
+
+    @staticmethod
+    def format_raw(data: dict[str, Any]) -> str:
+        """
+        Formata um dict arbitrário como evento SSE (sem campo 'tipo' adicional).
+
+        Usado para payloads que já possuem estrutura própria (ex: fallback sem orquestrador).
+
+        Args:
+            data: Dicionário a ser serializado como JSON
+
+        Returns:
+            String formatada no padrão SSE: "data: {json}\\n\\n"
+        """
+        return f"data: {json.dumps(data, ensure_ascii=False)}\n\n"
 
     @staticmethod
     def format_inicio(mensagem: str = "Iniciando processamento...", request_id: str | None = None) -> str:
@@ -82,6 +97,26 @@ class GeradorStreamHelper:
             mensagem: Mensagem descritiva do status
         """
         return SSEEventFormatter.agent_status(agente, status, mensagem)
+
+    @staticmethod
+    def format_agente_erro(agente: int, mensagem: str) -> tuple[str, str]:
+        """
+        Formata par de eventos para erro de agente: agente-erro + erro genérico.
+
+        Padrão recorrente no router: quando um agente falha, emite-se DOIS eventos
+        sequenciais — um de agente com status 'erro' e um de erro genérico.
+
+        Args:
+            agente: Número do agente (1, 2 ou 3)
+            mensagem: Mensagem de erro
+
+        Returns:
+            Tupla (evento_agente_erro, evento_erro) para yield sequencial
+        """
+        return (
+            SSEEventFormatter.agent_status(agente, "erro", mensagem),
+            SSEEventFormatter.error(mensagem),
+        )
 
     @staticmethod
     def format_geracao_chunk(content: str) -> str:
