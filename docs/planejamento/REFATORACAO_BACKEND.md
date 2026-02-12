@@ -51,7 +51,7 @@
 
 ### Checklist
 
-- [ ] **0.1** Importar todos os 62+ models em `migrations/env.py`
+- [x] **0.1** Importar todos os 62+ models em `migrations/env.py` ✅ `6e6e4e0` (72 tabelas)
   - Corrigir `GeminiCallLog` → `GeminiApiLog` (arquivo correto: `models_gemini_logs`)
   - Corrigir nomes errados: `TipoPeca/Pergunta/Prompt/Processo/Documento` → `GeracaoPeca/VersaoPeca/FeedbackPeca`
   - Corrigir `PedidoCalculo` → `GeracaoPedidoCalculo/LogChamadaIA/FeedbackPedidoCalculo`
@@ -63,10 +63,10 @@
   - Remover `TextNormalizerPattern` (nao e SQLAlchemy — sao Pydantic/dataclasses)
   - Remover try/except — se model nao importa, migration deve falhar
 
-- [ ] **0.2** Gerar migration baseline (snapshot do schema atual)
-  - `alembic revision --autogenerate -m "baseline_schema_completo"`
-  - Revisar SQL gerado, remover duplicatas
-  - Usar `if_not_exists=True` onde possivel
+- [x] **0.2** Gerar migration baseline (snapshot do schema atual) ✅ `5c9768a` (no-op baseline)
+  - Autogenerate detectou diffs (JSONB vs JSON, colunas extras, indexes manuais)
+  - Reescrito como no-op com discrepancias documentadas na docstring
+  - Aplicado ao banco local com sucesso
 
 - [ ] **0.3** Stampar banco de producao
   - `alembic stamp head` (marca sem aplicar SQL)
@@ -80,9 +80,10 @@
   - Deletar `Base.metadata.create_all(bind=engine)` (linha 95)
   - Manter `wait_for_db()` e `seed_admin_user()`
 
-- [ ] **0.6** Atualizar deploy
+- [x] **0.6** Atualizar deploy ✅ `4918e8b`
   - `Procfile`: `web: alembic upgrade head && uvicorn main:app --host 0.0.0.0 --port $PORT`
-  - CI: adicionar step `alembic upgrade head` antes dos testes
+  - CI: PostgreSQL 16 service + step `alembic upgrade head` antes dos testes
+  - CI: branch `refactor/*` adicionada aos triggers
 
 - [ ] **0.7** Criar `tests/test_alembic_migrations.py`
   - Validar upgrade/downgrade sem erros
@@ -282,5 +283,9 @@ Fase 5 (Split) pode iniciar apos Fase 2 ─────────────�
 
 | Data | Fase | O que foi feito | Commit |
 |------|------|-----------------|--------|
-| 2026-02-11 | — | Criado plano de refatoracao e branch `refactor/backend-cleanup` | — |
+| 2026-02-11 | — | Criado plano de refatoracao e branch `refactor/backend-cleanup` | `1970ec9` |
+| 2026-02-11 | 0.1 | env.py corrigido: 72 tabelas, ~50 models adicionados, nomes corrigidos, try/except removidos | `6e6e4e0` |
+| 2026-02-11 | 0.2 | Migration baseline (no-op) gerada e aplicada ao banco local | `5c9768a` |
+| 2026-02-11 | 2d | Removido import HTMLResponse nao usado em router_config_pecas.py | `8401dd8` |
+| 2026-02-11 | 0.6 | Procfile com `alembic upgrade head`, CI com PostgreSQL service + validacao migrations | `4918e8b` |
 | | | | |
