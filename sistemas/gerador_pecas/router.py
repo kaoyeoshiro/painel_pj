@@ -55,6 +55,7 @@ from sistemas.gerador_pecas.versoes import (
 )
 from admin.models import ConfiguracaoIA, PromptConfig
 from admin.models_prompt_groups import PromptGroup, PromptSubgroup
+from admin.repositories import ConfiguracaoIARepository, get_config_repo
 from sistemas.gerador_pecas.services_parecer_natjus import (
     build_parecer_audit_payload,
     evaluate_parecer_status,
@@ -2021,7 +2022,7 @@ def _montar_resumo_pdfs(documentos: List[Dict]) -> str:
 async def editar_minuta(
     req: EditarMinutaRequest,
     current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
+    config_repo: ConfiguracaoIARepository = Depends(get_config_repo),
 ):
     """
     Processa pedido de edição da minuta via chat.
@@ -2033,19 +2034,18 @@ async def editar_minuta(
         minuta_len = len(req.minuta_atual) if req.minuta_atual else 0
         mensagem_len = len(req.mensagem) if req.mensagem else 0
         historico_len = len(req.historico) if req.historico else 0
-        print(f"[EDITAR-MINUTA] 📝 Tamanho da minuta: {minuta_len:,} chars, mensagem: {mensagem_len:,} chars, histórico: {historico_len} msgs")
-        
-        # Busca configurações de IA
-        config_modelo = db.query(ConfiguracaoIA).filter(
-            ConfiguracaoIA.sistema == "gerador_pecas",
-            ConfiguracaoIA.chave == "modelo_geracao"
-        ).first()
-        modelo = config_modelo.valor if config_modelo else "anthropic/claude-3.5-sonnet"
-        
-        # Inicializa o serviço
+        logger.info(
+            "[EDITAR-MINUTA] Tamanho da minuta: %s chars, mensagem: %s chars, historico: %s msgs",
+            minuta_len, mensagem_len, historico_len
+        )
+
+        modelo = config_repo.get_valor(
+            "gerador_pecas", "modelo_geracao", default="anthropic/claude-3.5-sonnet"
+        )
+
         service = GeradorPecasService(
             modelo=modelo,
-            db=db
+            db=config_repo.db
         )
         
         # Processa a edição
@@ -2088,7 +2088,7 @@ async def editar_minuta_stream(
     request: Request,
     req: EditarMinutaRequest,
     current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
+    config_repo: ConfiguracaoIARepository = Depends(get_config_repo),
 ):
     """
     Processa edição da minuta via chat com streaming real.
@@ -2112,17 +2112,13 @@ async def editar_minuta_stream(
     try:
         tipo_peca = req.tipo_peca
 
-        # Busca configurações de IA
-        config_modelo = db.query(ConfiguracaoIA).filter(
-            ConfiguracaoIA.sistema == "gerador_pecas",
-            ConfiguracaoIA.chave == "modelo_geracao"
-        ).first()
-        modelo = config_modelo.valor if config_modelo else "anthropic/claude-3.5-sonnet"
+        modelo = config_repo.get_valor(
+            "gerador_pecas", "modelo_geracao", default="anthropic/claude-3.5-sonnet"
+        )
 
-        # Inicializa o serviço
         service = GeradorPecasService(
             modelo=modelo,
-            db=db
+            db=config_repo.db
         )
 
         # Generator de streaming (com busca de argumentos integrada)
