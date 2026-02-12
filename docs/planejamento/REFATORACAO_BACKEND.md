@@ -88,8 +88,9 @@
   - CI: PostgreSQL 16 service + step `alembic upgrade head` antes dos testes
   - CI: branch `refactor/*` adicionada aos triggers
 
-- [ ] **0.7** Criar `tests/test_alembic_migrations.py`
-  - Validar upgrade/downgrade sem erros
+- [x] **0.7** Criar `tests/test_alembic_migrations.py` ✅ `a2baa76`
+  - 9 testes: imports, cadeia, head unico, upgrade/downgrade
+  - Todos passando
 
 - [ ] **0.8** Documentar workflow Alembic em ADR
 
@@ -293,4 +294,5 @@ Fase 5 (Split) pode iniciar apos Fase 2 ─────────────�
 | 2026-02-11 | 0.6 | Procfile com `alembic upgrade head`, CI com PostgreSQL service + validacao migrations | `4918e8b` |
 | 2026-02-11 | 0.4 | 2 migrations: alter_column_types + update_constraint (idempotentes) | `c558ea4` |
 | 2026-02-11 | 0.5 | init_db.py: removido create_all() e run_migrations() (-1652 linhas, -66%) | `cdefff4` |
+| 2026-02-11 | 0.7 | 9 testes de migrations Alembic (imports, cadeia, upgrade/downgrade) | `a2baa76` |
 | | | | |
