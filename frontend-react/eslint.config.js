@@ -19,6 +19,12 @@ export default defineConfig([
       ecmaVersion: 2020,
       globals: globals.browser,
     },
+    rules: {
+      // Desabilitado: regra nova do react-hooks que gera falsos positivos
+      // quando hooks retornam objetos que misturam estado e refs (padrao vm = useHook()).
+      // A regra interpreta qualquer acesso a vm.prop como acesso a ref durante render.
+      'react-hooks/refs': 'off',
+    },
   },
   // ------------------------------------------------------------------
   // Regras de regressao: proibe fetch() direto e acesso a token em pages
