@@ -315,4 +315,5 @@ Fase 5 (Split) pode iniciar apos Fase 2 ─────────────�
 | 2026-02-11 | 2b | Unificado Gemini: removido gemini_client.py, 10 arquivos migrados (-64 linhas) | `4fcfef6` |
 | 2026-02-11 | 2d | Removido Jinja2Templates nao usado de router_config_pecas.py | `6dfc01d` |
 | 2026-02-11 | 2c | Mapeamento concluido (11 generators, ~2.230 linhas). Adiado para Fase 4 | — |
+| 2026-02-11 | 5a | 7 helpers extraidos de router_extraction.py → extraction_helpers.py (-459 linhas) | `1dbcac5` |
 | | | | |
