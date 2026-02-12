@@ -13,7 +13,6 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from sqlalchemy import func
 from typing import List, Optional
-from pydantic import BaseModel
 from datetime import datetime
 import json
 
@@ -38,67 +37,14 @@ from sistemas.gerador_pecas.services_parecer_natjus import (
     normalize_piece_type,
 )
 from sistemas.gerador_pecas.services_source_resolver import invalidar_cache_source_resolver
+from sistemas.gerador_pecas.schemas import (
+    CategoriaDocumentoBase, CategoriaDocumentoResponse,
+    TipoPecaBase, TipoPecaCreate, TipoPecaResponse,
+    AssociacaoCategoriasRequest, ParecerNatjusAdminConfigUpdateRequest,
+)
 
 router = APIRouter(prefix="/api/gerador-pecas/config", tags=["Config Peças"])
 templates = Jinja2Templates(directory="frontend/templates")
-
-
-# ===========================================
-# Schemas Pydantic
-# ===========================================
-
-class CategoriaDocumentoBase(BaseModel):
-    nome: str
-    titulo: str
-    descricao: Optional[str] = None
-    codigos_documento: List[int] = []
-    ativo: bool = True
-    ordem: int = 0
-    cor: Optional[str] = None
-    is_primeiro_documento: bool = False  # Se True, pega só o primeiro documento cronológico
-
-
-class CategoriaDocumentoResponse(CategoriaDocumentoBase):
-    id: int
-    criado_em: Optional[datetime] = None
-    atualizado_em: Optional[datetime] = None
-    
-    class Config:
-        from_attributes = True
-
-
-class TipoPecaBase(BaseModel):
-    nome: str
-    titulo: str
-    descricao: Optional[str] = None
-    icone: Optional[str] = None
-    ativo: bool = True
-    ordem: int = 0
-    is_padrao: bool = False
-    configuracoes: Optional[dict] = None
-
-
-class TipoPecaCreate(TipoPecaBase):
-    categorias_ids: List[int] = []
-
-
-class TipoPecaResponse(TipoPecaBase):
-    id: int
-    criado_em: Optional[datetime] = None
-    atualizado_em: Optional[datetime] = None
-    categorias_documento: List[CategoriaDocumentoResponse] = []
-    
-    class Config:
-        from_attributes = True
-
-
-class AssociacaoCategoriasRequest(BaseModel):
-    categorias_ids: List[int]
-
-
-class ParecerNatjusAdminConfigUpdateRequest(BaseModel):
-    parecer_required_for_piece_types: List[str] = []
-    parecer_document_codes: List[int] = []
 
 
 # ===========================================

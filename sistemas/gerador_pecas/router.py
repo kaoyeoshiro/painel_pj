@@ -12,7 +12,6 @@ import logging
 from datetime import datetime
 from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends, Query, UploadFile, File, Form, status, Request
 from fastapi.responses import FileResponse, StreamingResponse
-from pydantic import BaseModel
 from typing import Optional, List, Dict, Any, AsyncGenerator
 import fitz  # PyMuPDF para extração de texto de PDFs
 fitz.TOOLS.mupdf_warnings(False)  # Suprime warnings de imagens JPEG2000 corrompidas
@@ -35,6 +34,12 @@ from utils.rate_limit import limiter, LIMITS, get_user_identifier
 from utils.quota_manager import check_ai_quota
 from sistemas.gerador_pecas.models import GeracaoPeca, FeedbackPeca, VersaoPeca
 from sistemas.gerador_pecas.services import GeradorPecasService
+from sistemas.gerador_pecas.schemas import (
+    ProcessarProcessoRequest, ExportarDocxRequest, FeedbackRequest,
+    EditarMinutaRequest, BuscarArgumentosRequest,
+    SalvarMinutaRequest, SalvarMinutaComVersaoRequest,
+    CurationPreviewRequest, CurationSearchRequest, CurationGenerateRequest,
+)
 from sistemas.gerador_pecas.orquestrador_agentes import consolidar_dados_extracao
 from sistemas.gerador_pecas.versoes import (
     criar_versao_inicial,
@@ -538,48 +543,6 @@ def _anexar_upload_parecer_ao_resumo(
     return f"{resumo_consolidado}{bloco_upload}"
 # Armazena estado de processamento em memória (para SSE)
 _processamento_status = {}
-
-
-class ProcessarProcessoRequest(BaseModel):
-    numero_cnj: str
-    tipo_peca: Optional[str] = None
-    resposta_usuario: Optional[str] = None
-    observacao_usuario: Optional[str] = None  # Observações do usuário para incluir no prompt
-    group_id: Optional[int] = None
-    subcategoria_ids: Optional[List[int]] = None
-    parecer_upload_id: Optional[str] = None
-    parecer_user_choice_when_missing: Optional[str] = None  # "uploaded" | "continue_without"
-    parecer_forced_to_semi_auto: Optional[bool] = False
-
-
-class ExportarDocxRequest(BaseModel):
-    """Request para exportar markdown para DOCX"""
-    markdown: str  # Conteúdo markdown da minuta
-    numero_cnj: Optional[str] = None  # Número do processo para nome do arquivo
-    tipo_peca: Optional[str] = None  # Tipo da peça para nome do arquivo
-
-
-class FeedbackRequest(BaseModel):
-    geracao_id: int
-    avaliacao: str  # 'correto', 'parcial', 'incorreto', 'erro_ia'
-    nota: Optional[int] = None  # 1-5
-    comentario: Optional[str] = None
-    campos_incorretos: Optional[list] = None
-
-
-class EditarMinutaRequest(BaseModel):
-    """Request para edição de minuta via chat"""
-    minuta_atual: str  # Markdown da minuta atual
-    mensagem: str  # Pedido de alteração do usuário
-    historico: Optional[List[Dict]] = None  # Histórico de mensagens anteriores
-    tipo_peca: Optional[str] = None  # Tipo de peça atual (para busca de argumentos)
-
-
-class BuscarArgumentosRequest(BaseModel):
-    """Request para buscar argumentos na base de conhecimento"""
-    query: str  # Texto de busca
-    tipo_peca: Optional[str] = None  # Tipo de peça para filtrar regras específicas
-    limit: int = 5  # Número máximo de resultados
 
 
 @router.get("/tipos-peca")
@@ -2405,19 +2368,6 @@ async def obter_geracao(
         raise HTTPException(status_code=500, detail=str(e))
 
 
-class SalvarMinutaRequest(BaseModel):
-    """Request para salvar alterações na minuta"""
-    minuta_markdown: str
-    historico_chat: Optional[List[Dict]] = None
-
-
-class SalvarMinutaComVersaoRequest(BaseModel):
-    """Request para salvar alterações na minuta com suporte a versões"""
-    minuta_markdown: str
-    historico_chat: Optional[List[Dict]] = None
-    descricao_alteracao: Optional[str] = None  # Descrição da alteração (mensagem do chat)
-
-
 @router.put("/historico/{geracao_id}")
 async def salvar_geracao(
     geracao_id: int,
@@ -2950,49 +2900,6 @@ async def baixar_documento_processo(
 # ============================================
 # Endpoints do Modo Semi-Automatico (Curadoria)
 # ============================================
-
-class CurationPreviewRequest(BaseModel):
-    """Request para preview de curadoria (Agentes 1+2)"""
-    numero_cnj: str
-    tipo_peca: str
-    group_id: Optional[int] = None
-    subcategoria_ids: Optional[List[int]] = None
-    parecer_upload_id: Optional[str] = None
-    parecer_user_choice_when_missing: Optional[str] = None  # "uploaded" | "continue_without"
-    parecer_forced_to_semi_auto: Optional[bool] = False
-
-
-class CurationSearchRequest(BaseModel):
-    """Request para busca de argumentos adicionais"""
-    query: str
-    tipo_peca: Optional[str] = None
-    modulos_excluir: Optional[List[int]] = None
-    limit: int = 10
-    metodo: str = "hibrido"  # "keyword", "vetorial" ou "hibrido"
-
-
-class CurationGenerateRequest(BaseModel):
-    """Request para gerar peca com modulos curados"""
-    numero_cnj: str
-    tipo_peca: str
-    modulos_ids_curados: List[int]  # IDs dos modulos selecionados pelo usuario
-    modulos_manuais_ids: Optional[List[int]] = None  # IDs dos modulos adicionados manualmente
-    modulos_preview_ids: Optional[List[int]] = None  # IDs originais do preview (Agente 2)
-    modulos_excluidos_ids: Optional[List[int]] = None  # IDs dos modulos excluidos pelo usuario
-    modulos_ordem: Optional[Dict[str, List[int]]] = None  # Ordem de modulos por secao {secao: [id1, id2]}
-    categorias_ordem: Optional[List[str]] = None  # Ordem das categorias/secoes ["Preliminar", "Mérito", ...]
-    preview_timestamp: Optional[str] = None  # Timestamp de quando o preview foi gerado
-    observacao_usuario: Optional[str] = None
-    group_id: Optional[int] = None
-    subcategoria_ids: Optional[List[int]] = None
-    # Dados do Agente 1 (para evitar reprocessamento)
-    resumo_consolidado: Optional[str] = None
-    dados_extracao: Optional[Dict] = None
-    # Decision traces do preview (para auditoria causal)
-    decision_traces: Optional[Dict] = None
-    variaveis_snapshot: Optional[Dict] = None
-    parecer_context: Optional[Dict[str, Any]] = None
-
 
 @router.post("/curadoria/preview")
 @limiter.limit(LIMITS["ai"], key_func=get_user_identifier)

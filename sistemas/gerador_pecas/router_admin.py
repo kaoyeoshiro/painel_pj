@@ -8,7 +8,6 @@ Router de administração do Gerador de Peças
 import logging
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
-from pydantic import BaseModel
 from typing import Optional, List, Any
 from datetime import datetime
 
@@ -18,34 +17,11 @@ from database.connection import get_db
 from utils.timezone import to_iso_utc
 from sistemas.gerador_pecas.models import GeracaoPeca, VersaoPeca
 from sistemas.gerador_pecas.services_curadoria import gerar_explicacao_modulo
+from sistemas.gerador_pecas.schemas import GeracaoDetalhadaResponse
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(prefix="/gerador-pecas-admin", tags=["Gerador de Peças - Admin"])
-
-
-# ==========================================
-# Schemas
-# ==========================================
-
-class GeracaoDetalhadaResponse(BaseModel):
-    id: int
-    numero_cnj: str
-    numero_cnj_formatado: Optional[str]
-    tipo_peca: Optional[str]
-    modelo_usado: Optional[str]
-    tempo_processamento: Optional[int]
-    prompt_enviado: Optional[str]
-    resumo_consolidado: Optional[str]
-    conteudo_gerado: Optional[str] = None  # Markdown string
-    historico_chat: Optional[List[Any]] = None  # Histórico de edições via chat
-    modo_ativacao_agente2: Optional[str] = None  # 'fast_path', 'misto', 'llm', 'semi_automatico'
-    modulos_ativados_det: Optional[int] = None  # Ativados por regra determinística (ou total-manuais no semi_automatico)
-    modulos_ativados_llm: Optional[int] = None  # Ativados por LLM (ou manuais no semi_automatico)
-    criado_em: datetime
-
-    class Config:
-        from_attributes = True
 
 
 # ==========================================
