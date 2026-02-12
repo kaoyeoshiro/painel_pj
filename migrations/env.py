@@ -5,7 +5,11 @@ Configuracao do ambiente Alembic para migrations.
 Este arquivo importa todos os modelos do projeto para que
 o autogenerate funcione corretamente.
 
+IMPORTANTE: Os imports NAO usam try/except - se um model falhar,
+a migration DEVE falhar explicitamente para evitar deteccao incorreta.
+
 Autor: LAB/PGE-MS
+Atualizado: 2026-02-11 (Fase 0.1 — refatoracao backend)
 """
 
 import os
@@ -27,86 +31,132 @@ load_dotenv()
 # Importa a configuracao do banco de dados
 from config import DATABASE_URL
 
-# Importa o Base e todos os models
+# Importa o Base de onde todos os models herdam
 from database.connection import Base
 
 # ==================================================
 # IMPORTA TODOS OS MODELS PARA AUTOGENERATE
 # ==================================================
-# IMPORTANTE: Adicionar aqui todos os modelos do projeto
-# para que o Alembic possa detectar mudancas automaticamente.
+# REGRA: NAO usar try/except - imports devem falhar
+# explicitamente se houver problema estrutural no codigo.
+# Isso garante que o Alembic detecte todas as tabelas.
 
-# Autenticacao (importa User e modelos relacionados)
+# ============ AUTH ============
 from auth.models import User
 
-# Admin - Prompts e Configuracoes
-try:
-    from admin.models import PromptConfig, ConfiguracaoIA
-except ImportError:
-    pass
+# ============ ADMIN ============
+from admin.models import PromptConfig, ConfiguracaoIA
+from admin.models_gemini_logs import GeminiApiLog
+from admin.models_performance import AdminSettings, PerformanceLog, RouteSystemMap
+from admin.models_request_perf import RequestPerfLog
+from admin.models_prompt_groups import (
+    PromptGroup,
+    PromptSubgroup,
+    PromptSubcategoria,
+    CategoriaOrdem,
+)
+from admin.models_prompts import (
+    PromptModulo,
+    PromptModuloHistorico,
+    ModuloTipoPeca,
+    RegraDeterministicaTipoPeca,
+)
 
-try:
-    from admin.models_prompts import PromptModulo
-except ImportError:
-    pass
+# ============ SISTEMAS — GERADOR DE PECAS ============
+from sistemas.gerador_pecas.models import GeracaoPeca, VersaoPeca, FeedbackPeca
+from sistemas.gerador_pecas.models_config_pecas import (
+    CategoriaDocumento,
+    TipoPeca,
+    tipo_peca_categorias,
+)
+from sistemas.gerador_pecas.models_resumo_json import (
+    CategoriaResumoJSON,
+    CategoriaResumoJSONHistorico,
+)
+from sistemas.gerador_pecas.models_extraction import (
+    ExtractionQuestion,
+    ExtractionModel,
+    ExtractionVariable,
+    PromptVariableUsage,
+    PromptActivationLog,
+)
+from sistemas.gerador_pecas.models_teste_categorias import (
+    TesteDocumento,
+    TesteObservacao,
+)
+from sistemas.gerador_pecas.models_teste_ativacao import CenarioTesteAtivacao
 
-try:
-    from admin.models_prompt_groups import PromptGroup
-except ImportError:
-    pass
+# ============ SISTEMAS — MATRICULAS CONFRONTANTES ============
+from sistemas.matriculas_confrontantes.models import (
+    Analise,
+    Registro,
+    LogSistema,
+    FeedbackMatricula,
+    GrupoAnalise,
+    ArquivoUpload,
+)
 
-try:
-    from admin.models_performance import PerformanceLog, RouteSystemMap
-except ImportError:
-    pass
+# ============ SISTEMAS — ASSISTENCIA JUDICIARIA ============
+from sistemas.assistencia_judiciaria.models import (
+    ConsultaProcesso,
+    FeedbackAnalise,
+)
 
-try:
-    from admin.models_gemini_log import GeminiCallLog
-except ImportError:
-    pass
+# ============ SISTEMAS — PEDIDO DE CALCULO ============
+from sistemas.pedido_calculo.models import (
+    GeracaoPedidoCalculo,
+    FeedbackPedidoCalculo,
+    LogChamadaIA,
+)
 
-# Sistemas
-try:
-    from sistemas.gerador_pecas.models import (
-        TipoPeca, Pergunta, Prompt, Processo, Documento
-    )
-except ImportError:
-    pass
+# ============ SISTEMAS — PRESTACAO DE CONTAS ============
+from sistemas.prestacao_contas.models import (
+    GeracaoAnalise,
+    LogChamadaIAPrestacao,
+    FeedbackPrestacao,
+)
 
-try:
-    from sistemas.pedido_calculo.models import PedidoCalculo
-except ImportError:
-    pass
+# ============ SISTEMAS — RELATORIO DE CUMPRIMENTO ============
+from sistemas.relatorio_cumprimento.models import (
+    GeracaoRelatorioCumprimento,
+    LogChamadaIARelatorioCumprimento,
+    FeedbackRelatorioCumprimento,
+)
 
-try:
-    from sistemas.prestacao_contas.models import PrestacaoContas
-except ImportError:
-    pass
+# ============ SISTEMAS — CLASSIFICADOR DE DOCUMENTOS ============
+from sistemas.classificador_documentos.models import (
+    ProjetoClassificacao,
+    CodigoDocumentoProjeto,
+    ExecucaoClassificacao,
+    ResultadoClassificacao,
+    PromptClassificacao,
+    LogClassificacaoIA,
+)
 
-try:
-    from sistemas.bert_training.models import (
-        BertTrainingRun, BertTrainingEpochLog, BertTrainingPrediction
-    )
-except ImportError:
-    pass
+# ============ SISTEMAS — BERT TRAINING ============
+from sistemas.bert_training.models import (
+    BertDataset,
+    BertRun,
+    BertJob,
+    BertMetric,
+    BertLog,
+    BertTestHistory,
+    BertWorker,
+)
 
-try:
-    from sistemas.classificador_documentos.models import (
-        ClassificadorDocumentosJob, ClassificadorDocumentoResult
-    )
-except ImportError:
-    pass
+# ============ SISTEMAS — CUMPRIMENTO BETA ============
+from sistemas.cumprimento_beta.models import (
+    SessaoCumprimentoBeta,
+    DocumentoBeta,
+    JSONResumoBeta,
+    ConsolidacaoBeta,
+    ConversaBeta,
+    PecaGeradaBeta,
+)
 
-try:
-    from sistemas.relatorio_cumprimento.models import RelatorioCumprimento
-except ImportError:
-    pass
+# ============ SISTEMAS — EXTRATOR DE AUTOS ============
+from sistemas.extrator_autos.models import ExtracaoAutos
 
-# Servicos
-try:
-    from services.text_normalizer.models import TextNormalizerPattern
-except ImportError:
-    pass
 
 # ==================================================
 # CONFIGURACAO DO ALEMBIC
@@ -169,7 +219,6 @@ def run_migrations_online() -> None:
             target_metadata=target_metadata,
             compare_type=True,
             compare_server_default=True,
-            # Ignora tabelas que nao sao gerenciadas pelo Alembic
             include_schemas=True,
         )
 
