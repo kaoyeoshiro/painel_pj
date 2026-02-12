@@ -6,8 +6,43 @@ Router para gerenciamento de prompts modulares
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session, joinedload
 from typing import List, Optional, Any, Dict
-from pydantic import BaseModel
 from datetime import datetime
+
+from admin.schemas_prompts import (
+    CategoriaOrdemBase,
+    CategoriaOrdemCreate,
+    CategoriaOrdemResponse,
+    CategoriaOrdemUpdate,
+    ConfigurarModulosTipoPecaRequest,
+    DiffResponse,
+    ExportarSelecionadosRequest,
+    ImportarModulosRequest,
+    ImportarModulosResponse,
+    ModuloTipoPecaItem,
+    ModuloTipoPecaResponse,
+    PromptGroupBase,
+    PromptGroupCreate,
+    PromptGroupResponse,
+    PromptGroupUpdate,
+    PromptHistoricoResponse,
+    PromptModuloBase,
+    PromptModuloCreate,
+    PromptModuloResponse,
+    PromptModuloUpdate,
+    PromptSubcategoriaBase,
+    PromptSubcategoriaCreate,
+    PromptSubcategoriaResponse,
+    PromptSubcategoriaUpdate,
+    PromptSubgroupBase,
+    PromptSubgroupCreate,
+    PromptSubgroupResponse,
+    PromptSubgroupUpdate,
+    RegraTipoPecaCreate,
+    RegraTipoPecaResponse,
+    ReordenarCategoriasPromptsRequest,
+    ReordenarPromptItem,
+    ReordenarPromptsRequest,
+)
 import difflib
 
 from database.connection import get_db
@@ -83,224 +118,6 @@ def normalizar_booleanos_regra(regra: Optional[Dict[str, Any]]) -> Optional[Dict
         return resultado
     
     return normalizar_no(regra)
-
-
-# ==========================================
-# Schemas
-# ==========================================
-
-class PromptModuloBase(BaseModel):
-    tipo: str  # 'base', 'peca', 'conteudo'
-    categoria: Optional[str] = None
-    subcategoria: Optional[str] = None  # Campo texto legado
-    subcategoria_ids: Optional[List[int]] = []  # IDs das subcategorias (muitos-para-muitos)
-    group_id: Optional[int] = None
-    subgroup_id: Optional[int] = None
-    nome: str
-    titulo: str
-    condicao_ativacao: Optional[str] = None  # Situação em que o prompt deve ser ativado (para Agente 2)
-    conteudo: str  # Conteúdo do prompt (para Agente 3)
-    # Modo de ativação: 'llm' (padrão) ou 'deterministic'
-    modo_ativacao: Optional[str] = 'llm'
-    # Regra determinística PRIMÁRIA (AST JSON) - apenas quando modo_ativacao = 'deterministic'
-    regra_deterministica: Optional[dict] = None
-    # Texto original da regra primária em linguagem natural
-    regra_texto_original: Optional[str] = None
-    # Regra determinística SECUNDÁRIA (fallback) - avaliada se primária não existe
-    regra_deterministica_secundaria: Optional[dict] = None
-    # Texto original da regra secundária em linguagem natural
-    regra_secundaria_texto_original: Optional[str] = None
-    # Se deve avaliar regra secundária quando primária não existe
-    fallback_habilitado: Optional[bool] = False
-    tags: Optional[List[str]] = []
-    ativo: bool = True
-    ordem: int = 0
-
-
-class PromptModuloCreate(PromptModuloBase):
-    pass
-
-
-class PromptModuloUpdate(BaseModel):
-    titulo: Optional[str] = None
-    categoria: Optional[str] = None  # Campo texto para agrupamento visual
-    subcategoria: Optional[str] = None  # Campo texto legado para organização
-    group_id: Optional[int] = None
-    subgroup_id: Optional[int] = None
-    subcategoria_ids: Optional[List[int]] = None  # IDs das subcategorias (muitos-para-muitos)
-    condicao_ativacao: Optional[str] = None  # Atualiza condição de ativação
-    conteudo: Optional[str] = None
-    # Modo de ativação: 'llm' ou 'deterministic'
-    modo_ativacao: Optional[str] = None
-    # Regra determinística PRIMÁRIA (AST JSON)
-    regra_deterministica: Optional[dict] = None
-    # Texto original da regra primária em linguagem natural
-    regra_texto_original: Optional[str] = None
-    # Regra determinística SECUNDÁRIA (fallback)
-    regra_deterministica_secundaria: Optional[dict] = None
-    # Texto original da regra secundária em linguagem natural
-    regra_secundaria_texto_original: Optional[str] = None
-    # Se deve avaliar regra secundária quando primária não existe
-    fallback_habilitado: Optional[bool] = None
-    tags: Optional[List[str]] = None
-    ativo: Optional[bool] = None
-    ordem: Optional[int] = None
-    motivo: Optional[str] = None  # Opcional - motivo da alteração
-
-
-class PromptModuloResponse(BaseModel):
-    id: int
-    tipo: str
-    categoria: Optional[str] = None
-    subcategoria: Optional[str] = None
-    subcategoria_ids: List[int] = []
-    subcategorias_nomes: List[str] = []  # Nomes das subcategorias para exibição
-    group_id: Optional[int] = None
-    subgroup_id: Optional[int] = None
-    nome: str
-    titulo: str
-    condicao_ativacao: Optional[str] = None
-    conteudo: str
-    # Modo de ativação: 'llm' ou 'deterministic'
-    modo_ativacao: Optional[str] = 'llm'
-    # Regra determinística PRIMÁRIA (AST JSON)
-    regra_deterministica: Optional[dict] = None
-    # Texto original da regra primária em linguagem natural
-    regra_texto_original: Optional[str] = None
-    # Regra determinística SECUNDÁRIA (fallback)
-    regra_deterministica_secundaria: Optional[dict] = None
-    # Texto original da regra secundária em linguagem natural
-    regra_secundaria_texto_original: Optional[str] = None
-    # Se deve avaliar regra secundária quando primária não existe
-    fallback_habilitado: Optional[bool] = False
-    # Palavras-chave para ativação
-    palavras_chave: Optional[List[str]] = []
-    tags: Optional[List[str]] = []
-    ativo: bool = True
-    ordem: int = 0
-    versao: int
-    criado_por: Optional[int]
-    criado_em: datetime
-    atualizado_por: Optional[int]
-    atualizado_em: Optional[datetime]
-
-    class Config:
-        from_attributes = True
-
-
-class PromptHistoricoResponse(BaseModel):
-    id: int
-    modulo_id: int
-    group_id: Optional[int] = None
-    subgroup_id: Optional[int] = None
-    versao: int
-    condicao_ativacao: Optional[str]
-    conteudo: str
-    tags: Optional[List[str]]
-    alterado_por: Optional[int]
-    alterado_em: datetime
-    motivo: Optional[str]
-    diff_resumo: Optional[str]
-
-    class Config:
-        from_attributes = True
-
-
-class DiffResponse(BaseModel):
-    v1: int
-    v2: int
-    diff_html: str
-    alteracoes: int
-
-
-class PromptGroupBase(BaseModel):
-    name: str
-    slug: str
-    active: bool = True
-    order: int = 0
-
-
-class PromptGroupCreate(PromptGroupBase):
-    pass
-
-
-class PromptGroupUpdate(BaseModel):
-    name: Optional[str] = None
-    slug: Optional[str] = None
-    active: Optional[bool] = None
-    order: Optional[int] = None
-
-
-class PromptGroupResponse(PromptGroupBase):
-    id: int
-    created_at: datetime
-    updated_at: datetime
-
-    class Config:
-        from_attributes = True
-
-
-class PromptSubgroupBase(BaseModel):
-    group_id: int
-    name: str
-    slug: str
-    active: bool = True
-    order: int = 0
-
-
-class PromptSubgroupCreate(BaseModel):
-    """Schema para criacao de subgrupo (group_id vem da URL, nao do body)."""
-    name: str
-    slug: str
-    active: bool = True
-    order: int = 0
-
-
-class PromptSubgroupUpdate(BaseModel):
-    name: Optional[str] = None
-    slug: Optional[str] = None
-    active: Optional[bool] = None
-    order: Optional[int] = None
-
-
-class PromptSubgroupResponse(PromptSubgroupBase):
-    id: int
-    created_at: datetime
-    updated_at: datetime
-
-    class Config:
-        from_attributes = True
-
-
-# Schemas para Subcategorias
-class PromptSubcategoriaBase(BaseModel):
-    nome: str
-    slug: str
-    descricao: Optional[str] = None
-    active: bool = True
-    order: int = 0
-
-
-class PromptSubcategoriaCreate(PromptSubcategoriaBase):
-    pass
-
-
-class PromptSubcategoriaUpdate(BaseModel):
-    nome: Optional[str] = None
-    slug: Optional[str] = None
-    descricao: Optional[str] = None
-    active: Optional[bool] = None
-    order: Optional[int] = None
-
-
-class PromptSubcategoriaResponse(PromptSubcategoriaBase):
-    id: int
-    group_id: int
-    created_at: datetime
-    updated_at: datetime
-
-    class Config:
-        from_attributes = True
 
 
 # ==========================================
@@ -1641,11 +1458,6 @@ async def exportar_todos(
     return export_data
 
 
-class ExportarSelecionadosRequest(BaseModel):
-    """Schema para exportação de módulos selecionados"""
-    ids: List[int]
-
-
 @router.post("/exportar/selecionados")
 async def exportar_selecionados(
     req: ExportarSelecionadosRequest,
@@ -1698,24 +1510,6 @@ async def exportar_selecionados(
         })
 
     return export_data
-
-
-class ImportarModulosRequest(BaseModel):
-    """Schema para importação de módulos"""
-    modulos: List[dict]
-    sobrescrever_existentes: bool = False
-
-
-class ImportarModulosResponse(BaseModel):
-    """Resposta da importação"""
-    total_recebidos: int
-    criados: int
-    atualizados: int
-    ignorados: int
-    grupos_criados: int = 0
-    subgrupos_criados: int = 0
-    subcategorias_criadas: int = 0
-    erros: List[str]
 
 
 def _obter_ou_criar_grupo(db: Session, grupo_slug: str, grupo_name: str = None) -> PromptGroup:
@@ -2076,29 +1870,6 @@ async def importar_modulos(
 # Endpoints: Associação Módulos x Tipos de Peça
 # ==========================================
 
-class ModuloTipoPecaItem(BaseModel):
-    """Item de associação módulo-tipo de peça"""
-    modulo_id: int
-    ativo: bool = True
-
-
-class ConfigurarModulosTipoPecaRequest(BaseModel):
-    """Request para configurar módulos de um tipo de peça"""
-    tipo_peca: str  # Ex: 'contestacao', 'recurso_apelacao'
-    modulos: List[ModuloTipoPecaItem]  # Lista de módulos com status
-
-
-class ModuloTipoPecaResponse(BaseModel):
-    """Resposta com informações do módulo e status por tipo de peça"""
-    modulo_id: int
-    nome: str
-    titulo: str
-    categoria: Optional[str]
-    subcategoria: Optional[str]
-    ativo_global: bool  # Se o módulo está ativo globalmente
-    ativo_tipo_peca: bool  # Se está ativo para este tipo de peça específico
-
-
 @router.get("/modulos-por-tipo-peca/{tipo_peca}")
 async def listar_modulos_por_tipo_peca(
     tipo_peca: str,
@@ -2284,29 +2055,6 @@ async def desativar_todos_modulos(
 # ==========================================
 # Endpoints: Regras Determinísticas por Tipo de Peça
 # ==========================================
-
-class RegraTipoPecaCreate(BaseModel):
-    """Schema para criar/atualizar regra determinística específica por tipo de peça."""
-    tipo_peca: str
-    regra_deterministica: dict
-    regra_texto_original: Optional[str] = None
-    ativo: bool = True
-
-
-class RegraTipoPecaResponse(BaseModel):
-    """Schema de resposta para regra por tipo de peça."""
-    id: int
-    modulo_id: int
-    tipo_peca: str
-    regra_deterministica: dict
-    regra_texto_original: Optional[str]
-    ativo: bool
-    criado_em: datetime
-    atualizado_em: datetime
-
-    class Config:
-        from_attributes = True
-
 
 @router.get("/{modulo_id}/regras-tipo-peca")
 async def listar_regras_tipo_peca(
@@ -2593,31 +2341,6 @@ async def toggle_regra_tipo_peca(
 # Endpoints: Ordem das Categorias
 # ==========================================
 
-class CategoriaOrdemBase(BaseModel):
-    nome: str
-    ordem: int = 0
-    ativo: bool = True
-
-
-class CategoriaOrdemCreate(CategoriaOrdemBase):
-    pass
-
-
-class CategoriaOrdemUpdate(BaseModel):
-    ordem: Optional[int] = None
-    ativo: Optional[bool] = None
-
-
-class CategoriaOrdemResponse(CategoriaOrdemBase):
-    id: int
-    group_id: int
-    created_at: datetime
-    updated_at: datetime
-
-    class Config:
-        from_attributes = True
-
-
 @router.get("/grupos/{group_id}/categorias-ordem")
 async def listar_categorias_ordem(
     group_id: int,
@@ -2766,17 +2489,6 @@ async def deletar_categoria_ordem(
 # Endpoints: Reordenação de Prompts (Drag & Drop)
 # ==========================================
 
-class ReordenarPromptItem(BaseModel):
-    """Item para reordenação de prompt"""
-    id: int
-    ordem: int
-
-
-class ReordenarPromptsRequest(BaseModel):
-    """Request para reordenar múltiplos prompts"""
-    prompts: List[ReordenarPromptItem]
-
-
 @router.post("/prompts/reordenar")
 async def reordenar_prompts(
     request: ReordenarPromptsRequest,
@@ -2829,12 +2541,6 @@ async def atualizar_ordem_prompt(
         "id": modulo.id,
         "ordem": modulo.ordem
     }
-
-
-class ReordenarCategoriasPromptsRequest(BaseModel):
-    """Request para reordenar categorias e seus prompts"""
-    group_id: int
-    categorias: List[dict]  # [{nome, ordem, prompts: [{id, ordem}]}]
 
 
 @router.post("/prompts/reordenar-completo")
