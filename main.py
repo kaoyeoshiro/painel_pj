@@ -116,10 +116,7 @@ from services.text_normalizer import text_normalizer_router
 # Diretórios base
 BASE_DIR = Path(__file__).resolve().parent
 
-# Feature flag para alternar entre frontend React e Jinja2 legado
-# FRONTEND_MODE=react (padrao) -> serve o build React SPA
-# FRONTEND_MODE=legacy -> serve templates Jinja2 existentes
-FRONTEND_MODE = os.getenv("FRONTEND_MODE", "react").lower()
+# Frontend React SPA (unico modo ativo — legado Jinja2 removido na Fase 1)
 REACT_DIST_DIR = BASE_DIR / "frontend-react" / "dist"
 
 MATRICULAS_TEMPLATES = BASE_DIR / "sistemas" / "matriculas_confrontantes" / "templates"
@@ -845,472 +842,233 @@ def render_admin_restaurar_slugs_response() -> HTMLResponse:
     return HTMLResponse(content=html)
 
 
-if FRONTEND_MODE == "legacy":
-    # Assistência Judiciária - Servir arquivos estáticos
-    @app.get("/assistencia/{filename:path}")
-    @app.get("/assistencia/")
-    @app.get("/assistencia")
-    async def serve_assistencia_static(filename: str = ""):
-        """Serve arquivos do frontend Assistência Judiciária"""
-        return safe_serve_static(ASSISTENCIA_TEMPLATES, filename)
-
-
-    # Matrículas Confrontantes - Servir arquivos estáticos (JS, CSS)
-    @app.get("/matriculas/{filename:path}")
-    async def serve_matriculas_static(filename: str = ""):
-        """Serve arquivos do frontend Matrículas Confrontantes"""
-        return safe_serve_static(MATRICULAS_TEMPLATES, filename)
-
-
-    # Gerador de Peças Jurídicas
-    @app.get("/gerador-pecas/{filename:path}")
-    @app.get("/gerador-pecas/")
-    @app.get("/gerador-pecas")
-    async def serve_gerador_pecas_static(filename: str = ""):
-        """Serve arquivos do frontend Gerador de Peças Jurídicas"""
-        return safe_serve_static(GERADOR_PECAS_TEMPLATES, filename, no_cache=True)
-
-
-    # Pedido de Cálculo
-    @app.get("/pedido-calculo/{filename:path}")
-    @app.get("/pedido-calculo/")
-    @app.get("/pedido-calculo")
-    async def serve_pedido_calculo_static(filename: str = ""):
-        """Serve arquivos do frontend Pedido de Cálculo"""
-        return safe_serve_static(PEDIDO_CALCULO_TEMPLATES, filename, no_cache=True)
-
-
-    # Prestação de Contas
-    @app.get("/prestacao-contas/{filename:path}")
-    @app.get("/prestacao-contas/")
-    @app.get("/prestacao-contas")
-    async def serve_prestacao_contas_static(filename: str = ""):
-        """Serve arquivos do frontend Prestação de Contas"""
-        return safe_serve_static(PRESTACAO_CONTAS_TEMPLATES, filename, no_cache=True)
-
-
-    # Relatório de Cumprimento
-    @app.get("/relatorio-cumprimento/{filename:path}")
-    @app.get("/relatorio-cumprimento/")
-    @app.get("/relatorio-cumprimento")
-    async def serve_relatorio_cumprimento_static(filename: str = ""):
-        """Serve arquivos do frontend Relatório de Cumprimento"""
-        return safe_serve_static(RELATORIO_CUMPRIMENTO_TEMPLATES, filename, no_cache=True)
-
-
-    # Cumprimento de Sentença Beta
-    @app.get("/cumprimento-beta/{filename:path}")
-    @app.get("/cumprimento-beta/")
-    @app.get("/cumprimento-beta")
-    async def serve_cumprimento_beta_static(filename: str = ""):
-        """Serve arquivos do frontend Cumprimento de Sentença Beta"""
-        return safe_serve_static(CUMPRIMENTO_BETA_TEMPLATES, filename, no_cache=True)
-
-
-    # Classificador de Documentos
-    @app.get("/classificador/{filename:path}")
-    @app.get("/classificador/")
-    @app.get("/classificador")
-    async def serve_classificador_static(filename: str = ""):
-        """Serve arquivos do frontend Classificador de Documentos"""
-        return safe_serve_static(CLASSIFICADOR_DOCUMENTOS_TEMPLATES, filename, no_cache=True)
-
-
-    # BERT Training
-    @app.get("/bert-training/templates/{filename:path}")
-    @app.get("/bert-training/")
-    @app.get("/bert-training")
-    async def serve_bert_training_static(filename: str = ""):
-        """Serve arquivos do frontend BERT Training"""
-        return safe_serve_static(BERT_TRAINING_TEMPLATES, filename, no_cache=True)
-
-
-    # Extrator de Autos
-    @app.get("/extrator-autos/templates/{filename:path}")
-    @app.get("/extrator-autos/")
-    @app.get("/extrator-autos")
-    async def serve_extrator_autos_static(filename: str = ""):
-        """Serve arquivos do frontend Extrator de Autos"""
-        return safe_serve_static(EXTRATOR_AUTOS_TEMPLATES, filename, no_cache=True)
-
-
-    # ==================================================
-    # PÁGINAS DO PORTAL (Jinja2)
-    # ==================================================
-
-    @app.get("/login")
-    async def login_page(request: Request):
-        """Página de login"""
-        return templates.TemplateResponse("login.html", {"request": request})
-
-
-    @app.get("/dashboard")
-    async def dashboard_page(request: Request):
-        """Página do dashboard - seleção de sistemas"""
-        return templates.TemplateResponse("dashboard.html", {"request": request})
-
-
-    @app.get("/change-password")
-    async def change_password_page(request: Request):
-        """Página de troca de senha"""
-        return templates.TemplateResponse("change_password.html", {"request": request})
-
-
-    # ==================================================
-    # PÁGINAS ADMIN (Protegidas)
-    # ==================================================
-
-    from auth.dependencies import get_current_active_user, require_admin
-    from auth.models import User
-    from fastapi import Depends
-    from sqlalchemy.orm import Session
-    from database.connection import get_db
-
-
-    async def verify_admin_token_optional(request: Request) -> bool:
-        """
-        SECURITY: Verifica se há um token válido de admin.
-        Retorna True se válido, False caso contrário.
-        Não bloqueia - permite que JS faça redirect adequado.
-        """
-        auth_header = request.headers.get("Authorization", "")
-        if auth_header.startswith("Bearer "):
-            try:
-                from auth.security import decode_token
-                token = auth_header.replace("Bearer ", "")
-                payload = decode_token(token)
-                if payload and payload.get("role") == "admin":
-                    return True
-            except Exception:
-                pass
-        return False
-
-
-    @app.get("/admin/prompts-config")
-    async def admin_prompts_page(request: Request):
-        """Página de administração de prompts"""
-        return templates.TemplateResponse("admin_prompts.html", {"request": request})
-
-
-    @app.get("/admin/prompts-modulos")
-    async def admin_prompts_modulos_page(request: Request):
-        """Página de gerenciamento de prompts modulares"""
-        return templates.TemplateResponse("admin_prompts_modulos.html", {"request": request})
-
-
-    @app.get("/admin/modulos-tipo-peca")
-    async def admin_modulos_tipo_peca_page(request: Request):
-        """Página de configuração de módulos por tipo de peça"""
-        return templates.TemplateResponse("admin_modulos_tipo_peca.html", {"request": request})
-
-
-    @app.get("/admin/gerador-pecas/historico")
-    async def admin_gerador_historico_page(request: Request):
-        """Página de histórico de gerações com prompts"""
-        return templates.TemplateResponse("admin_gerador_historico.html", {"request": request})
-
-
-    @app.get("/admin/pedido-calculo/debug")
-    async def admin_pedido_calculo_debug_page(request: Request):
-        """Página de debug do Pedido de Cálculo - visualiza chamadas de IA"""
-        return templates.TemplateResponse("admin_pedido_calculo_historico.html", {"request": request})
-
-
-    @app.get("/admin/prestacao-contas/debug")
-    async def admin_prestacao_contas_debug_page(request: Request):
-        """Página de debug da Prestação de Contas - visualiza chamadas de IA"""
-        return templates.TemplateResponse("admin_prestacao_contas_historico.html", {"request": request})
-
-
-    @app.get("/admin/users")
-    async def admin_users_page(request: Request):
-        """Página de administração de usuários"""
-        return templates.TemplateResponse("admin_users.html", {"request": request})
-
-
-    @app.get("/admin/feedbacks")
-    async def admin_feedbacks_page(request: Request):
-        """Página de dashboard de feedbacks"""
-        return templates.TemplateResponse("admin_feedbacks.html", {"request": request})
-
-
-    @app.get("/admin/categorias-resumo-json")
-    async def admin_categorias_json_page(request: Request):
-        """Página de gerenciamento de categorias de formato de resumo JSON"""
-        return templates.TemplateResponse("admin_categorias_json.html", {"request": request})
-
-
-    @app.get("/admin/categorias-resumo-json/teste")
-    async def admin_teste_categorias_json_page(request: Request):
-        """Página de teste/validação de categorias de resumo JSON"""
-        return templates.TemplateResponse("admin_teste_categorias_json.html", {"request": request})
-
-
-    @app.get("/admin/prompts-modulos/teste")
-    async def admin_teste_ativacao_modulos_page(request: Request):
-        """Página de teste de ativação de prompts modulares"""
-        return templates.TemplateResponse("admin_teste_ativacao_modulos.html", {"request": request})
-
-
-    @app.get("/admin/variaveis")
-    async def admin_variaveis_page(request: Request):
-        """Página do painel de variáveis de extração"""
-        return templates.TemplateResponse("admin_variaveis.html", {"request": request})
-
-
-    @app.get("/admin/restaurar-slugs")
-    async def admin_restaurar_slugs_page(request: Request):
-        """Página para restaurar slugs de variáveis a partir de backup"""
-        return render_admin_restaurar_slugs_response()
-
-
-    @app.get("/admin/performance")
-    async def admin_performance_page(request: Request):
-        """Página para gerenciar logs de performance (diagnóstico de latência)"""
-        return templates.TemplateResponse("admin_performance.html", {"request": request})
-
-
-    @app.get("/admin/tjms-docs")
-    async def admin_tjms_docs_page(request: Request):
-        """Página de documentação da integração TJMS"""
-        return templates.TemplateResponse("admin_tjms_docs.html", {"request": request})
-
-
-    @app.get("/admin/tjms-docs/plano")
-    async def admin_tjms_plano_page():
-        return render_tjms_plano_response()
-
-    print(f"[+] Frontend Jinja2 legado ativado")
-
-
 # ==================================================
-# FRONTEND REACT SPA (quando FRONTEND_MODE=react)
+# FRONTEND REACT SPA — espelho Jinja2 para iframe admin
 # ==================================================
 
-if FRONTEND_MODE == "react":
-    @app.get("/admin/_frame-bridge")
-    async def react_admin_frame_bridge(target: str = "/admin/users", token: str = ""):
-        """
-        Bridge de desenvolvimento para iframe admin.
+@app.get("/admin/_frame-bridge")
+async def react_admin_frame_bridge(target: str = "/admin/users", token: str = ""):
+    """
+    Bridge de desenvolvimento para iframe admin.
 
-        Quando React roda em 5173/5178 e o legado em 8000, o localStorage não é
-        compartilhado entre origens. Este endpoint grava o token na origem do
-        backend e redireciona para a rota legado de destino.
-        """
-        safe_target = target if target.startswith("/") else f"/{target}"
-        allowed_prefixes = (
-            "/admin/",
-            "/api/gerador-pecas/config/admin",
-            "/assistencia",
-            "/matriculas",
-            "/gerador-pecas",
-            "/pedido-calculo",
-            "/prestacao-contas",
-            "/relatorio-cumprimento",
-            "/classificador",
-            "/bert-training",
+    Quando React roda em 5173/5178 e o legado em 8000, o localStorage não é
+    compartilhado entre origens. Este endpoint grava o token na origem do
+    backend e redireciona para a rota legado de destino.
+    """
+    safe_target = target if target.startswith("/") else f"/{target}"
+    allowed_prefixes = (
+        "/admin/",
+        "/api/gerador-pecas/config/admin",
+        "/assistencia",
+        "/matriculas",
+        "/gerador-pecas",
+        "/pedido-calculo",
+        "/prestacao-contas",
+        "/relatorio-cumprimento",
+        "/classificador",
+        "/bert-training",
+    )
+    if not any(safe_target.startswith(prefix) for prefix in allowed_prefixes):
+        safe_target = "/admin/users"
+
+    target_js = json.dumps(safe_target)
+    token_js = json.dumps(token or "")
+
+    return HTMLResponse(content=f"""
+    <!DOCTYPE html>
+    <html lang="pt-BR">
+    <head>
+      <meta charset="UTF-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+      <title>Carregando Admin...</title>
+    </head>
+    <body>
+      <script>
+        const token = {token_js};
+        const target = {target_js};
+        if (token) {{
+          localStorage.setItem('access_token', token);
+          localStorage.setItem('auth_token', token);
+          sessionStorage.setItem('auth_token', token);
+        }}
+        window.location.replace(target);
+      </script>
+    </body>
+    </html>
+    """)
+
+# Espelho legado dos sistemas do portal.
+# Necessário para o frontend React exibir UI idêntica ao legado via iframe.
+@app.get("/assistencia/{filename:path}")
+@app.get("/assistencia/")
+@app.get("/assistencia")
+async def react_assistencia_static(filename: str = ""):
+    return safe_serve_static(ASSISTENCIA_TEMPLATES, filename)
+
+
+@app.get("/matriculas/{filename:path}")
+@app.get("/matriculas/")
+@app.get("/matriculas")
+async def react_matriculas_static(filename: str = ""):
+    return safe_serve_static(MATRICULAS_TEMPLATES, filename)
+
+
+@app.get("/gerador-pecas/{filename:path}")
+@app.get("/gerador-pecas/")
+@app.get("/gerador-pecas")
+async def react_gerador_pecas_static(filename: str = ""):
+    return safe_serve_static(GERADOR_PECAS_TEMPLATES, filename, no_cache=True)
+
+
+@app.get("/pedido-calculo/{filename:path}")
+@app.get("/pedido-calculo/")
+@app.get("/pedido-calculo")
+async def react_pedido_calculo_static(filename: str = ""):
+    return safe_serve_static(PEDIDO_CALCULO_TEMPLATES, filename, no_cache=True)
+
+
+@app.get("/prestacao-contas/{filename:path}")
+@app.get("/prestacao-contas/")
+@app.get("/prestacao-contas")
+async def react_prestacao_contas_static(filename: str = ""):
+    return safe_serve_static(PRESTACAO_CONTAS_TEMPLATES, filename, no_cache=True)
+
+
+@app.get("/relatorio-cumprimento/{filename:path}")
+@app.get("/relatorio-cumprimento/")
+@app.get("/relatorio-cumprimento")
+async def react_relatorio_cumprimento_static(filename: str = ""):
+    return safe_serve_static(RELATORIO_CUMPRIMENTO_TEMPLATES, filename, no_cache=True)
+
+
+@app.get("/classificador/{filename:path}")
+@app.get("/classificador/")
+@app.get("/classificador")
+async def react_classificador_static(filename: str = ""):
+    return safe_serve_static(CLASSIFICADOR_DOCUMENTOS_TEMPLATES, filename, no_cache=True)
+
+
+@app.get("/bert-training/templates/{filename:path}")
+@app.get("/bert-training/")
+@app.get("/bert-training")
+async def react_bert_training_static(filename: str = ""):
+    return safe_serve_static(BERT_TRAINING_TEMPLATES, filename, no_cache=True)
+
+# Espelho legado das páginas administrativas.
+# Necessário para o frontend React exibir UI idêntica ao legado via iframe.
+@app.get("/admin/prompts-config")
+async def react_admin_prompts_page(request: Request):
+    return templates.TemplateResponse("admin_prompts.html", {"request": request})
+
+
+@app.get("/admin/prompts-modulos")
+async def react_admin_prompts_modulos_page(request: Request):
+    return templates.TemplateResponse("admin_prompts_modulos.html", {"request": request})
+
+
+@app.get("/admin/modulos-tipo-peca")
+async def react_admin_modulos_tipo_peca_page(request: Request):
+    return templates.TemplateResponse("admin_modulos_tipo_peca.html", {"request": request})
+
+
+@app.get("/admin/gerador-pecas/historico")
+async def react_admin_gerador_historico_page(request: Request):
+    return templates.TemplateResponse("admin_gerador_historico.html", {"request": request})
+
+
+@app.get("/admin/pedido-calculo/debug")
+async def react_admin_pedido_calculo_debug_page(request: Request):
+    return templates.TemplateResponse("admin_pedido_calculo_historico.html", {"request": request})
+
+
+@app.get("/admin/prestacao-contas/debug")
+async def react_admin_prestacao_contas_debug_page(request: Request):
+    return templates.TemplateResponse("admin_prestacao_contas_historico.html", {"request": request})
+
+
+@app.get("/admin/users")
+async def react_admin_users_page(request: Request):
+    return templates.TemplateResponse("admin_users.html", {"request": request})
+
+
+@app.get("/admin/feedbacks")
+async def react_admin_feedbacks_page(request: Request):
+    return templates.TemplateResponse("admin_feedbacks.html", {"request": request})
+
+
+@app.get("/admin/categorias-resumo-json")
+async def react_admin_categorias_json_page(request: Request):
+    return templates.TemplateResponse("admin_categorias_json.html", {"request": request})
+
+
+@app.get("/admin/categorias-resumo-json/teste")
+async def react_admin_teste_categorias_json_page(request: Request):
+    return templates.TemplateResponse("admin_teste_categorias_json.html", {"request": request})
+
+
+@app.get("/admin/prompts-modulos/teste")
+async def react_admin_teste_ativacao_modulos_page(request: Request):
+    return templates.TemplateResponse("admin_teste_ativacao_modulos.html", {"request": request})
+
+
+@app.get("/admin/variaveis")
+async def react_admin_variaveis_page(request: Request):
+    return templates.TemplateResponse("admin_variaveis.html", {"request": request})
+
+
+@app.get("/admin/restaurar-slugs")
+async def react_admin_restaurar_slugs_page(request: Request):
+    return render_admin_restaurar_slugs_response()
+
+
+@app.get("/admin/performance")
+async def react_admin_performance_page(request: Request):
+    return templates.TemplateResponse("admin_performance.html", {"request": request})
+
+
+@app.get("/admin/tjms-docs")
+async def react_admin_tjms_docs_page(request: Request):
+    return templates.TemplateResponse("admin_tjms_docs.html", {"request": request})
+
+
+@app.get("/admin/tjms-docs/plano")
+async def react_admin_tjms_plano_page():
+    return render_tjms_plano_response()
+
+# Monta assets estaticos do React build (JS, CSS, imagens)
+react_assets_dir = REACT_DIST_DIR / "assets"
+if react_assets_dir.exists():
+    app.mount("/assets", StaticFiles(directory=str(react_assets_dir)), name="react-assets")
+
+# Serve arquivos estaticos na raiz do build (vite.svg, etc)
+if REACT_DIST_DIR.exists():
+    @app.get("/vite.svg")
+    async def serve_vite_svg():
+        svg_path = REACT_DIST_DIR / "vite.svg"
+        if svg_path.exists():
+            return FileResponse(str(svg_path), media_type="image/svg+xml")
+        return HTMLResponse("Not found", status_code=404)
+
+# Catch-all: qualquer rota nao capturada por API/rotas anteriores
+# serve o index.html do React para que o React Router resolva
+react_index = REACT_DIST_DIR / "index.html"
+if react_index.exists():
+    @app.get("/{full_path:path}")
+    async def serve_react_spa(full_path: str):
+        """Serve o React SPA para qualquer rota nao-API"""
+        return FileResponse(
+            str(react_index),
+            media_type="text/html",
+            headers={
+                "Cache-Control": "no-cache, no-store, must-revalidate",
+                "Pragma": "no-cache",
+            }
         )
-        if not any(safe_target.startswith(prefix) for prefix in allowed_prefixes):
-            safe_target = "/admin/users"
+else:
+    print(f"[WARN] React build nao encontrado em {REACT_DIST_DIR}")
+    print("[WARN] Execute 'cd frontend-react && npm run build' primeiro")
 
-        target_js = json.dumps(safe_target)
-        token_js = json.dumps(token or "")
-
-        return HTMLResponse(content=f"""
-        <!DOCTYPE html>
-        <html lang="pt-BR">
-        <head>
-          <meta charset="UTF-8" />
-          <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-          <title>Carregando Admin...</title>
-        </head>
-        <body>
-          <script>
-            const token = {token_js};
-            const target = {target_js};
-            if (token) {{
-              localStorage.setItem('access_token', token);
-              localStorage.setItem('auth_token', token);
-              sessionStorage.setItem('auth_token', token);
-            }}
-            window.location.replace(target);
-          </script>
-        </body>
-        </html>
-        """)
-
-    # Espelho legado dos sistemas do portal.
-    # Necessário para o frontend React exibir UI idêntica ao legado via iframe.
-    @app.get("/assistencia/{filename:path}")
-    @app.get("/assistencia/")
-    @app.get("/assistencia")
-    async def react_assistencia_static(filename: str = ""):
-        return safe_serve_static(ASSISTENCIA_TEMPLATES, filename)
-
-
-    @app.get("/matriculas/{filename:path}")
-    @app.get("/matriculas/")
-    @app.get("/matriculas")
-    async def react_matriculas_static(filename: str = ""):
-        return safe_serve_static(MATRICULAS_TEMPLATES, filename)
-
-
-    @app.get("/gerador-pecas/{filename:path}")
-    @app.get("/gerador-pecas/")
-    @app.get("/gerador-pecas")
-    async def react_gerador_pecas_static(filename: str = ""):
-        return safe_serve_static(GERADOR_PECAS_TEMPLATES, filename, no_cache=True)
-
-
-    @app.get("/pedido-calculo/{filename:path}")
-    @app.get("/pedido-calculo/")
-    @app.get("/pedido-calculo")
-    async def react_pedido_calculo_static(filename: str = ""):
-        return safe_serve_static(PEDIDO_CALCULO_TEMPLATES, filename, no_cache=True)
-
-
-    @app.get("/prestacao-contas/{filename:path}")
-    @app.get("/prestacao-contas/")
-    @app.get("/prestacao-contas")
-    async def react_prestacao_contas_static(filename: str = ""):
-        return safe_serve_static(PRESTACAO_CONTAS_TEMPLATES, filename, no_cache=True)
-
-
-    @app.get("/relatorio-cumprimento/{filename:path}")
-    @app.get("/relatorio-cumprimento/")
-    @app.get("/relatorio-cumprimento")
-    async def react_relatorio_cumprimento_static(filename: str = ""):
-        return safe_serve_static(RELATORIO_CUMPRIMENTO_TEMPLATES, filename, no_cache=True)
-
-
-    @app.get("/classificador/{filename:path}")
-    @app.get("/classificador/")
-    @app.get("/classificador")
-    async def react_classificador_static(filename: str = ""):
-        return safe_serve_static(CLASSIFICADOR_DOCUMENTOS_TEMPLATES, filename, no_cache=True)
-
-
-    @app.get("/bert-training/templates/{filename:path}")
-    @app.get("/bert-training/")
-    @app.get("/bert-training")
-    async def react_bert_training_static(filename: str = ""):
-        return safe_serve_static(BERT_TRAINING_TEMPLATES, filename, no_cache=True)
-
-    # Espelho legado das páginas administrativas.
-    # Necessário para o frontend React exibir UI idêntica ao legado via iframe.
-    @app.get("/admin/prompts-config")
-    async def react_admin_prompts_page(request: Request):
-        return templates.TemplateResponse("admin_prompts.html", {"request": request})
-
-
-    @app.get("/admin/prompts-modulos")
-    async def react_admin_prompts_modulos_page(request: Request):
-        return templates.TemplateResponse("admin_prompts_modulos.html", {"request": request})
-
-
-    @app.get("/admin/modulos-tipo-peca")
-    async def react_admin_modulos_tipo_peca_page(request: Request):
-        return templates.TemplateResponse("admin_modulos_tipo_peca.html", {"request": request})
-
-
-    @app.get("/admin/gerador-pecas/historico")
-    async def react_admin_gerador_historico_page(request: Request):
-        return templates.TemplateResponse("admin_gerador_historico.html", {"request": request})
-
-
-    @app.get("/admin/pedido-calculo/debug")
-    async def react_admin_pedido_calculo_debug_page(request: Request):
-        return templates.TemplateResponse("admin_pedido_calculo_historico.html", {"request": request})
-
-
-    @app.get("/admin/prestacao-contas/debug")
-    async def react_admin_prestacao_contas_debug_page(request: Request):
-        return templates.TemplateResponse("admin_prestacao_contas_historico.html", {"request": request})
-
-
-    @app.get("/admin/users")
-    async def react_admin_users_page(request: Request):
-        return templates.TemplateResponse("admin_users.html", {"request": request})
-
-
-    @app.get("/admin/feedbacks")
-    async def react_admin_feedbacks_page(request: Request):
-        return templates.TemplateResponse("admin_feedbacks.html", {"request": request})
-
-
-    @app.get("/admin/categorias-resumo-json")
-    async def react_admin_categorias_json_page(request: Request):
-        return templates.TemplateResponse("admin_categorias_json.html", {"request": request})
-
-
-    @app.get("/admin/categorias-resumo-json/teste")
-    async def react_admin_teste_categorias_json_page(request: Request):
-        return templates.TemplateResponse("admin_teste_categorias_json.html", {"request": request})
-
-
-    @app.get("/admin/prompts-modulos/teste")
-    async def react_admin_teste_ativacao_modulos_page(request: Request):
-        return templates.TemplateResponse("admin_teste_ativacao_modulos.html", {"request": request})
-
-
-    @app.get("/admin/variaveis")
-    async def react_admin_variaveis_page(request: Request):
-        return templates.TemplateResponse("admin_variaveis.html", {"request": request})
-
-
-    @app.get("/admin/restaurar-slugs")
-    async def react_admin_restaurar_slugs_page(request: Request):
-        return render_admin_restaurar_slugs_response()
-
-
-    @app.get("/admin/performance")
-    async def react_admin_performance_page(request: Request):
-        return templates.TemplateResponse("admin_performance.html", {"request": request})
-
-
-    @app.get("/admin/tjms-docs")
-    async def react_admin_tjms_docs_page(request: Request):
-        return templates.TemplateResponse("admin_tjms_docs.html", {"request": request})
-
-
-    @app.get("/admin/tjms-docs/plano")
-    async def react_admin_tjms_plano_page():
-        return render_tjms_plano_response()
-
-    # Monta assets estaticos do React build (JS, CSS, imagens)
-    react_assets_dir = REACT_DIST_DIR / "assets"
-    if react_assets_dir.exists():
-        app.mount("/assets", StaticFiles(directory=str(react_assets_dir)), name="react-assets")
-
-    # Serve arquivos estaticos na raiz do build (vite.svg, etc)
-    if REACT_DIST_DIR.exists():
-        @app.get("/vite.svg")
-        async def serve_vite_svg():
-            svg_path = REACT_DIST_DIR / "vite.svg"
-            if svg_path.exists():
-                return FileResponse(str(svg_path), media_type="image/svg+xml")
-            return HTMLResponse("Not found", status_code=404)
-
-    # Catch-all: qualquer rota nao capturada por API/rotas anteriores
-    # serve o index.html do React para que o React Router resolva
-    react_index = REACT_DIST_DIR / "index.html"
-    if react_index.exists():
-        @app.get("/{full_path:path}")
-        async def serve_react_spa(full_path: str):
-            """Serve o React SPA para qualquer rota nao-API"""
-            return FileResponse(
-                str(react_index),
-                media_type="text/html",
-                headers={
-                    "Cache-Control": "no-cache, no-store, must-revalidate",
-                    "Pragma": "no-cache",
-                }
-            )
-    else:
-        print(f"[WARN] FRONTEND_MODE=react mas build nao encontrado em {REACT_DIST_DIR}")
-        print("[WARN] Execute 'cd frontend-react && npm run build' primeiro")
-
-    print(f"[+] Frontend React SPA ativado (build: {REACT_DIST_DIR})")
+print(f"[+] Frontend React SPA ativado (build: {REACT_DIST_DIR})")
 
 
 # ==================================================

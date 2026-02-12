@@ -24,8 +24,9 @@
 
 | Metrica | Valor |
 |---------|-------|
-| Linhas em routers | ~28.900 |
+| Linhas em routers | ~28.600 (era ~28.900) |
 | Maior arquivo | `router.py` (3.742 linhas) — `router_extraction.py` eliminado na Fase 5a |
+| main.py | 1.081 linhas (era 1.320, -239 com remocao do legado) |
 | Operacoes DB diretas em routers | 48+ (so gerador_pecas) |
 | Models no Alembic env.py | ~15 de 62+ (muitos com nome errado) |
 | Migrations Alembic | 4 (cobertura ~10%) |
@@ -101,19 +102,24 @@
 
 ## Fase 1 — Remocao do Frontend Legado
 
-**Objetivo**: Eliminar templates Jinja2 e constante `FRONTEND_MODE`.
+**Objetivo**: Eliminar feature flag `FRONTEND_MODE` e bloco legado. Templates Jinja2 permanecem
+porque o React SPA usa iframe (`LegacyAdminFramePage.tsx`) para exibir paginas admin legadas.
 
 ### Checklist
 
-- [ ] **1.1** Confirmar paridade React (testes E2E para todas as 30 telas legadas)
-- [ ] **1.2** Deletar bloco `if FRONTEND_MODE == "legacy":` (main.py:842-1077, ~235 linhas)
-- [ ] **1.3** Simplificar bloco React: remover rotas-espelho legacy (main.py:1138-1272)
-- [ ] **1.4** Remover constantes: `FRONTEND_MODE`, 10 vars `*_TEMPLATES`, `safe_serve_static()`, etc.
-- [ ] **1.5** Remover setup Jinja2: `from fastapi.templating import Jinja2Templates` (main.py:16, 429)
-- [ ] **1.6** Limpar `router_config_pecas.py`: import e instanciacao Jinja2 nao usados (linhas 13, 44)
-- [ ] **1.7** Deletar diretorios: `frontend/templates/`, `sistemas/*/templates/`, `frontend/static/`
-- [ ] **1.8** Ajustar CSP (remover `frame-ancestors localhost:5173/5178` se desnecessario)
-- [ ] **1.9** Atualizar documentacao
+- [x] **1.1** Confirmar paridade React — 524 rotas preservadas, todos testes passando
+- [x] **1.2** Deletar bloco `if FRONTEND_MODE == "legacy":` (~239 linhas removidas)
+- [x] **1.4a** Remover constante `FRONTEND_MODE` e dedent bloco React
+- [ ] ~~**1.3** Remover rotas-espelho~~ → BLOQUEADO: React iframe depende delas
+- [ ] ~~**1.4b** Remover `*_TEMPLATES`, `safe_serve_static()`~~ → BLOQUEADO: usados pelas rotas-espelho
+- [ ] ~~**1.5** Remover Jinja2Templates~~ → BLOQUEADO: paginas admin via iframe
+- [x] **1.6** Limpar `router_config_pecas.py` — ja feito na Fase 2a
+- [ ] ~~**1.7** Deletar `sistemas/*/templates/`~~ → BLOQUEADO: iframe carrega templates
+- [ ] **1.8** Ajustar CSP (avaliar quando iframe admin for migrado para React nativo)
+- [x] **1.9** Atualizar documentacao
+
+> **Nota**: Itens 1.3, 1.4b, 1.5, 1.7 serao desbloqueados quando as paginas admin forem reescritas
+> em React nativo (substituindo `LegacyAdminFramePage.tsx` por componentes React).
 
 **Risco**: Baixo (modo legacy ja nao e padrao)
 **Rollback**: `git revert` do commit
@@ -333,5 +339,7 @@ Fase 5 (Split) pode iniciar apos Fase 2 ─────────────�
 | 2026-02-11 | 2c | Mapeamento concluido (11 generators, ~2.230 linhas). Adiado para Fase 4 | — |
 | 2026-02-11 | 5a | 7 helpers extraidos de router_extraction.py → extraction_helpers.py (-459 linhas) | `1dbcac5` |
 | 2026-02-12 | 5a | JsonSyncService extraido (sincronizar + reconciliar JSON, 785 linhas) | — |
-| 2026-02-12 | 5a | Split em 4 sub-routers + deletado router_extraction.py (4.170→0 linhas) | — |
+| 2026-02-12 | 5a | Split em 4 sub-routers + deletado router_extraction.py (4.170→0 linhas) | `373e08d` |
+| 2026-02-12 | 0.8 | ADR-0002: workflow Alembic documentado | `72c4d8a` |
+| 2026-02-12 | 1 | Removido FRONTEND_MODE + bloco legado (-239 linhas). Itens 1.3-1.7 bloqueados por iframe | — |
 | | | | |
