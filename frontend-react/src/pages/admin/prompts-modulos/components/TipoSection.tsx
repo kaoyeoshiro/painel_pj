@@ -13,7 +13,7 @@ import type { PromptModulo, TipoPrompt } from '../types'
 import { ModuloItem } from './ModuloItem'
 
 // ---- Configuracao visual por tipo (alinhado ao legado) ----
-
+// eslint-disable-next-line react-refresh/only-export-components -- constante de config usada junto com componentes
 export const TIPO_CONFIG: Record<TipoPrompt, {
   label: string
   Icon: typeof Settings
