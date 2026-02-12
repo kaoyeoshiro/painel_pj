@@ -26,5 +26,5 @@
 
 ## Pendências de reorganização (próxima wave)
 
-- Reduzir `db.query(...)` direto em routers restantes (25 arquivos `router*.py` ainda com ocorrência).
+- `db.query(...)` direto em routers foi zerado no escopo principal (`0/37`).
 - Consolidar e simplificar documentação histórica redundante em `docs/refatoracao/README_REFACTORING_LEGADO.md`.

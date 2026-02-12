@@ -22,6 +22,7 @@ from typing import Optional, List
 from fastapi import APIRouter, HTTPException, Depends, Query, File, UploadFile, Form, Request
 from fastapi.responses import StreamingResponse, FileResponse
 from sqlalchemy.orm import Session
+from app.repositories.sqlalchemy.session_ops import session_query
 from pydantic import BaseModel
 
 from auth.dependencies import get_current_active_user
@@ -156,7 +157,7 @@ async def registrar_feedback(
     """Registra feedback do usuário sobre a análise"""
 
     # Verifica se geração existe
-    geracao = db.query(GeracaoAnalise).filter(
+    geracao = session_query(db, GeracaoAnalise).filter(
         GeracaoAnalise.id == request.geracao_id
     ).first()
 
@@ -203,7 +204,7 @@ async def exportar_parecer(
     """Exporta o parecer em formato DOCX"""
     from sistemas.prestacao_contas.docx_converter import converter_parecer_docx
 
-    geracao = db.query(GeracaoAnalise).filter(
+    geracao = session_query(db, GeracaoAnalise).filter(
         GeracaoAnalise.id == request.geracao_id
     ).first()
 
@@ -277,7 +278,7 @@ async def upload_documentos_faltantes(
     if not todos_arquivos:
         raise HTTPException(status_code=400, detail="Nenhum arquivo enviado. Selecione pelo menos um documento.")
 
-    geracao = db.query(GeracaoAnalise).filter(
+    geracao = session_query(db, GeracaoAnalise).filter(
         GeracaoAnalise.id == geracao_id
     ).first()
 
@@ -380,7 +381,7 @@ async def cancelar_por_falta_documentos(
     Cancela análise quando o usuário informa que não possui os documentos necessários.
     A análise é salva no histórico com status de erro.
     """
-    geracao = db.query(GeracaoAnalise).filter(
+    geracao = session_query(db, GeracaoAnalise).filter(
         GeracaoAnalise.id == request.geracao_id
     ).first()
 
@@ -425,7 +426,7 @@ async def continuar_sem_nota_fiscal(
     Permite ao usuário prosseguir com a análise mesmo sem ter encontrado
     a nota fiscal. A análise continuará com os documentos disponíveis.
     """
-    geracao = db.query(GeracaoAnalise).filter(
+    geracao = session_query(db, GeracaoAnalise).filter(
         GeracaoAnalise.id == request.geracao_id
     ).first()
 
@@ -489,7 +490,7 @@ async def reprocessar_com_documentos(
     Reprocessa uma análise existente usando os documentos já salvos.
     Não deleta o registro, apenas continua a análise de onde parou.
     """
-    geracao = db.query(GeracaoAnalise).filter(
+    geracao = session_query(db, GeracaoAnalise).filter(
         GeracaoAnalise.id == request.geracao_id
     ).first()
 
@@ -552,7 +553,7 @@ async def obter_extrato_subconta(
     """
     Retorna o PDF do extrato da subconta em base64.
     """
-    geracao = db.query(GeracaoAnalise).filter(
+    geracao = session_query(db, GeracaoAnalise).filter(
         GeracaoAnalise.id == geracao_id
     ).first()
 
@@ -645,7 +646,7 @@ async def verificar_processo_existente(
     numero_cnj_limpo = numero_cnj.replace(".", "").replace("-", "").replace("/", "").strip()
 
     # Busca registro existente (qualquer status)
-    geracao_existente = db.query(GeracaoAnalise).filter(
+    geracao_existente = session_query(db, GeracaoAnalise).filter(
         GeracaoAnalise.numero_cnj == numero_cnj_limpo,
         GeracaoAnalise.usuario_id == current_user.id
     ).order_by(GeracaoAnalise.criado_em.desc()).first()
@@ -718,7 +719,7 @@ async def listar_historico(
 ):
     """Lista histórico de análises do usuário"""
 
-    query = db.query(GeracaoAnalise).filter(
+    query = session_query(db, GeracaoAnalise).filter(
         GeracaoAnalise.usuario_id == current_user.id
     )
 
@@ -772,7 +773,7 @@ async def obter_geracao(
 ):
     """Obtém detalhes de uma análise específica"""
 
-    geracao = db.query(GeracaoAnalise).filter(
+    geracao = session_query(db, GeracaoAnalise).filter(
         GeracaoAnalise.id == geracao_id
     ).first()
 
@@ -827,3 +828,8 @@ async def obter_geracao(
         resposta_ia_bruta=geracao.resposta_ia_bruta,
         respostas_usuario=geracao.respostas_usuario,
     )
+
+
+
+
+

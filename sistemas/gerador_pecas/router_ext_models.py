@@ -19,6 +19,7 @@ from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
+from app.repositories.sqlalchemy.session_ops import session_query
 from sqlalchemy import func
 from database.connection import get_db
 from auth.dependencies import get_current_active_user
@@ -58,12 +59,12 @@ async def obter_modelo_categoria(
 ):
     """Obtém o modelo de extração ativo de uma categoria"""
     # Verifica se a categoria existe
-    categoria = db.query(CategoriaResumoJSON).filter(CategoriaResumoJSON.id == categoria_id).first()
+    categoria = session_query(db, CategoriaResumoJSON).filter(CategoriaResumoJSON.id == categoria_id).first()
     if not categoria:
         raise HTTPException(status_code=404, detail="Categoria não encontrada")
 
     # Busca o modelo ativo mais recente
-    modelo = db.query(ExtractionModel).filter(
+    modelo = session_query(db, ExtractionModel).filter(
         ExtractionModel.categoria_id == categoria_id,
         ExtractionModel.ativo == True
     ).order_by(ExtractionModel.versao.desc()).first()
@@ -105,12 +106,12 @@ async def gerar_schema_ia(
         raise HTTPException(status_code=403, detail="Sem permissão para gerar schema")
 
     # Verifica se a categoria existe
-    categoria = db.query(CategoriaResumoJSON).filter(CategoriaResumoJSON.id == categoria_id).first()
+    categoria = session_query(db, CategoriaResumoJSON).filter(CategoriaResumoJSON.id == categoria_id).first()
     if not categoria:
         raise HTTPException(status_code=404, detail="Categoria não encontrada")
 
     # Busca perguntas ativas da categoria
-    perguntas = db.query(ExtractionQuestion).filter(
+    perguntas = session_query(db, ExtractionQuestion).filter(
         ExtractionQuestion.categoria_id == categoria_id,
         ExtractionQuestion.ativo == True
     ).order_by(ExtractionQuestion.ordem, ExtractionQuestion.id).all()
@@ -179,7 +180,7 @@ async def sincronizar_json_sem_ia(
         raise HTTPException(status_code=403, detail="Sem permissão para sincronizar JSON")
 
     # Verifica se a categoria existe
-    categoria = db.query(CategoriaResumoJSON).filter(CategoriaResumoJSON.id == categoria_id).first()
+    categoria = session_query(db, CategoriaResumoJSON).filter(CategoriaResumoJSON.id == categoria_id).first()
     if not categoria:
         raise HTTPException(status_code=404, detail="Categoria não encontrada")
 
@@ -216,7 +217,7 @@ async def verificar_consistencia_json_perguntas(
     logger.info(f"[CONSISTENCIA] Verificando categoria_id={categoria_id}")
 
     # Verifica se a categoria existe
-    categoria = db.query(CategoriaResumoJSON).filter(CategoriaResumoJSON.id == categoria_id).first()
+    categoria = session_query(db, CategoriaResumoJSON).filter(CategoriaResumoJSON.id == categoria_id).first()
     if not categoria:
         raise HTTPException(status_code=404, detail="Categoria não encontrada")
 
@@ -227,7 +228,7 @@ async def verificar_consistencia_json_perguntas(
         schema_json = {}
 
     # Busca perguntas ativas da categoria
-    perguntas_ativas = db.query(ExtractionQuestion).filter(
+    perguntas_ativas = session_query(db, ExtractionQuestion).filter(
         ExtractionQuestion.categoria_id == categoria_id,
         ExtractionQuestion.ativo == True
     ).all()
@@ -239,7 +240,7 @@ async def verificar_consistencia_json_perguntas(
             perguntas_por_slug[p.nome_variavel_sugerido] = p
 
     # Busca perguntas INATIVAS da categoria (para saber se podemos reativar)
-    perguntas_inativas = db.query(ExtractionQuestion).filter(
+    perguntas_inativas = session_query(db, ExtractionQuestion).filter(
         ExtractionQuestion.categoria_id == categoria_id,
         ExtractionQuestion.ativo == False
     ).all()
@@ -249,7 +250,7 @@ async def verificar_consistencia_json_perguntas(
             perguntas_inativas_por_slug[p.nome_variavel_sugerido] = p
 
     # Busca variáveis da categoria
-    variaveis = db.query(ExtractionVariable).filter(
+    variaveis = session_query(db, ExtractionVariable).filter(
         ExtractionVariable.categoria_id == categoria_id
     ).all()
     variaveis_por_slug = {v.slug: v for v in variaveis}
@@ -340,7 +341,7 @@ async def sincronizar_perguntas_com_json(
         raise HTTPException(status_code=403, detail="Sem permissão para sincronizar perguntas")
 
     # Verifica se a categoria existe
-    categoria = db.query(CategoriaResumoJSON).filter(CategoriaResumoJSON.id == categoria_id).first()
+    categoria = session_query(db, CategoriaResumoJSON).filter(CategoriaResumoJSON.id == categoria_id).first()
     if not categoria:
         raise HTTPException(status_code=404, detail="Categoria não encontrada")
 
@@ -360,21 +361,21 @@ async def sincronizar_perguntas_com_json(
         )
 
     # Busca perguntas ativas da categoria
-    perguntas_ativas = db.query(ExtractionQuestion).filter(
+    perguntas_ativas = session_query(db, ExtractionQuestion).filter(
         ExtractionQuestion.categoria_id == categoria_id,
         ExtractionQuestion.ativo == True
     ).all()
     perguntas_por_slug = {p.nome_variavel_sugerido: p for p in perguntas_ativas if p.nome_variavel_sugerido}
 
     # Busca perguntas INATIVAS da categoria
-    perguntas_inativas = db.query(ExtractionQuestion).filter(
+    perguntas_inativas = session_query(db, ExtractionQuestion).filter(
         ExtractionQuestion.categoria_id == categoria_id,
         ExtractionQuestion.ativo == False
     ).all()
     perguntas_inativas_por_slug = {p.nome_variavel_sugerido: p for p in perguntas_inativas if p.nome_variavel_sugerido}
 
     # Busca variáveis da categoria
-    variaveis = db.query(ExtractionVariable).filter(
+    variaveis = session_query(db, ExtractionVariable).filter(
         ExtractionVariable.categoria_id == categoria_id
     ).all()
     variaveis_por_slug = {v.slug: v for v in variaveis}
@@ -387,7 +388,7 @@ async def sincronizar_perguntas_com_json(
     detalhes = []
 
     # Calcula próxima ordem
-    max_ordem = db.query(func.max(ExtractionQuestion.ordem)).filter(
+    max_ordem = session_query(db, func.max(ExtractionQuestion.ordem)).filter(
         ExtractionQuestion.categoria_id == categoria_id
     ).scalar() or 0
     ordem_atual = max_ordem + 1
@@ -460,7 +461,7 @@ async def sincronizar_perguntas_com_json(
             if slug in perguntas_inativas_por_slug:
                 source_question_id = perguntas_inativas_por_slug[slug].id
             else:
-                pergunta_nova = db.query(ExtractionQuestion).filter(
+                pergunta_nova = session_query(db, ExtractionQuestion).filter(
                     ExtractionQuestion.categoria_id == categoria_id,
                     ExtractionQuestion.nome_variavel_sugerido == slug,
                     ExtractionQuestion.ativo == True
@@ -541,7 +542,7 @@ async def aplicar_json_nas_perguntas(
         raise HTTPException(status_code=403, detail="Sem permissão para aplicar JSON")
 
     # Verifica se a categoria existe
-    categoria = db.query(CategoriaResumoJSON).filter(CategoriaResumoJSON.id == categoria_id).first()
+    categoria = session_query(db, CategoriaResumoJSON).filter(CategoriaResumoJSON.id == categoria_id).first()
     if not categoria:
         raise HTTPException(status_code=404, detail="Categoria não encontrada")
 
@@ -569,18 +570,18 @@ async def criar_modelo_manual(
         raise HTTPException(status_code=403, detail="Sem permissão para criar modelos")
 
     # Verifica se a categoria existe
-    categoria = db.query(CategoriaResumoJSON).filter(CategoriaResumoJSON.id == data.categoria_id).first()
+    categoria = session_query(db, CategoriaResumoJSON).filter(CategoriaResumoJSON.id == data.categoria_id).first()
     if not categoria:
         raise HTTPException(status_code=404, detail="Categoria não encontrada")
 
     # Desativa modelos anteriores da categoria
-    db.query(ExtractionModel).filter(
+    session_query(db, ExtractionModel).filter(
         ExtractionModel.categoria_id == data.categoria_id,
         ExtractionModel.ativo == True
     ).update({"ativo": False})
 
     # Calcula próxima versão
-    max_versao = db.query(func.max(ExtractionModel.versao)).filter(
+    max_versao = session_query(db, func.max(ExtractionModel.versao)).filter(
         ExtractionModel.categoria_id == data.categoria_id
     ).scalar() or 0
 
@@ -612,3 +613,8 @@ async def criar_modelo_manual(
         criado_por=modelo.criado_por,
         criado_em=modelo.criado_em
     )
+
+
+
+
+

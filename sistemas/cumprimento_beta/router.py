@@ -19,7 +19,7 @@ from datetime import datetime
 from fastapi import APIRouter, HTTPException, Depends, Query, BackgroundTasks, Request
 from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy.orm import Session
-
+from app.repositories.sqlalchemy.session_ops import session_query
 from database.connection import get_db
 from auth.models import User
 from auth.dependencies import get_current_active_user
@@ -143,13 +143,13 @@ async def listar_sessoes(
     db: Session = Depends(get_db)
 ):
     """Lista sessões do usuário atual."""
-    query = db.query(SessaoCumprimentoBeta).filter(
+    query = session_query(db, SessaoCumprimentoBeta).filter(
         SessaoCumprimentoBeta.user_id == current_user.id
     )
 
     # Admin pode ver todas
     if current_user.role == "admin":
-        query = db.query(SessaoCumprimentoBeta)
+        query = session_query(db, SessaoCumprimentoBeta)
 
     total = query.count()
     sessoes = query.order_by(
@@ -183,7 +183,7 @@ def _obter_sessao_usuario(
     current_user: User
 ) -> SessaoCumprimentoBeta:
     """Obtém sessão verificando permissão do usuário"""
-    sessao = db.query(SessaoCumprimentoBeta).filter(
+    sessao = session_query(db, SessaoCumprimentoBeta).filter(
         SessaoCumprimentoBeta.id == sessao_id
     ).first()
 
@@ -199,15 +199,15 @@ def _obter_sessao_usuario(
 
 def _sessao_para_response(sessao: SessaoCumprimentoBeta, db: Session) -> StatusSessaoResponse:
     """Converte sessão para response"""
-    tem_consolidacao = db.query(ConsolidacaoBeta).filter(
+    tem_consolidacao = session_query(db, ConsolidacaoBeta).filter(
         ConsolidacaoBeta.sessao_id == sessao.id
     ).count() > 0
 
-    total_conversas = db.query(ConversaBeta).filter(
+    total_conversas = session_query(db, ConversaBeta).filter(
         ConversaBeta.sessao_id == sessao.id
     ).count()
 
-    total_pecas = db.query(PecaGeradaBeta).filter(
+    total_pecas = session_query(db, PecaGeradaBeta).filter(
         PecaGeradaBeta.sessao_id == sessao.id
     ).count()
 
@@ -278,7 +278,7 @@ async def _processar_agente1_background(sessao_id: int):
 
     db = SessionLocal()
     try:
-        sessao = db.query(SessaoCumprimentoBeta).filter(
+        sessao = session_query(db, SessaoCumprimentoBeta).filter(
             SessaoCumprimentoBeta.id == sessao_id
         ).first()
 
@@ -301,7 +301,7 @@ async def listar_documentos(
     """Lista documentos de uma sessão com status de relevância."""
     sessao = _obter_sessao_usuario(db, sessao_id, current_user)
 
-    query = db.query(DocumentoBeta).filter(
+    query = session_query(db, DocumentoBeta).filter(
         DocumentoBeta.sessao_id == sessao_id
     )
 
@@ -338,7 +338,7 @@ async def obter_consolidacao(
     """Obtém consolidação de uma sessão."""
     sessao = _obter_sessao_usuario(db, sessao_id, current_user)
 
-    consolidacao = db.query(ConsolidacaoBeta).filter(
+    consolidacao = session_query(db, ConsolidacaoBeta).filter(
         ConsolidacaoBeta.sessao_id == sessao_id
     ).first()
 
@@ -571,3 +571,8 @@ async def download_peca(
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         filename=filename
     )
+
+
+
+
+

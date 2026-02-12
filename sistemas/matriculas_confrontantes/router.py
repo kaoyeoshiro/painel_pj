@@ -16,6 +16,7 @@ from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Backgro
 from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
+from app.repositories.sqlalchemy.session_ops import session_query
 from werkzeug.utils import secure_filename
 
 from database.connection import get_db
@@ -118,7 +119,7 @@ async def list_files(
     files = []
     
     # Busca arquivos do usuário no banco
-    arquivos_usuario = db.query(ArquivoUpload).filter(
+    arquivos_usuario = session_query(db, ArquivoUpload).filter(
         ArquivoUpload.usuario_id == current_user.id
     ).all()
     
@@ -128,7 +129,7 @@ async def list_files(
         # Verifica se o arquivo ainda existe no disco
         if filepath.exists():
             # Verifica se foi analisado
-            analise = db.query(Analise).filter(Analise.file_id == arquivo.file_id).first()
+            analise = session_query(db, Analise).filter(Analise.file_id == arquivo.file_id).first()
             
             files.append(FileInfo(
                 id=arquivo.file_id,
@@ -155,7 +156,7 @@ async def view_file(
 ):
     """Serve arquivo para visualização"""
     # Verifica se o arquivo pertence ao usuário
-    arquivo = db.query(ArquivoUpload).filter(
+    arquivo = session_query(db, ArquivoUpload).filter(
         ArquivoUpload.file_id == file_id,
         ArquivoUpload.usuario_id == current_user.id
     ).first()
@@ -180,7 +181,7 @@ async def get_file_content(
 ):
     """Retorna o conteúdo do arquivo em base64"""
     # Verifica se o arquivo pertence ao usuário
-    arquivo = db.query(ArquivoUpload).filter(
+    arquivo = session_query(db, ArquivoUpload).filter(
         ArquivoUpload.file_id == file_id,
         ArquivoUpload.usuario_id == current_user.id
     ).first()
@@ -214,7 +215,7 @@ async def check_duplicate_file(
     original_name = secure_filename(filename)
     
     # Busca arquivo com mesmo nome do usuário
-    arquivo_existente = db.query(ArquivoUpload).filter(
+    arquivo_existente = session_query(db, ArquivoUpload).filter(
         ArquivoUpload.file_name == original_name,
         ArquivoUpload.usuario_id == current_user.id
     ).first()
@@ -248,7 +249,7 @@ async def upload_file(
     original_name = secure_filename(file.filename)
     
     # Verifica se já existe arquivo com mesmo nome
-    arquivo_existente = db.query(ArquivoUpload).filter(
+    arquivo_existente = session_query(db, ArquivoUpload).filter(
         ArquivoUpload.file_name == original_name,
         ArquivoUpload.usuario_id == current_user.id
     ).first()
@@ -316,7 +317,7 @@ async def delete_file(
 ):
     """Exclui um arquivo - PRESERVA análise e feedback para histórico"""
     # Verifica se o arquivo pertence ao usuário
-    arquivo = db.query(ArquivoUpload).filter(
+    arquivo = session_query(db, ArquivoUpload).filter(
         ArquivoUpload.file_id == file_id,
         ArquivoUpload.usuario_id == current_user.id
     ).first()
@@ -362,9 +363,9 @@ async def list_analyses(
     """
     # SECURITY: Filtra por usuário para prevenir IDOR
     if current_user.role == "admin":
-        analises = db.query(Analise).all()
+        analises = session_query(db, Analise).all()
     else:
-        analises = db.query(Analise).filter(Analise.usuario_id == current_user.id).all()
+        analises = session_query(db, Analise).filter(Analise.usuario_id == current_user.id).all()
     
     result = []
     for analise in analises:
@@ -423,7 +424,7 @@ async def analisar_documento(
     
     # Verifica se já existe análise salva (e não está forçando reanálise)
     if not force:
-        analise_existente = db.query(Analise).filter(Analise.file_id == file_id).first()
+        analise_existente = session_query(db, Analise).filter(Analise.file_id == file_id).first()
         if analise_existente and analise_existente.resultado_json:
             add_log(db, f"Análise já existente recuperada: {file_id}", "info")
             return {"success": True, "message": "Análise já realizada", "cached": True}
@@ -434,7 +435,7 @@ async def analisar_documento(
     
     if not api_key:
         # Busca do banco (configuração global)
-        config_api = db.query(ConfiguracaoIA).filter(
+        config_api = session_query(db, ConfiguracaoIA).filter(
             ConfiguracaoIA.sistema == "global",
             ConfiguracaoIA.chave == "openrouter_api_key"
         ).first()
@@ -492,7 +493,7 @@ async def analisar_lote(
     api_key = os.getenv("OPENROUTER_API_KEY", "")
     
     if not api_key:
-        config_api = db.query(ConfiguracaoIA).filter(
+        config_api = session_query(db, ConfiguracaoIA).filter(
             ConfiguracaoIA.sistema == "global",
             ConfiguracaoIA.chave == "openrouter_api_key"
         ).first()
@@ -543,12 +544,12 @@ async def status_grupo(
     db: Session = Depends(get_db)
 ):
     """Retorna status de um grupo de análise"""
-    grupo = db.query(GrupoAnalise).filter(GrupoAnalise.id == grupo_id).first()
+    grupo = session_query(db, GrupoAnalise).filter(GrupoAnalise.id == grupo_id).first()
     
     if not grupo:
         raise HTTPException(status_code=404, detail="Grupo não encontrado")
     
-    analises = db.query(Analise).filter(Analise.grupo_id == grupo_id).all()
+    analises = session_query(db, Analise).filter(Analise.grupo_id == grupo_id).all()
     
     return {
         "id": grupo.id,
@@ -568,7 +569,7 @@ async def resultado_grupo(
     db: Session = Depends(get_db)
 ):
     """Retorna resultado consolidado de um grupo de análise"""
-    grupo = db.query(GrupoAnalise).filter(GrupoAnalise.id == grupo_id).first()
+    grupo = session_query(db, GrupoAnalise).filter(GrupoAnalise.id == grupo_id).first()
     
     if not grupo:
         raise HTTPException(status_code=404, detail="Grupo não encontrado")
@@ -579,7 +580,7 @@ async def resultado_grupo(
     resultado = grupo.resultado_json.copy() if isinstance(grupo.resultado_json, dict) else {}
     
     # Adiciona ID da primeira análise do grupo para feedback
-    primeira_analise = db.query(Analise).filter(Analise.grupo_id == grupo_id).first()
+    primeira_analise = session_query(db, Analise).filter(Analise.grupo_id == grupo_id).first()
     if primeira_analise:
         resultado["analise_id"] = primeira_analise.id
     resultado["grupo_id"] = grupo_id
@@ -606,7 +607,7 @@ def run_batch_analysis_task(grupo_id: int, file_ids: List[str], file_paths: List
     try:
         # Verifica se há modelo configurado no banco
         try:
-            config_model = db.query(ConfiguracaoIA).filter(
+            config_model = session_query(db, ConfiguracaoIA).filter(
                 ConfiguracaoIA.sistema == "matriculas",
                 ConfiguracaoIA.chave == "modelo"
             ).first()
@@ -712,7 +713,7 @@ INSTRUÇÕES ESPECIAIS PARA ANÁLISE EM LOTE:
         parsed["total_paginas"] = len(all_images_b64)
         
         # Atualiza grupo com resultado
-        grupo = db.query(GrupoAnalise).filter(GrupoAnalise.id == grupo_id).first()
+        grupo = session_query(db, GrupoAnalise).filter(GrupoAnalise.id == grupo_id).first()
         if grupo:
             grupo.resultado_json = parsed
             grupo.status = "concluido"
@@ -723,7 +724,7 @@ INSTRUÇÕES ESPECIAIS PARA ANÁLISE EM LOTE:
         lotes = parsed.get("lotes_confrontantes", [])
         
         for file_id, info in file_page_map.items():
-            analise = db.query(Analise).filter(Analise.file_id == file_id).first()
+            analise = session_query(db, Analise).filter(Analise.file_id == file_id).first()
             if not analise:
                 analise = Analise(
                     file_id=file_id,
@@ -755,7 +756,7 @@ INSTRUÇÕES ESPECIAIS PARA ANÁLISE EM LOTE:
         logger.error(traceback.format_exc())
         
         # Atualiza grupo com erro
-        grupo = db.query(GrupoAnalise).filter(GrupoAnalise.id == grupo_id).first()
+        grupo = session_query(db, GrupoAnalise).filter(GrupoAnalise.id == grupo_id).first()
         if grupo:
             grupo.status = "erro"
             grupo.resultado_json = {"erro": str(e)}
@@ -783,7 +784,7 @@ def run_analysis_task(file_id: str, file_path: str, model: str, api_key: str, us
     try:
         # Verifica se há modelo configurado no banco
         try:
-            config_model = db.query(ConfiguracaoIA).filter(
+            config_model = session_query(db, ConfiguracaoIA).filter(
                 ConfiguracaoIA.sistema == "matriculas",
                 ConfiguracaoIA.chave == "modelo"
             ).first()
@@ -831,7 +832,7 @@ def run_analysis_task(file_id: str, file_path: str, model: str, api_key: str, us
                 proprietario_str = ", ".join(props[:2])
         
         # Salva ou atualiza análise (não armazena o caminho do arquivo)
-        analise = db.query(Analise).filter(Analise.file_id == file_id).first()
+        analise = session_query(db, Analise).filter(Analise.file_id == file_id).first()
         if not analise:
             analise = Analise(
                 file_id=file_id,
@@ -881,7 +882,7 @@ async def status_analise(
 ):
     """Retorna status da análise"""
     processing = state.processing.get(file_id, False)
-    analise = db.query(Analise).filter(Analise.file_id == file_id).first()
+    analise = session_query(db, Analise).filter(Analise.file_id == file_id).first()
     
     return AnaliseStatusResponse(
         processing=processing,
@@ -904,9 +905,9 @@ async def get_resultado(
     """
     # SECURITY: Filtra por usuário para prevenir IDOR
     if current_user.role == "admin":
-        analise = db.query(Analise).filter(Analise.file_id == file_id).first()
+        analise = session_query(db, Analise).filter(Analise.file_id == file_id).first()
     else:
-        analise = db.query(Analise).filter(
+        analise = session_query(db, Analise).filter(
             Analise.file_id == file_id,
             Analise.usuario_id == current_user.id
         ).first()
@@ -936,9 +937,9 @@ async def list_registros(
     """
     # SECURITY: Filtra por usuário para prevenir IDOR
     if current_user.role == "admin":
-        return db.query(Registro).all()
+        return session_query(db, Registro).all()
     else:
-        return db.query(Registro).filter(Registro.usuario_id == current_user.id).all()
+        return session_query(db, Registro).filter(Registro.usuario_id == current_user.id).all()
 
 
 @router.post("/registros", response_model=RegistroResponse, status_code=201)
@@ -982,9 +983,9 @@ async def get_registro(
     """
     # SECURITY: Filtra por usuário para prevenir IDOR
     if current_user.role == "admin":
-        registro = db.query(Registro).filter(Registro.id == registro_id).first()
+        registro = session_query(db, Registro).filter(Registro.id == registro_id).first()
     else:
-        registro = db.query(Registro).filter(
+        registro = session_query(db, Registro).filter(
             Registro.id == registro_id,
             Registro.usuario_id == current_user.id
         ).first()
@@ -1003,7 +1004,7 @@ async def update_registro(
     db: Session = Depends(get_db)
 ):
     """Atualiza um registro"""
-    registro = db.query(Registro).filter(Registro.id == registro_id).first()
+    registro = session_query(db, Registro).filter(Registro.id == registro_id).first()
     
     if not registro:
         raise HTTPException(status_code=404, detail="Registro não encontrado")
@@ -1030,7 +1031,7 @@ async def delete_registro(
     db: Session = Depends(get_db)
 ):
     """Exclui um registro"""
-    registro = db.query(Registro).filter(Registro.id == registro_id).first()
+    registro = session_query(db, Registro).filter(Registro.id == registro_id).first()
     
     if not registro:
         raise HTTPException(status_code=404, detail="Registro não encontrado")
@@ -1062,7 +1063,7 @@ async def get_config(
     
     if not has_api_key:
         try:
-            config_api = db.query(ConfiguracaoIA).filter(
+            config_api = session_query(db, ConfiguracaoIA).filter(
                 ConfiguracaoIA.sistema == "global",
                 ConfiguracaoIA.chave == "openrouter_api_key"
             ).first()
@@ -1089,7 +1090,7 @@ async def get_logs(
     db: Session = Depends(get_db)
 ):
     """Retorna os logs do sistema"""
-    logs = db.query(LogSistema).filter(
+    logs = session_query(db, LogSistema).filter(
         LogSistema.sistema == "matriculas"
     ).order_by(LogSistema.id.desc()).limit(100).all()
     
@@ -1102,7 +1103,7 @@ async def clear_logs(
     db: Session = Depends(get_db)
 ):
     """Limpa os logs"""
-    db.query(LogSistema).filter(LogSistema.sistema == "matriculas").delete()
+    session_query(db, LogSistema).filter(LogSistema.sistema == "matriculas").delete()
     db.commit()
     
     add_log(db, "Logs limpos pelo usuário", "info")
@@ -1127,7 +1128,7 @@ async def gerar_relatorio(
     logger = logging.getLogger("matriculas_router")
     
     # Busca última análise
-    analise = db.query(Analise).order_by(Analise.id.desc()).first()
+    analise = session_query(db, Analise).order_by(Analise.id.desc()).first()
     
     if not analise:
         logger.error("Nenhuma análise encontrada no banco")
@@ -1156,7 +1157,7 @@ async def gerar_relatorio(
         from admin.models import ConfiguracaoIA
         api_key = os.getenv("OPENROUTER_API_KEY", "")
         if not api_key:
-            config = db.query(ConfiguracaoIA).filter(
+            config = session_query(db, ConfiguracaoIA).filter(
                 ConfiguracaoIA.sistema == "global",
                 ConfiguracaoIA.chave == "openrouter_api_key"
             ).first()
@@ -1248,11 +1249,11 @@ async def download_relatorio_docx(
 
     # Busca análise específica ou última disponível
     if analise_id:
-        analise = db.query(Analise).filter(Analise.id == analise_id).first()
+        analise = session_query(db, Analise).filter(Analise.id == analise_id).first()
     elif file_id:
-        analise = db.query(Analise).filter(Analise.file_id == file_id).order_by(Analise.id.desc()).first()
+        analise = session_query(db, Analise).filter(Analise.file_id == file_id).order_by(Analise.id.desc()).first()
     else:
-        analise = db.query(Analise).filter(
+        analise = session_query(db, Analise).filter(
             Analise.relatorio_texto.isnot(None)
         ).order_by(Analise.id.desc()).first()
 
@@ -1283,7 +1284,7 @@ async def download_relatorio_docx(
                 from admin.models import ConfiguracaoIA
                 api_key = os.getenv("OPENROUTER_API_KEY", "")
                 if not api_key:
-                    config = db.query(ConfiguracaoIA).filter(
+                    config = session_query(db, ConfiguracaoIA).filter(
                         ConfiguracaoIA.sistema == "global",
                         ConfiguracaoIA.chave == "openrouter_api_key"
                     ).first()
@@ -1397,13 +1398,13 @@ async def enviar_feedback_matricula(
     """
     try:
         # Verifica se a análise existe
-        analise = db.query(Analise).filter(Analise.id == req.analise_id).first()
+        analise = session_query(db, Analise).filter(Analise.id == req.analise_id).first()
         
         if not analise:
             raise HTTPException(status_code=404, detail="Análise não encontrada")
         
         # Verifica se já existe feedback para esta análise
-        feedback_existente = db.query(FeedbackMatricula).filter(
+        feedback_existente = session_query(db, FeedbackMatricula).filter(
             FeedbackMatricula.analise_id == req.analise_id
         ).first()
         
@@ -1441,7 +1442,7 @@ async def obter_feedback_matricula(
 ):
     """Obtém o feedback de uma análise específica."""
     try:
-        feedback = db.query(FeedbackMatricula).filter(
+        feedback = session_query(db, FeedbackMatricula).filter(
             FeedbackMatricula.analise_id == analise_id
         ).first()
         
@@ -1457,3 +1458,8 @@ async def obter_feedback_matricula(
         }
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+
+
+

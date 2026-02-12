@@ -16,6 +16,7 @@ from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
+from app.repositories.sqlalchemy.session_ops import session_query
 from database.connection import get_db
 from auth.dependencies import get_current_active_user
 from auth.models import User
@@ -221,7 +222,7 @@ async def inferir_dependencias(
         raise HTTPException(status_code=403, detail="Sem permissão para inferir dependências")
 
     # Verifica se a categoria existe
-    categoria = db.query(CategoriaResumoJSON).filter(CategoriaResumoJSON.id == data.categoria_id).first()
+    categoria = session_query(db, CategoriaResumoJSON).filter(CategoriaResumoJSON.id == data.categoria_id).first()
     if not categoria:
         raise HTTPException(status_code=404, detail="Categoria não encontrada")
 
@@ -268,7 +269,7 @@ async def aplicar_dependencias(
         raise HTTPException(status_code=403, detail="Sem permissão para aplicar dependências")
 
     # Verifica se a categoria existe
-    categoria = db.query(CategoriaResumoJSON).filter(CategoriaResumoJSON.id == data.categoria_id).first()
+    categoria = session_query(db, CategoriaResumoJSON).filter(CategoriaResumoJSON.id == data.categoria_id).first()
     if not categoria:
         raise HTTPException(status_code=404, detail="Categoria não encontrada")
 
@@ -309,7 +310,7 @@ async def definir_dependencia_pergunta(
     if current_user.role != "admin" and not current_user.tem_permissao("edit_prompts"):
         raise HTTPException(status_code=403, detail="Sem permissão para editar perguntas")
 
-    pergunta = db.query(ExtractionQuestion).filter(ExtractionQuestion.id == pergunta_id).first()
+    pergunta = session_query(db, ExtractionQuestion).filter(ExtractionQuestion.id == pergunta_id).first()
     if not pergunta:
         raise HTTPException(status_code=404, detail="Pergunta não encontrada")
 
@@ -357,7 +358,7 @@ async def remover_dependencia_pergunta(
     if current_user.role != "admin" and not current_user.tem_permissao("edit_prompts"):
         raise HTTPException(status_code=403, detail="Sem permissão para editar perguntas")
 
-    pergunta = db.query(ExtractionQuestion).filter(ExtractionQuestion.id == pergunta_id).first()
+    pergunta = session_query(db, ExtractionQuestion).filter(ExtractionQuestion.id == pergunta_id).first()
     if not pergunta:
         raise HTTPException(status_code=404, detail="Pergunta não encontrada")
 
@@ -393,7 +394,7 @@ async def obter_grafo_dependencias(
     - Perguntas raiz (sem dependência)
     """
     # Verifica se a categoria existe
-    categoria = db.query(CategoriaResumoJSON).filter(CategoriaResumoJSON.id == categoria_id).first()
+    categoria = session_query(db, CategoriaResumoJSON).filter(CategoriaResumoJSON.id == categoria_id).first()
     if not categoria:
         raise HTTPException(status_code=404, detail="Categoria não encontrada")
 
@@ -424,7 +425,7 @@ async def obter_perguntas_dependentes(
     Retorna todas as perguntas que dependem de uma variável específica.
     """
     # Verifica se a categoria existe
-    categoria = db.query(CategoriaResumoJSON).filter(CategoriaResumoJSON.id == categoria_id).first()
+    categoria = session_query(db, CategoriaResumoJSON).filter(CategoriaResumoJSON.id == categoria_id).first()
     if not categoria:
         raise HTTPException(status_code=404, detail="Categoria não encontrada")
 
@@ -450,7 +451,7 @@ async def obter_cadeia_dependencias(
 
     Exemplo: ["medicamento", "registro_anvisa", "incorporado_sus"]
     """
-    pergunta = db.query(ExtractionQuestion).filter(ExtractionQuestion.id == pergunta_id).first()
+    pergunta = session_query(db, ExtractionQuestion).filter(ExtractionQuestion.id == pergunta_id).first()
     if not pergunta:
         raise HTTPException(status_code=404, detail="Pergunta não encontrada")
 
@@ -481,7 +482,7 @@ async def avaliar_visibilidade_pergunta(
 
     Útil para testar condições de visibilidade no frontend.
     """
-    pergunta = db.query(ExtractionQuestion).filter(ExtractionQuestion.id == pergunta_id).first()
+    pergunta = session_query(db, ExtractionQuestion).filter(ExtractionQuestion.id == pergunta_id).first()
     if not pergunta:
         raise HTTPException(status_code=404, detail="Pergunta não encontrada")
 
@@ -527,7 +528,7 @@ async def sincronizar_tipos_perguntas(
         detalhes = []
 
         # Busca namespace da categoria
-        categoria = db.query(CategoriaResumoJSON).filter(
+        categoria = session_query(db, CategoriaResumoJSON).filter(
             CategoriaResumoJSON.id == data.categoria_id
         ).first()
         namespace = categoria.namespace if categoria else ""
@@ -557,7 +558,7 @@ async def sincronizar_tipos_perguntas(
             except ValueError:
                 continue
 
-            pergunta = db.query(ExtractionQuestion).filter(
+            pergunta = session_query(db, ExtractionQuestion).filter(
                 ExtractionQuestion.id == pergunta_id,
                 ExtractionQuestion.categoria_id == data.categoria_id
             ).first()
@@ -647,7 +648,7 @@ async def restaurar_slugs_de_backup(
         raise HTTPException(status_code=403, detail="Apenas administradores podem restaurar slugs")
 
     try:
-        categoria = db.query(CategoriaResumoJSON).filter(
+        categoria = session_query(db, CategoriaResumoJSON).filter(
             CategoriaResumoJSON.id == data.categoria_id
         ).first()
 
@@ -658,11 +659,11 @@ async def restaurar_slugs_de_backup(
             )
 
         # Busca variáveis e perguntas da categoria
-        variaveis = db.query(ExtractionVariable).filter(
+        variaveis = session_query(db, ExtractionVariable).filter(
             ExtractionVariable.categoria_id == categoria.id
         ).all()
 
-        perguntas = db.query(ExtractionQuestion).filter(
+        perguntas = session_query(db, ExtractionQuestion).filter(
             ExtractionQuestion.categoria_id == categoria.id,
             ExtractionQuestion.ativo == True
         ).all()
@@ -724,7 +725,7 @@ async def restaurar_slugs_de_backup(
         # Sincroniza perguntas
         perguntas_sincronizadas = 0
         for pergunta in perguntas:
-            variavel = db.query(ExtractionVariable).filter(
+            variavel = session_query(db, ExtractionVariable).filter(
                 ExtractionVariable.source_question_id == pergunta.id
             ).first()
 
@@ -740,7 +741,7 @@ async def restaurar_slugs_de_backup(
                 for desc_json, slug_json in desc_to_slug.items():
                     if desc_key and len(desc_key) > 10:
                         if desc_key in desc_json or desc_json in desc_key:
-                            variavel = db.query(ExtractionVariable).filter(
+                            variavel = session_query(db, ExtractionVariable).filter(
                                 ExtractionVariable.slug == slug_json
                             ).first()
                             if variavel and not variavel.source_question_id:
@@ -770,3 +771,8 @@ async def restaurar_slugs_de_backup(
             success=False,
             erro=str(e)
         )
+
+
+
+
+

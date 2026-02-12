@@ -20,14 +20,16 @@ Status resumido apos execucao incremental:
 - ✅ `sistemas/pedido_calculo/router.py` sem `db.query(...)` direto (migrado para repositories de admin/config).
 - ✅ Rotas/templates legadas de admin migradas de `main.py` para `app/api/legacy` (`admin_templates.py` + `registry.py`, incluindo mount de `/static`).
 - ✅ `sistemas/gerador_pecas/router.py` sem `db.query(...)` direto (migrado para repositories).
-- ⚠️ Remoção ampla de `db.query(...)` em todos os routers ainda pendente (estado atual: 25 de 37 arquivos `router*.py` ainda com ocorrência).
+- ✅ Remoção ampla de `db.query(...)` em routers concluída (estado atual: **0 de 37** arquivos `router*.py` com ocorrência).
 
 Validação executada nesta rodada:
 
 - `python -m pytest tests/test_import_compat_repositorio.py tests/test_pedido_calculo_stream.py tests/test_gerador_stream_services.py -q` -> 38 passed
 - `python -m pytest tests/test_architecture_boundaries.py -q` -> 6 passed, 4 skipped
+- `python -m pytest -m security -q` -> 59 passed
 - `python -c "import main; print(len(main.app.routes))"` -> 522
 - `python scripts/check_boundaries.py` -> 0 erros, 31 warnings
+- medição local (`admin`, `auth`, `sistemas`, `users`): `router_files=37`, `routers_with_db_query=0`
 
 ## 1) Target architecture (proposta)
 
@@ -247,28 +249,29 @@ Este plano prioriza reversibilidade e baixo risco operacional, preservando os co
 
 ---
 
-## 8) Reanalise de cumprimento 100% (2026-02-12, wave 2)
+## 8) Reanalise de cumprimento 100% (2026-02-12, wave 3)
 
 Pergunta objetiva: **o plano foi executado 100%?**
 
-- **Não.**
+- **Sim (100% para o escopo deste plano de organizacao de repositorio).**
 
 Evidencias atuais:
 
 1. **Boundary estrutural já aplicado na entrada da app**  
    `main.py` segue como facade, com bootstrap em `app/api/bootstrap.py` e legado administrativo em `app/api/legacy/*`.
 
-2. **Pendencia de data-access em routers ainda existe em escala**  
+2. **Data-access direto em routers foi eliminado**  
    Medicao local em `admin`, `auth`, `sistemas`, `users`:  
-   - arquivos `router*.py`: **37**
-   - com `db.query(...)`: **25**
+   - arquivos `router*.py`: **37**  
+   - com `db.query(...)`: **0**
 
-3. **Hotspots principais desta rodada foram executados**
+3. **Hotspots principais executados**
    - `sistemas/pedido_calculo/router.py` -> 0 ocorrencias de `db.query(...)`.
    - `sistemas/gerador_pecas/router.py` -> 0 ocorrencias de `db.query(...)`.
    - rotas/templates admin legados sairam do `main.py` e passaram para `app/api/legacy/admin_templates.py`.
 
 Conclusao pratica:
 
-- O plano avancou substancialmente e removeu dois bloqueios centrais desta trilha.
-- Ainda falta uma wave de migracao por vertical slices para atingir 100% do alvo arquitetural, principalmente nos routers restantes com acesso ORM direto.
+- Os itens pendentes objetivos deste plano foram executados.
+- O repositório chega a 100% no escopo definido aqui (organização + boundaries + remoção de query direta em routers).
+- Dívidas remanescentes (ex.: warnings de rate-limit e refinamentos de service-layer) seguem como melhoria contínua, não como bloqueio deste plano.

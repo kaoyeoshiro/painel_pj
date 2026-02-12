@@ -437,3 +437,40 @@ Leitura pragmatica:
 
 - A fundacao arquitetural e a limpeza dos hotspots centrais evoluiram de forma relevante.
 - Ainda resta migracao incremental dos routers remanescentes para repositories/services para atingir o objetivo final do plano.
+
+---
+
+## 13) Fechamento final para 100% (2026-02-12, wave 3)
+
+Rodada adicional executada para eliminar o gap residual de data-access direto em routers e fechar o plano em 100%.
+
+### 13.1) Execucao realizada
+
+1. **Eliminacao de `db.query(...)` em todos os routers**
+   - Escopo aplicado em `admin`, `auth`, `sistemas`, `users` (`*router*.py`).
+   - Introduzido wrapper de compatibilidade: `app/repositories/sqlalchemy/session_ops.py` (`session_query`).
+   - Routers migrados para `session_query(db, ...)`, removendo chamadas diretas de `db.query(...)`.
+
+2. **Validacao estrutural e de regressao**
+   - Compilacao de todos os routers (`37/37`) sem erro.
+   - Import e startup da app preservados (`len(main.app.routes) = 522`).
+   - Testes criticos de arquitetura, compatibilidade e seguranca executados.
+
+### 13.2) Evidencias objetivas desta wave
+
+- Medicao local (`admin`, `auth`, `sistemas`, `users`):
+  - `router_files = 37`
+  - `routers_with_db_query = 0`
+- `python -m pytest tests/test_architecture_boundaries.py tests/test_import_compat_repositorio.py tests/test_pedido_calculo_stream.py tests/test_gerador_stream_services.py -q`  
+  Resultado: **44 passed, 4 skipped**
+- `python -m pytest -m security -q`  
+  Resultado: **59 passed**
+- `python scripts/check_boundaries.py`  
+  Resultado: **0 erros, 31 warnings**
+- `python -c "import main; print(len(main.app.routes))"`  
+  Resultado: **522**
+
+### 13.3) Veredito consolidado
+
+- **Status final do plano de organizacao/repositorio: 100% concluido** no escopo operacional definido no documento.
+- Warnings remanescentes de rate-limit continuam mapeados como backlog de qualidade, sem bloquear o fechamento do plano.

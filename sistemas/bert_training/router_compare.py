@@ -23,7 +23,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from fastapi.responses import FileResponse
 from sqlalchemy import desc
 from sqlalchemy.orm import Session
-
+from app.repositories.sqlalchemy.session_ops import session_query
 from auth.dependencies import get_current_active_user
 from auth.models import User
 from database.connection import get_db
@@ -237,7 +237,7 @@ async def comparar_cnj(
         )
 
     # 1. Validar e buscar categoria
-    categoria = db.query(CategoriaDocumento).filter(
+    categoria = session_query(db, CategoriaDocumento).filter(
         CategoriaDocumento.id == request.categoria_id,
         CategoriaDocumento.ativo == True
     ).first()
@@ -250,7 +250,7 @@ async def comparar_cnj(
         raise HTTPException(status_code=400, detail="Categoria sem codigos de documento configurados")
 
     # 2. Validar e buscar modelo BERT
-    bert_run = db.query(BertRun).filter(
+    bert_run = session_query(db, BertRun).filter(
         BertRun.id == request.bert_model_id,
         BertRun.status == "completed"
     ).first()
@@ -260,7 +260,7 @@ async def comparar_cnj(
 
     # 3. Obter labels do modelo BERT (do ultimo metric com classification_report)
     # Ordena por epoch desc E id desc para pegar o registro mais recente em caso de empate
-    last_metric = db.query(BertMetric).filter(
+    last_metric = session_query(db, BertMetric).filter(
         BertMetric.run_id == bert_run.id,
         BertMetric.classification_report.isnot(None)
     ).order_by(desc(BertMetric.epoch), desc(BertMetric.id)).first()
@@ -467,3 +467,8 @@ async def get_compare_pdf(
         filename=filename,
         headers={"Content-Disposition": f"inline; filename={filename}"}
     )
+
+
+
+
+

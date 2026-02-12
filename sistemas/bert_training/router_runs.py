@@ -21,6 +21,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from fastapi.responses import StreamingResponse
 from sqlalchemy.orm import Session
+from app.repositories.sqlalchemy.session_ops import session_query
 from sqlalchemy import desc
 
 from auth.dependencies import get_current_active_user
@@ -84,7 +85,7 @@ async def create_run(
         raise HTTPException(status_code=403, detail="Acesso negado")
 
     # Busca dataset
-    dataset = db.query(BertDataset).filter(BertDataset.id == run_data.dataset_id).first()
+    dataset = session_query(db, BertDataset).filter(BertDataset.id == run_data.dataset_id).first()
     if not dataset:
         raise HTTPException(status_code=404, detail="Dataset nao encontrado")
 
@@ -167,7 +168,7 @@ async def create_run_simple(
         raise HTTPException(status_code=403, detail="Acesso negado")
 
     # Busca dataset
-    dataset = db.query(BertDataset).filter(BertDataset.id == run_data.dataset_id).first()
+    dataset = session_query(db, BertDataset).filter(BertDataset.id == run_data.dataset_id).first()
     if not dataset:
         raise HTTPException(status_code=404, detail="Dataset nao encontrado")
 
@@ -234,7 +235,7 @@ async def list_runs(
     if not current_user.pode_acessar_sistema("bert_training"):
         raise HTTPException(status_code=403, detail="Acesso negado")
 
-    query = db.query(BertRun).order_by(desc(BertRun.created_at))
+    query = session_query(db, BertRun).order_by(desc(BertRun.created_at))
 
     if current_user.role != "admin":
         query = query.filter(BertRun.created_by == current_user.id)
@@ -267,7 +268,7 @@ async def get_run(
     current_user: User = Depends(get_current_active_user)
 ):
     """Obtém detalhes de um run."""
-    run = db.query(BertRun).filter(BertRun.id == run_id).first()
+    run = session_query(db, BertRun).filter(BertRun.id == run_id).first()
 
     if not run:
         raise HTTPException(status_code=404, detail="Run não encontrado")
@@ -276,13 +277,13 @@ async def get_run(
         raise HTTPException(status_code=403, detail="Acesso negado")
 
     # Busca dataset filename
-    dataset = db.query(BertDataset).filter(BertDataset.id == run.dataset_id).first()
+    dataset = session_query(db, BertDataset).filter(BertDataset.id == run.dataset_id).first()
 
     # Busca jobs
-    jobs = db.query(BertJob).filter(BertJob.run_id == run_id).order_by(desc(BertJob.created_at)).all()
+    jobs = session_query(db, BertJob).filter(BertJob.run_id == run_id).order_by(desc(BertJob.created_at)).all()
 
     # Busca últimas métricas
-    metrics = db.query(BertMetric).filter(
+    metrics = session_query(db, BertMetric).filter(
         BertMetric.run_id == run_id
     ).order_by(BertMetric.epoch.asc()).limit(100).all()
 
@@ -359,7 +360,7 @@ async def get_run_progress(
     - status: Status atual do run
     - quality_alert: Alerta de qualidade (se aplicavel)
     """
-    run = db.query(BertRun).filter(BertRun.id == run_id).first()
+    run = session_query(db, BertRun).filter(BertRun.id == run_id).first()
     if not run:
         raise HTTPException(status_code=404, detail="Run nao encontrado")
 
@@ -367,7 +368,7 @@ async def get_run_progress(
         raise HTTPException(status_code=403, detail="Acesso negado")
 
     # Busca job ativo
-    job = db.query(BertJob).filter(
+    job = session_query(db, BertJob).filter(
         BertJob.run_id == run_id
     ).order_by(desc(BertJob.created_at)).first()
 
@@ -389,7 +390,7 @@ async def get_run_progress(
 
         # Informações do worker/GPU
         if job.worker_id:
-            worker = db.query(BertWorker).filter(BertWorker.id == job.worker_id).first()
+            worker = session_query(db, BertWorker).filter(BertWorker.id == job.worker_id).first()
             if worker:
                 result["worker_info"] = {
                     "name": worker.name,
@@ -400,12 +401,12 @@ async def get_run_progress(
                 }
 
         # Últimas métricas (mais recente)
-        latest_metric = db.query(BertMetric).filter(
+        latest_metric = session_query(db, BertMetric).filter(
             BertMetric.run_id == run_id
         ).order_by(desc(BertMetric.epoch)).first()
 
         # Melhor métrica (maior val_accuracy)
-        best_metric = db.query(BertMetric).filter(
+        best_metric = session_query(db, BertMetric).filter(
             BertMetric.run_id == run_id,
             BertMetric.val_accuracy.isnot(None)
         ).order_by(desc(BertMetric.val_accuracy)).first()
@@ -427,7 +428,7 @@ async def get_run_progress(
             }
 
         # Histórico completo de métricas (para o gráfico)
-        all_metrics = db.query(BertMetric).filter(
+        all_metrics = session_query(db, BertMetric).filter(
             BertMetric.run_id == run_id,
             BertMetric.val_accuracy.isnot(None)
         ).order_by(BertMetric.epoch).all()
@@ -444,7 +445,7 @@ async def get_run_progress(
             ]
 
         # Extrai progresso intra-epoch dos logs (Batch X/Y)
-        batch_log = db.query(BertLog).filter(
+        batch_log = session_query(db, BertLog).filter(
             BertLog.run_id == run_id,
             BertLog.message.like('%Batch %/%')
         ).order_by(desc(BertLog.timestamp)).first()
@@ -477,7 +478,7 @@ async def get_run_progress(
 
                         # Estima tempo por batch baseado nos logs recentes
                         # Busca log de batch anterior para calcular velocidade
-                        prev_batch_log = db.query(BertLog).filter(
+                        prev_batch_log = session_query(db, BertLog).filter(
                             BertLog.run_id == run_id,
                             BertLog.message.like(f'%Epoch {log_epoch} - Batch%'),
                             BertLog.timestamp < batch_log.timestamp
@@ -500,7 +501,7 @@ async def get_run_progress(
                                         result["batch_progress"]["epoch_remaining_label"] = f"~{int(epoch_remaining_seconds/60)}min restantes"
 
         # Últimos logs (últimos 5)
-        recent_logs = db.query(BertLog).filter(
+        recent_logs = session_query(db, BertLog).filter(
             BertLog.run_id == run_id
         ).order_by(desc(BertLog.timestamp)).limit(5).all()
 
@@ -555,7 +556,7 @@ async def get_run_evaluation(
     - Confusion matrix
     - Lista de classificações incorretas (erros)
     """
-    run = db.query(BertRun).filter(BertRun.id == run_id).first()
+    run = session_query(db, BertRun).filter(BertRun.id == run_id).first()
     if not run:
         raise HTTPException(status_code=404, detail="Run não encontrado")
 
@@ -570,7 +571,7 @@ async def get_run_evaluation(
         )
 
     # Busca a última métrica com classification_report (normalmente a avaliação final)
-    final_metric = db.query(BertMetric).filter(
+    final_metric = session_query(db, BertMetric).filter(
         BertMetric.run_id == run_id,
         BertMetric.classification_report.isnot(None)
     ).order_by(desc(BertMetric.epoch)).first()
@@ -654,7 +655,7 @@ async def cancel_run(
 
     Retorna erro se o run já estiver concluído ou cancelado.
     """
-    run = db.query(BertRun).filter(BertRun.id == run_id).first()
+    run = session_query(db, BertRun).filter(BertRun.id == run_id).first()
     if not run:
         raise HTTPException(status_code=404, detail="Run nao encontrado")
 
@@ -675,7 +676,7 @@ async def cancel_run(
     run.error_message = f"Cancelado pelo usuario (status anterior: {old_status})"
 
     # Cancela job associado (se houver)
-    job = db.query(BertJob).filter(
+    job = session_query(db, BertJob).filter(
         BertJob.run_id == run_id,
         BertJob.status.notin_([JobStatus.COMPLETED, JobStatus.FAILED, JobStatus.CANCELLED])
     ).first()
@@ -713,7 +714,7 @@ async def stop_run_early(
 
     Ideal para quando o modelo ja atingiu uma boa accuracy e nao esta melhorando.
     """
-    run = db.query(BertRun).filter(BertRun.id == run_id).first()
+    run = session_query(db, BertRun).filter(BertRun.id == run_id).first()
     if not run:
         raise HTTPException(status_code=404, detail="Run nao encontrado")
 
@@ -729,7 +730,7 @@ async def stop_run_early(
         )
 
     # Busca job ativo
-    job = db.query(BertJob).filter(
+    job = session_query(db, BertJob).filter(
         BertJob.run_id == run_id,
         BertJob.status == JobStatus.TRAINING
     ).first()
@@ -744,7 +745,7 @@ async def stop_run_early(
     job.status = JobStatus.STOPPING
 
     # Busca melhor accuracy ate agora
-    best_metric = db.query(BertMetric).filter(
+    best_metric = session_query(db, BertMetric).filter(
         BertMetric.run_id == run_id,
         BertMetric.val_accuracy.isnot(None)
     ).order_by(desc(BertMetric.val_accuracy)).first()
@@ -785,7 +786,7 @@ async def delete_run(
 
     CUIDADO: Esta acao e irreversivel!
     """
-    run = db.query(BertRun).filter(BertRun.id == run_id).first()
+    run = session_query(db, BertRun).filter(BertRun.id == run_id).first()
     if not run:
         raise HTTPException(status_code=404, detail="Run nao encontrado")
 
@@ -802,7 +803,7 @@ async def delete_run(
             )
         # Se force, primeiro cancela
         run.status = "cancelled"
-        job = db.query(BertJob).filter(
+        job = session_query(db, BertJob).filter(
             BertJob.run_id == run_id,
             BertJob.status.notin_([JobStatus.COMPLETED, JobStatus.FAILED, JobStatus.CANCELLED])
         ).first()
@@ -810,9 +811,9 @@ async def delete_run(
             job.status = JobStatus.CANCELLED
 
     # Exclui dados associados (cascade deveria cuidar, mas vamos garantir)
-    db.query(BertMetric).filter(BertMetric.run_id == run_id).delete()
-    db.query(BertLog).filter(BertLog.run_id == run_id).delete()
-    db.query(BertJob).filter(BertJob.run_id == run_id).delete()
+    session_query(db, BertMetric).filter(BertMetric.run_id == run_id).delete()
+    session_query(db, BertLog).filter(BertLog.run_id == run_id).delete()
+    session_query(db, BertJob).filter(BertJob.run_id == run_id).delete()
 
     # Exclui o run
     run_name = run.name
@@ -850,14 +851,14 @@ async def get_run_metrics(
     current_user: User = Depends(get_current_active_user)
 ):
     """Obtém todas as métricas de um run."""
-    run = db.query(BertRun).filter(BertRun.id == run_id).first()
+    run = session_query(db, BertRun).filter(BertRun.id == run_id).first()
     if not run:
         raise HTTPException(status_code=404, detail="Run não encontrado")
 
     if current_user.role != "admin" and run.created_by != current_user.id:
         raise HTTPException(status_code=403, detail="Acesso negado")
 
-    metrics = db.query(BertMetric).filter(
+    metrics = session_query(db, BertMetric).filter(
         BertMetric.run_id == run_id
     ).order_by(BertMetric.epoch.asc()).all()
 
@@ -889,7 +890,7 @@ async def get_run_logs_sse(
     """
     import asyncio
 
-    run = db.query(BertRun).filter(BertRun.id == run_id).first()
+    run = session_query(db, BertRun).filter(BertRun.id == run_id).first()
     if not run:
         raise HTTPException(status_code=404, detail="Run não encontrado")
 
@@ -899,7 +900,7 @@ async def get_run_logs_sse(
 
         while True:
             # Busca novos logs
-            logs = db.query(BertLog).filter(
+            logs = session_query(db, BertLog).filter(
                 BertLog.run_id == run_id,
                 BertLog.id > current_last_id
             ).order_by(BertLog.id.asc()).limit(50).all()
@@ -953,8 +954,8 @@ async def reproduce_run(
     if not can_reproduce:
         raise HTTPException(status_code=400, detail=message)
 
-    original_run = db.query(BertRun).filter(BertRun.id == run_id).first()
-    dataset = db.query(BertDataset).filter(BertDataset.id == original_run.dataset_id).first()
+    original_run = session_query(db, BertRun).filter(BertRun.id == run_id).first()
+    dataset = session_query(db, BertDataset).filter(BertDataset.id == original_run.dataset_id).first()
 
     from sistemas.bert_training.schemas import HyperparametersConfig
     hyperparams = HyperparametersConfig(**original_run.config_json)
@@ -995,3 +996,8 @@ async def reproduce_run(
         started_at=run.started_at,
         completed_at=run.completed_at
     )
+
+
+
+
+

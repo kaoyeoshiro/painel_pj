@@ -17,6 +17,7 @@ from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
+from app.repositories.sqlalchemy.session_ops import session_query
 from database.connection import get_db
 from auth.dependencies import get_current_active_user
 from auth.models import User
@@ -68,11 +69,11 @@ async def listar_perguntas_categoria(
     perf_ctx.set_action("listar_perguntas_categoria")
 
     # Verifica se a categoria existe
-    categoria = db.query(CategoriaResumoJSON).filter(CategoriaResumoJSON.id == categoria_id).first()
+    categoria = session_query(db, CategoriaResumoJSON).filter(CategoriaResumoJSON.id == categoria_id).first()
     if not categoria:
         raise HTTPException(status_code=404, detail="Categoria não encontrada")
 
-    query = db.query(ExtractionQuestion).filter(ExtractionQuestion.categoria_id == categoria_id)
+    query = session_query(db, ExtractionQuestion).filter(ExtractionQuestion.categoria_id == categoria_id)
 
     if apenas_ativos:
         query = query.filter(ExtractionQuestion.ativo == True)
@@ -118,7 +119,7 @@ async def criar_pergunta(
         raise HTTPException(status_code=403, detail="Sem permissão para criar perguntas")
 
     # Verifica se a categoria existe
-    categoria = db.query(CategoriaResumoJSON).filter(CategoriaResumoJSON.id == data.categoria_id).first()
+    categoria = session_query(db, CategoriaResumoJSON).filter(CategoriaResumoJSON.id == data.categoria_id).first()
     if not categoria:
         raise HTTPException(status_code=404, detail="Categoria não encontrada")
 
@@ -133,7 +134,7 @@ async def criar_pergunta(
 
     # Valida slug duplicado na mesma categoria (usando slug JÁ normalizado)
     if nome_variavel_normalizado:
-        slug_existente = db.query(ExtractionQuestion).filter(
+        slug_existente = session_query(db, ExtractionQuestion).filter(
             ExtractionQuestion.categoria_id == data.categoria_id,
             ExtractionQuestion.nome_variavel_sugerido == nome_variavel_normalizado,
             ExtractionQuestion.ativo == True
@@ -220,7 +221,7 @@ async def criar_perguntas_lote(
         raise HTTPException(status_code=403, detail="Sem permissão para criar perguntas")
 
     # Verifica se a categoria existe
-    categoria = db.query(CategoriaResumoJSON).filter(CategoriaResumoJSON.id == data.categoria_id).first()
+    categoria = session_query(db, CategoriaResumoJSON).filter(CategoriaResumoJSON.id == data.categoria_id).first()
     if not categoria:
         raise HTTPException(status_code=404, detail="Categoria não encontrada")
 
@@ -275,7 +276,7 @@ async def criar_perguntas_lote(
                 )
 
         # Conta perguntas existentes para definir ordem
-        perguntas_existentes = db.query(ExtractionQuestion).filter(
+        perguntas_existentes = session_query(db, ExtractionQuestion).filter(
             ExtractionQuestion.categoria_id == data.categoria_id
         ).count()
 
@@ -616,7 +617,7 @@ async def obter_pergunta(
 
     # PERFORMANCE: Usa LEFT JOIN para buscar categoria em uma única query
     # (ExtractionQuestion não tem relacionamento direto com CategoriaResumoJSON)
-    result = db.query(
+    result = session_query(db, 
         ExtractionQuestion,
         CategoriaResumoJSON.nome.label("categoria_nome")
     ).outerjoin(
@@ -664,12 +665,12 @@ async def atualizar_pergunta(
     if current_user.role != "admin" and not current_user.tem_permissao("edit_prompts"):
         raise HTTPException(status_code=403, detail="Sem permissão para editar perguntas")
 
-    pergunta = db.query(ExtractionQuestion).filter(ExtractionQuestion.id == pergunta_id).first()
+    pergunta = session_query(db, ExtractionQuestion).filter(ExtractionQuestion.id == pergunta_id).first()
     if not pergunta:
         raise HTTPException(status_code=404, detail="Pergunta não encontrada")
 
     # Busca categoria ANTES para poder normalizar o slug
-    categoria = db.query(CategoriaResumoJSON).filter(CategoriaResumoJSON.id == pergunta.categoria_id).first()
+    categoria = session_query(db, CategoriaResumoJSON).filter(CategoriaResumoJSON.id == pergunta.categoria_id).first()
     namespace = categoria.namespace if categoria else ""
 
     # Guarda slug antigo ANTES de atualizar
@@ -688,7 +689,7 @@ async def atualizar_pergunta(
     # Valida slug duplicado na mesma categoria (usando slug JÁ normalizado)
     novo_slug = update_data.get("nome_variavel_sugerido")
     if novo_slug and novo_slug.strip() and novo_slug != slug_antigo:
-        slug_existente = db.query(ExtractionQuestion).filter(
+        slug_existente = session_query(db, ExtractionQuestion).filter(
             ExtractionQuestion.categoria_id == pergunta.categoria_id,
             ExtractionQuestion.nome_variavel_sugerido == novo_slug,
             ExtractionQuestion.id != pergunta_id,
@@ -718,7 +719,7 @@ async def atualizar_pergunta(
 
     if slug_antigo and novo_slug_final and slug_antigo != novo_slug_final:
         # Slug foi alterado pelo usuario - RENOMEAR a variavel
-        variavel_existente = db.query(ExtractionVariable).filter(
+        variavel_existente = session_query(db, ExtractionVariable).filter(
             ExtractionVariable.source_question_id == pergunta.id
         ).first()
 
@@ -810,7 +811,7 @@ async def atualizar_ordem_perguntas_lote(
         raise HTTPException(status_code=403, detail="Sem permissão para editar perguntas")
 
     # Verifica se a categoria existe
-    categoria = db.query(CategoriaResumoJSON).filter(CategoriaResumoJSON.id == data.categoria_id).first()
+    categoria = session_query(db, CategoriaResumoJSON).filter(CategoriaResumoJSON.id == data.categoria_id).first()
     if not categoria:
         raise HTTPException(status_code=404, detail="Categoria não encontrada")
 
@@ -818,7 +819,7 @@ async def atualizar_ordem_perguntas_lote(
     ids_perguntas = [p.id for p in data.perguntas]
 
     # Busca todas as perguntas em uma única query
-    perguntas_db = db.query(ExtractionQuestion).filter(
+    perguntas_db = session_query(db, ExtractionQuestion).filter(
         ExtractionQuestion.id.in_(ids_perguntas),
         ExtractionQuestion.categoria_id == data.categoria_id
     ).all()
@@ -885,12 +886,12 @@ async def agrupar_perguntas_por_dependencias(
         raise HTTPException(status_code=403, detail="Sem permissão para reordenar perguntas")
 
     # Verifica se a categoria existe
-    categoria = db.query(CategoriaResumoJSON).filter(CategoriaResumoJSON.id == data.categoria_id).first()
+    categoria = session_query(db, CategoriaResumoJSON).filter(CategoriaResumoJSON.id == data.categoria_id).first()
     if not categoria:
         raise HTTPException(status_code=404, detail="Categoria não encontrada")
 
     # Busca todas as perguntas ativas da categoria
-    perguntas = db.query(ExtractionQuestion).filter(
+    perguntas = session_query(db, ExtractionQuestion).filter(
         ExtractionQuestion.categoria_id == data.categoria_id,
         ExtractionQuestion.ativo == True
     ).order_by(ExtractionQuestion.ordem, ExtractionQuestion.id).all()
@@ -966,15 +967,15 @@ async def excluir_pergunta(
     if current_user.role != "admin" and not current_user.tem_permissao("edit_prompts"):
         raise HTTPException(status_code=403, detail="Sem permissão para excluir perguntas")
 
-    pergunta = db.query(ExtractionQuestion).filter(ExtractionQuestion.id == pergunta_id).first()
+    pergunta = session_query(db, ExtractionQuestion).filter(ExtractionQuestion.id == pergunta_id).first()
     if not pergunta:
         raise HTTPException(status_code=404, detail="Pergunta não encontrada")
 
     categoria_id = pergunta.categoria_id
-    categoria = db.query(CategoriaResumoJSON).filter(CategoriaResumoJSON.id == categoria_id).first()
+    categoria = session_query(db, CategoriaResumoJSON).filter(CategoriaResumoJSON.id == categoria_id).first()
 
     # Busca a variável associada
-    variavel = db.query(ExtractionVariable).filter(
+    variavel = session_query(db, ExtractionVariable).filter(
         ExtractionVariable.source_question_id == pergunta_id
     ).first()
 
@@ -1009,7 +1010,7 @@ async def excluir_pergunta(
                 logger.warning(f"JSON inválido na categoria {categoria_id}, não foi possível limpar variável")
 
         # 2. REMOVE REFERÊNCIAS EM PROMPTS (PromptVariableUsage)
-        usos_prompts = db.query(PromptVariableUsage).filter(
+        usos_prompts = session_query(db, PromptVariableUsage).filter(
             PromptVariableUsage.variable_slug == slug
         ).all()
 
@@ -1021,7 +1022,7 @@ async def excluir_pergunta(
             logger.info(f"Removidos {len(usos_prompts)} usos da variável '{slug}' em prompts")
 
         # 3. REMOVE DEPENDÊNCIAS DE OUTRAS PERGUNTAS
-        perguntas_dependentes = db.query(ExtractionQuestion).filter(
+        perguntas_dependentes = session_query(db, ExtractionQuestion).filter(
             ExtractionQuestion.depends_on_variable == slug
         ).all()
 
@@ -1037,7 +1038,7 @@ async def excluir_pergunta(
             logger.info(f"Removidas dependências de {len(perguntas_dependentes)} perguntas para '{slug}'")
 
         # 4. REMOVE DEPENDÊNCIAS DE OUTRAS VARIÁVEIS
-        variaveis_dependentes = db.query(ExtractionVariable).filter(
+        variaveis_dependentes = session_query(db, ExtractionVariable).filter(
             ExtractionVariable.depends_on_variable == slug
         ).all()
 
@@ -1086,3 +1087,8 @@ async def excluir_pergunta(
         "variavel_info": variavel_info,
         "limpezas_realizadas": limpezas_realizadas
     }
+
+
+
+
+

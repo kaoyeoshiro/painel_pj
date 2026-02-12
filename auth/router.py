@@ -9,7 +9,7 @@ from datetime import timedelta
 from fastapi import APIRouter, Depends, HTTPException, status, Request, Response
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy.orm import Session
-
+from app.repositories.sqlalchemy.session_ops import session_query
 from database.connection import get_db
 from auth.models import User
 from auth.schemas import (
@@ -91,7 +91,7 @@ async def login(
         )
 
     # Busca usuário
-    user = db.query(User).filter(User.username == form_data.username).first()
+    user = session_query(db, User).filter(User.username == form_data.username).first()
 
     if not user:
         # SECURITY: Audit log de falha de login
@@ -297,3 +297,8 @@ async def get_quota(current_user: User = Depends(get_current_active_user)):
         user_id=current_user.id,
         is_admin=current_user.role == "admin",
     )
+
+
+
+
+

@@ -20,6 +20,7 @@ from typing import List, Optional
 from fastapi import APIRouter, Depends, File, Form, HTTPException, Query, UploadFile, status
 from fastapi.responses import FileResponse
 from sqlalchemy.orm import Session
+from app.repositories.sqlalchemy.session_ops import session_query
 from sqlalchemy import desc
 
 from auth.dependencies import get_current_active_user
@@ -229,7 +230,7 @@ async def upload_dataset(
     sha256_hash = hashlib.sha256(content).hexdigest()
 
     # Verifica se já existe
-    existing = db.query(BertDataset).filter(
+    existing = session_query(db, BertDataset).filter(
         BertDataset.sha256_hash == sha256_hash
     ).first()
 
@@ -329,7 +330,7 @@ async def list_datasets(
     if not current_user.pode_acessar_sistema("bert_training"):
         raise HTTPException(status_code=403, detail="Acesso negado")
 
-    query = db.query(BertDataset).order_by(desc(BertDataset.uploaded_at))
+    query = session_query(db, BertDataset).order_by(desc(BertDataset.uploaded_at))
 
     # Se não for admin, filtra por usuário
     if current_user.role != "admin":
@@ -358,7 +359,7 @@ async def get_dataset(
     current_user: User = Depends(get_current_active_user)
 ):
     """Obtém detalhes de um dataset."""
-    dataset = db.query(BertDataset).filter(BertDataset.id == dataset_id).first()
+    dataset = session_query(db, BertDataset).filter(BertDataset.id == dataset_id).first()
 
     if not dataset:
         raise HTTPException(status_code=404, detail="Dataset não encontrado")
@@ -366,7 +367,7 @@ async def get_dataset(
     if current_user.role != "admin" and dataset.uploaded_by != current_user.id:
         raise HTTPException(status_code=403, detail="Acesso negado")
 
-    runs_count = db.query(BertRun).filter(BertRun.dataset_id == dataset_id).count()
+    runs_count = session_query(db, BertRun).filter(BertRun.dataset_id == dataset_id).count()
 
     return DatasetDetail(
         id=dataset.id,
@@ -453,7 +454,7 @@ async def get_dataset_quality(
     """
     import pandas as pd
 
-    dataset = db.query(BertDataset).filter(BertDataset.id == dataset_id).first()
+    dataset = session_query(db, BertDataset).filter(BertDataset.id == dataset_id).first()
     if not dataset:
         raise HTTPException(status_code=404, detail="Dataset nao encontrado")
 
@@ -477,7 +478,7 @@ async def download_dataset(
     current_user: User = Depends(get_current_active_user)
 ):
     """Download do arquivo Excel do dataset."""
-    dataset = db.query(BertDataset).filter(BertDataset.id == dataset_id).first()
+    dataset = session_query(db, BertDataset).filter(BertDataset.id == dataset_id).first()
 
     if not dataset:
         raise HTTPException(status_code=404, detail="Dataset não encontrado")
@@ -509,7 +510,7 @@ async def download_dataset_for_worker(
     if not worker:
         raise HTTPException(status_code=401, detail="Token de worker inválido")
 
-    dataset = db.query(BertDataset).filter(BertDataset.id == dataset_id).first()
+    dataset = session_query(db, BertDataset).filter(BertDataset.id == dataset_id).first()
 
     if not dataset:
         raise HTTPException(status_code=404, detail="Dataset não encontrado")
@@ -523,3 +524,8 @@ async def download_dataset_for_worker(
         filename=dataset.filename,
         media_type="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
     )
+
+
+
+
+

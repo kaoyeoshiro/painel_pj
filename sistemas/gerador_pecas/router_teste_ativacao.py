@@ -18,6 +18,7 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
+from app.repositories.sqlalchemy.session_ops import session_query
 from sqlalchemy import func
 
 from database.connection import get_db
@@ -147,7 +148,7 @@ def carregar_modulos_para_tipo_peca(db: Session, tipo_peca: str, categorias_ids:
     Returns:
         Lista de módulos de conteúdo ativos
     """
-    query = db.query(PromptModulo).filter(
+    query = session_query(db, PromptModulo).filter(
         PromptModulo.tipo == "conteudo",
         PromptModulo.ativo == True
     )
@@ -172,14 +173,14 @@ async def listar_categorias_extracao(
     """
     verificar_permissao(current_user)
 
-    categorias = db.query(CategoriaResumoJSON).filter(
+    categorias = session_query(db, CategoriaResumoJSON).filter(
         CategoriaResumoJSON.ativo == True
     ).order_by(CategoriaResumoJSON.ordem, CategoriaResumoJSON.nome).all()
 
     resultado = []
     for cat in categorias:
         # Busca variáveis associadas a esta categoria
-        variaveis = db.query(ExtractionVariable).filter(
+        variaveis = session_query(db, ExtractionVariable).filter(
             ExtractionVariable.categoria_id == cat.id,
             ExtractionVariable.ativo == True
         ).all()
@@ -215,7 +216,7 @@ async def listar_tipos_peca(
 
     from sistemas.gerador_pecas.models_config_pecas import TipoPeca
 
-    tipos = db.query(TipoPeca).filter(TipoPeca.ativo == True).order_by(TipoPeca.ordem).all()
+    tipos = session_query(db, TipoPeca).filter(TipoPeca.ativo == True).order_by(TipoPeca.ordem).all()
 
     logger.info(f"[TIPOS-PECA] Encontrados {len(tipos)} tipos de peca ativos")
 
@@ -275,7 +276,7 @@ async def gerar_variaveis(
         # Variáveis de extração (de documentos)
         # Usa LEFT OUTER JOIN para buscar o título da categoria
         # (ExtractionVariable não tem relacionamento direto com CategoriaResumoJSON)
-        query = db.query(
+        query = session_query(db, 
             ExtractionVariable,
             CategoriaResumoJSON.titulo.label("categoria_titulo")
         ).outerjoin(
@@ -432,7 +433,7 @@ async def simular_ativacao(
     logger.info(f"[SIMULAR] Total de módulos carregados: {len(modulos)}")
 
     # Carrega grupos para exibição
-    grupos = {g.id: g.name for g in db.query(PromptGroup).all()}
+    grupos = {g.id: g.name for g in session_query(db, PromptGroup).all()}
 
     modulos_ativados = []
     modulos_nao_ativados = []
@@ -443,7 +444,7 @@ async def simular_ativacao(
         # DEBUG: Informações do módulo antes da avaliação
         # ================================================================
         # Busca regras específicas por tipo de peça
-        regras_tipo_peca = db.query(RegraDeterministicaTipoPeca).filter(
+        regras_tipo_peca = session_query(db, RegraDeterministicaTipoPeca).filter(
             RegraDeterministicaTipoPeca.modulo_id == modulo.id,
             RegraDeterministicaTipoPeca.ativo == True
         ).all()
@@ -589,7 +590,7 @@ async def listar_cenarios(
     """
     verificar_permissao(current_user)
 
-    query = db.query(CenarioTesteAtivacao).filter(
+    query = session_query(db, CenarioTesteAtivacao).filter(
         CenarioTesteAtivacao.usuario_id == current_user.id
     )
 
@@ -612,7 +613,7 @@ async def obter_cenario(
     """
     verificar_permissao(current_user)
 
-    cenario = db.query(CenarioTesteAtivacao).filter(
+    cenario = session_query(db, CenarioTesteAtivacao).filter(
         CenarioTesteAtivacao.id == cenario_id,
         CenarioTesteAtivacao.usuario_id == current_user.id
     ).first()
@@ -635,7 +636,7 @@ async def atualizar_cenario(
     """
     verificar_permissao(current_user)
 
-    cenario = db.query(CenarioTesteAtivacao).filter(
+    cenario = session_query(db, CenarioTesteAtivacao).filter(
         CenarioTesteAtivacao.id == cenario_id,
         CenarioTesteAtivacao.usuario_id == current_user.id
     ).first()
@@ -668,7 +669,7 @@ async def excluir_cenario(
     """
     verificar_permissao(current_user)
 
-    cenario = db.query(CenarioTesteAtivacao).filter(
+    cenario = session_query(db, CenarioTesteAtivacao).filter(
         CenarioTesteAtivacao.id == cenario_id,
         CenarioTesteAtivacao.usuario_id == current_user.id
     ).first()
@@ -707,12 +708,12 @@ async def debug_modulo(
     )
 
     # Busca o módulo
-    modulo = db.query(PromptModulo).filter(PromptModulo.id == modulo_id).first()
+    modulo = session_query(db, PromptModulo).filter(PromptModulo.id == modulo_id).first()
     if not modulo:
         raise HTTPException(status_code=404, detail="Módulo não encontrado")
 
     # Busca regras específicas por tipo de peça
-    regras_tipo_peca = db.query(RegraDeterministicaTipoPeca).filter(
+    regras_tipo_peca = session_query(db, RegraDeterministicaTipoPeca).filter(
         RegraDeterministicaTipoPeca.modulo_id == modulo_id
     ).all()
 
@@ -920,7 +921,7 @@ async def gerar_relatorio_ativacao(
 
     try:
         # Busca o módulo
-        modulo = db.query(PromptModulo).filter(PromptModulo.id == request.modulo_id).first()
+        modulo = session_query(db, PromptModulo).filter(PromptModulo.id == request.modulo_id).first()
         if not modulo:
             return RelatorioAtivacaoResponse(
                 relatorio="",
@@ -929,7 +930,7 @@ async def gerar_relatorio_ativacao(
             )
 
         # Busca regras específicas por tipo de peça
-        regras_tipo_peca = db.query(RegraDeterministicaTipoPeca).filter(
+        regras_tipo_peca = session_query(db, RegraDeterministicaTipoPeca).filter(
             RegraDeterministicaTipoPeca.modulo_id == modulo.id
         ).all()
 
@@ -971,7 +972,7 @@ async def gerar_relatorio_ativacao(
         # Busca grupo do módulo
         grupo = None
         if modulo.group_id:
-            grupo_obj = db.query(PromptGroup).filter(PromptGroup.id == modulo.group_id).first()
+            grupo_obj = session_query(db, PromptGroup).filter(PromptGroup.id == modulo.group_id).first()
             grupo = grupo_obj.name if grupo_obj else None
 
         # Monta prompt para o LLM
@@ -1062,3 +1063,8 @@ Use formatação Markdown. Seja conciso mas completo. Evite jargão técnico des
             sucesso=False,
             erro=str(e)
         )
+
+
+
+
+

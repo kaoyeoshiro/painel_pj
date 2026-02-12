@@ -16,6 +16,7 @@ from typing import List, Optional
 
 from fastapi import APIRouter, Depends, Form, HTTPException, Query
 from sqlalchemy.orm import Session
+from app.repositories.sqlalchemy.session_ops import session_query
 from sqlalchemy import desc
 
 from auth.dependencies import get_current_active_user
@@ -103,7 +104,7 @@ async def register_worker(
         raise HTTPException(status_code=403, detail="Apenas admin pode registrar workers")
 
     # Verifica se nome já existe
-    existing = db.query(BertWorker).filter(BertWorker.name == worker.name).first()
+    existing = session_query(db, BertWorker).filter(BertWorker.name == worker.name).first()
     if existing:
         raise HTTPException(status_code=400, detail="Nome de worker já existe")
 
@@ -133,7 +134,7 @@ async def list_workers(
     if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Acesso negado")
 
-    workers = db.query(BertWorker).order_by(desc(BertWorker.created_at)).all()
+    workers = session_query(db, BertWorker).order_by(desc(BertWorker.created_at)).all()
 
     return [
         WorkerResponse(
@@ -177,12 +178,12 @@ async def get_queue_status(
     current_user: User = Depends(get_current_active_user)
 ):
     """Obtém status da fila de jobs."""
-    pending = db.query(BertJob).filter(BertJob.status == JobStatus.PENDING).count()
-    training = db.query(BertJob).filter(BertJob.status == JobStatus.TRAINING).count()
-    completed = db.query(BertJob).filter(BertJob.status == JobStatus.COMPLETED).count()
-    failed = db.query(BertJob).filter(BertJob.status == JobStatus.FAILED).count()
+    pending = session_query(db, BertJob).filter(BertJob.status == JobStatus.PENDING).count()
+    training = session_query(db, BertJob).filter(BertJob.status == JobStatus.TRAINING).count()
+    completed = session_query(db, BertJob).filter(BertJob.status == JobStatus.COMPLETED).count()
+    failed = session_query(db, BertJob).filter(BertJob.status == JobStatus.FAILED).count()
 
-    active_workers = db.query(BertWorker).filter(
+    active_workers = session_query(db, BertWorker).filter(
         BertWorker.is_active == True,
         BertWorker.current_job_id != None
     ).count()
@@ -270,7 +271,7 @@ async def get_completed_models(
 
     Retorna apenas runs com status 'completed'.
     """
-    runs = db.query(BertRun).filter(
+    runs = session_query(db, BertRun).filter(
         BertRun.status == "completed"
     ).order_by(desc(BertRun.completed_at)).all()
 
@@ -300,7 +301,7 @@ async def get_test_history(
     current_user: User = Depends(get_current_active_user)
 ):
     """Lista historico de testes do usuario."""
-    tests = db.query(BertTestHistory).filter(
+    tests = session_query(db, BertTestHistory).filter(
         BertTestHistory.user_id == current_user.id
     ).order_by(desc(BertTestHistory.created_at)).limit(limit).all()
 
@@ -333,7 +334,7 @@ async def create_test_record(
 ):
     """Salva registro de teste no historico."""
     # Verifica se o run existe
-    run = db.query(BertRun).filter(BertRun.id == run_id).first()
+    run = session_query(db, BertRun).filter(BertRun.id == run_id).first()
     if not run:
         raise HTTPException(status_code=404, detail="Run nao encontrado")
 
@@ -364,7 +365,7 @@ async def delete_test_record(
     current_user: User = Depends(get_current_active_user)
 ):
     """Deleta um registro de teste."""
-    test = db.query(BertTestHistory).filter(
+    test = session_query(db, BertTestHistory).filter(
         BertTestHistory.id == test_id,
         BertTestHistory.user_id == current_user.id
     ).first()
@@ -384,10 +385,15 @@ async def clear_test_history(
     current_user: User = Depends(get_current_active_user)
 ):
     """Limpa todo historico de testes do usuario."""
-    deleted = db.query(BertTestHistory).filter(
+    deleted = session_query(db, BertTestHistory).filter(
         BertTestHistory.user_id == current_user.id
     ).delete()
 
     db.commit()
 
     return {"message": f"Historico limpo: {deleted} testes removidos"}
+
+
+
+
+

@@ -18,6 +18,7 @@ from datetime import datetime
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
+from app.repositories.sqlalchemy.session_ops import session_query
 from sqlalchemy import func
 
 from database.connection import get_db
@@ -63,17 +64,15 @@ async def listar_variaveis(
     OTIMIZADO: Usa JOINs e subqueries para evitar N+1 queries.
     """
     from sqlalchemy import func as sql_func, case
-    from sqlalchemy.orm import aliased
-
     # 1. QUERY PRINCIPAL com JOINs (evita N+1)
     # Subquery para contar uso de variáveis em prompts
-    uso_subquery = db.query(
+    uso_subquery = session_query(db, 
         PromptVariableUsage.variable_slug,
         sql_func.count(PromptVariableUsage.id).label('uso_count')
     ).group_by(PromptVariableUsage.variable_slug).subquery()
 
     # Query principal com JOINs - agora inclui formato_json para verificação real
-    query = db.query(
+    query = session_query(db, 
         ExtractionVariable,
         CategoriaResumoJSON.nome.label('categoria_nome'),
         CategoriaResumoJSON.formato_json.label('categoria_formato_json'),  # Para verificar se slug está no JSON
@@ -159,7 +158,7 @@ async def listar_variaveis(
     from admin.models_prompts import PromptModulo
     prompts_por_variavel = {}
 
-    usos_com_nomes = db.query(
+    usos_com_nomes = session_query(db, 
         PromptVariableUsage.variable_slug,
         PromptModulo.titulo
     ).join(
@@ -313,10 +312,10 @@ async def resumo_variaveis(
         from .services_process_variables import ProcessVariableResolver
         variaveis_processo = ProcessVariableResolver.get_all_definitions()
         # Total de variáveis
-        total = db.query(ExtractionVariable).filter(ExtractionVariable.ativo == True).count()
+        total = session_query(db, ExtractionVariable).filter(ExtractionVariable.ativo == True).count()
 
         # Por tipo
-        tipos = db.query(
+        tipos = session_query(db, 
             ExtractionVariable.tipo,
             func.count(ExtractionVariable.id)
         ).filter(
@@ -327,7 +326,7 @@ async def resumo_variaveis(
 
         # Variáveis com uso em prompts (regras determinísticas)
         # Nota: usamos query apenas pelo ID para evitar erro de DISTINCT em colunas JSON no PostgreSQL
-        variaveis_com_uso_prompts = db.query(ExtractionVariable.id).join(
+        variaveis_com_uso_prompts = session_query(db, ExtractionVariable.id).join(
             PromptVariableUsage,
             PromptVariableUsage.variable_slug == ExtractionVariable.slug
         ).filter(
@@ -335,7 +334,7 @@ async def resumo_variaveis(
         ).distinct().count()
 
         # Variáveis em uso no JSON de categorias com json_gerado_por_ia=True
-        variaveis_em_uso_json = db.query(ExtractionVariable.id).join(
+        variaveis_em_uso_json = session_query(db, ExtractionVariable.id).join(
             CategoriaResumoJSON,
             ExtractionVariable.categoria_id == CategoriaResumoJSON.id
         ).filter(
@@ -348,14 +347,14 @@ async def resumo_variaveis(
         variaveis_ids_em_uso = set()
 
         # IDs de variáveis usadas em prompts
-        ids_prompts = db.query(ExtractionVariable.id).join(
+        ids_prompts = session_query(db, ExtractionVariable.id).join(
             PromptVariableUsage,
             PromptVariableUsage.variable_slug == ExtractionVariable.slug
         ).filter(ExtractionVariable.ativo == True).distinct().all()
         variaveis_ids_em_uso.update(id[0] for id in ids_prompts)
 
         # IDs de variáveis em uso no JSON
-        ids_json = db.query(ExtractionVariable.id).join(
+        ids_json = session_query(db, ExtractionVariable.id).join(
             CategoriaResumoJSON,
             ExtractionVariable.categoria_id == CategoriaResumoJSON.id
         ).filter(
@@ -367,7 +366,7 @@ async def resumo_variaveis(
         variaveis_com_uso = len(variaveis_ids_em_uso)
 
         # Variáveis mais usadas (top 10)
-        mais_usadas_query = db.query(
+        mais_usadas_query = session_query(db, 
             PromptVariableUsage.variable_slug,
             func.count(PromptVariableUsage.id).label('uso_count')
         ).group_by(
@@ -378,7 +377,7 @@ async def resumo_variaveis(
 
         mais_usadas = []
         for slug, count in mais_usadas_query:
-            variavel = db.query(ExtractionVariable).filter(
+            variavel = session_query(db, ExtractionVariable).filter(
                 ExtractionVariable.slug == slug
             ).first()
             if variavel:
@@ -476,18 +475,18 @@ async def obter_variavel(
     current_user: User = Depends(get_current_active_user)
 ):
     """Obtém detalhes de uma variável com lista de usos"""
-    variavel = db.query(ExtractionVariable).filter(ExtractionVariable.id == variavel_id).first()
+    variavel = session_query(db, ExtractionVariable).filter(ExtractionVariable.id == variavel_id).first()
     if not variavel:
         raise HTTPException(status_code=404, detail="Variável não encontrada")
 
     categoria = None
     if variavel.categoria_id:
-        categoria = db.query(CategoriaResumoJSON).filter(CategoriaResumoJSON.id == variavel.categoria_id).first()
+        categoria = session_query(db, CategoriaResumoJSON).filter(CategoriaResumoJSON.id == variavel.categoria_id).first()
 
     # Busca usos da variável
     from admin.models_prompts import PromptModulo
 
-    usages = db.query(PromptVariableUsage).filter(
+    usages = session_query(db, PromptVariableUsage).filter(
         PromptVariableUsage.variable_slug == variavel.slug
     ).all()
 
@@ -495,7 +494,7 @@ async def obter_variavel(
     # REGRA DE OURO: Calcula modo efetivo para cada prompt
     from sistemas.gerador_pecas.services_deterministic import resolve_activation_mode_from_db
     for usage in usages:
-        prompt = db.query(PromptModulo).filter(PromptModulo.id == usage.prompt_id).first()
+        prompt = session_query(db, PromptModulo).filter(PromptModulo.id == usage.prompt_id).first()
         if prompt:
             effective_mode = resolve_activation_mode_from_db(
                 db=db,
@@ -546,14 +545,14 @@ async def criar_variavel(
         raise HTTPException(status_code=403, detail="Sem permissão para criar variáveis")
 
     # Verifica se slug já existe
-    existing = db.query(ExtractionVariable).filter(ExtractionVariable.slug == data.slug).first()
+    existing = session_query(db, ExtractionVariable).filter(ExtractionVariable.slug == data.slug).first()
     if existing:
         raise HTTPException(status_code=400, detail=f"Slug '{data.slug}' já existe")
 
     # Verifica se a categoria existe
     categoria = None
     if data.categoria_id:
-        categoria = db.query(CategoriaResumoJSON).filter(CategoriaResumoJSON.id == data.categoria_id).first()
+        categoria = session_query(db, CategoriaResumoJSON).filter(CategoriaResumoJSON.id == data.categoria_id).first()
         if not categoria:
             raise HTTPException(status_code=404, detail="Categoria não encontrada")
 
@@ -602,7 +601,7 @@ async def atualizar_variavel(
     if current_user.role != "admin" and not current_user.tem_permissao("edit_prompts"):
         raise HTTPException(status_code=403, detail="Sem permissão para editar variáveis")
 
-    variavel = db.query(ExtractionVariable).filter(ExtractionVariable.id == variavel_id).first()
+    variavel = session_query(db, ExtractionVariable).filter(ExtractionVariable.id == variavel_id).first()
     if not variavel:
         raise HTTPException(status_code=404, detail="Variável não encontrada")
 
@@ -621,7 +620,7 @@ async def atualizar_variavel(
     # Se tipo ou descrição mudou, atualiza o JSON da categoria
     categoria = None
     if variavel.categoria_id:
-        categoria = db.query(CategoriaResumoJSON).filter(CategoriaResumoJSON.id == variavel.categoria_id).first()
+        categoria = session_query(db, CategoriaResumoJSON).filter(CategoriaResumoJSON.id == variavel.categoria_id).first()
 
         # Sincroniza JSON da categoria se tipo ou descrição mudou
         if categoria and categoria.formato_json and (variavel.tipo != tipo_antigo or variavel.descricao != descricao_antiga):
@@ -643,7 +642,7 @@ async def atualizar_variavel(
     db.commit()
     db.refresh(variavel)
 
-    uso_count = db.query(PromptVariableUsage).filter(
+    uso_count = session_query(db, PromptVariableUsage).filter(
         PromptVariableUsage.variable_slug == variavel.slug
     ).count()
 
@@ -676,18 +675,18 @@ async def obter_variaveis_dependentes(
     current_user: User = Depends(get_current_active_user)
 ):
     """Retorna variáveis e perguntas que dependem desta variável"""
-    variavel = db.query(ExtractionVariable).filter(ExtractionVariable.id == variavel_id).first()
+    variavel = session_query(db, ExtractionVariable).filter(ExtractionVariable.id == variavel_id).first()
     if not variavel:
         raise HTTPException(status_code=404, detail="Variável não encontrada")
 
     # Busca variáveis que dependem desta
-    variaveis_dependentes = db.query(ExtractionVariable).filter(
+    variaveis_dependentes = session_query(db, ExtractionVariable).filter(
         ExtractionVariable.depends_on_variable == variavel.slug,
         ExtractionVariable.ativo == True
     ).all()
 
     # Busca perguntas que dependem desta variável
-    perguntas_dependentes = db.query(ExtractionQuestion).filter(
+    perguntas_dependentes = session_query(db, ExtractionQuestion).filter(
         ExtractionQuestion.depends_on_variable == variavel.slug,
         ExtractionQuestion.ativo == True
     ).all()
@@ -728,7 +727,7 @@ async def excluir_variavel(
     if current_user.role != "admin" and not current_user.tem_permissao("edit_prompts"):
         raise HTTPException(status_code=403, detail="Sem permissão para excluir variáveis")
 
-    variavel = db.query(ExtractionVariable).filter(ExtractionVariable.id == variavel_id).first()
+    variavel = session_query(db, ExtractionVariable).filter(ExtractionVariable.id == variavel_id).first()
     if not variavel:
         raise HTTPException(status_code=404, detail="Variável não encontrada")
 
@@ -744,7 +743,7 @@ async def excluir_variavel(
 
     # 1. REMOVE DO JSON DA CATEGORIA
     if variavel.categoria_id:
-        categoria = db.query(CategoriaResumoJSON).filter(
+        categoria = session_query(db, CategoriaResumoJSON).filter(
             CategoriaResumoJSON.id == variavel.categoria_id
         ).first()
 
@@ -761,7 +760,7 @@ async def excluir_variavel(
                 logger.warning(f"JSON inválido na categoria {variavel.categoria_id}")
 
     # 2. REMOVE REFERÊNCIAS EM PROMPTS (PromptVariableUsage)
-    usos_prompts = db.query(PromptVariableUsage).filter(
+    usos_prompts = session_query(db, PromptVariableUsage).filter(
         PromptVariableUsage.variable_slug == slug
     ).all()
 
@@ -773,7 +772,7 @@ async def excluir_variavel(
         logger.info(f"Removidos {len(usos_prompts)} usos da variável '{slug}' em prompts")
 
     # 3. REMOVE DEPENDÊNCIAS DE OUTRAS VARIÁVEIS
-    variaveis_dependentes = db.query(ExtractionVariable).filter(
+    variaveis_dependentes = session_query(db, ExtractionVariable).filter(
         ExtractionVariable.depends_on_variable == slug
     ).all()
 
@@ -786,7 +785,7 @@ async def excluir_variavel(
     limpezas_realizadas["dependencias_variaveis_removidas"] = len(variaveis_dependentes)
 
     # 4. REMOVE DEPENDÊNCIAS DE OUTRAS PERGUNTAS
-    perguntas_dependentes = db.query(ExtractionQuestion).filter(
+    perguntas_dependentes = session_query(db, ExtractionQuestion).filter(
         ExtractionQuestion.depends_on_variable == slug
     ).all()
 
@@ -801,7 +800,7 @@ async def excluir_variavel(
 
     # 5. REMOVE PERGUNTA DE ORIGEM (se existir)
     if variavel.source_question_id:
-        pergunta_origem = db.query(ExtractionQuestion).filter(
+        pergunta_origem = session_query(db, ExtractionQuestion).filter(
             ExtractionQuestion.id == variavel.source_question_id
         ).first()
         if pergunta_origem:
@@ -856,7 +855,7 @@ async def reativar_variavel(
     if current_user.role != "admin" and not current_user.tem_permissao("edit_prompts"):
         raise HTTPException(status_code=403, detail="Sem permissão para reativar variáveis")
 
-    variavel = db.query(ExtractionVariable).filter(ExtractionVariable.id == variavel_id).first()
+    variavel = session_query(db, ExtractionVariable).filter(ExtractionVariable.id == variavel_id).first()
     if not variavel:
         raise HTTPException(status_code=404, detail="Variável não encontrada")
 
@@ -948,7 +947,7 @@ async def verificar_consistencia_variavel(
     - Se ha slugs orfaos no JSON
     - Se ha variaveis sem entrada no JSON
     """
-    variavel = db.query(ExtractionVariable).filter(ExtractionVariable.id == variavel_id).first()
+    variavel = session_query(db, ExtractionVariable).filter(ExtractionVariable.id == variavel_id).first()
     if not variavel:
         raise HTTPException(status_code=404, detail="Variavel nao encontrada")
 
@@ -992,7 +991,7 @@ async def verificar_referencias_variavel(
 
     Util para saber quais prompts serao afetados antes de renomear.
     """
-    variavel = db.query(ExtractionVariable).filter(ExtractionVariable.id == variavel_id).first()
+    variavel = session_query(db, ExtractionVariable).filter(ExtractionVariable.id == variavel_id).first()
     if not variavel:
         raise HTTPException(status_code=404, detail="Variavel nao encontrada")
 
@@ -1021,12 +1020,12 @@ async def excluir_variavel_permanente(
     if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Apenas administradores podem excluir permanentemente")
 
-    variavel = db.query(ExtractionVariable).filter(ExtractionVariable.id == variavel_id).first()
+    variavel = session_query(db, ExtractionVariable).filter(ExtractionVariable.id == variavel_id).first()
     if not variavel:
         raise HTTPException(status_code=404, detail="Variável não encontrada")
 
     # Verifica se está em uso
-    uso_count = db.query(PromptVariableUsage).filter(
+    uso_count = session_query(db, PromptVariableUsage).filter(
         PromptVariableUsage.variable_slug == variavel.slug
     ).count()
 
@@ -1037,7 +1036,7 @@ async def excluir_variavel_permanente(
         )
 
     # Remove dependências de variáveis que dependem desta
-    variaveis_dependentes = db.query(ExtractionVariable).filter(
+    variaveis_dependentes = session_query(db, ExtractionVariable).filter(
         ExtractionVariable.depends_on_variable == variavel.slug
     ).all()
 
@@ -1048,7 +1047,7 @@ async def excluir_variavel_permanente(
         v.atualizado_em = datetime.utcnow()
 
     # Remove dependências de perguntas que dependem desta
-    perguntas_dependentes = db.query(ExtractionQuestion).filter(
+    perguntas_dependentes = session_query(db, ExtractionQuestion).filter(
         ExtractionQuestion.depends_on_variable == variavel.slug
     ).all()
 
@@ -1093,3 +1092,8 @@ async def listar_tipos_variaveis(
         {"value": "list", "label": "Lista", "description": "Lista de valores"},
         {"value": "currency", "label": "Valor Monetário", "description": "Valor em reais (R$)"}
     ]
+
+
+
+
+

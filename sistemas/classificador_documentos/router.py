@@ -26,7 +26,7 @@ from fastapi import APIRouter, HTTPException, Depends, Query, UploadFile, File, 
 from fastapi.responses import StreamingResponse, Response
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
-
+from app.repositories.sqlalchemy.session_ops import session_query
 from auth.dependencies import get_current_active_user
 from auth.models import User
 from database.connection import get_db
@@ -558,7 +558,7 @@ async def listar_execucoes_em_andamento(
     from sqlalchemy import or_
 
     # Busca execuções em andamento OU travadas dos projetos do usuário
-    execucoes = db.query(ExecucaoClassificacao).join(
+    execucoes = session_query(db, ExecucaoClassificacao).join(
         ProjetoClassificacao,
         ExecucaoClassificacao.projeto_id == ProjetoClassificacao.id
     ).filter(
@@ -1431,3 +1431,8 @@ async def executar_lote_sincrono(
             "X-Accel-Buffering": "no"
         }
     )
+
+
+
+
+

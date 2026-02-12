@@ -16,7 +16,7 @@ from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
-
+from app.repositories.sqlalchemy.session_ops import session_query
 from auth.models import User
 from database.connection import get_db
 
@@ -71,8 +71,8 @@ async def claim_job(
         raise HTTPException(status_code=409, detail="Job já foi pego por outro worker")
 
     # Busca dados do run
-    run = db.query(BertRun).filter(BertRun.id == job.run_id).first()
-    dataset = db.query(BertDataset).filter(BertDataset.id == run.dataset_id).first()
+    run = session_query(db, BertRun).filter(BertRun.id == job.run_id).first()
+    dataset = session_query(db, BertDataset).filter(BertDataset.id == run.dataset_id).first()
 
     # Gera URL de download para worker (com token)
     download_url = f"/bert-training/api/datasets/{dataset.id}/download-worker?worker_token={request.worker_token}"
@@ -103,7 +103,7 @@ async def update_job_progress(
     if not worker:
         raise HTTPException(status_code=401, detail="Token inválido")
 
-    job = db.query(BertJob).filter(BertJob.id == job_id).first()
+    job = session_query(db, BertJob).filter(BertJob.id == job_id).first()
     if not job:
         raise HTTPException(status_code=404, detail="Job não encontrado")
 
@@ -138,7 +138,7 @@ async def complete_job(
     if not worker:
         raise HTTPException(status_code=401, detail="Token inválido")
 
-    job = db.query(BertJob).filter(BertJob.id == job_id).first()
+    job = session_query(db, BertJob).filter(BertJob.id == job_id).first()
     if not job:
         raise HTTPException(status_code=404, detail="Job não encontrado")
 
@@ -149,7 +149,7 @@ async def complete_job(
     services.update_job_progress(db, job, status=JobStatus.COMPLETED, progress_percent=100.0)
 
     # Finaliza run
-    run = db.query(BertRun).filter(BertRun.id == job.run_id).first()
+    run = session_query(db, BertRun).filter(BertRun.id == job.run_id).first()
     services.finalize_run(
         db=db,
         run=run,
@@ -184,7 +184,7 @@ async def get_job_status(
     if not worker:
         raise HTTPException(status_code=401, detail="Token inválido")
 
-    job = db.query(BertJob).filter(BertJob.id == job_id).first()
+    job = session_query(db, BertJob).filter(BertJob.id == job_id).first()
     if not job:
         raise HTTPException(status_code=404, detail="Job não encontrado")
 
@@ -283,3 +283,8 @@ async def record_logs_batch(
         )
 
     return {"status": "ok", "count": len(batch.logs)}
+
+
+
+
+

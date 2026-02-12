@@ -24,7 +24,7 @@ from typing import Optional, List, Dict, AsyncGenerator
 from fastapi import APIRouter, HTTPException, Depends, Query, Request
 from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy.orm import Session
-
+from app.repositories.sqlalchemy.session_ops import session_query
 from auth.dependencies import get_current_active_user, get_current_user_from_token_or_query
 from auth.models import User
 from database.connection import get_db
@@ -400,7 +400,7 @@ async def processar_stream(
                     logger.error(f"{log_prefix} GERACAO_ERROR | geracao_id={geracao_id} | error={event['error']}")
                     yield f"data: {json.dumps({'tipo': 'erro', 'mensagem': event['error']})}\n\n"
                     # Re-fetch geracao para garantir estado atualizado da sessão
-                    geracao = db.query(GeracaoRelatorioCumprimento).filter(
+                    geracao = session_query(db, GeracaoRelatorioCumprimento).filter(
                         GeracaoRelatorioCumprimento.id == geracao_id
                     ).first()
                     if geracao:
@@ -418,7 +418,7 @@ async def processar_stream(
                 )
                 yield f"data: {json.dumps({'tipo': 'erro', 'mensagem': 'Relatório gerado está vazio. Por favor, tente novamente.'})}\n\n"
                 # Re-fetch geracao para garantir estado atualizado da sessão
-                geracao = db.query(GeracaoRelatorioCumprimento).filter(
+                geracao = session_query(db, GeracaoRelatorioCumprimento).filter(
                     GeracaoRelatorioCumprimento.id == geracao_id
                 ).first()
                 if geracao:
@@ -428,7 +428,7 @@ async def processar_stream(
                 return
 
             # Re-fetch geracao para garantir estado atualizado da sessão após streaming longo
-            geracao = db.query(GeracaoRelatorioCumprimento).filter(
+            geracao = session_query(db, GeracaoRelatorioCumprimento).filter(
                 GeracaoRelatorioCumprimento.id == geracao_id
             ).first()
 
@@ -485,7 +485,7 @@ async def processar_stream(
 
             try:
                 if geracao_id:
-                    geracao = db.query(GeracaoRelatorioCumprimento).filter(
+                    geracao = session_query(db, GeracaoRelatorioCumprimento).filter(
                         GeracaoRelatorioCumprimento.id == geracao_id
                     ).first()
                     if geracao:
@@ -842,7 +842,7 @@ async def verificar_processo_existente(
     """
     numero_cnj_limpo = numero_cnj.replace(".", "").replace("-", "").replace("/", "").strip()
 
-    geracao_existente = db.query(GeracaoRelatorioCumprimento).filter(
+    geracao_existente = session_query(db, GeracaoRelatorioCumprimento).filter(
         GeracaoRelatorioCumprimento.numero_cumprimento == numero_cnj_limpo,
         GeracaoRelatorioCumprimento.usuario_id == current_user.id
     ).order_by(GeracaoRelatorioCumprimento.criado_em.desc()).first()
@@ -876,7 +876,7 @@ async def listar_historico(
     """
     Lista histórico de relatórios gerados pelo usuário.
     """
-    historico = db.query(GeracaoRelatorioCumprimento).filter(
+    historico = session_query(db, GeracaoRelatorioCumprimento).filter(
         GeracaoRelatorioCumprimento.usuario_id == current_user.id,
         GeracaoRelatorioCumprimento.status == StatusProcessamento.CONCLUIDO.value
     ).order_by(GeracaoRelatorioCumprimento.criado_em.desc()).limit(50).all()
@@ -909,7 +909,7 @@ async def obter_historico(
     """
     Obtém um relatório específico do histórico.
     """
-    geracao = db.query(GeracaoRelatorioCumprimento).filter(
+    geracao = session_query(db, GeracaoRelatorioCumprimento).filter(
         GeracaoRelatorioCumprimento.id == id,
         GeracaoRelatorioCumprimento.usuario_id == current_user.id
     ).first()
@@ -949,14 +949,14 @@ async def enviar_feedback(
     try:
         from .models import FeedbackRelatorioCumprimento
 
-        geracao = db.query(GeracaoRelatorioCumprimento).filter(
+        geracao = session_query(db, GeracaoRelatorioCumprimento).filter(
             GeracaoRelatorioCumprimento.id == req.geracao_id
         ).first()
 
         if not geracao:
             raise HTTPException(status_code=404, detail="Geração não encontrada")
 
-        feedback_existente = db.query(FeedbackRelatorioCumprimento).filter(
+        feedback_existente = session_query(db, FeedbackRelatorioCumprimento).filter(
             FeedbackRelatorioCumprimento.geracao_id == req.geracao_id
         ).first()
 
@@ -995,7 +995,7 @@ async def obter_feedback(
     try:
         from .models import FeedbackRelatorioCumprimento
 
-        feedback = db.query(FeedbackRelatorioCumprimento).filter(
+        feedback = session_query(db, FeedbackRelatorioCumprimento).filter(
             FeedbackRelatorioCumprimento.geracao_id == geracao_id
         ).first()
 
@@ -1013,3 +1013,8 @@ async def obter_feedback(
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+
+
+

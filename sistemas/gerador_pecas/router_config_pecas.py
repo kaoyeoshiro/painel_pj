@@ -10,6 +10,7 @@ Endpoints para:
 
 from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from sqlalchemy.orm import Session
+from app.repositories.sqlalchemy.session_ops import session_query
 from sqlalchemy import func
 from typing import List, Optional
 from datetime import datetime
@@ -82,7 +83,7 @@ async def listar_categorias(
     current_user: User = Depends(get_current_user)
 ):
     """Lista todas as categorias de documento"""
-    query = db.query(CategoriaDocumento)
+    query = session_query(db, CategoriaDocumento)
     
     if ativo is not None:
         query = query.filter(CategoriaDocumento.ativo == ativo)
@@ -97,7 +98,7 @@ async def obter_categoria(
     current_user: User = Depends(get_current_user)
 ):
     """Obtém uma categoria específica"""
-    categoria = db.query(CategoriaDocumento).filter(CategoriaDocumento.id == categoria_id).first()
+    categoria = session_query(db, CategoriaDocumento).filter(CategoriaDocumento.id == categoria_id).first()
     if not categoria:
         raise HTTPException(status_code=404, detail="Categoria não encontrada")
     return categoria
@@ -114,7 +115,7 @@ async def criar_categoria(
         raise HTTPException(status_code=403, detail="Acesso negado")
     
     # Verifica se já existe categoria com esse nome
-    existente = db.query(CategoriaDocumento).filter(
+    existente = session_query(db, CategoriaDocumento).filter(
         func.lower(CategoriaDocumento.nome) == dados.nome.lower()
     ).first()
     if existente:
@@ -143,13 +144,13 @@ async def atualizar_categoria(
     if not current_user.role == "admin":
         raise HTTPException(status_code=403, detail="Acesso negado")
     
-    categoria = db.query(CategoriaDocumento).filter(CategoriaDocumento.id == categoria_id).first()
+    categoria = session_query(db, CategoriaDocumento).filter(CategoriaDocumento.id == categoria_id).first()
     if not categoria:
         raise HTTPException(status_code=404, detail="Categoria não encontrada")
     
     # Verifica se nome já existe em outra categoria
     if dados.nome.lower() != categoria.nome.lower():
-        existente = db.query(CategoriaDocumento).filter(
+        existente = session_query(db, CategoriaDocumento).filter(
             func.lower(CategoriaDocumento.nome) == dados.nome.lower(),
             CategoriaDocumento.id != categoria_id
         ).first()
@@ -179,7 +180,7 @@ async def excluir_categoria(
     if not current_user.role == "admin":
         raise HTTPException(status_code=403, detail="Acesso negado")
     
-    categoria = db.query(CategoriaDocumento).filter(CategoriaDocumento.id == categoria_id).first()
+    categoria = session_query(db, CategoriaDocumento).filter(CategoriaDocumento.id == categoria_id).first()
     if not categoria:
         raise HTTPException(status_code=404, detail="Categoria não encontrada")
 
@@ -209,7 +210,7 @@ async def listar_tipos_peca_prompts(
     """
     from admin.models_prompts import PromptModulo
     
-    modulos_peca = db.query(PromptModulo).filter(
+    modulos_peca = session_query(db, PromptModulo).filter(
         PromptModulo.tipo == "peca",
         PromptModulo.ativo == True
     ).order_by(PromptModulo.ordem).all()
@@ -233,7 +234,7 @@ async def listar_tipos_peca(
     current_user: User = Depends(get_current_user)
 ):
     """Lista todos os tipos de peça com suas categorias"""
-    query = db.query(TipoPeca)
+    query = session_query(db, TipoPeca)
     
     if ativo is not None:
         query = query.filter(TipoPeca.ativo == ativo)
@@ -248,7 +249,7 @@ async def obter_tipo_peca(
     current_user: User = Depends(get_current_user)
 ):
     """Obtém um tipo de peça específico"""
-    tipo = db.query(TipoPeca).filter(TipoPeca.id == tipo_id).first()
+    tipo = session_query(db, TipoPeca).filter(TipoPeca.id == tipo_id).first()
     if not tipo:
         raise HTTPException(status_code=404, detail="Tipo de peça não encontrado")
     return tipo
@@ -261,7 +262,7 @@ async def obter_tipo_peca_por_nome(
     current_user: User = Depends(get_current_user)
 ):
     """Obtém um tipo de peça pelo nome e retorna códigos permitidos"""
-    tipo = db.query(TipoPeca).filter(
+    tipo = session_query(db, TipoPeca).filter(
         func.lower(TipoPeca.nome) == nome.lower(),
         TipoPeca.ativo == True
     ).first()
@@ -292,7 +293,7 @@ async def criar_tipo_peca(
         raise HTTPException(status_code=403, detail="Acesso negado")
     
     # Verifica se já existe tipo com esse nome
-    existente = db.query(TipoPeca).filter(
+    existente = session_query(db, TipoPeca).filter(
         func.lower(TipoPeca.nome) == dados.nome.lower()
     ).first()
     if existente:
@@ -304,7 +305,7 @@ async def criar_tipo_peca(
     
     # Associa categorias
     if dados.categorias_ids:
-        categorias = db.query(CategoriaDocumento).filter(
+        categorias = session_query(db, CategoriaDocumento).filter(
             CategoriaDocumento.id.in_(dados.categorias_ids)
         ).all()
         tipo.categorias_documento = categorias
@@ -327,13 +328,13 @@ async def atualizar_tipo_peca(
     if not current_user.role == "admin":
         raise HTTPException(status_code=403, detail="Acesso negado")
     
-    tipo = db.query(TipoPeca).filter(TipoPeca.id == tipo_id).first()
+    tipo = session_query(db, TipoPeca).filter(TipoPeca.id == tipo_id).first()
     if not tipo:
         raise HTTPException(status_code=404, detail="Tipo de peça não encontrado")
     
     # Verifica se nome já existe em outro tipo
     if dados.nome.lower() != tipo.nome.lower():
-        existente = db.query(TipoPeca).filter(
+        existente = session_query(db, TipoPeca).filter(
             func.lower(TipoPeca.nome) == dados.nome.lower(),
             TipoPeca.id != tipo_id
         ).first()
@@ -347,7 +348,7 @@ async def atualizar_tipo_peca(
     
     # Atualiza categorias
     if dados.categorias_ids is not None:
-        categorias = db.query(CategoriaDocumento).filter(
+        categorias = session_query(db, CategoriaDocumento).filter(
             CategoriaDocumento.id.in_(dados.categorias_ids)
         ).all()
         tipo.categorias_documento = categorias
@@ -369,11 +370,11 @@ async def atualizar_categorias_tipo_peca(
     if not current_user.role == "admin":
         raise HTTPException(status_code=403, detail="Acesso negado")
     
-    tipo = db.query(TipoPeca).filter(TipoPeca.id == tipo_id).first()
+    tipo = session_query(db, TipoPeca).filter(TipoPeca.id == tipo_id).first()
     if not tipo:
         raise HTTPException(status_code=404, detail="Tipo de peça não encontrado")
     
-    categorias = db.query(CategoriaDocumento).filter(
+    categorias = session_query(db, CategoriaDocumento).filter(
         CategoriaDocumento.id.in_(dados.categorias_ids)
     ).all()
     tipo.categorias_documento = categorias
@@ -397,7 +398,7 @@ async def excluir_tipo_peca(
     if not current_user.role == "admin":
         raise HTTPException(status_code=403, detail="Acesso negado")
     
-    tipo = db.query(TipoPeca).filter(TipoPeca.id == tipo_id).first()
+    tipo = session_query(db, TipoPeca).filter(TipoPeca.id == tipo_id).first()
     if not tipo:
         raise HTTPException(status_code=404, detail="Tipo de peça não encontrado")
     
@@ -425,7 +426,7 @@ async def seed_dados_iniciais(
     
     # Criar categorias
     for cat_data in get_categorias_documento_seed():
-        existente = db.query(CategoriaDocumento).filter(
+        existente = session_query(db, CategoriaDocumento).filter(
             CategoriaDocumento.nome == cat_data["nome"]
         ).first()
         
@@ -442,7 +443,7 @@ async def seed_dados_iniciais(
     
     # Criar tipos de peça
     for tipo_data in get_tipos_peca_seed():
-        existente = db.query(TipoPeca).filter(
+        existente = session_query(db, TipoPeca).filter(
             TipoPeca.nome == tipo_data["nome"]
         ).first()
         
@@ -451,7 +452,7 @@ async def seed_dados_iniciais(
             tipo = TipoPeca(**tipo_data)
             
             # Associa categorias
-            categorias = db.query(CategoriaDocumento).filter(
+            categorias = session_query(db, CategoriaDocumento).filter(
                 CategoriaDocumento.nome.in_(categorias_nomes)
             ).all()
             tipo.categorias_documento = categorias
@@ -506,7 +507,7 @@ def _upsert_config_ia(
     tipo_valor: str,
     descricao: str,
 ):
-    config = db.query(ConfiguracaoIA).filter(
+    config = session_query(db, ConfiguracaoIA).filter(
         ConfiguracaoIA.sistema == "gerador_pecas",
         ConfiguracaoIA.chave == key
     ).first()
@@ -579,3 +580,7 @@ async def atualizar_config_parecer_natjus_admin(
         "parecer_required_for_piece_types": piece_types,
         "parecer_document_codes": document_codes,
     }
+
+
+
+

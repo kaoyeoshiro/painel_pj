@@ -8,6 +8,7 @@ Router de administração do Gerador de Peças
 import logging
 from fastapi import APIRouter, HTTPException, Depends
 from sqlalchemy.orm import Session
+from app.repositories.sqlalchemy.session_ops import session_query
 from typing import Optional, List, Any
 from datetime import datetime
 
@@ -65,7 +66,7 @@ async def listar_geracoes(
     db: Session = Depends(get_db)
 ):
     """Lista histórico de gerações com detalhes"""
-    geracoes = db.query(GeracaoPeca).order_by(
+    geracoes = session_query(db, GeracaoPeca).order_by(
         GeracaoPeca.criado_em.desc()
     ).offset(offset).limit(limit).all()
 
@@ -79,7 +80,7 @@ async def obter_geracao(
     db: Session = Depends(get_db)
 ):
     """Obtém detalhes de uma geração específica"""
-    geracao = db.query(GeracaoPeca).filter(GeracaoPeca.id == geracao_id).first()
+    geracao = session_query(db, GeracaoPeca).filter(GeracaoPeca.id == geracao_id).first()
     if not geracao:
         raise HTTPException(status_code=404, detail="Geração não encontrada")
     return _geracao_to_dict(geracao)
@@ -92,7 +93,7 @@ async def obter_prompt_geracao(
     db: Session = Depends(get_db)
 ):
     """Obtém apenas o prompt enviado de uma geração"""
-    geracao = db.query(GeracaoPeca).filter(GeracaoPeca.id == geracao_id).first()
+    geracao = session_query(db, GeracaoPeca).filter(GeracaoPeca.id == geracao_id).first()
     if not geracao:
         raise HTTPException(status_code=404, detail="Geração não encontrada")
     
@@ -113,11 +114,11 @@ async def listar_versoes_geracao(
     db: Session = Depends(get_db)
 ):
     """Lista todas as versões de uma geração"""
-    geracao = db.query(GeracaoPeca).filter(GeracaoPeca.id == geracao_id).first()
+    geracao = session_query(db, GeracaoPeca).filter(GeracaoPeca.id == geracao_id).first()
     if not geracao:
         raise HTTPException(status_code=404, detail="Geração não encontrada")
 
-    versoes = db.query(VersaoPeca).filter(
+    versoes = session_query(db, VersaoPeca).filter(
         VersaoPeca.geracao_id == geracao_id
     ).order_by(VersaoPeca.numero_versao.desc()).all()
 
@@ -146,7 +147,7 @@ async def obter_versao_geracao(
     db: Session = Depends(get_db)
 ):
     """Obtém detalhes de uma versão específica"""
-    versao = db.query(VersaoPeca).filter(
+    versao = session_query(db, VersaoPeca).filter(
         VersaoPeca.id == versao_id,
         VersaoPeca.geracao_id == geracao_id
     ).first()
@@ -185,7 +186,7 @@ async def obter_curadoria_geracao(
 
     logger.info(f"[Curadoria] Requisição de auditoria: geracao_id={geracao_id}, usuario={current_user.username}")
 
-    geracao = db.query(GeracaoPeca).filter(GeracaoPeca.id == geracao_id).first()
+    geracao = session_query(db, GeracaoPeca).filter(GeracaoPeca.id == geracao_id).first()
     if not geracao:
         logger.warning(f"[Curadoria] Geração não encontrada: id={geracao_id}")
         raise HTTPException(status_code=404, detail="Geração não encontrada")
@@ -212,7 +213,7 @@ async def obter_curadoria_geracao(
     todos_ids = set(modulos_curados_ids + modulos_manuais_ids + modulos_excluidos_ids + modulos_preview_ids)
     modulos_db = {}
     if todos_ids:
-        modulos = db.query(PromptModulo).filter(PromptModulo.id.in_(todos_ids)).all()
+        modulos = session_query(db, PromptModulo).filter(PromptModulo.id.in_(todos_ids)).all()
         modulos_db = {
             m.id: {
                 "id": m.id,
@@ -379,3 +380,8 @@ async def obter_curadoria_geracao(
         "modulos_excluidos": modulos_excluidos,
         "variaveis_snapshot": variaveis_snapshot if tem_traces else None,
     }
+
+
+
+
+

@@ -8,7 +8,8 @@ Router de administração do Pedido de Cálculo
 
 from fastapi import APIRouter, HTTPException, Depends, Query
 from fastapi.responses import HTMLResponse
-from sqlalchemy.orm import Session, selectinload
+from sqlalchemy.orm import Session
+from app.repositories.sqlalchemy.session_ops import session_query
 from sqlalchemy import desc, func, case
 from typing import Optional, List, Any, Dict
 from datetime import datetime
@@ -37,17 +38,15 @@ async def listar_geracoes(
     """Lista histórico de gerações com resumo"""
     # PERFORMANCE: Usa subquery para contar logs e verificar erros em uma única query
     # Evita N+1 queries (antes: 1 + N queries, agora: 1 query)
-    from sqlalchemy.orm import aliased
-
     # Subquery para contar logs por geração
-    log_stats = db.query(
+    log_stats = session_query(db, 
         LogChamadaIA.geracao_id,
         func.count(LogChamadaIA.id).label('total_logs'),
         func.sum(case((LogChamadaIA.sucesso == False, 1), else_=0)).label('total_erros')
     ).group_by(LogChamadaIA.geracao_id).subquery()
 
     # Query principal com join na subquery
-    geracoes = db.query(
+    geracoes = session_query(db, 
         GeracaoPedidoCalculo,
         func.coalesce(log_stats.c.total_logs, 0).label('total_logs'),
         func.coalesce(log_stats.c.total_erros, 0).label('total_erros')
@@ -80,12 +79,12 @@ async def obter_geracao(
     db: Session = Depends(get_db)
 ):
     """Obtém detalhes completos de uma geração, incluindo logs de IA"""
-    geracao = db.query(GeracaoPedidoCalculo).filter(GeracaoPedidoCalculo.id == geracao_id).first()
+    geracao = session_query(db, GeracaoPedidoCalculo).filter(GeracaoPedidoCalculo.id == geracao_id).first()
     if not geracao:
         raise HTTPException(status_code=404, detail="Geração não encontrada")
 
     # Busca logs
-    logs = db.query(LogChamadaIA).filter(
+    logs = session_query(db, LogChamadaIA).filter(
         LogChamadaIA.geracao_id == geracao_id
     ).order_by(LogChamadaIA.criado_em).all()
 
@@ -129,7 +128,7 @@ async def obter_logs_geracao(
     db: Session = Depends(get_db)
 ):
     """Obtém apenas os logs de IA de uma geração"""
-    logs = db.query(LogChamadaIA).filter(
+    logs = session_query(db, LogChamadaIA).filter(
         LogChamadaIA.geracao_id == geracao_id
     ).order_by(LogChamadaIA.criado_em).all()
 
@@ -160,7 +159,7 @@ async def obter_log_detalhado(
     db: Session = Depends(get_db)
 ):
     """Obtém detalhes de um log específico"""
-    log = db.query(LogChamadaIA).filter(LogChamadaIA.id == log_id).first()
+    log = session_query(db, LogChamadaIA).filter(LogChamadaIA.id == log_id).first()
     if not log:
         raise HTTPException(status_code=404, detail="Log não encontrado")
 
@@ -193,7 +192,7 @@ async def listar_logs_recentes(
     db: Session = Depends(get_db)
 ):
     """Lista logs recentes, opcionalmente filtrados"""
-    query = db.query(LogChamadaIA)
+    query = session_query(db, LogChamadaIA)
 
     if etapa:
         query = query.filter(LogChamadaIA.etapa == etapa)
@@ -229,18 +228,23 @@ async def deletar_geracao(
     if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Apenas administradores podem deletar gerações")
 
-    geracao = db.query(GeracaoPedidoCalculo).filter(GeracaoPedidoCalculo.id == geracao_id).first()
+    geracao = session_query(db, GeracaoPedidoCalculo).filter(GeracaoPedidoCalculo.id == geracao_id).first()
     if not geracao:
         raise HTTPException(status_code=404, detail="Geração não encontrada")
 
     # Deleta logs primeiro
-    db.query(LogChamadaIA).filter(LogChamadaIA.geracao_id == geracao_id).delete()
+    session_query(db, LogChamadaIA).filter(LogChamadaIA.geracao_id == geracao_id).delete()
 
     # Deleta feedback se existir
-    db.query(FeedbackPedidoCalculo).filter(FeedbackPedidoCalculo.geracao_id == geracao_id).delete()
+    session_query(db, FeedbackPedidoCalculo).filter(FeedbackPedidoCalculo.geracao_id == geracao_id).delete()
 
     # Deleta geração
     db.delete(geracao)
     db.commit()
 
     return {"message": f"Geração {geracao_id} deletada com sucesso"}
+
+
+
+
+

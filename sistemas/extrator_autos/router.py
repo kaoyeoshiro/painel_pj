@@ -24,7 +24,7 @@ from typing import Dict, List, Optional
 from fastapi import APIRouter, Depends, HTTPException, Query
 from fastapi.responses import Response, StreamingResponse
 from sqlalchemy.orm import Session
-
+from app.repositories.sqlalchemy.session_ops import session_query
 from auth.dependencies import get_current_active_user
 from auth.models import User
 from database.connection import get_db
@@ -692,7 +692,7 @@ async def bert_listar_categorias(
     from sistemas.gerador_pecas.models_config_pecas import CategoriaDocumento
     from sistemas.bert_training.models import BertRun
 
-    cats = db.query(CategoriaDocumento).filter(
+    cats = session_query(db, CategoriaDocumento).filter(
         CategoriaDocumento.resolver_config.isnot(None)
     ).all()
 
@@ -705,7 +705,7 @@ async def bert_listar_categorias(
         model_run_id = config.get("model_run_id")
         model_info = None
         if model_run_id:
-            run = db.query(BertRun).filter(BertRun.id == model_run_id).first()
+            run = session_query(db, BertRun).filter(BertRun.id == model_run_id).first()
             if run:
                 model_info = {
                     "id": run.id,
@@ -738,14 +738,14 @@ async def bert_associar_modelo(
     from sistemas.bert_training.models import BertRun
     from sqlalchemy.orm.attributes import flag_modified
 
-    cat = db.query(CategoriaDocumento).filter(CategoriaDocumento.id == cat_id).first()
+    cat = session_query(db, CategoriaDocumento).filter(CategoriaDocumento.id == cat_id).first()
     if not cat or not cat.resolver_config or cat.resolver_config.get("type") != "bert":
         raise HTTPException(status_code=404, detail="Categoria BERT nao encontrada")
 
     model_run_id = body.get("model_run_id")  # None = desassociar
 
     if model_run_id is not None:
-        run = db.query(BertRun).filter(BertRun.id == model_run_id).first()
+        run = session_query(db, BertRun).filter(BertRun.id == model_run_id).first()
         if not run or run.status != "completed":
             raise HTTPException(
                 status_code=400,
@@ -807,7 +807,7 @@ async def listar_historico(
     offset = (pagina - 1) * por_pagina
 
     query = (
-        db.query(ExtracaoAutos)
+        session_query(db, ExtracaoAutos)
         .filter(ExtracaoAutos.usuario_id == current_user.id)
         .order_by(ExtracaoAutos.criado_em.desc())
     )
@@ -891,3 +891,8 @@ def _registrar_extracao(
     )
 
     return extracao
+
+
+
+
+

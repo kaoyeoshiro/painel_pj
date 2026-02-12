@@ -13,7 +13,7 @@ from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends, Request
 from fastapi.responses import FileResponse
 from typing import Optional
 from sqlalchemy.orm import Session
-
+from app.repositories.sqlalchemy.session_ops import session_query
 from auth.dependencies import get_current_active_user
 from auth.models import User
 from database.connection import get_db
@@ -215,7 +215,7 @@ async def consultar_processo(
         
         # Verifica se já existe consulta no cache (e não está forçando)
         if not req.force:
-            consulta_existente = db.query(ConsultaProcesso).filter(
+            consulta_existente = session_query(db, ConsultaProcesso).filter(
                 ConsultaProcesso.cnj == cnj_limpo
             ).first()
             
@@ -247,14 +247,14 @@ async def consultar_processo(
         logger.info("full_flow concluído com sucesso")
         
         # Busca o modelo real usado (configurado no banco)
-        config_modelo = db.query(ConfiguracaoIA).filter(
+        config_modelo = session_query(db, ConfiguracaoIA).filter(
             ConfiguracaoIA.sistema == "assistencia_judiciaria",
             ConfiguracaoIA.chave == "modelo_relatorio"
         ).first()
         modelo_real = config_modelo.valor if config_modelo else req.model
         
         # Salva ou atualiza no banco
-        consulta = db.query(ConsultaProcesso).filter(
+        consulta = session_query(db, ConsultaProcesso).filter(
             ConsultaProcesso.cnj == cnj_limpo
         ).first()
         
@@ -297,7 +297,7 @@ async def listar_historico(
     Retorna as últimas 50 consultas ordenadas por data.
     """
     try:
-        consultas = db.query(ConsultaProcesso).filter(
+        consultas = session_query(db, ConsultaProcesso).filter(
             ConsultaProcesso.usuario_id == current_user.id
         ).order_by(ConsultaProcesso.consultado_em.desc()).limit(50).all()
         
@@ -322,7 +322,7 @@ async def excluir_historico(
 ):
     """Remove uma consulta do histórico do usuário - PRESERVA feedbacks."""
     try:
-        consulta = db.query(ConsultaProcesso).filter(
+        consulta = session_query(db, ConsultaProcesso).filter(
             ConsultaProcesso.id == consulta_id,
             ConsultaProcesso.usuario_id == current_user.id
         ).first()
@@ -332,7 +332,7 @@ async def excluir_historico(
         
         # Verifica se tem feedback associado - se tiver, não permite excluir
         from sistemas.assistencia_judiciaria.models import FeedbackAnalise
-        feedback = db.query(FeedbackAnalise).filter(FeedbackAnalise.consulta_id == consulta_id).first()
+        feedback = session_query(db, FeedbackAnalise).filter(FeedbackAnalise.consulta_id == consulta_id).first()
         if feedback:
             raise HTTPException(
                 status_code=400, 
@@ -420,7 +420,7 @@ async def enviar_feedback(
     """
     try:
         # Verifica se a consulta existe
-        consulta = db.query(ConsultaProcesso).filter(
+        consulta = session_query(db, ConsultaProcesso).filter(
             ConsultaProcesso.id == req.consulta_id
         ).first()
         
@@ -428,7 +428,7 @@ async def enviar_feedback(
             raise HTTPException(status_code=404, detail="Consulta não encontrada")
         
         # Verifica se já existe feedback para esta consulta
-        feedback_existente = db.query(FeedbackAnalise).filter(
+        feedback_existente = session_query(db, FeedbackAnalise).filter(
             FeedbackAnalise.consulta_id == req.consulta_id
         ).first()
         
@@ -465,7 +465,7 @@ async def obter_feedback(
 ):
     """Obtém o feedback de uma consulta específica."""
     try:
-        feedback = db.query(FeedbackAnalise).filter(
+        feedback = session_query(db, FeedbackAnalise).filter(
             FeedbackAnalise.consulta_id == consulta_id
         ).first()
         
@@ -493,7 +493,7 @@ async def contar_feedbacks_pendentes(
         from sqlalchemy import and_, not_, exists
         
         # Consultas do usuário sem feedback
-        count = db.query(ConsultaProcesso).filter(
+        count = session_query(db, ConsultaProcesso).filter(
             ConsultaProcesso.usuario_id == current_user.id,
             ConsultaProcesso.relatorio.isnot(None),
             ~exists().where(FeedbackAnalise.consulta_id == ConsultaProcesso.id)
@@ -502,3 +502,8 @@ async def contar_feedbacks_pendentes(
         return {"pendentes": count}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+
+
+

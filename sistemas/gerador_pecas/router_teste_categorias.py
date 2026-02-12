@@ -21,7 +21,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Response
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, field_validator
 from sqlalchemy.orm import Session
-
+from app.repositories.sqlalchemy.session_ops import session_query
 from database.connection import get_db
 from auth.models import User
 from auth.dependencies import get_current_active_user
@@ -725,7 +725,7 @@ async def baixar_documentos_categoria(
     verificar_permissao(current_user)
 
     # Busca categoria
-    categoria = db.query(CategoriaResumoJSON).filter(
+    categoria = session_query(db, CategoriaResumoJSON).filter(
         CategoriaResumoJSON.id == request.categoria_id
     ).first()
 
@@ -895,7 +895,7 @@ async def classificar_documento(
     inicio = time.time()
 
     # Busca categoria
-    categoria = db.query(CategoriaResumoJSON).filter(
+    categoria = session_query(db, CategoriaResumoJSON).filter(
         CategoriaResumoJSON.id == request.categoria_id
     ).first()
 
@@ -943,7 +943,7 @@ async def classificar_lote(
     verificar_permissao(current_user)
 
     # Busca categoria
-    categoria = db.query(CategoriaResumoJSON).filter(
+    categoria = session_query(db, CategoriaResumoJSON).filter(
         CategoriaResumoJSON.id == request.categoria_id
     ).first()
 
@@ -1024,7 +1024,7 @@ async def classificar_com_comparacao(
     verificar_permissao(current_user)
 
     # Busca categoria
-    categoria = db.query(CategoriaResumoJSON).filter(
+    categoria = session_query(db, CategoriaResumoJSON).filter(
         CategoriaResumoJSON.id == request.categoria_id
     ).first()
 
@@ -1160,7 +1160,7 @@ async def listar_categorias_ativas(
     """Lista categorias ativas para seleção no teste"""
     verificar_permissao(current_user)
 
-    categorias = db.query(CategoriaResumoJSON).filter(
+    categorias = session_query(db, CategoriaResumoJSON).filter(
         CategoriaResumoJSON.ativo == True
     ).order_by(CategoriaResumoJSON.ordem, CategoriaResumoJSON.nome).all()
 
@@ -1188,7 +1188,7 @@ async def obter_formato_categoria(
     """Obtém o formato JSON de uma categoria"""
     verificar_permissao(current_user)
 
-    categoria = db.query(CategoriaResumoJSON).filter(
+    categoria = session_query(db, CategoriaResumoJSON).filter(
         CategoriaResumoJSON.id == categoria_id
     ).first()
 
@@ -1252,7 +1252,7 @@ async def listar_documentos_categoria(
     """
     verificar_permissao(current_user)
 
-    documentos = db.query(TesteDocumento).filter(
+    documentos = session_query(db, TesteDocumento).filter(
         TesteDocumento.usuario_id == current_user.id,
         TesteDocumento.categoria_id == categoria_id
     ).order_by(TesteDocumento.data_criacao.desc()).all()
@@ -1275,7 +1275,7 @@ async def salvar_documento(
     verificar_permissao(current_user)
 
     # Busca documento existente
-    doc = db.query(TesteDocumento).filter(
+    doc = session_query(db, TesteDocumento).filter(
         TesteDocumento.usuario_id == current_user.id,
         TesteDocumento.categoria_id == request.categoria_id,
         TesteDocumento.processo == request.processo
@@ -1338,7 +1338,7 @@ async def salvar_documentos_lote(
 
     resultados = []
     for req in documentos:
-        doc = db.query(TesteDocumento).filter(
+        doc = session_query(db, TesteDocumento).filter(
             TesteDocumento.usuario_id == current_user.id,
             TesteDocumento.categoria_id == req.categoria_id,
             TesteDocumento.processo == req.processo
@@ -1397,7 +1397,7 @@ async def excluir_documento(
     """
     verificar_permissao(current_user)
 
-    doc = db.query(TesteDocumento).filter(
+    doc = session_query(db, TesteDocumento).filter(
         TesteDocumento.id == documento_id,
         TesteDocumento.usuario_id == current_user.id
     ).first()
@@ -1422,7 +1422,7 @@ async def excluir_erros_categoria(
     """
     verificar_permissao(current_user)
 
-    count = db.query(TesteDocumento).filter(
+    count = session_query(db, TesteDocumento).filter(
         TesteDocumento.usuario_id == current_user.id,
         TesteDocumento.categoria_id == categoria_id,
         TesteDocumento.status == 'erro'
@@ -1448,7 +1448,7 @@ async def obter_observacao(
     """
     verificar_permissao(current_user)
 
-    obs = db.query(TesteObservacao).filter(
+    obs = session_query(db, TesteObservacao).filter(
         TesteObservacao.usuario_id == current_user.id,
         TesteObservacao.categoria_id == categoria_id
     ).first()
@@ -1468,7 +1468,7 @@ async def salvar_observacao(
     """
     verificar_permissao(current_user)
 
-    obs = db.query(TesteObservacao).filter(
+    obs = session_query(db, TesteObservacao).filter(
         TesteObservacao.usuario_id == current_user.id,
         TesteObservacao.categoria_id == categoria_id
     ).first()
@@ -1544,3 +1544,8 @@ async def servir_pdf(token: str):
             "Cache-Control": "private, max-age=1800"
         }
     )
+
+
+
+
+

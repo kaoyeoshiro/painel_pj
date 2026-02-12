@@ -8,7 +8,7 @@ Use este bloco como contexto base para iniciar tarefas sem carregar o repo intei
 - Legado admin temporário foi isolado em `app/api/legacy/` (`admin_templates.py` + `registry.py`).
 - `app/api/v1/` centraliza wrappers de roteamento.
 - `app/repositories/sqlalchemy/` é o caminho-alvo de acesso a dados.
-- Nem todos os routers foram afinados: atualmente **25/37** arquivos `router*.py` ainda têm `db.query(...)`.
+- Routers sem query direta no escopo principal: **0/37** arquivos `router*.py` com `db.query(...)`.
 
 ## Arquivos-chave (abrir primeiro)
 - `app/api/bootstrap.py`
