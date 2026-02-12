@@ -33,6 +33,7 @@ import { C } from '@/lib/designTokens'
 import type { CategoriaFormData, FonteEspecial } from './types'
 import * as categoriasApi from './api'
 import { CodigosSelectorDialog } from './CodigosSelectorDialog'
+import { IATabContent } from './IATabContent'
 
 interface CategoriaEditorDialogProps {
   open: boolean
@@ -525,26 +526,14 @@ export function CategoriaEditorDialog({ open, editingId, onClose, onSaved }: Cat
                   </div>
                 )}
 
-                {/* Tab IA (stub) */}
+                {/* Tab IA — geracao de JSON com perguntas */}
                 {activeTab === 'ia' && (
-                  <div className="text-center py-8 space-y-3" data-testid="tab-ia-stub">
-                    <p className="text-sm" style={{ color: C.text500 }}>
-                      A geracao de JSON por IA com perguntas de extracao sera implementada em breve.
-                    </p>
-                    <p className="text-xs" style={{ color: C.text400 }}>
-                      Enquanto isso, use a{' '}
-                      <a
-                        href="/admin/categorias-resumo-json"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="underline"
-                        style={{ color: C.navy700 }}
-                      >
-                        interface legada
-                      </a>
-                      {' '}para gerar JSON com IA.
-                    </p>
-                  </div>
+                  <IATabContent
+                    categoriaId={realId}
+                    categoriaNome={form.nome}
+                    formatoJson={form.formato_json}
+                    onJsonChange={(json) => updateField('formato_json', json)}
+                  />
                 )}
               </fieldset>
 
