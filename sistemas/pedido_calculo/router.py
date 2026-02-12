@@ -25,6 +25,12 @@ from sqlalchemy.orm import Session
 from auth.dependencies import get_current_active_user, get_current_user_from_token_or_query
 from auth.models import User
 from database.connection import get_db
+from admin.repositories import (
+    ConfiguracaoIARepository,
+    PromptConfigRepository,
+    get_config_repo,
+    get_prompt_config_repo,
+)
 from .schemas import (
     ProcessarXMLRequest,
     BaixarDocumentosRequest,
@@ -38,7 +44,6 @@ from .schemas import (
     ConfiguracaoRequest,
 )
 from utils.timezone import to_iso_utc
-from admin.models import ConfiguracaoIA, PromptConfig
 from services.ia_params_resolver import get_ia_params
 from .models import GeracaoPedidoCalculo, FeedbackPedidoCalculo
 from .repositories import (
@@ -622,7 +627,8 @@ async def editar_pedido(
     request: Request,
     req: EditarPedidoRequest,
     current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    prompt_repo: PromptConfigRepository = Depends(get_prompt_config_repo),
 ):
     """
     Edita pedido de cálculo via chat com IA.
@@ -630,11 +636,7 @@ async def editar_pedido(
     await check_ai_quota(current_user)
     try:
         # Busca prompt do banco de dados
-        prompt_db = db.query(PromptConfig).filter(
-            PromptConfig.sistema == SISTEMA,
-            PromptConfig.tipo == "edicao_pedido",
-            PromptConfig.is_active == True
-        ).first()
+        prompt_db = prompt_repo.get_active(SISTEMA, "edicao_pedido")
         
         # Busca parametros de IA via resolver (hierarquia: agente → sistema → global → default)
         ia_params = get_ia_params(db, "pedido_calculo", "edicao")
@@ -709,14 +711,11 @@ Pedido atualizado:"""
 
 @router.get("/config/prompts")
 async def listar_prompts(
-    db: Session = Depends(get_db),
+    prompt_repo: PromptConfigRepository = Depends(get_prompt_config_repo),
     current_user: User = Depends(get_current_active_user)
 ):
     """Lista todos os prompts configurados para o sistema pedido_calculo"""
-    prompts = db.query(PromptConfig).filter(
-        PromptConfig.sistema == SISTEMA,
-        PromptConfig.is_active == True
-    ).all()
+    prompts = [p for p in prompt_repo.list_by_sistema(SISTEMA) if p.is_active]
     
     return [
         {
@@ -735,15 +734,11 @@ async def listar_prompts(
 @router.get("/config/prompts/{tipo}")
 async def obter_prompt(
     tipo: str,
-    db: Session = Depends(get_db),
+    prompt_repo: PromptConfigRepository = Depends(get_prompt_config_repo),
     current_user: User = Depends(get_current_active_user)
 ):
     """Obtém um prompt específico pelo tipo"""
-    prompt = db.query(PromptConfig).filter(
-        PromptConfig.sistema == SISTEMA,
-        PromptConfig.tipo == tipo,
-        PromptConfig.is_active == True
-    ).first()
+    prompt = prompt_repo.get_active(SISTEMA, tipo)
     
     if not prompt:
         raise HTTPException(status_code=404, detail=f"Prompt '{tipo}' não encontrado")
@@ -763,15 +758,11 @@ async def obter_prompt(
 async def atualizar_prompt(
     tipo: str,
     req: PromptConfigRequest,
-    db: Session = Depends(get_db),
+    prompt_repo: PromptConfigRepository = Depends(get_prompt_config_repo),
     current_user: User = Depends(get_current_active_user)
 ):
     """Atualiza um prompt existente"""
-    prompt = db.query(PromptConfig).filter(
-        PromptConfig.sistema == SISTEMA,
-        PromptConfig.tipo == tipo,
-        PromptConfig.is_active == True
-    ).first()
+    prompt = prompt_repo.get_active(SISTEMA, tipo)
     
     if not prompt:
         raise HTTPException(status_code=404, detail=f"Prompt '{tipo}' não encontrado")
@@ -781,20 +772,18 @@ async def atualizar_prompt(
         prompt.descricao = req.descricao
     prompt.updated_by = current_user.username
     
-    db.commit()
+    prompt_repo.commit()
     
     return {"status": "sucesso", "mensagem": f"Prompt '{tipo}' atualizado com sucesso"}
 
 
 @router.get("/config/modelos")
 async def listar_modelos(
-    db: Session = Depends(get_db),
+    config_repo: ConfiguracaoIARepository = Depends(get_config_repo),
     current_user: User = Depends(get_current_active_user)
 ):
     """Lista configurações de modelos de IA"""
-    configs = db.query(ConfiguracaoIA).filter(
-        ConfiguracaoIA.sistema == SISTEMA
-    ).all()
+    configs = config_repo.list_by_sistema(SISTEMA)
     
     return [
         {
@@ -811,14 +800,11 @@ async def listar_modelos(
 @router.get("/config/modelos/{chave}")
 async def obter_modelo(
     chave: str,
-    db: Session = Depends(get_db),
+    config_repo: ConfiguracaoIARepository = Depends(get_config_repo),
     current_user: User = Depends(get_current_active_user)
 ):
     """Obtém uma configuração de modelo específica"""
-    config = db.query(ConfiguracaoIA).filter(
-        ConfiguracaoIA.sistema == SISTEMA,
-        ConfiguracaoIA.chave == chave
-    ).first()
+    config = config_repo.get_config(SISTEMA, chave)
     
     if not config:
         raise HTTPException(status_code=404, detail=f"Configuração '{chave}' não encontrada")
@@ -836,30 +822,14 @@ async def obter_modelo(
 async def atualizar_modelo(
     chave: str,
     req: ConfiguracaoRequest,
-    db: Session = Depends(get_db),
+    config_repo: ConfiguracaoIARepository = Depends(get_config_repo),
     current_user: User = Depends(get_current_active_user)
 ):
     """Atualiza uma configuração de modelo"""
-    config = db.query(ConfiguracaoIA).filter(
-        ConfiguracaoIA.sistema == SISTEMA,
-        ConfiguracaoIA.chave == chave
-    ).first()
-    
-    if not config:
-        # Cria nova configuração
-        config = ConfiguracaoIA(
-            sistema=SISTEMA,
-            chave=chave,
-            valor=req.valor,
-            descricao=req.descricao
-        )
-        db.add(config)
-    else:
-        config.valor = req.valor
-        if req.descricao:
-            config.descricao = req.descricao
-    
-    db.commit()
+    config = config_repo.upsert_config(SISTEMA, chave, req.valor)
+    if req.descricao:
+        config.descricao = req.descricao
+    config_repo.commit()
 
     return {"status": "sucesso", "mensagem": f"Configuração '{chave}' atualizada com sucesso"}
 

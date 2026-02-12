@@ -17,6 +17,7 @@ Status resumido apos execucao incremental:
   - `sistemas/pedido_calculo/repositories.py` -> `app/repositories/sqlalchemy/pedido_calculo.py`
 - ✅ Ports/adapters organizados em namespace explícito (`app/adapters/ports`, `app/adapters/outbound`, `app/adapters/inbound`).
 - ✅ Teste de compatibilidade de import adicionado (`tests/test_import_compat_repositorio.py`).
+- ✅ `sistemas/pedido_calculo/router.py` sem `db.query(...)` direto (migrado para repositories de admin/config).
 - ❌ Migração completa de rotas legadas do `main.py` para `app/api/legacy` ainda pendente (templates/static admin).
 - ❌ Remoção ampla de `db.query(...)` em routers críticos ainda pendente.
 

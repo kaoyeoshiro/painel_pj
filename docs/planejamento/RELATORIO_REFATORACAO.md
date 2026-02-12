@@ -391,3 +391,8 @@ Nesta rodada foi executada uma fase adicional focada em **organizacao fisica de 
 
 - Rotas/template legado ainda em `main.py` (`frontend/templates`, `frontend/static`, `/admin/*` legado).
 - Hotspots com `db.query(...)` ainda presentes em routers de alto volume.
+
+### Ajuste incremental adicional (mesma rodada)
+
+- `sistemas/pedido_calculo/router.py` foi atualizado para usar repositories de configuração/prompt
+  (`PromptConfigRepository`, `ConfiguracaoIARepository`) e removeu acesso direto `db.query(...)`.
