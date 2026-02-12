@@ -103,6 +103,16 @@ class ChangePasswordRequest(BaseModel):
         return validate_password(v)
 
 
+class ChangePasswordRequestSimple(BaseModel):
+    """
+    Request de troca de senha SEM validacao automatica de forca.
+
+    A validacao e feita manualmente no endpoint para retornar mensagens mais amigaveis.
+    """
+    current_password: str
+    new_password: str
+
+
 # ==========================================
 # Schemas de Usuário
 # ==========================================

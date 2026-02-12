@@ -75,3 +75,10 @@ class ConfiguracaoIAResponse(ConfiguracaoIABase):
 
     class Config:
         from_attributes = True
+
+
+class ConfigUpsertRequest(BaseModel):
+    """Request para criar ou atualizar uma configuracao de IA."""
+    sistema: str
+    chave: str
+    valor: str

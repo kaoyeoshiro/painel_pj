@@ -13,7 +13,8 @@ from sqlalchemy.orm import Session
 from database.connection import get_db
 from auth.models import User
 from auth.schemas import (
-    Token, LoginRequest, ChangePasswordRequest, UserMe, HTTPError
+    Token, LoginRequest, ChangePasswordRequest, ChangePasswordRequestSimple,
+    UserMe, HTTPError,
 )
 from auth.security import verify_password, get_password_hash, create_access_token
 from auth.dependencies import get_current_active_user
@@ -165,19 +166,6 @@ async def get_me(current_user: User = Depends(get_current_active_user)):
     Retorna os dados do usuário autenticado.
     """
     return current_user
-
-
-from pydantic import BaseModel
-
-
-class ChangePasswordRequestSimple(BaseModel):
-    """
-    Request de troca de senha SEM validação automática de força.
-
-    A validação é feita manualmente no endpoint para retornar mensagens mais amigáveis.
-    """
-    current_password: str
-    new_password: str
 
 
 @router.post("/change-password")

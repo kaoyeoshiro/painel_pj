@@ -4,7 +4,6 @@ Router de administração - Gerenciamento de Prompts e Configurações de IA
 """
 
 from fastapi import APIRouter, Depends, HTTPException
-from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from sqlalchemy import func, and_, Integer, case
 from typing import List, Optional
@@ -18,7 +17,8 @@ from auth.models import User
 from admin.models import PromptConfig, ConfiguracaoIA
 from admin.schemas import (
     PromptCreate, PromptUpdate, PromptResponse, PromptListResponse,
-    ConfiguracaoIACreate, ConfiguracaoIAUpdate, ConfiguracaoIAResponse
+    ConfiguracaoIACreate, ConfiguracaoIAUpdate, ConfiguracaoIAResponse,
+    ConfigUpsertRequest,
 )
 from admin.seed_prompts import seed_default_prompts
 
@@ -297,12 +297,6 @@ async def update_config_ia(
     db.refresh(config)
     
     return config
-
-
-class ConfigUpsertRequest(BaseModel):
-    sistema: str
-    chave: str
-    valor: str
 
 
 @router.post("/config-ia/upsert")

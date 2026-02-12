@@ -11,14 +11,17 @@ Endpoints:
 """
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel
 from sqlalchemy.orm import Session
-from typing import Optional, List, Dict, Any
+from typing import Optional
 from datetime import datetime, timedelta
 
 from database.connection import get_db
 from auth.dependencies import require_admin
 from auth.models import User
+from admin.schemas_gemini_logs import (
+    LogsResponse, SummaryResponse, SystemsResponse,
+    ModelsResponse, CleanupResponse,
+)
 
 from admin.services_gemini_logs import (
     get_gemini_logs,
@@ -30,65 +33,6 @@ from admin.services_gemini_logs import (
 )
 
 router = APIRouter(prefix="/admin/api/gemini-logs", tags=["Gemini Logs"])
-
-
-# ==================================================
-# SCHEMAS
-# ==================================================
-
-class LogEntry(BaseModel):
-    id: int
-    created_at: Optional[str]
-    user_id: Optional[int]
-    username: Optional[str]
-    sistema: str
-    modulo: Optional[str]
-    model: str
-    prompt_chars: int
-    prompt_tokens_estimated: Optional[int]
-    has_images: bool
-    has_search: bool
-    temperature: Optional[float]
-    response_tokens: Optional[int]
-    success: bool
-    cached: bool
-    error: Optional[str]
-    time_prepare_ms: Optional[float]
-    time_connect_ms: Optional[float]
-    time_ttft_ms: Optional[float]
-    time_generation_ms: Optional[float]
-    time_total_ms: float
-    retry_count: int
-
-
-class LogsResponse(BaseModel):
-    logs: List[Dict[str, Any]]
-    total: int
-    limit: int
-    offset: int
-
-
-class SummaryResponse(BaseModel):
-    period_hours: int
-    total_calls: int
-    stats: Dict[str, Any]
-    by_sistema: List[Dict[str, Any]]
-    by_model: List[Dict[str, Any]]
-    slowest_calls: List[Dict[str, Any]]
-    recent_errors: List[Dict[str, Any]]
-
-
-class SystemsResponse(BaseModel):
-    systems: List[str]
-
-
-class ModelsResponse(BaseModel):
-    models: List[str]
-
-
-class CleanupResponse(BaseModel):
-    deleted_count: int
-    message: str
 
 
 # ==================================================
