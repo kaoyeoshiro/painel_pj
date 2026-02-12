@@ -30,7 +30,7 @@ export function ExtratorAutosPage() {
       {/* Breadcrumb com status BERT */}
       <BreadcrumbBar
         title="Extrator de Autos"
-        icon={<FolderSearch style={{ width: 14, height: 14 }} />}
+        icon={<FolderSearch className="w-3.5 h-3.5" />}
         actions={<BertStatusAction bertStatus={h.bertStatus} />}
       />
 

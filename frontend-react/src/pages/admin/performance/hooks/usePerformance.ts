@@ -24,13 +24,13 @@ import type {
 // Constantes
 // ============================================================
 
-export const PIE_COLORS = ['#a855f7', '#eab308', '#3b82f6', '#8D8F92']
-export const BAR_COLORS = [C.navy700, C.navy500, C.orange500, C.navy300, '#a855f7', '#eab308']
+export const PIE_COLORS = [C.chartPurple, C.chartYellow, C.chartBlue, C.gray500]
+export const BAR_COLORS = [C.navy700, C.navy500, C.orange500, C.navy300, C.chartPurple, C.chartYellow]
 
 export const BOTTLENECK_STYLE: Record<string, BottleneckStyleEntry> = {
-  LLM: { color: '#a855f7', icon: Bot },
-  DB: { color: '#eab308', icon: Database },
-  PARSE: { color: '#3b82f6', icon: Code },
+  LLM: { color: C.chartPurple, icon: Bot },
+  DB: { color: C.chartYellow, icon: Database },
+  PARSE: { color: C.chartBlue, icon: Code },
   OUTRO: { color: C.gray400, icon: CircleHelp },
 }
 

@@ -334,7 +334,7 @@ export function HistoricoPrestacaoContasPage() {
     <>
       <BreadcrumbBar
         title="Historico - Prestacao de Contas"
-        icon={<Building2 style={{ width: 14, height: 14 }} />}
+        icon={<Building2 className="w-3.5 h-3.5" />}
       />
       <ContentArea>
         {loading ? (
@@ -614,7 +614,7 @@ export function HistoricoPrestacaoContasPage() {
                       <span
                         key={idx}
                         className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium"
-                        style={{ background: '#fef3c7', color: '#92400e', border: `1px solid ${C.statusWarning}` }}
+                        style={{ background: C.warningBg, color: C.warningText, border: `1px solid ${C.statusWarning}` }}
                       >
                         {doc}
                       </span>

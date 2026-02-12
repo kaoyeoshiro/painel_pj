@@ -337,7 +337,7 @@ export function CumprimentoBetaPage() {
     <>
       <BreadcrumbBar
         title="Cumprimento de Sentenca"
-        icon={<FlaskConical style={{ width: 14, height: 14 }} />}
+        icon={<FlaskConical className="w-3.5 h-3.5" />}
         actions={
           <Sheet>
             <SheetTrigger asChild>
@@ -672,14 +672,14 @@ function ProcessStep({
   info?: string
 }) {
   function getStepStyle(): { bg: string; color: string } {
-    if (completed) return { bg: '#dcfce7', color: '#16a34a' }
+    if (completed) return { bg: C.successBgStrong, color: C.successAccent }
     if (active) return { bg: C.navy100, color: C.navy700 }
     return { bg: C.gray100, color: C.text400 }
   }
 
   function getLabelColor(): string {
     if (active) return C.navy700
-    if (completed) return '#16a34a'
+    if (completed) return C.successAccent
     return C.text500
   }
 

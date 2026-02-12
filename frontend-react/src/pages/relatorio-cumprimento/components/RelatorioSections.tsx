@@ -61,16 +61,16 @@ export function EtapaStep({ etapa }: { etapa: EtapaPipeline }) {
   let textColor: string
 
   if (etapa.status === 'concluido') {
-    bgColor = '#f0fdf4'
-    borderColor = '#bbf7d0'
+    bgColor = C.successBg
+    borderColor = C.successBorder
     badgeBg = C.statusSuccess
-    badgeColor = '#fff'
+    badgeColor = 'white'
     textColor = C.statusSuccess
   } else if (etapa.status === 'ativo') {
     bgColor = C.navy50
     borderColor = C.navy100
     badgeBg = C.navy950
-    badgeColor = '#fff'
+    badgeColor = 'white'
     textColor = C.navy700
   } else {
     bgColor = C.gray50
@@ -134,7 +134,7 @@ export function HistoricoSheet({ historico, onCarregarHistorico }: HistoricoShee
           onMouseEnter={(e) => { e.currentTarget.style.background = C.gray100 }}
           onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
         >
-          <Clock style={{ width: 14, height: 14 }} />
+          <Clock className="w-3.5 h-3.5" />
           <span className="hidden sm:inline">Historico</span>
         </button>
       </SheetTrigger>
@@ -456,7 +456,7 @@ export function ResumoGerado({ vm }: ResumoGeradoProps) {
           <div className="flex items-center gap-3">
             <div
               className="flex h-10 w-10 items-center justify-center rounded-xl"
-              style={{ background: '#f0fdf4', color: C.statusSuccess }}
+              style={{ background: C.successBg, color: C.statusSuccess }}
             >
               <CheckCircle2 style={{ width: 20, height: 20 }} />
             </div>
@@ -642,7 +642,7 @@ function InfoProcesso({ vm }: { vm: UseRelatorioCumprimentoReturn }) {
       {vm.temAgravo && (
         <div
           className="mt-3 flex items-start gap-2 rounded-lg p-3"
-          style={{ background: '#fef3c7', border: `1px solid ${C.statusWarning}33` }}
+          style={{ background: C.warningBg, border: `1px solid ${C.statusWarning}33` }}
         >
           <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0" style={{ color: C.statusWarning }} />
           <div>
@@ -801,7 +801,7 @@ export function FeedbackSection({
                   className="rounded-lg"
                   style={
                     feedbackAvaliacao === opcao.value
-                      ? { background: C.navy950, color: '#fff' }
+                      ? { background: C.navy950, color: 'white' }
                       : undefined
                   }
                 >

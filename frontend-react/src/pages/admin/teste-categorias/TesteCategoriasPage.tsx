@@ -487,7 +487,7 @@ export function TesteCategoriasPage() {
     <>
       <BreadcrumbBar
         title="Ambiente de Teste de Categorias"
-        icon={<FlaskConical style={{ width: 14, height: 14 }} />}
+        icon={<FlaskConical className="w-3.5 h-3.5" />}
         actions={
           <div className="flex items-center gap-2">
             <label className="text-sm font-medium whitespace-nowrap" style={{ color: C.text500 }}>Categoria:</label>
@@ -761,11 +761,11 @@ export function TesteCategoriasPage() {
                       <div
                         className="p-4 rounded-xl mb-4"
                         style={{
-                          background: comparacaoResult.acordo ? '#f0fdf4' : '#fffbeb',
+                          background: comparacaoResult.acordo ? C.successBg : C.warningBgAlt,
                           border: `1px solid ${comparacaoResult.acordo ? C.statusSuccess : C.statusWarning}`,
                         }}
                       >
-                        <p className="text-sm font-semibold" style={{ color: comparacaoResult.acordo ? '#166534' : '#92400e' }}>
+                        <p className="text-sm font-semibold" style={{ color: comparacaoResult.acordo ? C.successText : C.warningText }}>
                           {comparacaoResult.acordo
                             ? '100% acordo entre os modelos'
                             : `${comparacaoResult.diferencas.length} diferenca(s) encontrada(s)`}
@@ -773,7 +773,7 @@ export function TesteCategoriasPage() {
                         {comparacaoResult.diferencas.length > 0 && (
                           <ul className="mt-2 space-y-1">
                             {comparacaoResult.diferencas.map((d, i) => (
-                              <li key={i} className="text-xs" style={{ color: '#92400e' }}>- {d}</li>
+                              <li key={i} className="text-xs" style={{ color: C.warningText }}>- {d}</li>
                             ))}
                           </ul>
                         )}
@@ -917,11 +917,11 @@ export function TesteCategoriasPage() {
               <div
                 className="p-4 rounded-xl"
                 style={{
-                  background: comparacaoResult.acordo ? '#f0fdf4' : '#fffbeb',
+                  background: comparacaoResult.acordo ? C.successBg : C.warningBgAlt,
                   border: `1px solid ${comparacaoResult.acordo ? C.statusSuccess : C.statusWarning}`,
                 }}
               >
-                <p className="text-sm font-semibold" style={{ color: comparacaoResult.acordo ? '#166534' : '#92400e' }}>
+                <p className="text-sm font-semibold" style={{ color: comparacaoResult.acordo ? C.successText : C.warningText }}>
                   {comparacaoResult.acordo
                     ? '100% acordo entre os modelos'
                     : `${comparacaoResult.diferencas.length} diferenca(s) encontrada(s)`}
@@ -929,7 +929,7 @@ export function TesteCategoriasPage() {
                 {comparacaoResult.diferencas.length > 0 && (
                   <ul className="mt-2 space-y-1">
                     {comparacaoResult.diferencas.map((d, i) => (
-                      <li key={i} className="text-xs" style={{ color: '#92400e' }}>- {d}</li>
+                      <li key={i} className="text-xs" style={{ color: C.warningText }}>- {d}</li>
                     ))}
                   </ul>
                 )}

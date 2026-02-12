@@ -1,5 +1,7 @@
 /** Constantes compartilhadas para o dashboard de feedbacks. */
 
+import { C } from '@/lib/designTokens'
+
 // ---------------------------------------------------------------------------
 // Sistemas
 // ---------------------------------------------------------------------------
@@ -13,12 +15,12 @@ export interface SistemaOption {
 }
 
 export const SISTEMAS: SistemaOption[] = [
-  { value: 'assistencia_judiciaria', label: 'Assistência Judiciária', shortLabel: 'Assist. Jud.', color: '#3b82f6', bgColor: 'bg-blue-50' },
-  { value: 'matriculas', label: 'Matrículas Confrontantes', shortLabel: 'Matrículas', color: '#22c55e', bgColor: 'bg-green-50' },
-  { value: 'gerador_pecas', label: 'Gerador de Peças', shortLabel: 'Ger. Peças', color: '#a855f7', bgColor: 'bg-purple-50' },
-  { value: 'pedido_calculo', label: 'Pedido de Cálculo', shortLabel: 'Ped. Cálculo', color: '#f59e0b', bgColor: 'bg-amber-50' },
-  { value: 'prestacao_contas', label: 'Prestação de Contas', shortLabel: 'Prest. Contas', color: '#14b8a6', bgColor: 'bg-teal-50' },
-  { value: 'relatorio_cumprimento', label: 'Relatório de Cumprimento', shortLabel: 'Rel. Cumpr.', color: '#6366f1', bgColor: 'bg-indigo-50' },
+  { value: 'assistencia_judiciaria', label: 'Assistência Judiciária', shortLabel: 'Assist. Jud.', color: C.chartBlue, bgColor: 'bg-blue-50' },
+  { value: 'matriculas', label: 'Matrículas Confrontantes', shortLabel: 'Matrículas', color: C.statusSuccess, bgColor: 'bg-green-50' },
+  { value: 'gerador_pecas', label: 'Gerador de Peças', shortLabel: 'Ger. Peças', color: C.chartPurple, bgColor: 'bg-purple-50' },
+  { value: 'pedido_calculo', label: 'Pedido de Cálculo', shortLabel: 'Ped. Cálculo', color: C.statusWarning, bgColor: 'bg-amber-50' },
+  { value: 'prestacao_contas', label: 'Prestação de Contas', shortLabel: 'Prest. Contas', color: C.chartTeal, bgColor: 'bg-teal-50' },
+  { value: 'relatorio_cumprimento', label: 'Relatório de Cumprimento', shortLabel: 'Rel. Cumpr.', color: C.chartIndigo, bgColor: 'bg-indigo-50' },
 ]
 
 export const SISTEMA_MAP = Object.fromEntries(
@@ -48,19 +50,19 @@ export const AVALIACAO_OPTIONS = [
 // Cores do gráfico de pizza
 // ---------------------------------------------------------------------------
 
-export const PIE_COLORS = ['#22c55e', '#eab308', '#ef4444', '#6b7280']
+export const PIE_COLORS = [C.statusSuccess, C.chartYellow, C.statusError, C.gray600]
 
 // ---------------------------------------------------------------------------
 // Evolução — cores por sistema (linhas do gráfico)
 // ---------------------------------------------------------------------------
 
 export const EVOLUCAO_CORES: Record<string, { border: string; bg: string }> = {
-  assistencia_judiciaria: { border: '#3b82f6', bg: 'rgba(59, 130, 246, 0.2)' },
-  matriculas: { border: '#22c55e', bg: 'rgba(34, 197, 94, 0.2)' },
-  gerador_pecas: { border: '#a855f7', bg: 'rgba(168, 85, 247, 0.2)' },
-  pedido_calculo: { border: '#f59e0b', bg: 'rgba(245, 158, 11, 0.2)' },
-  prestacao_contas: { border: '#14b8a6', bg: 'rgba(20, 184, 166, 0.2)' },
-  relatorio_cumprimento: { border: '#6366f1', bg: 'rgba(99, 102, 241, 0.2)' },
+  assistencia_judiciaria: { border: C.chartBlue, bg: 'rgba(59, 130, 246, 0.2)' },
+  matriculas: { border: C.statusSuccess, bg: 'rgba(34, 197, 94, 0.2)' },
+  gerador_pecas: { border: C.chartPurple, bg: 'rgba(168, 85, 247, 0.2)' },
+  pedido_calculo: { border: C.statusWarning, bg: 'rgba(245, 158, 11, 0.2)' },
+  prestacao_contas: { border: C.chartTeal, bg: 'rgba(20, 184, 166, 0.2)' },
+  relatorio_cumprimento: { border: C.chartIndigo, bg: 'rgba(99, 102, 241, 0.2)' },
 }
 
 // ---------------------------------------------------------------------------

@@ -87,7 +87,7 @@ export function RestaurarSlugsPage() {
     <>
       <BreadcrumbBar
         title="Restaurar Slugs"
-        icon={<RotateCcw style={{ width: 14, height: 14 }} />}
+        icon={<RotateCcw className="w-3.5 h-3.5" />}
       />
 
       <ContentArea>

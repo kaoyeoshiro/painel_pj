@@ -81,7 +81,7 @@ export function InputSection({ h }: InputSectionProps) {
                 <Button
                   onClick={h.consultarProcesso}
                   disabled={!h.cnjInput.trim() || h.pageState === 'consultando'}
-                  style={{ background: C.navy950, color: '#fff' }}
+                  style={{ background: C.navy950, color: 'white' }}
                 >
                   Consultar
                 </Button>
@@ -109,7 +109,7 @@ export function InputSection({ h }: InputSectionProps) {
                 <Button
                   onClick={h.consultarLote}
                   disabled={h.contarProcessosLote() === 0 || h.pageState === 'consultando'}
-                  style={{ background: C.navy950, color: '#fff' }}
+                  style={{ background: C.navy950, color: 'white' }}
                 >
                   Consultar Lote
                 </Button>
@@ -121,7 +121,7 @@ export function InputSection({ h }: InputSectionProps) {
           {h.pageState === 'erro' && h.erroMensagem && (
             <div
               className="rounded-lg p-3 text-sm"
-              style={{ background: '#fef2f2', color: C.statusError }}
+              style={{ background: C.errorBg, color: C.statusError }}
             >
               {h.erroMensagem}
             </div>

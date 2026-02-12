@@ -372,7 +372,7 @@ export function ConfigPecasPage() {
     titulo: '',
     descricao: '',
     codigos_documento: [] as number[],
-    cor: '#3b82f6',
+    cor: C.chartBlue,
     ordem: 0,
     ativo: true,
     is_primeiro_documento: false
@@ -507,7 +507,7 @@ export function ConfigPecasPage() {
         titulo: '',
         descricao: '',
         codigos_documento: [],
-        cor: '#3b82f6',
+        cor: C.chartBlue,
         ordem: categorias.length,
         ativo: true,
         is_primeiro_documento: false
@@ -667,7 +667,7 @@ export function ConfigPecasPage() {
     <>
       <BreadcrumbBar
         title="Configuração de Peças"
-        icon={<SettingsIcon style={{ width: 14, height: 14 }} />}
+        icon={<SettingsIcon className="w-3.5 h-3.5" />}
         actions={
           <div className="flex gap-2" data-testid="admin-actions">
             <Button

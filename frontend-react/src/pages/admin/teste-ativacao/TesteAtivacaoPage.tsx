@@ -402,7 +402,7 @@ export function TesteAtivacaoPage() {
     <>
       <BreadcrumbBar
         title="Teste de Ativacao de Modulos"
-        icon={<Zap style={{ width: 14, height: 14 }} />}
+        icon={<Zap className="w-3.5 h-3.5" />}
         actions={
           <div className="flex items-center gap-2">
             <label className="text-sm font-medium whitespace-nowrap" style={{ color: C.text500 }}>Tipo de Peca:</label>
@@ -749,14 +749,14 @@ export function TesteAtivacaoPage() {
           <DialogHeader>
             <div className="px-2 py-1 rounded-lg" style={{ background: 'linear-gradient(135deg, #fffbeb, #fff7ed)' }}>
               <DialogTitle className="flex items-center gap-2">
-                <Bot className="h-5 w-5" style={{ color: '#ea580c' }} />
+                <Bot className="h-5 w-5" style={{ color: C.orange600 }} />
                 Relatorio IA — {relatorioModuloTitulo}
               </DialogTitle>
             </div>
           </DialogHeader>
           {loadingRelatorio ? (
             <div className="flex flex-col items-center justify-center py-12">
-              <Loader2 className="h-8 w-8 animate-spin mb-3" style={{ color: '#ea580c' }} />
+              <Loader2 className="h-8 w-8 animate-spin mb-3" style={{ color: C.orange600 }} />
               <p className="text-sm" style={{ color: C.text500 }}>Gerando relatorio via IA...</p>
             </div>
           ) : (

@@ -58,8 +58,8 @@ export function BertStatusAction({ bertStatus }: BertStatusActionProps) {
             <span style={{ color: C.text400 }}>Disponivel:</span>
             <Badge
               style={bertStatus?.available
-                ? { background: '#dcfce7', color: C.statusSuccess, border: 'none' }
-                : { background: '#fef2f2', color: C.statusError, border: 'none' }
+                ? { background: C.successBgStrong, color: C.statusSuccess, border: 'none' }
+                : { background: C.errorBg, color: C.statusError, border: 'none' }
               }
             >
               {bertStatus?.available ? 'Sim' : 'Nao'}
@@ -78,7 +78,7 @@ export function BertStatusAction({ bertStatus }: BertStatusActionProps) {
           {bertStatus?.error && (
             <div
               className="mt-2 rounded p-2 text-xs"
-              style={{ background: '#fef2f2', color: C.statusError }}
+              style={{ background: C.errorBg, color: C.statusError }}
             >
               {bertStatus.error}
             </div>

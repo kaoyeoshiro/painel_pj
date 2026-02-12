@@ -128,8 +128,8 @@ export function PerguntasLoteDialog({
                 className="text-sm"
                 style={{
                   color: status.type === 'success' ? C.statusSuccess
-                    : status.type === 'error' ? '#dc2626'
-                    : '#3b82f6',
+                    : status.type === 'error' ? C.chartRed
+                    : C.chartBlue,
                 }}
               >
                 {status.text}

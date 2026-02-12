@@ -524,7 +524,7 @@ export function IATabContent({ categoriaId, categoriaNome, onJsonChange }: IATab
     <div className="space-y-4" data-testid="tab-ia-content">
       {/* Aviso: categoria nao salva */}
       {!categoriaId && (
-        <div className="p-3 bg-amber-50 border border-amber-300 rounded-lg text-sm" style={{ color: '#92400e' }}>
+        <div className="p-3 bg-amber-50 border border-amber-300 rounded-lg text-sm" style={{ color: C.warningText }}>
           <AlertTriangle className="h-4 w-4 inline mr-2" />
           Salve a categoria primeiro para usar o modo IA.
         </div>
@@ -794,9 +794,9 @@ export function IATabContent({ categoriaId, categoriaNome, onJsonChange }: IATab
             className="text-sm"
             style={{
               color: statusIA.type === 'success' ? C.statusSuccess
-                : statusIA.type === 'error' ? '#dc2626'
-                : statusIA.type === 'warning' ? '#d97706'
-                : '#3b82f6',
+                : statusIA.type === 'error' ? C.chartRed
+                : statusIA.type === 'warning' ? C.warningTextStrong
+                : C.chartBlue,
             }}
             data-testid="status-ia"
           >

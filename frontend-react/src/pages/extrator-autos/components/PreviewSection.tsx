@@ -35,7 +35,7 @@ function ResolucaoBadge({ doc }: { doc: PreviewDocumento }) {
   }
   if (metodo === 'codigo') {
     return (
-      <Badge style={{ background: '#dcfce7', color: C.statusSuccess, border: 'none' }}>
+      <Badge style={{ background: C.successBgStrong, color: C.statusSuccess, border: 'none' }}>
         codigo direto
       </Badge>
     )
@@ -43,7 +43,7 @@ function ResolucaoBadge({ doc }: { doc: PreviewDocumento }) {
   if (metodo === 'bert') {
     const status = doc.resolucao_especial.bert_status ?? 'Candidato'
     return (
-      <Badge style={{ background: '#fef3c7', color: '#92400e', border: 'none' }}>
+      <Badge style={{ background: C.warningBg, color: C.warningText, border: 'none' }}>
         BERT: {status}
       </Badge>
     )

@@ -164,18 +164,18 @@ export function EvolutionChart({ data, loading, onSemanasChange }: EvolutionChar
         <div className="h-80">
           <ResponsiveContainer width="100%" height="100%">
             <LineChart data={chartData}>
-              <CartesianGrid stroke="#E2E3E5" strokeDasharray="3 3" />
+              <CartesianGrid stroke={C.gray200} strokeDasharray="3 3" />
               <XAxis
                 dataKey="semana"
-                stroke="#8D8F92"
+                stroke={C.gray500}
                 tick={{ fontSize: 12 }}
-                label={{ value: 'Semana', position: 'insideBottomRight', offset: -5, style: { fontSize: 11, fill: '#8D8F92' } }}
+                label={{ value: 'Semana', position: 'insideBottomRight', offset: -5, style: { fontSize: 11, fill: C.gray500 } }}
               />
               <YAxis
-                stroke="#8D8F92"
+                stroke={C.gray500}
                 tick={{ fontSize: 12 }}
                 domain={metrica === 'taxa_acerto' ? [0, 100] : [0, 'auto']}
-                label={{ value: yLabel, angle: -90, position: 'insideLeft', style: { fontSize: 11, fill: '#8D8F92' } }}
+                label={{ value: yLabel, angle: -90, position: 'insideLeft', style: { fontSize: 11, fill: C.gray500 } }}
               />
               <Tooltip
                 formatter={(value: number | null, name: string) => {
@@ -196,7 +196,7 @@ export function EvolutionChart({ data, loading, onSemanasChange }: EvolutionChar
                   key={sistema}
                   type="monotone"
                   dataKey={sistema}
-                  stroke={EVOLUCAO_CORES[sistema]?.border ?? '#6b7280'}
+                  stroke={EVOLUCAO_CORES[sistema]?.border ?? C.gray500}
                   strokeWidth={sistemasComDados.length === 1 ? 3 : 2}
                   dot={{ r: sistemasComDados.length === 1 ? 5 : 4 }}
                   connectNulls={false}

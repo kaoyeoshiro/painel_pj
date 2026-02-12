@@ -21,7 +21,7 @@ export function PerformancePage() {
     <>
       <BreadcrumbBar
         title="Performance & Logs"
-        icon={<Activity style={{ width: 14, height: 14 }} />}
+        icon={<Activity className="w-3.5 h-3.5" />}
         actions={
           <div className="flex items-center gap-3">
             <Button onClick={vm.handleCacheInvalidate} variant="ghost" size="sm" className="text-xs" style={{ color: C.navy700 }}>

@@ -51,7 +51,7 @@ export function DownloadOptionsSection({ h }: DownloadOptionsSectionProps) {
                   className="rounded-lg border px-3 py-2 text-sm transition-colors"
                   style={{
                     borderColor: h.downloadOpcoes.formato === fmt.value ? C.navy500 : C.gray200,
-                    background: h.downloadOpcoes.formato === fmt.value ? C.navy50 : '#fff',
+                    background: h.downloadOpcoes.formato === fmt.value ? C.navy50 : 'white',
                     color: h.downloadOpcoes.formato === fmt.value ? C.navy700 : C.text500,
                     fontWeight: h.downloadOpcoes.formato === fmt.value ? 600 : 400,
                   }}
@@ -133,7 +133,7 @@ export function DownloadOptionsSection({ h }: DownloadOptionsSectionProps) {
           <div className="flex justify-end">
             <Button
               onClick={h.iniciarDownload}
-              style={{ background: C.navy950, color: '#fff' }}
+              style={{ background: C.navy950, color: 'white' }}
             >
               Baixar Documentos
             </Button>
@@ -179,7 +179,7 @@ export function DownloadProgressSection({ h }: DownloadProgressSectionProps) {
         </div>
 
         {/* Logs */}
-        <ScrollArea className="h-48 rounded-lg border p-3" style={{ background: '#0f172a', borderColor: C.gray200 }}>
+        <ScrollArea className="h-48 rounded-lg border p-3" style={{ background: C.terminalBg, borderColor: C.gray200 }}>
           <div className="space-y-1 font-mono text-xs" style={{ color: C.gray400 }}>
             {h.downloadLogs.map((log, i) => (
               <div key={i}>{log}</div>
@@ -204,17 +204,17 @@ export function DownloadCompleteSection({ h }: DownloadCompleteSectionProps) {
   return (
     <div
       className="overflow-hidden rounded-2xl border bg-white shadow-sm"
-      style={{ borderColor: '#bbf7d0' }}
+      style={{ borderColor: C.successBorder }}
     >
-      <div className="h-1" style={{ background: `linear-gradient(90deg, ${C.statusSuccess}, #34d399)` }} />
-      <div className="flex flex-col items-center justify-center py-10" style={{ background: '#f0fdf4' }}>
+      <div className="h-1" style={{ background: `linear-gradient(90deg, ${C.statusSuccess}, ${C.successAccentMuted})` }} />
+      <div className="flex flex-col items-center justify-center py-10" style={{ background: C.successBg }}>
         <div
           className="mb-4 flex h-16 w-16 items-center justify-center rounded-full"
-          style={{ background: '#dcfce7' }}
+          style={{ background: C.successBgStrong }}
         >
           <span className="text-2xl" style={{ color: C.statusSuccess }}>&#10003;</span>
         </div>
-        <h2 className="mb-2 text-xl font-semibold" style={{ color: '#15803d' }}>
+        <h2 className="mb-2 text-xl font-semibold" style={{ color: C.successTextLight }}>
           Download concluido!
         </h2>
         <p className="mb-6 text-sm" style={{ color: C.statusSuccess }}>{h.downloadMensagem}</p>
@@ -222,7 +222,7 @@ export function DownloadCompleteSection({ h }: DownloadCompleteSectionProps) {
           {h.jobId && (
             <Button
               onClick={h.baixarZip}
-              style={{ background: C.statusSuccess, color: '#fff' }}
+              style={{ background: C.statusSuccess, color: 'white' }}
             >
               Baixar ZIP
             </Button>

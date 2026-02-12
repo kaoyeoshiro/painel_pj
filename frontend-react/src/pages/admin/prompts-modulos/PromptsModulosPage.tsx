@@ -36,7 +36,7 @@ export function PromptsModulosPage() {
     <>
       <BreadcrumbBar
         title="Modulos de Prompts"
-        icon={<FileJson style={{ width: 14, height: 14 }} />}
+        icon={<FileJson className="w-3.5 h-3.5" />}
         actions={
           <div className="flex items-center gap-2">
             <Link to="/admin/teste-ativacao">

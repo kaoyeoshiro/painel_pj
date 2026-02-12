@@ -31,7 +31,7 @@ export function RelatorioCumprimentoPage() {
       {/* ============================================================ */}
       <BreadcrumbBar
         title="Relatorio de Cumprimento"
-        icon={<FileText style={{ width: 14, height: 14 }} />}
+        icon={<FileText className="w-3.5 h-3.5" />}
         maxWidthClass="max-w-4xl"
         actions={
           <HistoricoSheet

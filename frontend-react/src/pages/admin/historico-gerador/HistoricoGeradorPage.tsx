@@ -192,7 +192,7 @@ export function HistoricoGeradorPage() {
       <>
         <BreadcrumbBar
           title="Historico - Gerador de Pecas"
-          icon={<History style={{ width: 14, height: 14 }} />}
+          icon={<History className="w-3.5 h-3.5" />}
         />
         <ContentArea>
           <Skeleton className="h-96 w-full" />
@@ -205,7 +205,7 @@ export function HistoricoGeradorPage() {
     <>
       <BreadcrumbBar
         title="Historico - Gerador de Pecas"
-        icon={<History style={{ width: 14, height: 14 }} />}
+        icon={<History className="w-3.5 h-3.5" />}
       />
       <ContentArea className="space-y-4">
 

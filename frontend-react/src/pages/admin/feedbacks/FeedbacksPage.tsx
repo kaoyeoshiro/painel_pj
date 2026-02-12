@@ -189,7 +189,7 @@ export function FeedbacksPage() {
     <>
       <BreadcrumbBar
         title="Dashboard de Feedbacks"
-        icon={<MessageSquare style={{ width: 14, height: 14 }} />}
+        icon={<MessageSquare className="w-3.5 h-3.5" />}
         actions={
           <Button
             onClick={exportarDados}
@@ -287,7 +287,7 @@ export function FeedbacksPage() {
                 <p className="text-sm" style={{ color: C.text500 }}>Taxa de Acerto</p>
                 <p className="text-4xl leading-none mt-1 font-bold" style={{ color: C.statusSuccess }}>{(dashboard?.taxa_acerto ?? 0).toFixed(0)}%</p>
               </div>
-              <div className="w-12 h-12 rounded-lg flex items-center justify-center" style={{ background: '#d1fae5' }}>
+              <div className="w-12 h-12 rounded-lg flex items-center justify-center" style={{ background: C.successBgStrong }}>
                 <CheckCircle2 className="h-6 w-6" style={{ color: C.statusSuccess }} />
               </div>
             </div>
@@ -337,11 +337,11 @@ export function FeedbacksPage() {
             <div className="h-64">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={lineData}>
-                  <CartesianGrid stroke="#E2E3E5" strokeDasharray="3 3" />
-                  <XAxis dataKey="data" stroke="#8D8F92" tick={{ fontSize: 12 }} />
-                  <YAxis stroke="#8D8F92" tick={{ fontSize: 12 }} />
+                  <CartesianGrid stroke={C.gray200} strokeDasharray="3 3" />
+                  <XAxis dataKey="data" stroke={C.gray500} tick={{ fontSize: 12 }} />
+                  <YAxis stroke={C.gray500} tick={{ fontSize: 12 }} />
                   <Tooltip />
-                  <Line type="monotone" dataKey="total" stroke="#3b82f6" strokeWidth={2} dot={false} name="Feedbacks" />
+                  <Line type="monotone" dataKey="total" stroke={C.chartBlue} strokeWidth={2} dot={false} name="Feedbacks" />
                 </LineChart>
               </ResponsiveContainer>
             </div>

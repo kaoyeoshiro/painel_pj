@@ -453,7 +453,7 @@ export function HistoricoPedidoCalculoPage() {
     <>
       <BreadcrumbBar
         title="Historico - Pedido de Calculo"
-        icon={<Calculator style={{ width: 14, height: 14 }} />}
+        icon={<Calculator className="w-3.5 h-3.5" />}
       />
       <ContentArea className="space-y-6">
           <DataTable

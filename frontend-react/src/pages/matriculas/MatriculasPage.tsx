@@ -523,7 +523,7 @@ export default function MatriculasPage() {
       {/* Breadcrumb Bar */}
       <BreadcrumbBar
         title="Matriculas Confrontantes"
-        icon={<FileSignature style={{ width: 14, height: 14 }} />}
+        icon={<FileSignature className="w-3.5 h-3.5" />}
         fullWidth
         actions={
           <>
@@ -534,7 +534,7 @@ export default function MatriculasPage() {
               onMouseEnter={(e) => { e.currentTarget.style.background = C.navy600 }}
               onMouseLeave={(e) => { e.currentTarget.style.background = C.navy700 }}
             >
-              <Upload style={{ width: 14, height: 14 }} />
+              <Upload className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Importar</span>
             </button>
             <button
@@ -544,7 +544,7 @@ export default function MatriculasPage() {
               onMouseEnter={(e) => { e.currentTarget.style.background = C.gray100 }}
               onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
             >
-              <HelpCircle style={{ width: 14, height: 14 }} />
+              <HelpCircle className="w-3.5 h-3.5" />
               <span className="hidden sm:inline">Ajuda</span>
             </button>
           </>
@@ -554,7 +554,7 @@ export default function MatriculasPage() {
       {/* Layout principal: 3 paineis */}
       <div className="flex overflow-hidden" style={{ height: 'calc(100vh - 112px)' }}>
         {/* Painel esquerdo: gerenciador de arquivos */}
-        <aside className="flex w-64 flex-shrink-0 flex-col border-r" style={{ borderColor: C.gray200, background: '#fff' }}>
+        <aside className="flex w-64 flex-shrink-0 flex-col border-r" style={{ borderColor: C.gray200, background: 'white' }}>
           {/* Acoes de IA */}
           <div className="border-b p-3" style={{ borderColor: C.gray200, background: C.navy50 }}>
             <div className="h-1 -mx-3 -mt-3 mb-3 rounded-t" style={{ background: `linear-gradient(90deg, ${C.navy950}, ${C.navy500})` }} />
@@ -687,7 +687,7 @@ export default function MatriculasPage() {
                     <div className="flex items-start gap-3">
                       <div
                         className="relative flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg"
-                        style={{ background: file.type === 'pdf' ? '#fef2f2' : C.navy50 }}
+                        style={{ background: file.type === 'pdf' ? C.errorBg : C.navy50 }}
                       >
                         <FileText
                           className="h-5 w-5"
@@ -696,7 +696,7 @@ export default function MatriculasPage() {
                         {file.analyzed && (
                           <CheckCircle
                             className="absolute -right-1 -top-1 h-4 w-4 rounded-full"
-                            style={{ color: C.statusSuccess, background: '#fff' }}
+                            style={{ color: C.statusSuccess, background: 'white' }}
                           />
                         )}
                         {isSelected && isMultiSelect && (
@@ -742,7 +742,7 @@ export default function MatriculasPage() {
         {/* Painel central: relatorio e dados */}
         <main className="flex flex-1 flex-col overflow-hidden" style={{ width: '60%' }}>
           {/* Secao de relatorio */}
-          <section className="flex flex-col border-b" style={{ height: '65%', background: '#fff', borderColor: C.gray200 }}>
+          <section className="flex flex-col border-b" style={{ height: '65%', background: 'white', borderColor: C.gray200 }}>
             <div className="h-1" style={{ background: `linear-gradient(90deg, ${C.navy950}, ${C.navy500})` }} />
             <div className="flex items-center justify-between border-b p-3" style={{ borderColor: C.gray200 }}>
               <h2 className="flex items-center gap-2 text-sm font-semibold" style={{ color: C.text900 }}>
@@ -764,9 +764,9 @@ export default function MatriculasPage() {
                   <button
                     onClick={() => window.print()}
                     className="flex items-center gap-1 rounded px-3 py-1.5 text-xs transition-colors"
-                    style={{ background: '#fef2f2', color: C.statusError }}
-                    onMouseEnter={(e) => { e.currentTarget.style.background = '#fee2e2' }}
-                    onMouseLeave={(e) => { e.currentTarget.style.background = '#fef2f2' }}
+                    style={{ background: C.errorBg, color: C.statusError }}
+                    onMouseEnter={(e) => { e.currentTarget.style.background = C.errorBgStrong }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = C.errorBg }}
                   >
                     <Printer className="h-3.5 w-3.5" />
                     PDF
@@ -845,7 +845,7 @@ export default function MatriculasPage() {
           </section>
 
           {/* Secao de dados extraidos */}
-          <section className="flex flex-col" style={{ height: '35%', background: '#fff' }}>
+          <section className="flex flex-col" style={{ height: '35%', background: 'white' }}>
             <div className="border-b p-2" style={{ borderColor: C.gray200 }}>
               <h2 className="flex items-center gap-2 text-xs font-semibold" style={{ color: C.text900 }}>
                 <FileText className="h-4 w-4" style={{ color: C.navy700 }} />
@@ -991,7 +991,7 @@ export default function MatriculasPage() {
 
         {/* Painel direito: visualizador de PDF */}
         <aside className="flex flex-shrink-0 flex-col border-l" style={{ width: '40%', borderColor: C.gray200, background: C.gray100 }}>
-          <div className="flex items-center justify-between border-b px-4 py-2" style={{ background: '#fff', borderColor: C.gray200 }}>
+          <div className="flex items-center justify-between border-b px-4 py-2" style={{ background: 'white', borderColor: C.gray200 }}>
             <div className="flex items-center gap-3">
               <span className="flex items-center gap-2 text-sm font-medium" style={{ color: C.text700 }}>
                 <FileText className="h-4 w-4" style={{ color: C.statusError }} />

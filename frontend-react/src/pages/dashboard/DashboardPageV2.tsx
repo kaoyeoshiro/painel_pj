@@ -39,7 +39,7 @@ function ModuleCard({ card }: { card: SystemCardConfig }) {
       to={card.to}
       className="group relative flex h-full flex-col overflow-hidden rounded-2xl border"
       style={{
-        background: '#fff',
+        background: 'white',
         borderColor: hovered ? C.orange400 : C.gray200,
         boxShadow: hovered
           ? `0 8px 32px rgba(245,134,52,0.12), 0 0 0 1px ${C.orange400}`
@@ -70,7 +70,7 @@ function ModuleCard({ card }: { card: SystemCardConfig }) {
               width: 52,
               height: 52,
               background: hovered ? C.orange500 : C.navy100,
-              color: hovered ? '#fff' : C.navy700,
+              color: hovered ? 'white' : C.navy700,
               transition: 'all 0.25s ease',
               transform: hovered ? 'scale(1.05)' : 'scale(1)',
             }}
@@ -262,13 +262,12 @@ export function DashboardPageV2() {
 
             {adminOpen && (
               <div
-                className="grid rounded-2xl border"
+                className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 rounded-2xl border"
                 style={{
-                  background: '#fff',
+                  background: 'white',
                   borderColor: C.gray200,
                   padding: 10,
                   gap: 4,
-                  gridTemplateColumns: 'repeat(4, 1fr)',
                 }}
               >
                 {adminCards.map((card) => (

@@ -149,8 +149,8 @@ export function TabGemini({ vm }: { vm: UsePerformanceReturn }) {
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         {([
           { label: 'Total Chamadas', value: vm.geminiSummary?.total_calls || 0, sub: `${vm.geminiSummary?.stats.success_count || 0} ok / ${vm.geminiSummary?.stats.error_count || 0} erros`, color: C.statusSuccess },
-          { label: 'Latencia Media', value: fmtMs(vm.geminiSummary?.stats.avg_latency_ms), sub: `min ${fmtMs(vm.geminiSummary?.stats.min_latency_ms)} / max ${fmtMs(vm.geminiSummary?.stats.max_latency_ms)}`, color: '#3b82f6' },
-          { label: 'Tokens Prompt', value: (vm.geminiSummary?.stats.total_prompt_tokens || 0).toLocaleString(), sub: `resp: ${(vm.geminiSummary?.stats.total_response_tokens || 0).toLocaleString()}`, color: '#a855f7' },
+          { label: 'Latencia Media', value: fmtMs(vm.geminiSummary?.stats.avg_latency_ms), sub: `min ${fmtMs(vm.geminiSummary?.stats.min_latency_ms)} / max ${fmtMs(vm.geminiSummary?.stats.max_latency_ms)}`, color: C.chartBlue },
+          { label: 'Tokens Prompt', value: (vm.geminiSummary?.stats.total_prompt_tokens || 0).toLocaleString(), sub: `resp: ${(vm.geminiSummary?.stats.total_response_tokens || 0).toLocaleString()}`, color: C.chartPurple },
           { label: 'Taxa Sucesso', value: `${(vm.geminiSummary?.stats.success_rate || 0).toFixed(1)}%`, sub: `retries: ${vm.geminiSummary?.stats.total_retries || 0}`, color: C.navy500 },
         ]).map(card => (
           <div key={card.label} className="bg-white rounded-2xl shadow-md p-4 border-l-4" style={{ borderColor: C.gray200, borderLeftColor: card.color }}>
@@ -166,8 +166,8 @@ export function TabGemini({ vm }: { vm: UsePerformanceReturn }) {
           { label: 'TTFT Medio', value: fmtMs(vm.geminiSummary?.stats.avg_ttft_ms), color: C.orange500 },
           { label: 'Geracao', value: fmtMs(vm.geminiSummary?.stats.avg_generation_ms), color: C.navy700 },
           { label: 'Cache Hits', value: vm.geminiSummary?.stats.cache_hits ?? 0, color: C.statusSuccess },
-          { label: 'Com Imagens', value: vm.geminiSummary?.stats.with_images ?? 0, color: '#a855f7' },
-          { label: 'Com Search', value: vm.geminiSummary?.stats.with_search ?? 0, color: '#3b82f6' },
+          { label: 'Com Imagens', value: vm.geminiSummary?.stats.with_images ?? 0, color: C.chartPurple },
+          { label: 'Com Search', value: vm.geminiSummary?.stats.with_search ?? 0, color: C.chartBlue },
         ]).map(card => (
           <div key={card.label} className="bg-white rounded-2xl shadow-md p-3 border" style={{ borderColor: C.gray200 }}>
             <p className="text-xs" style={{ color: C.text500 }}>{card.label}</p>
@@ -276,8 +276,8 @@ export function TabAvancado({ vm }: { vm: UsePerformanceReturn }) {
         {([
           { label: 'Total Requests', value: vm.reqPerfSummary?.total_requests ?? 0, sub: `${vm.reqPerfSummary?.success_count ?? 0} ok / ${vm.reqPerfSummary?.error_count ?? 0} erros`, color: C.navy700 },
           { label: 'Latencia Media', value: fmtMs(vm.reqPerfSummary?.avg_total_ms), sub: `min ${fmtMs(vm.reqPerfSummary?.min_total_ms)} / max ${fmtMs(vm.reqPerfSummary?.max_total_ms)}`, color: C.orange500 },
-          { label: 'TTFT Medio', value: fmtMs(vm.reqPerfSummary?.avg_ttft_ms), sub: 'Time to First Token', color: '#a855f7' },
-          { label: 'Geracao Media', value: fmtMs(vm.reqPerfSummary?.avg_generation_ms), sub: 'Tempo de geracao LLM', color: '#3b82f6' },
+          { label: 'TTFT Medio', value: fmtMs(vm.reqPerfSummary?.avg_ttft_ms), sub: 'Time to First Token', color: C.chartPurple },
+          { label: 'Geracao Media', value: fmtMs(vm.reqPerfSummary?.avg_generation_ms), sub: 'Tempo de geracao LLM', color: C.chartBlue },
         ]).map(card => (
           <div key={card.label} className="bg-white rounded-2xl shadow-md p-4 border-l-4" style={{ borderColor: C.gray200, borderLeftColor: card.color }}>
             <p className="text-sm" style={{ color: C.text500 }}>{card.label}</p>
@@ -296,8 +296,8 @@ export function TabAvancado({ vm }: { vm: UsePerformanceReturn }) {
               { label: 'Agente 1 (TJ-MS)', key: 'agente1_ms', color: C.navy700 },
               { label: 'Agente 2 (Detector)', key: 'agente2_ms', color: C.navy500 },
               { label: 'Prompt Build', key: 'prompt_build_ms', color: C.orange500 },
-              { label: 'Pos-Processo', key: 'postprocess_ms', color: '#a855f7' },
-              { label: 'DB Save', key: 'db_save_ms', color: '#eab308' },
+              { label: 'Pos-Processo', key: 'postprocess_ms', color: C.chartPurple },
+              { label: 'DB Save', key: 'db_save_ms', color: C.chartYellow },
               { label: 'Overhead', key: 'overhead_ms', color: C.gray500 },
             ] as const).map(item => {
               const val = vm.reqPerfSummary!.breakdown?.[item.key as keyof typeof vm.reqPerfSummary.breakdown] ?? 0
@@ -467,7 +467,7 @@ function RecentErrors({ vm }: { vm: UsePerformanceReturn }) {
       {vm.errorsExpanded && (
         <div className="mt-3 space-y-2">
           {vm.summary?.recent_errors.map((err, i) => (
-            <div key={i} className="flex items-start gap-3 p-2 rounded-lg" style={{ background: '#fef2f2' }}>
+            <div key={i} className="flex items-start gap-3 p-2 rounded-lg" style={{ background: C.errorBg }}>
               <span className="text-xs whitespace-nowrap" style={{ color: C.text400 }}>{fmtTime(err.created_at)}</span>
               <span className="text-xs font-mono" style={{ color: C.text700 }}>{err.route}</span>
               <Badge variant="outline" className="text-xs">{err.error_type || 'unknown'}</Badge>

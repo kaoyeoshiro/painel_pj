@@ -143,7 +143,7 @@ export function BlacklistCard({ codigos, onSave, loading }: BlacklistCardProps) 
 
             <div
               className="flex flex-wrap gap-2 min-h-[40px] p-2 border rounded-lg bg-red-50"
-              style={{ borderColor: '#fecaca' }}
+              style={{ borderColor: C.errorBorder }}
             >
               {draft.length === 0 && (
                 <span className="text-sm" style={{ color: C.text400 }}>Nenhum codigo ignorado</span>

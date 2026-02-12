@@ -560,12 +560,12 @@ export function PedidoCalculoPage() {
         className="flex items-center gap-3 rounded-xl border p-3 transition-colors"
         style={{
           background: status === 'ativo' ? C.navy50
-            : status === 'concluido' ? '#f0fdf4'
-            : status === 'erro' ? '#fef2f2'
+            : status === 'concluido' ? C.successBg
+            : status === 'erro' ? C.errorBg
             : C.gray50,
           borderColor: status === 'ativo' ? C.navy100
-            : status === 'concluido' ? '#bbf7d0'
-            : status === 'erro' ? '#fecaca'
+            : status === 'concluido' ? C.successBorder
+            : status === 'erro' ? C.errorBorder
             : C.gray100,
         }}
       >
@@ -573,10 +573,10 @@ export function PedidoCalculoPage() {
           className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg text-white"
           style={{
             background: status === 'ativo' ? C.navy950
-              : status === 'concluido' ? '#22c55e'
-              : status === 'erro' ? '#ef4444'
+              : status === 'concluido' ? C.successAccentLight
+              : status === 'erro' ? C.statusError
               : C.gray200,
-            color: status === 'aguardando' ? C.text400 : '#fff',
+            color: status === 'aguardando' ? C.text400 : 'white',
           }}
         >
           {status === 'ativo' ? (
@@ -610,7 +610,7 @@ export function PedidoCalculoPage() {
       {/* ============================================================ */}
       <BreadcrumbBar
         title="Pedido de Calculo"
-        icon={<Calculator style={{ width: 14, height: 14 }} />}
+        icon={<Calculator className="w-3.5 h-3.5" />}
         maxWidthClass="max-w-4xl"
         actions={
           <Sheet>
@@ -621,7 +621,7 @@ export function PedidoCalculoPage() {
                 onMouseEnter={(e) => { e.currentTarget.style.background = C.gray100 }}
                 onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
               >
-                <Clock style={{ width: 14, height: 14 }} />
+                <Clock className="w-3.5 h-3.5" />
                 <span className="hidden sm:inline">Historico</span>
               </button>
             </SheetTrigger>
@@ -929,7 +929,7 @@ export function PedidoCalculoPage() {
                         className="max-w-[85%] rounded-lg px-4 py-3"
                         style={{
                           background: msg.role === 'user' ? C.navy950 : C.gray100,
-                          color: msg.role === 'user' ? '#fff' : C.text700,
+                          color: msg.role === 'user' ? 'white' : C.text700,
                         }}
                       >
                         <p className="text-sm">{msg.content}</p>
@@ -1014,7 +1014,7 @@ export function PedidoCalculoPage() {
                     className="w-full border-b px-4 py-3 text-left transition-colors hover:bg-white"
                     style={{
                       borderColor: C.gray200,
-                      background: isSelected ? '#fff' : 'transparent',
+                      background: isSelected ? 'white' : 'transparent',
                       borderLeftWidth: isSelected ? 4 : 0,
                       borderLeftColor: isSelected ? C.navy950 : 'transparent',
                     }}
@@ -1062,7 +1062,7 @@ export function PedidoCalculoPage() {
       <Dialog open={showFeedback} onOpenChange={setShowFeedback}>
         <DialogContent className="max-w-md overflow-hidden p-0">
           <div className="flex items-center gap-3 rounded-t-lg px-6 py-4" style={{ background: C.navy950 }}>
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl" style={{ background: '#f59e0b' }}>
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl" style={{ background: C.statusWarning }}>
               <Star className="h-5 w-5 text-white" />
             </div>
             <DialogHeader className="flex-1 space-y-0 p-0">
@@ -1081,7 +1081,7 @@ export function PedidoCalculoPage() {
                 >
                   <Star
                     className={`h-8 w-8 ${notaSelecionada && nota <= notaSelecionada ? 'fill-yellow-400 text-yellow-400' : ''}`}
-                    style={{ color: notaSelecionada && nota <= notaSelecionada ? '#facc15' : C.gray200 }}
+                    style={{ color: notaSelecionada && nota <= notaSelecionada ? C.chartStarYellow : C.gray200 }}
                   />
                 </button>
               ))}

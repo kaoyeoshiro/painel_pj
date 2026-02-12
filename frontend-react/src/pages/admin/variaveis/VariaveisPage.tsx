@@ -110,7 +110,7 @@ export function VariaveisPage() {
     <>
       <BreadcrumbBar
         title="Painel de Variaveis"
-        icon={<Variable style={{ width: 14, height: 14 }} />}
+        icon={<Variable className="w-3.5 h-3.5" />}
         actions={
           <div className="flex items-center gap-2">
             <button onClick={() => setGlossarioOpen(true)} className="flex items-center gap-1 px-2 py-1 text-sm hover:bg-indigo-50 rounded-lg transition-colors" style={{ color: C.navy600 }}>

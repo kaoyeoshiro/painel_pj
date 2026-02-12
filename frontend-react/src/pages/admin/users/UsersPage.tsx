@@ -463,7 +463,7 @@ export function UsersPage() {
     <>
       <BreadcrumbBar
         title="Gerenciamento de Usuarios"
-        icon={<UsersIcon style={{ width: 14, height: 14 }} />}
+        icon={<UsersIcon className="w-3.5 h-3.5" />}
         actions={
           <div className="flex items-center gap-2">
             <div

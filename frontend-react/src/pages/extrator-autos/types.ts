@@ -33,10 +33,10 @@ export function timestamp(): string {
 /** Retorna estilos inline para badges de status do historico */
 export function statusBadgeStyle(status: string): React.CSSProperties {
   if (status === 'concluido') {
-    return { background: '#dcfce7', color: C.statusSuccess, border: 'none' }
+    return { background: C.successBgStrong, color: C.statusSuccess, border: 'none' }
   }
   if (status === 'erro') {
-    return { background: '#fef2f2', color: C.statusError, border: 'none' }
+    return { background: C.errorBg, color: C.statusError, border: 'none' }
   }
   if (status === 'processando') {
     return { background: C.navy100, color: C.navy700, border: 'none' }

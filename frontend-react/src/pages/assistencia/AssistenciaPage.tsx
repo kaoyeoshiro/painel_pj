@@ -305,7 +305,7 @@ export function AssistenciaPage() {
             onMouseEnter={(e) => { e.currentTarget.style.background = C.gray100 }}
             onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
           >
-            <Clock style={{ width: 14, height: 14 }} />
+            <Clock className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Historico</span>
           </button>
         </SheetTrigger>
@@ -371,7 +371,7 @@ export function AssistenciaPage() {
                       onMouseEnter={(e) => { e.currentTarget.style.background = C.statusError + '15' }}
                       onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
                     >
-                      <Trash2 style={{ width: 14, height: 14 }} />
+                      <Trash2 className="w-3.5 h-3.5" />
                     </button>
                   </div>
                 ))}
@@ -524,7 +524,7 @@ export function AssistenciaPage() {
                   onMouseEnter={(e) => { e.currentTarget.style.background = C.gray50 }}
                   onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
                 >
-                  <RotateCw style={{ width: 14, height: 14 }} />
+                  <RotateCw className="w-3.5 h-3.5" />
                   Reanalisar
                 </button>
                 <button
@@ -532,7 +532,7 @@ export function AssistenciaPage() {
                   className="inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90"
                   style={{ background: C.navy950 }}
                 >
-                  <FileText style={{ width: 14, height: 14 }} />
+                  <FileText className="w-3.5 h-3.5" />
                   DOCX
                 </button>
                 <button
@@ -540,7 +540,7 @@ export function AssistenciaPage() {
                   className="inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90"
                   style={{ background: C.statusError }}
                 >
-                  <FileDown style={{ width: 14, height: 14 }} />
+                  <FileDown className="w-3.5 h-3.5" />
                   PDF
                 </button>
               </div>
@@ -665,12 +665,13 @@ export function AssistenciaPage() {
     <>
       <BreadcrumbBar
         title="Assistencia Judiciaria"
-        icon={<Scale style={{ width: 14, height: 14 }} />}
+        icon={<Scale className="w-3.5 h-3.5" />}
+        maxWidthClass="max-w-4xl"
         actions={renderHistoricoSheet()}
       />
 
-      <ContentArea>
-        <div className="max-w-4xl space-y-6">
+      <ContentArea maxWidthClass="max-w-4xl">
+        <div className="space-y-6">
           {/* Formulario de consulta */}
           <div
             className="overflow-hidden rounded-2xl border bg-white shadow-sm"
@@ -716,7 +717,7 @@ export function AssistenciaPage() {
                     }}
                     onFocus={(e) => {
                       e.currentTarget.style.borderColor = C.navy500
-                      e.currentTarget.style.background = '#fff'
+                      e.currentTarget.style.background = 'white'
                     }}
                     onBlur={(e) => {
                       e.currentTarget.style.borderColor = C.gray200

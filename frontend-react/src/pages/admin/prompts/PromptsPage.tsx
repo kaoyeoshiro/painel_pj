@@ -242,7 +242,7 @@ export function PromptsPage() {
     <>
       <BreadcrumbBar
         title="Gerenciamento de Prompts e IA"
-        icon={<FileEdit style={{ width: 14, height: 14 }} />}
+        icon={<FileEdit className="w-3.5 h-3.5" />}
       />
 
       <ContentArea className="space-y-6">

@@ -65,8 +65,8 @@ export function ModuloItem({ modulo, showCategoria, showSubcategoria = true, sho
         ref={setActivatorNodeRef}
         {...listeners}
         type="button"
-        className="flex-shrink-0 p-1 rounded cursor-grab active:cursor-grabbing touch-none"
-        style={{ color: C.gray400, marginTop: 2 }}
+        className="flex-shrink-0 p-1 rounded cursor-grab active:cursor-grabbing touch-none mt-0.5"
+        style={{ color: C.gray400 }}
         title="Arraste para reordenar"
       >
         <GripVertical className="h-4 w-4" />
@@ -87,7 +87,7 @@ export function ModuloItem({ modulo, showCategoria, showSubcategoria = true, sho
 
           {/* Badge de status */}
           {modulo.ativo ? (
-            <span className="px-2 py-0.5 text-xs rounded-full" style={{ background: '#ecfdf5', color: C.statusSuccess }}>Ativo</span>
+            <span className="px-2 py-0.5 text-xs rounded-full" style={{ background: C.successBg, color: C.statusSuccess }}>Ativo</span>
           ) : (
             <span className="px-2 py-0.5 text-xs rounded-full" style={{ background: C.gray100, color: C.text400 }}>Inativo</span>
           )}
@@ -202,7 +202,7 @@ export function ModuloItem({ modulo, showCategoria, showSubcategoria = true, sho
           title="Excluir"
           className="p-1.5 rounded-md transition-colors"
           style={{ color: C.statusError }}
-          onMouseEnter={(e) => { e.currentTarget.style.background = '#fef2f2' }}
+          onMouseEnter={(e) => { e.currentTarget.style.background = C.errorBg }}
           onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
         >
           <Trash2 className="h-4 w-4" />

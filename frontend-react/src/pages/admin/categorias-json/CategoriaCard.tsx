@@ -40,8 +40,8 @@ export function CategoriaCard({ categoria, onEdit, onDeactivate }: CategoriaCard
     <Card
       className="rounded-2xl p-4 flex flex-col h-full"
       style={{
-        borderColor: isInactive ? '#fecdd3' : C.gray200,
-        backgroundColor: isInactive ? '#fff1f2' : undefined,
+        borderColor: isInactive ? C.errorBorderLight : C.gray200,
+        backgroundColor: isInactive ? C.errorBgLight : undefined,
       }}
       data-testid={`categoria-card-${categoria.id}`}
     >

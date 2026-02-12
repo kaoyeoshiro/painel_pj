@@ -393,7 +393,7 @@ export function ModulosTipoPecaPage() {
     <>
       <BreadcrumbBar
         title="Módulos por Tipo de Peça"
-        icon={<Layers style={{ width: 14, height: 14 }} />}
+        icon={<Layers className="w-3.5 h-3.5" />}
         actions={
           <div className="flex items-center gap-4">
             {carregandoGrupos ? (

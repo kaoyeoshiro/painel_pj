@@ -9,7 +9,7 @@ export function TjmsDocsPage() {
     <>
       <BreadcrumbBar
         title="Documentacao Integracao TJ-MS"
-        icon={<BookOpen style={{ width: 14, height: 14 }} />}
+        icon={<BookOpen className="w-3.5 h-3.5" />}
         actions={
           <div className="flex items-center gap-2">
             <span className="text-xs" style={{ color: C.text500 }}>Atualizado: 24/01/2026</span>

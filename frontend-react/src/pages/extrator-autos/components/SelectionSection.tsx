@@ -146,7 +146,7 @@ export function SelectionSection({ h }: SelectionSectionProps) {
                         className="rounded-xl border-2 p-3 text-left transition-colors"
                         style={{
                           borderColor: h.categoriasSelec.has(cat.id) ? C.navy500 : C.gray200,
-                          background: h.categoriasSelec.has(cat.id) ? C.navy50 : '#fff',
+                          background: h.categoriasSelec.has(cat.id) ? C.navy50 : 'white',
                         }}
                       >
                         <div className="flex items-center justify-between">
@@ -154,7 +154,7 @@ export function SelectionSection({ h }: SelectionSectionProps) {
                             {cat.nome}
                           </span>
                           {h.categoriasSelec.has(cat.id) && (
-                            <Badge style={{ background: C.navy950, color: '#fff', border: 'none', fontSize: 11 }}>
+                            <Badge style={{ background: C.navy950, color: 'white', border: 'none', fontSize: 11 }}>
                               Selecionada
                             </Badge>
                           )}
@@ -223,7 +223,7 @@ export function SelectionSection({ h }: SelectionSectionProps) {
                         className="cursor-pointer"
                         onClick={() => h.toggleCategoria(cat.id)}
                         style={h.categoriasSelec.has(cat.id)
-                          ? { background: C.navy950, color: '#fff', border: 'none' }
+                          ? { background: C.navy950, color: 'white', border: 'none' }
                           : { background: 'transparent', color: C.text500, border: `1px solid ${C.gray200}` }
                         }
                       >
@@ -282,14 +282,14 @@ export function SelectionSection({ h }: SelectionSectionProps) {
               {!h.modoLote ? (
                 <Button
                   onClick={h.visualizarDocumentos}
-                  style={{ background: C.navy950, color: '#fff' }}
+                  style={{ background: C.navy950, color: 'white' }}
                 >
                   Visualizar Documentos
                 </Button>
               ) : (
                 <Button
                   onClick={h.avancarLoteParaPreview}
-                  style={{ background: C.navy950, color: '#fff' }}
+                  style={{ background: C.navy950, color: 'white' }}
                 >
                   Resumo do Lote
                 </Button>
