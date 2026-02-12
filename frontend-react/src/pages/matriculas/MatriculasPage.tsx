@@ -535,6 +535,7 @@ export default function MatriculasPage() {
       <BreadcrumbBar
         title="Matriculas Confrontantes"
         icon={<FileSignature style={{ width: 14, height: 14 }} />}
+        fullWidth
         actions={
           <>
             <button

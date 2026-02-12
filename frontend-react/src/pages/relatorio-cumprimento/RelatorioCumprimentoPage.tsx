@@ -604,7 +604,7 @@ export function RelatorioCumprimentoPage() {
       {/* CONTEUDO PRINCIPAL                                           */}
       {/* ============================================================ */}
       <ContentArea>
-        <div className="space-y-6" style={{ maxWidth: 900, margin: '0 auto' }}>
+        <div className="max-w-4xl space-y-6">
 
           {/* Card de Entrada — Numero do Processo */}
           <div

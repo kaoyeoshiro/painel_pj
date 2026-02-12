@@ -10,6 +10,8 @@ interface BreadcrumbBarProps {
   backTo?: string
   /** Classes CSS adicionais no wrapper externo (ex: flex-shrink-0 para layouts flex) */
   className?: string
+  /** Remove max-w-pge para paginas com layout full-width (ex: Matriculas Confrontantes) */
+  fullWidth?: boolean
 }
 
 /**
@@ -17,10 +19,10 @@ interface BreadcrumbBarProps {
  * Subordinada ao Header global navy do AppLayout.
  * Altura fixa de 48px, maxWidth 1350px, accent navy.
  */
-export function BreadcrumbBar({ title, icon, actions, backTo = '/dashboard', className }: BreadcrumbBarProps) {
+export function BreadcrumbBar({ title, icon, actions, backTo = '/dashboard', className, fullWidth }: BreadcrumbBarProps) {
   return (
     <div className={cn('border-b border-gray-200', className)}>
-      <div className="mx-auto flex h-12 max-w-pge items-center justify-between px-4 sm:px-6 lg:px-10">
+      <div className={cn('flex h-12 items-center justify-between px-4 sm:px-6 lg:px-10', !fullWidth && 'mx-auto max-w-pge')}>
         {/* Lado esquerdo: voltar > icone > titulo */}
         <div className="flex items-center gap-2">
           <Link

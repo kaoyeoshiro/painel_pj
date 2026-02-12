@@ -12,11 +12,13 @@
 | Total de rotas | 45 |
 | Rotas cobertas | 45 |
 | Rotas alias | 7 |
-| Testes auth | ~8 |
-| Testes portal | ~40 |
-| Testes admin | ~45 |
-| Testes erros | ~12 |
-| **Total estimado** | **~105** |
+| Testes auth | 8 |
+| Testes portal | 45 |
+| Testes admin | 53 |
+| Testes erros | 12 |
+| **Total** | **118** |
+| **Taxa sucesso** | **100%** |
+| **Tempo execução** | **2.7 min** |
 
 ## Cobertura por Rota
 
@@ -50,19 +52,19 @@
 | # | Path | Status | Spec | Testes |
 |---|------|--------|------|--------|
 | 16 | `/admin/users` | Coberta | admin | Render, tabela, botão novo |
-| 17 | `/admin/prompts` | Coberta | admin | Render, heading |
-| 18 | `/admin/prompts-modulos` | Coberta | admin | Render, heading |
+| 17 | `/admin/prompts` | Coberta | admin | Render, conteúdo |
+| 18 | `/admin/prompts-modulos` | Coberta | admin | Render, conteúdo |
 | 19 | `/admin/feedbacks` | Coberta | admin | Render, KPIs, exportar |
 | 20 | `/admin/performance` | Coberta | admin | Render, tabs, troca tab |
 | 21 | `/admin/variaveis` | Coberta | admin | Render, KPIs |
-| 22 | `/admin/categorias-json` | Coberta | admin | Render, heading |
-| 23 | `/admin/historico-gerador` | Coberta | admin | Render, tabela |
-| 24 | `/admin/historico-pedido-calculo` | Coberta | admin | Render, tabela |
-| 25 | `/admin/historico-prestacao-contas` | Coberta | admin | Render, tabela |
-| 26 | `/admin/modulos-tipo-peca` | Coberta | admin | Render, heading |
-| 27 | `/admin/config-pecas` | Coberta | admin | Render, heading |
-| 28 | `/admin/teste-ativacao` | Coberta | admin | Render, heading |
-| 29 | `/admin/teste-categorias` | Coberta | admin | Render, heading |
+| 22 | `/admin/categorias-json` | Coberta | admin | Render, conteúdo |
+| 23 | `/admin/historico-gerador` | Coberta | admin | Render, conteúdo |
+| 24 | `/admin/historico-pedido-calculo` | Coberta | admin | Render, conteúdo |
+| 25 | `/admin/historico-prestacao-contas` | Coberta | admin | Render, conteúdo |
+| 26 | `/admin/modulos-tipo-peca` | Coberta | admin | Render, conteúdo |
+| 27 | `/admin/config-pecas` | Coberta | admin | Render, conteúdo |
+| 28 | `/admin/teste-ativacao` | Coberta | admin | Render, conteúdo |
+| 29 | `/admin/teste-categorias` | Coberta | admin | Render, conteúdo |
 | 30 | `/admin/tjms-docs` | Coberta | admin | Render, documentação |
 | 31 | `/admin/tjms-docs/plano` | Coberta | admin | Render |
 | 32 | `/admin/restaurar-slugs` | Coberta | admin | Render, botão |
