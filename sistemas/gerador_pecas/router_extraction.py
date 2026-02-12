@@ -17,8 +17,6 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func, or_
-from pydantic import BaseModel, Field
-
 from database.connection import get_db
 from auth.dependencies import get_current_active_user
 from auth.models import User
@@ -34,324 +32,36 @@ from .services_extraction import ExtractionSchemaGenerator
 from .services_dependencies import (
     DependencyInferenceService, DependencyEvaluator, DependencyGraphBuilder
 )
+from .schemas_extraction import (
+    ExtractionQuestionBase, ExtractionQuestionCreate, ExtractionQuestionUpdate,
+    ExtractionQuestionResponse, ExtractionModelBase, ExtractionModelCreate,
+    ExtractionModelResponse, GenerateSchemaRequest, GenerateSchemaResponse,
+    SyncJsonResponse, VariavelSemPergunta, ConsistenciaJsonResponse,
+    SincronizarPerguntasJsonResponse, AplicarJsonRequest, VariavelEmUsoDetalhe,
+    AplicarJsonResponse, BulkQuestionInput, BulkQuestionsCreate,
+    BulkQuestionResult, BulkQuestionsResponse, ExtractionVariableBase,
+    ExtractionVariableCreate, ExtractionVariableUpdate,
+    ExtractionVariableResponse, VariableUsageResponse, VariableDetailResponse,
+    PerguntaOrdenarItem, OrdenarPerguntasRequest, PosicionarPerguntaRequest,
+    OrdemPerguntaItem, AtualizarOrdemLoteRequest, AtualizarOrdemLoteResponse,
+    AgruparPorDependenciasRequest, AgruparPorDependenciasResponse,
+    RenomearSlugRequest, RenomearSlugResponse,
+    ConsistenciaSlugResponse, ReferenciasSlugResponse,
+    GenerateDeterministicRuleRequest, SugestaoVariavel,
+    GenerateDeterministicRuleResponse, ValidateDeterministicRuleRequest,
+    ValidateDeterministicRuleResponse, EvaluateDeterministicRuleRequest,
+    EvaluateDeterministicRuleResponse,
+    DependencyConfig, SetDependencyRequest, InferDependenciesRequest,
+    InferDependenciesResponse, ApplyDependenciesRequest,
+    ApplyDependenciesResponse, DependencyGraphResponse,
+    DependentQuestionsResponse,
+    SyncPerguntaTipo, SyncTiposRequest, SyncTiposResponse,
+    RestaurarSlugsRequest, RestaurarSlugsResponse,
+)
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter()
-
-
-# ============================================================================
-# SCHEMAS PYDANTIC
-# ============================================================================
-
-# --- Perguntas de Extração ---
-
-class ExtractionQuestionBase(BaseModel):
-    """Schema base para perguntas de extração"""
-    pergunta: str = Field(..., description="Pergunta em linguagem natural")
-    nome_variavel_sugerido: Optional[str] = Field(None, description="Nome de variável sugerido (opcional)")
-    tipo_sugerido: Optional[str] = Field(None, description="Tipo de dado sugerido (opcional)")
-    opcoes_sugeridas: Optional[List[str]] = Field(None, description="Opções sugeridas para múltipla escolha (opcional)")
-    descricao: Optional[str] = Field(None, description="Descrição adicional (opcional)")
-    # Dependências condicionais
-    depends_on_variable: Optional[str] = Field(None, description="Slug da variável da qual esta pergunta depende")
-    dependency_operator: Optional[str] = Field(None, description="Operador da dependência (equals, not_equals, exists, etc.)")
-    dependency_value: Optional[Any] = Field(None, description="Valor da condição de dependência")
-    dependency_inferred: bool = Field(False, description="Se a dependência foi inferida por IA")
-    ativo: bool = Field(True, description="Se a pergunta está ativa")
-    ordem: int = Field(0, description="Ordem de exibição")
-
-
-class ExtractionQuestionCreate(ExtractionQuestionBase):
-    """Schema para criação de pergunta"""
-    categoria_id: int = Field(..., description="ID da categoria de documento")
-
-
-class ExtractionQuestionUpdate(BaseModel):
-    """Schema para atualização de pergunta"""
-    pergunta: Optional[str] = None
-    nome_variavel_sugerido: Optional[str] = None
-    tipo_sugerido: Optional[str] = None
-    opcoes_sugeridas: Optional[List[str]] = None
-    descricao: Optional[str] = None
-    # Dependências condicionais
-    depends_on_variable: Optional[str] = None
-    dependency_operator: Optional[str] = None
-    dependency_value: Optional[Any] = None
-    dependency_inferred: Optional[bool] = None
-    ativo: Optional[bool] = None
-    ordem: Optional[int] = None
-
-
-class ExtractionQuestionResponse(ExtractionQuestionBase):
-    """Schema de resposta para pergunta"""
-    id: int
-    categoria_id: int
-    categoria_nome: Optional[str] = None
-    criado_por: Optional[int] = None
-    criado_em: datetime
-    atualizado_em: datetime
-
-    class Config:
-        from_attributes = True
-
-
-# --- Modelos de Extração ---
-
-class ExtractionModelBase(BaseModel):
-    """Schema base para modelo de extração"""
-    model_config = {"populate_by_name": True}
-
-    modo: str = Field("manual", description="Modo: ai_generated ou manual")
-    extraction_schema: dict = Field(..., alias="schema_json", description="Schema JSON de extração")
-    mapeamento_variaveis: Optional[dict] = Field(None, description="Mapeamento de perguntas para variáveis")
-
-
-class ExtractionModelCreate(ExtractionModelBase):
-    """Schema para criação de modelo"""
-    categoria_id: int = Field(..., description="ID da categoria de documento")
-
-
-class ExtractionModelResponse(ExtractionModelBase):
-    """Schema de resposta para modelo"""
-    id: int
-    categoria_id: int
-    categoria_nome: Optional[str] = None
-    versao: int
-    ativo: bool
-    criado_por: Optional[int] = None
-    criado_em: datetime
-
-    class Config:
-        from_attributes = True
-
-
-class GenerateSchemaRequest(BaseModel):
-    """Schema para requisição de geração de schema"""
-    categoria_id: int = Field(..., description="ID da categoria de documento")
-
-
-class GenerateSchemaResponse(BaseModel):
-    """Schema de resposta para geração de schema"""
-    model_config = {"populate_by_name": True}
-
-    success: bool
-    extraction_schema: Optional[dict] = Field(None, alias="schema_json")
-    mapeamento_variaveis: Optional[dict] = None
-    variaveis_criadas: Optional[List[dict]] = None
-    erro: Optional[str] = None
-
-
-# --- Sincronização de JSON (sem IA) ---
-
-class SyncJsonResponse(BaseModel):
-    """Schema de resposta para sincronização de JSON sem IA"""
-    model_config = {"populate_by_name": True}
-
-    success: bool
-    extraction_schema: Optional[dict] = Field(None, alias="schema_json")
-    variaveis_adicionadas: int = 0
-    variaveis_adicionadas_lista: Optional[List[str]] = None
-    variaveis_modificadas: int = 0
-    variaveis_modificadas_lista: Optional[List[str]] = None
-    variaveis_removidas: int = 0
-    variaveis_removidas_lista: Optional[List[str]] = None
-    houve_alteracao: bool = False
-    mensagem: Optional[str] = None
-    erro: Optional[str] = None
-    perguntas_incompletas: Optional[List[dict]] = None
-
-
-# --- Verificação de Consistência JSON vs Perguntas ---
-
-class VariavelSemPergunta(BaseModel):
-    """Detalhe de uma variável no JSON sem pergunta correspondente"""
-    slug: str
-    tipo: Optional[str] = None
-    descricao: Optional[str] = None
-    tem_variavel_bd: bool = False
-    variavel_ativa: bool = False
-    tem_pergunta_inativa: bool = False
-    pergunta_inativa_id: Optional[int] = None
-
-
-class ConsistenciaJsonResponse(BaseModel):
-    """Schema de resposta para verificação de consistência JSON vs perguntas"""
-    consistente: bool
-    total_campos_json: int = 0
-    total_perguntas_ativas: int = 0
-    variaveis_sem_pergunta: List[VariavelSemPergunta] = []
-    perguntas_sem_variavel_json: List[dict] = []
-    mensagem: str = ""
-
-
-class SincronizarPerguntasJsonResponse(BaseModel):
-    """Schema de resposta para sincronização de perguntas com JSON"""
-    success: bool
-    perguntas_criadas: int = 0
-    perguntas_reativadas: int = 0
-    variaveis_criadas: int = 0
-    variaveis_reativadas: int = 0
-    detalhes: List[dict] = []
-    mensagem: Optional[str] = None
-    erro: Optional[str] = None
-
-
-# --- Aplicação de JSON (JSON → Perguntas/Variáveis) ---
-
-class AplicarJsonRequest(BaseModel):
-    """Schema de entrada para aplicação de JSON"""
-    json_content: str = Field(..., description="Conteúdo JSON a aplicar (string)")
-    confirmar_remocao_variaveis_em_uso: bool = Field(
-        False,
-        description="Se True, força remoção de variáveis mesmo que estejam em uso como condição de ativação"
-    )
-
-
-class VariavelEmUsoDetalhe(BaseModel):
-    """Detalhe de uma variável em uso como condição de ativação"""
-    slug: str
-    label: str
-    prompts: List[dict]  # [{id, nome, titulo, tipo_uso}]
-
-
-class AplicarJsonResponse(BaseModel):
-    """Schema de resposta para aplicação de JSON nas perguntas/variáveis"""
-    success: bool
-    # Contadores
-    perguntas_criadas: int = 0
-    perguntas_atualizadas: int = 0
-    perguntas_removidas: int = 0
-    variaveis_criadas: int = 0
-    variaveis_atualizadas: int = 0
-    variaveis_removidas: int = 0
-    # Detalhes
-    criadas: List[str] = []
-    atualizadas: List[str] = []
-    removidas: List[str] = []
-    # Feedback
-    mensagem: Optional[str] = None
-    erro: Optional[str] = None
-    erros_validacao: Optional[List[dict]] = None
-    # Tempo de execução
-    tempo_ms: Optional[int] = None
-    # Confirmação necessária para variáveis em uso
-    requer_confirmacao: bool = False
-    variaveis_em_uso_condicoes: List[VariavelEmUsoDetalhe] = []
-
-
-# --- Criação em Lote de Perguntas (com análise de dependências por IA) ---
-
-class BulkQuestionInput(BaseModel):
-    """Uma pergunta no formato de entrada para criação em lote"""
-    pergunta: str = Field(..., description="Texto da pergunta em linguagem natural")
-    nome_variavel_sugerido: Optional[str] = Field(None, description="Nome sugerido para a variável")
-    tipo_sugerido: Optional[str] = Field(None, description="Tipo sugerido (text, number, boolean, etc)")
-    opcoes_sugeridas: Optional[List[str]] = Field(None, description="Opções para tipo choice")
-
-
-class BulkQuestionsCreate(BaseModel):
-    """Schema para criação em lote de perguntas com análise de dependências"""
-    categoria_id: int = Field(..., description="ID da categoria de documento")
-    perguntas: List[BulkQuestionInput] = Field(..., min_length=1, description="Lista de perguntas a criar")
-    analisar_dependencias: bool = Field(True, description="Se deve usar IA para analisar dependências entre perguntas")
-
-
-class BulkQuestionResult(BaseModel):
-    """Resultado da criação de uma pergunta no lote"""
-    index: int
-    pergunta_texto: str
-    id: Optional[int] = None
-    slug_sugerido: Optional[str] = None
-    depends_on_variable: Optional[str] = None
-    dependency_operator: Optional[str] = None
-    dependency_value: Optional[Any] = None
-    erro: Optional[str] = None
-
-
-class BulkQuestionsResponse(BaseModel):
-    """Resposta da criação em lote de perguntas"""
-    success: bool
-    total_enviadas: int
-    total_criadas: int
-    total_com_dependencias: int
-    perguntas: List[BulkQuestionResult]
-    grafo_dependencias: Optional[dict] = None
-    erro: Optional[str] = None
-
-
-# --- Variáveis Normalizadas ---
-
-class ExtractionVariableBase(BaseModel):
-    """Schema base para variável de extração"""
-    slug: str = Field(..., description="Identificador técnico único")
-    label: str = Field(..., description="Nome de exibição")
-    descricao: Optional[str] = Field(None, description="Descrição da variável")
-    tipo: str = Field(..., description="Tipo de dado")
-    opcoes: Optional[List[str]] = Field(None, description="Opções para tipo choice/list")
-    # Fonte de verdade individual (override do grupo)
-    fonte_verdade_codigo: Optional[str] = Field(None, description="Código específico de documento (ex: 9500)")
-    fonte_verdade_tipo: Optional[str] = Field(None, description="Tipo de documento fonte de verdade para esta variável")
-    fonte_verdade_override: bool = Field(False, description="Se usa fonte de verdade específica")
-
-
-class ExtractionVariableCreate(ExtractionVariableBase):
-    """Schema para criação de variável"""
-    categoria_id: Optional[int] = Field(None, description="ID da categoria de documento")
-
-
-class ExtractionVariableUpdate(BaseModel):
-    """Schema para atualização de variável"""
-    label: Optional[str] = None
-    descricao: Optional[str] = None
-    tipo: Optional[str] = None
-    opcoes: Optional[List[str]] = None
-    fonte_verdade_codigo: Optional[str] = None
-    fonte_verdade_tipo: Optional[str] = None
-    fonte_verdade_override: Optional[bool] = None
-    ativo: Optional[bool] = None
-
-
-class ExtractionVariableResponse(ExtractionVariableBase):
-    """Schema de resposta para variável"""
-    id: int
-    categoria_id: Optional[int] = None
-    categoria_nome: Optional[str] = None
-    source_question_id: Optional[int] = None
-    ativo: bool
-    criado_em: datetime
-    atualizado_em: datetime
-    # Campos de USO - separados para JSON e Prompts
-    uso_count: int = Field(0, description="[DEPRECATED] Use uso_count_prompts. Quantidade de prompts que usam esta variável")
-    uso_count_prompts: int = Field(0, description="Quantidade de prompts que usam esta variável como condição")
-    em_uso_json: bool = Field(False, description="Se está presente no JSON da categoria (verificação real)")
-    prompts_usando: Optional[List[str]] = Field(None, description="Lista de nomes de prompts que usam esta variável")
-    # Campos de dependência para visualização
-    is_conditional: bool = Field(False, description="Se a variável é condicional")
-    depends_on_variable: Optional[str] = Field(None, description="Slug da variável da qual depende")
-    depth: int = Field(0, description="Profundidade na árvore de dependências (para recuo)")
-    ordem: int = Field(0, description="Ordem da pergunta de origem")
-
-    class Config:
-        from_attributes = True
-
-
-class VariableUsageResponse(BaseModel):
-    """Schema de resposta para uso de variável em prompt"""
-    prompt_id: int
-    prompt_nome: str
-    prompt_titulo: str
-    modo_ativacao: Optional[str] = None
-    effective_activation_mode: Optional[str] = None  # REGRA DE OURO: modo efetivo real
-    criado_em: datetime
-
-    class Config:
-        from_attributes = True
-
-
-class VariableDetailResponse(ExtractionVariableResponse):
-    """Schema de resposta detalhada para variável com usos"""
-    prompt_usages: List[VariableUsageResponse] = Field([], description="Lista de prompts que usam esta variável")
 
 
 # ============================================================================
@@ -1016,28 +726,6 @@ async def criar_perguntas_lote(
 # ORDENAÇÃO DE PERGUNTAS POR IA
 # ============================================================================
 
-class PerguntaOrdenarItem(BaseModel):
-    """Item para ordenação de pergunta"""
-    id: Optional[int] = None
-    pergunta: str
-    tipo_sugerido: Optional[str] = None
-    nome_variavel_sugerido: Optional[str] = None
-    depends_on_variable: Optional[str] = None  # Slug da variável da qual depende
-
-
-class OrdenarPerguntasRequest(BaseModel):
-    """Request para ordenar perguntas com IA"""
-    categoria_nome: str
-    perguntas: List[PerguntaOrdenarItem]
-
-
-class PosicionarPerguntaRequest(BaseModel):
-    """Request para posicionar uma nova pergunta"""
-    categoria_nome: str
-    nova_pergunta: PerguntaOrdenarItem
-    perguntas_existentes: List[dict]
-
-
 @router.post("/perguntas/ordenar-ia")
 async def ordenar_perguntas_ia(
     data: OrdenarPerguntasRequest,
@@ -1568,26 +1256,6 @@ async def atualizar_pergunta(
     )
 
 
-# --- Schema para atualização de ordem em lote ---
-class OrdemPerguntaItem(BaseModel):
-    """Item para atualização de ordem de uma pergunta"""
-    id: int = Field(..., description="ID da pergunta")
-    ordem: int = Field(..., description="Nova ordem (0-indexed)")
-
-
-class AtualizarOrdemLoteRequest(BaseModel):
-    """Request para atualizar ordem de múltiplas perguntas de uma vez"""
-    categoria_id: int = Field(..., description="ID da categoria (para validação)")
-    perguntas: List[OrdemPerguntaItem] = Field(..., min_length=1, description="Lista de perguntas com nova ordem")
-
-
-class AtualizarOrdemLoteResponse(BaseModel):
-    """Response da atualização em lote"""
-    success: bool
-    atualizadas: int
-    message: str
-
-
 @router.put("/perguntas/ordem-lote", response_model=AtualizarOrdemLoteResponse)
 async def atualizar_ordem_perguntas_lote(
     data: AtualizarOrdemLoteRequest,
@@ -1666,21 +1334,6 @@ async def atualizar_ordem_perguntas_lote(
         atualizadas=atualizadas,
         message=f"{atualizadas} perguntas reordenadas com sucesso"
     )
-
-
-# --- Schema para agrupamento por dependências ---
-class AgruparPorDependenciasRequest(BaseModel):
-    """Request para agrupar perguntas por dependências"""
-    categoria_id: int = Field(..., description="ID da categoria")
-
-
-class AgruparPorDependenciasResponse(BaseModel):
-    """Response do agrupamento por dependências"""
-    success: bool
-    nova_ordem: List[Dict[str, Any]] = Field(default_factory=list, description="Nova ordem das perguntas")
-    ciclos_detectados: List[str] = Field(default_factory=list, description="Avisos de ciclos detectados")
-    atualizadas: int = Field(0, description="Número de perguntas reordenadas")
-    message: str
 
 
 def _agrupar_por_dependencias_algoritmo(perguntas: List[ExtractionQuestion]) -> tuple:
@@ -4137,28 +3790,6 @@ async def reativar_variavel(
 # ============================================================================
 
 
-class RenomearSlugRequest(BaseModel):
-    """Schema para requisicao de renomeacao de slug"""
-    novo_slug: str = Field(..., description="Novo slug desejado")
-    normalizar: bool = Field(True, description="Se deve normalizar o slug (remover acentos, etc)")
-
-
-class RenomearSlugResponse(BaseModel):
-    """Schema de resposta para renomeacao de slug"""
-    success: bool
-    old_slug: str
-    new_slug: str
-    error: Optional[str] = None
-    categoria_json_atualizada: bool = False
-    perguntas_atualizadas: int = 0
-    prompts_atualizados: int = 0
-    regras_tipo_peca_atualizadas: int = 0
-    prompt_usages_atualizados: int = 0
-    variaveis_dependentes_atualizadas: int = 0
-    perguntas_dependentes_atualizadas: int = 0
-    detalhes: List[str] = []
-
-
 @router.put("/variaveis/{variavel_id}/renomear-slug", response_model=RenomearSlugResponse)
 async def renomear_slug_variavel(
     variavel_id: int,
@@ -4218,19 +3849,6 @@ async def renomear_slug_variavel(
     )
 
 
-class ConsistenciaSlugResponse(BaseModel):
-    """Schema de resposta para verificacao de consistencia de slugs"""
-    consistente: bool
-    categoria_id: Optional[int] = None
-    categoria_nome: Optional[str] = None
-    total_slugs_json: int = 0
-    total_variaveis_ativas: int = 0
-    slugs_orfaos_json: List[str] = []
-    slugs_orfaos_variaveis: List[str] = []
-    mensagem: str = ""
-    erro: Optional[str] = None
-
-
 @router.get("/variaveis/{variavel_id}/verificar-consistencia", response_model=ConsistenciaSlugResponse)
 async def verificar_consistencia_variavel(
     variavel_id: int,
@@ -4276,15 +3894,6 @@ async def verificar_consistencia_variavel(
         slugs_orfaos_variaveis=resultado["slugs_orfaos_variaveis"],
         mensagem=resultado["mensagem"]
     )
-
-
-class ReferenciasSlugResponse(BaseModel):
-    """Schema de resposta para referencias de um slug"""
-    slug: str
-    total_prompts: int = 0
-    total_regras_tipo_peca: int = 0
-    prompts: List[dict] = []
-    regras_tipo_peca: List[dict] = []
 
 
 @router.get("/variaveis/{variavel_id}/referencias", response_model=ReferenciasSlugResponse)
@@ -4404,56 +4013,6 @@ async def listar_tipos_variaveis(
 # ============================================================================
 # ENDPOINTS - REGRAS DETERMINÍSTICAS
 # ============================================================================
-
-class GenerateDeterministicRuleRequest(BaseModel):
-    """Schema para requisição de geração de regra determinística"""
-    condicao_texto: str = Field(..., description="Condição em linguagem natural")
-    contexto: Optional[str] = Field(None, description="Contexto adicional (tipo de peça, grupo, etc)")
-
-
-class SugestaoVariavel(BaseModel):
-    """Sugestão para criar variável faltante"""
-    slug: str = Field(..., description="Slug da variável sugerida")
-    label_sugerido: str = Field(..., description="Label sugerido para a variável")
-    tipo_sugerido: str = Field(..., description="Tipo sugerido (text, boolean, number, etc)")
-
-
-class GenerateDeterministicRuleResponse(BaseModel):
-    """Schema de resposta para geração de regra determinística"""
-    success: bool
-    regra: Optional[dict] = Field(None, description="AST JSON da regra")
-    variaveis_usadas: Optional[List[str]] = Field(None, description="Lista de variáveis usadas na regra")
-    regra_texto_original: Optional[str] = Field(None, description="Texto original da condição")
-    erro: Optional[str] = None
-    detalhes: Optional[List[str]] = Field(None, description="Detalhes do erro")
-    variaveis_faltantes: Optional[List[str]] = Field(None, description="Variáveis mencionadas que não existem")
-    sugestoes_variaveis: Optional[List[SugestaoVariavel]] = Field(None, description="Sugestões para criar variáveis faltantes")
-
-
-class ValidateDeterministicRuleRequest(BaseModel):
-    """Schema para validação de regra determinística"""
-    regra: dict = Field(..., description="AST JSON da regra")
-
-
-class ValidateDeterministicRuleResponse(BaseModel):
-    """Schema de resposta para validação de regra"""
-    valid: bool
-    errors: List[str] = []
-    warnings: List[str] = []
-    variaveis_faltantes: List[str] = []
-
-
-class EvaluateDeterministicRuleRequest(BaseModel):
-    """Schema para avaliação de regra determinística"""
-    regra: dict = Field(..., description="AST JSON da regra")
-    dados: dict = Field(..., description="Dados para avaliação")
-
-
-class EvaluateDeterministicRuleResponse(BaseModel):
-    """Schema de resposta para avaliação de regra"""
-    resultado: bool
-    erro: Optional[str] = None
-
 
 @router.post("/regras-deterministicas/gerar", response_model=GenerateDeterministicRuleResponse)
 async def gerar_regra_deterministica(
@@ -4589,80 +4148,6 @@ async def avaliar_regra_deterministica(
 # ============================================================================
 # ENDPOINTS - DEPENDÊNCIAS ENTRE PERGUNTAS
 # ============================================================================
-
-class DependencyConfig(BaseModel):
-    """Schema para configuração de dependência"""
-    depends_on: str = Field(..., description="Slug da variável da qual depende")
-    operator: str = Field("equals", description="Operador: equals, not_equals, in_list, exists, etc.")
-    value: Optional[Any] = Field(None, description="Valor esperado para a condição")
-
-
-class SetDependencyRequest(BaseModel):
-    """Schema para definir dependência em uma pergunta"""
-    depends_on_variable: str = Field(..., description="Slug da variável da qual depende")
-    dependency_operator: str = Field("equals", description="Operador de comparação")
-    dependency_value: Optional[Any] = Field(None, description="Valor esperado")
-
-
-class InferDependenciesRequest(BaseModel):
-    """Schema para requisição de inferência de dependências"""
-    categoria_id: int = Field(..., description="ID da categoria")
-
-
-class InferDependenciesResponse(BaseModel):
-    """Schema de resposta para inferência de dependências"""
-    success: bool
-    dependencias_inferidas: List[dict] = []
-    grafo: Optional[dict] = None
-    erro: Optional[str] = None
-
-
-class ApplyDependenciesRequest(BaseModel):
-    """Schema para aplicação de dependências inferidas"""
-    categoria_id: int = Field(..., description="ID da categoria")
-    dependencias: List[dict] = Field(..., description="Lista de dependências a aplicar")
-
-
-class ApplyDependenciesResponse(BaseModel):
-    """Schema de resposta para aplicação de dependências"""
-    success: bool
-    perguntas_atualizadas: List[dict] = []
-    erro: Optional[str] = None
-
-
-class DependencyGraphResponse(BaseModel):
-    """Schema de resposta para grafo de dependências"""
-    nodes: List[dict] = []
-    edges: List[dict] = []
-    hierarchy: dict = {}
-    root_questions: List[dict] = []
-
-
-class DependentQuestionsResponse(BaseModel):
-    """Schema de resposta para perguntas dependentes"""
-    perguntas: List[dict] = []
-
-
-class SyncPerguntaTipo(BaseModel):
-    """Dados para sincronizar tipo de uma pergunta"""
-    pergunta_id: int = Field(..., description="ID da pergunta")
-    tipo: str = Field(..., description="Tipo inferido pela IA")
-    opcoes: Optional[List[str]] = Field(None, description="Opções se tipo for choice/list")
-
-
-class SyncTiposRequest(BaseModel):
-    """Request para sincronizar tipos das perguntas com o schema gerado"""
-    categoria_id: int = Field(..., description="ID da categoria")
-    mapeamento_variaveis: dict = Field(..., description="Mapeamento de pergunta_id para info da variável")
-
-
-class SyncTiposResponse(BaseModel):
-    """Response da sincronização de tipos"""
-    success: bool = True
-    perguntas_atualizadas: int = 0
-    detalhes: List[dict] = []
-    erro: Optional[str] = None
-
 
 @router.get("/operadores-dependencia")
 async def listar_operadores_dependencia(
@@ -5104,22 +4589,6 @@ async def sincronizar_tipos_perguntas(
 # ============================================================================
 # ENDPOINT PARA RESTAURAR SLUGS A PARTIR DE JSON DE BACKUP
 # ============================================================================
-
-class RestaurarSlugsRequest(BaseModel):
-    """Request para restaurar slugs de variáveis."""
-    categoria_id: int
-    json_backup: dict = Field(..., description="JSON com slugs corretos como chaves")
-
-
-class RestaurarSlugsResponse(BaseModel):
-    """Response da restauração de slugs."""
-    success: bool
-    variaveis_atualizadas: int = 0
-    variaveis_removidas: int = 0
-    perguntas_sincronizadas: int = 0
-    detalhes: List[dict] = []
-    erro: Optional[str] = None
-
 
 @router.post("/restaurar-slugs", response_model=RestaurarSlugsResponse)
 async def restaurar_slugs_de_backup(
