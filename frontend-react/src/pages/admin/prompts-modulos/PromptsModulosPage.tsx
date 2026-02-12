@@ -13,9 +13,17 @@ import { ContentArea } from '@/components/layout/ContentArea'
 import { C } from '@/lib/designTokens'
 import { Link } from '@tanstack/react-router'
 import {
+  DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors,
+  type DragEndEvent,
+} from '@dnd-kit/core'
+import {
+  SortableContext, verticalListSortingStrategy, useSortable, arrayMove,
+} from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
+import {
   ChevronDown, ChevronRight, Edit2, Trash2, ToggleLeft, ToggleRight,
   Plus, Search, Download, Upload, History, Settings, RotateCcw,
-  FileText, FileJson, Lightbulb, X, Zap,
+  FileText, FileJson, Lightbulb, X, Zap, ArrowUp, ArrowDown, GripVertical,
 } from 'lucide-react'
 
 // ---- Interfaces ----
@@ -95,47 +103,39 @@ const TIPO_CONFIG: Record<TipoPrompt, {
   titleColor: string
   countBg: string
   countColor: string
-  badgeBg: string
-  badgeColor: string
 }> = {
   base: {
     label: 'Base (Prompt do Sistema)',
     Icon: Settings,
-    bgHeader: 'bg-indigo-50',
-    borderHeader: 'border-indigo-100',
-    iconBg: 'bg-indigo-100',
-    iconColor: 'text-indigo-600',
-    titleColor: 'text-indigo-900',
-    countBg: 'bg-indigo-200',
-    countColor: 'text-indigo-700',
-    badgeBg: 'bg-indigo-100',
-    badgeColor: 'text-indigo-700',
+    bgHeader: C.navy50,
+    borderHeader: C.navy200,
+    iconBg: C.navy100,
+    iconColor: C.navy700,
+    titleColor: C.navy950,
+    countBg: C.navy200,
+    countColor: C.navy800,
   },
   peca: {
     label: 'Peças (Estrutura/Template)',
     Icon: FileText,
-    bgHeader: 'bg-green-50',
-    borderHeader: 'border-green-100',
-    iconBg: 'bg-green-100',
-    iconColor: 'text-green-600',
-    titleColor: 'text-green-900',
-    countBg: 'bg-green-200',
-    countColor: 'text-green-700',
-    badgeBg: 'bg-green-100',
-    badgeColor: 'text-green-700',
+    bgHeader: C.gray50,
+    borderHeader: C.gray200,
+    iconBg: C.navy100,
+    iconColor: C.navy600,
+    titleColor: C.text900,
+    countBg: C.gray200,
+    countColor: C.text700,
   },
   conteudo: {
     label: 'Conteúdo (Teses e Argumentos)',
     Icon: Lightbulb,
-    bgHeader: 'bg-orange-50',
-    borderHeader: 'border-orange-100',
-    iconBg: 'bg-orange-100',
-    iconColor: 'text-orange-600',
-    titleColor: 'text-orange-900',
-    countBg: 'bg-orange-200',
-    countColor: 'text-orange-700',
-    badgeBg: 'bg-orange-100',
-    badgeColor: 'text-orange-700',
+    bgHeader: C.orange50,
+    borderHeader: C.orange200,
+    iconBg: C.orange100,
+    iconColor: C.orange600,
+    titleColor: C.text900,
+    countBg: C.orange200,
+    countColor: C.orange600,
   },
 }
 
@@ -152,9 +152,9 @@ function getTipoLabel(tipo: string) {
 
 function getModoBadge(modo: string) {
   if (modo === 'deterministic') {
-    return { label: 'Regra', className: 'bg-amber-100 text-amber-700' }
+    return { label: 'Regra', bg: C.gray100, color: C.text700 }
   }
-  return { label: 'LLM', className: 'bg-blue-100 text-blue-700' }
+  return { label: 'LLM', bg: C.navy100, color: C.navy700 }
 }
 
 // ---- Componente de item de módulo ----
@@ -164,25 +164,55 @@ interface ModuloItemProps {
   showCategoria?: boolean
   showSubcategoria?: boolean
   showModoBadge?: boolean
+  isFirst?: boolean
+  isLast?: boolean
   onEdit: (m: PromptModulo) => void
   onDelete: (m: PromptModulo) => void
   onToggle: (m: PromptModulo) => void
   onHistory: (m: PromptModulo) => void
+  onMoveUp?: (m: PromptModulo) => void
+  onMoveDown?: (m: PromptModulo) => void
 }
 
-function ModuloItem({ modulo, showCategoria, showSubcategoria = true, showModoBadge = true, onEdit, onDelete, onToggle, onHistory }: ModuloItemProps) {
+function ModuloItem({ modulo, showCategoria, showSubcategoria = true, showModoBadge = true, isFirst, isLast, onEdit, onDelete, onToggle, onHistory, onMoveUp, onMoveDown }: ModuloItemProps) {
   const modoEfetivo = modulo.effective_activation_mode || modulo.modo_ativacao
   const modo = getModoBadge(modoEfetivo)
 
+  const {
+    attributes, listeners, setNodeRef, setActivatorNodeRef, transform, transition, isDragging,
+  } = useSortable({ id: modulo.id })
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : undefined,
+    zIndex: isDragging ? 10 : undefined,
+    background: isDragging ? 'white' : undefined,
+  }
+
   return (
     <li
-      className={`flex items-start gap-3 px-4 py-3 transition-colors ${
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      className={`flex items-start gap-2 px-4 py-3 transition-colors ${
         !modulo.ativo ? 'opacity-50' : ''
       }`}
-      style={{ cursor: 'default' }}
-      onMouseEnter={(e) => { e.currentTarget.style.background = C.gray50 }}
-      onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
+      onMouseEnter={(e) => { if (!isDragging) e.currentTarget.style.background = C.gray50 }}
+      onMouseLeave={(e) => { if (!isDragging) e.currentTarget.style.background = isDragging ? 'white' : 'transparent' }}
     >
+      {/* Drag handle */}
+      <button
+        ref={setActivatorNodeRef}
+        {...listeners}
+        type="button"
+        className="flex-shrink-0 p-1 rounded cursor-grab active:cursor-grabbing touch-none"
+        style={{ color: C.gray400, marginTop: 2 }}
+        title="Arraste para reordenar"
+      >
+        <GripVertical className="h-4 w-4" />
+      </button>
+
       {/* Conteudo principal */}
       <div className="flex-1 min-w-0">
         {/* Linha 1: Titulo + badges */}
@@ -191,21 +221,21 @@ function ModuloItem({ modulo, showCategoria, showSubcategoria = true, showModoBa
 
           {/* Badge de subcategoria (campo texto) */}
           {showSubcategoria && modulo.subcategoria && (
-            <span className="px-2 py-0.5 text-xs bg-purple-100 text-purple-700 rounded-full">
+            <span className="px-2 py-0.5 text-xs rounded-full" style={{ background: C.navy50, color: C.navy700 }}>
               {modulo.subcategoria}
             </span>
           )}
 
           {/* Badge de status */}
           {modulo.ativo ? (
-            <span className="px-2 py-0.5 text-xs bg-green-100 text-green-700 rounded-full">Ativo</span>
+            <span className="px-2 py-0.5 text-xs rounded-full" style={{ background: '#ecfdf5', color: C.statusSuccess }}>Ativo</span>
           ) : (
             <span className="px-2 py-0.5 text-xs rounded-full" style={{ background: C.gray100, color: C.text400 }}>Inativo</span>
           )}
 
           {/* Badge de modo de ativação */}
           {showModoBadge && (
-            <span className={`px-2 py-0.5 text-xs rounded-full ${modo.className}`}>
+            <span className="px-2 py-0.5 text-xs rounded-full" style={{ background: modo.bg, color: modo.color }}>
               {modo.label}
             </span>
           )}
@@ -231,7 +261,7 @@ function ModuloItem({ modulo, showCategoria, showSubcategoria = true, showModoBa
           {modulo.subcategorias_nomes && modulo.subcategorias_nomes.length > 0 && (
             <>
               {modulo.subcategorias_nomes.map((nome, i) => (
-                <span key={i} className="px-1.5 py-0.5 text-[10px] bg-purple-50 text-purple-600 rounded-full">
+                <span key={i} className="px-1.5 py-0.5 text-[10px] rounded-full" style={{ background: C.navy50, color: C.navy600 }}>
                   {nome}
                 </span>
               ))}
@@ -242,6 +272,34 @@ function ModuloItem({ modulo, showCategoria, showSubcategoria = true, showModoBa
 
       {/* Acoes */}
       <div className="flex items-center gap-1 flex-shrink-0 pt-0.5">
+        {/* Botoes de reordenacao */}
+        <div className="flex flex-col mr-1">
+          <button
+            type="button"
+            onClick={() => onMoveUp?.(modulo)}
+            disabled={isFirst}
+            title="Mover para cima"
+            className="p-0.5 rounded transition-colors disabled:opacity-20 disabled:cursor-default"
+            style={{ color: C.text400 }}
+            onMouseEnter={(e) => { if (!e.currentTarget.disabled) e.currentTarget.style.background = C.gray200 }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
+          >
+            <ArrowUp className="h-3.5 w-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={() => onMoveDown?.(modulo)}
+            disabled={isLast}
+            title="Mover para baixo"
+            className="p-0.5 rounded transition-colors disabled:opacity-20 disabled:cursor-default"
+            style={{ color: C.text400 }}
+            onMouseEnter={(e) => { if (!e.currentTarget.disabled) e.currentTarget.style.background = C.gray200 }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
+          >
+            <ArrowDown className="h-3.5 w-3.5" />
+          </button>
+        </div>
+
         <button
           type="button"
           onClick={() => onToggle(modulo)}
@@ -304,43 +362,71 @@ interface TipoSectionProps {
   onDelete: (m: PromptModulo) => void
   onToggle: (m: PromptModulo) => void
   onHistory: (m: PromptModulo) => void
+  onMoveUp: (m: PromptModulo) => void
+  onMoveDown: (m: PromptModulo) => void
+  onDragReorder: (reordered: { id: number; ordem: number }[]) => void
 }
 
-function TipoSection({ tipo, modulos, onEdit, onDelete, onToggle, onHistory }: TipoSectionProps) {
+function TipoSection({ tipo, modulos, onEdit, onDelete, onToggle, onHistory, onMoveUp, onMoveDown, onDragReorder }: TipoSectionProps) {
   const config = TIPO_CONFIG[tipo]
   const { Icon } = config
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor),
+  )
+  const sorted = [...modulos].sort((a, b) => a.ordem - b.ordem)
+  const ids = sorted.map(m => m.id)
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    const oldIndex = sorted.findIndex(m => m.id === active.id)
+    const newIndex = sorted.findIndex(m => m.id === over.id)
+    if (oldIndex < 0 || newIndex < 0) return
+    const reordered = arrayMove(sorted, oldIndex, newIndex)
+    onDragReorder(reordered.map((m, i) => ({ id: m.id, ordem: i })))
+  }
 
   return (
     <div className="bg-white rounded-2xl shadow-sm overflow-hidden" style={{ border: `1px solid ${C.gray200}` }}>
       {/* Header do tipo */}
-      <div className={`flex items-center gap-3 px-4 py-3 ${config.bgHeader} border-b ${config.borderHeader}`}>
-        <div className={`flex items-center justify-center w-8 h-8 ${config.iconBg} rounded-lg`}>
-          <Icon className={`h-4 w-4 ${config.iconColor}`} />
+      <div
+        className="flex items-center gap-3 px-4 py-3"
+        style={{ background: config.bgHeader, borderBottom: `1px solid ${config.borderHeader}` }}
+      >
+        <div className="flex items-center justify-center w-8 h-8 rounded-lg" style={{ background: config.iconBg }}>
+          <Icon className="h-4 w-4" style={{ color: config.iconColor }} />
         </div>
-        <h3 className={`font-semibold ${config.titleColor}`}>{config.label}</h3>
-        <span className={`ml-auto text-xs ${config.countBg} ${config.countColor} px-2 py-0.5 rounded-full font-medium`}>
+        <h3 className="font-semibold" style={{ color: config.titleColor }}>{config.label}</h3>
+        <span className="ml-auto text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: config.countBg, color: config.countColor }}>
           {modulos.length}
         </span>
       </div>
 
       {/* Lista de modulos */}
-      <ul className="divide-y" style={{ borderColor: C.gray100 }}>
-        {modulos
-          .sort((a, b) => a.ordem - b.ordem)
-          .map((modulo) => (
-            <ModuloItem
-              key={modulo.id}
-              modulo={modulo}
-              showCategoria={true}
-              showSubcategoria={true}
-              showModoBadge={false}
-              onEdit={onEdit}
-              onDelete={onDelete}
-              onToggle={onToggle}
-              onHistory={onHistory}
-            />
-          ))}
-      </ul>
+      <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+        <SortableContext items={ids} strategy={verticalListSortingStrategy}>
+          <ul className="divide-y" style={{ borderColor: C.gray100 }}>
+            {sorted.map((modulo, idx) => (
+              <ModuloItem
+                key={modulo.id}
+                modulo={modulo}
+                showCategoria={true}
+                showSubcategoria={true}
+                showModoBadge={false}
+                isFirst={idx === 0}
+                isLast={idx === sorted.length - 1}
+                onEdit={onEdit}
+                onDelete={onDelete}
+                onToggle={onToggle}
+                onHistory={onHistory}
+                onMoveUp={onMoveUp}
+                onMoveDown={onMoveDown}
+              />
+            ))}
+          </ul>
+        </SortableContext>
+      </DndContext>
     </div>
   )
 }
@@ -355,10 +441,29 @@ interface CategoriaGroupProps {
   onDelete: (m: PromptModulo) => void
   onToggle: (m: PromptModulo) => void
   onHistory: (m: PromptModulo) => void
+  onMoveUp: (m: PromptModulo) => void
+  onMoveDown: (m: PromptModulo) => void
+  onDragReorder: (reordered: { id: number; ordem: number }[]) => void
 }
 
-function CategoriaGroup({ categoria, modulos, subcategoriasNomes, onEdit, onDelete, onToggle, onHistory }: CategoriaGroupProps) {
+function CategoriaGroup({ categoria, modulos, subcategoriasNomes, onEdit, onDelete, onToggle, onHistory, onMoveUp, onMoveDown, onDragReorder }: CategoriaGroupProps) {
   const [aberto, setAberto] = useState(true)
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 5 } }),
+    useSensor(KeyboardSensor),
+  )
+  const sorted = [...modulos].sort((a, b) => a.ordem - b.ordem)
+  const ids = sorted.map(m => m.id)
+
+  function handleDragEnd(event: DragEndEvent) {
+    const { active, over } = event
+    if (!over || active.id === over.id) return
+    const oldIndex = sorted.findIndex(m => m.id === active.id)
+    const newIndex = sorted.findIndex(m => m.id === over.id)
+    if (oldIndex < 0 || newIndex < 0) return
+    const reordered = arrayMove(sorted, oldIndex, newIndex)
+    onDragReorder(reordered.map((m, i) => ({ id: m.id, ordem: i })))
+  }
 
   return (
     <div className="bg-white rounded-2xl overflow-hidden" style={{ border: `1px solid ${C.gray200}` }}>
@@ -376,7 +481,7 @@ function CategoriaGroup({ categoria, modulos, subcategoriasNomes, onEdit, onDele
         ) : (
           <ChevronRight className="h-4 w-4 flex-shrink-0" style={{ color: C.text500 }} />
         )}
-        <span className="font-semibold" style={{ color: C.text900 }}>=== {categoria} ===</span>
+        <span className="font-semibold" style={{ color: C.text900 }}>{categoria}</span>
         <Badge variant="secondary" className="text-xs">
           {modulos.length} módulo{modulos.length !== 1 ? 's' : ''}
         </Badge>
@@ -384,7 +489,7 @@ function CategoriaGroup({ categoria, modulos, subcategoriasNomes, onEdit, onDele
         {subcategoriasNomes.length > 0 && (
           <div className="flex items-center gap-1 ml-2 flex-wrap">
             {subcategoriasNomes.map((nome, i) => (
-              <span key={i} className="px-1.5 py-0.5 text-[10px] bg-purple-50 text-purple-600 rounded-full">
+              <span key={i} className="px-1.5 py-0.5 text-[10px] rounded-full" style={{ background: C.navy50, color: C.navy600 }}>
                 {nome}
               </span>
             ))}
@@ -394,23 +499,29 @@ function CategoriaGroup({ categoria, modulos, subcategoriasNomes, onEdit, onDele
 
       {/* Lista de modulos */}
       {aberto && (
-        <ul className="divide-y" style={{ borderColor: C.gray100 }}>
-          {modulos
-            .sort((a, b) => a.ordem - b.ordem)
-            .map((modulo) => (
-              <ModuloItem
-                key={modulo.id}
-                modulo={modulo}
-                showCategoria={false}
-                showSubcategoria={true}
-                showModoBadge={true}
-                onEdit={onEdit}
-                onDelete={onDelete}
-                onToggle={onToggle}
-                onHistory={onHistory}
-              />
-            ))}
-        </ul>
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext items={ids} strategy={verticalListSortingStrategy}>
+            <ul className="divide-y" style={{ borderColor: C.gray100 }}>
+              {sorted.map((modulo, idx) => (
+                <ModuloItem
+                  key={modulo.id}
+                  modulo={modulo}
+                  showCategoria={false}
+                  showSubcategoria={true}
+                  showModoBadge={true}
+                  isFirst={idx === 0}
+                  isLast={idx === sorted.length - 1}
+                  onEdit={onEdit}
+                  onDelete={onDelete}
+                  onToggle={onToggle}
+                  onHistory={onHistory}
+                  onMoveUp={onMoveUp}
+                  onMoveDown={onMoveDown}
+                />
+              ))}
+            </ul>
+          </SortableContext>
+        </DndContext>
       )}
     </div>
   )
@@ -485,7 +596,10 @@ function AssuntoMultiSelect({ subcategorias, selected, onChange }: AssuntoMultiS
               <button
                 type="button"
                 onClick={() => onChange([])}
-                className="text-xs text-blue-600 hover:text-blue-800"
+                className="text-xs transition-colors"
+                style={{ color: C.navy600 }}
+                onMouseEnter={(e) => { e.currentTarget.style.color = C.navy900 }}
+                onMouseLeave={(e) => { e.currentTarget.style.color = C.navy600 }}
               >
                 Limpar seleção
               </button>
@@ -508,7 +622,7 @@ function AssuntoMultiSelect({ subcategorias, selected, onChange }: AssuntoMultiS
                     type="checkbox"
                     checked={selected.includes(s.id)}
                     onChange={() => toggle(s.id)}
-                    className="rounded text-blue-600"
+                    className="rounded accent-[--color-navy-700]"
                   />
                   <span className="truncate">{s.nome}</span>
                 </label>
@@ -805,6 +919,90 @@ export function PromptsModulosPage() {
         description: error instanceof Error ? error.message : 'Erro desconhecido',
         variant: 'destructive'
       })
+    }
+  }
+
+  // ========== Reordenação ==========
+
+  function getModulosOrdenados(tipo: TipoPrompt, categoria?: string): PromptModulo[] {
+    let lista = modulos.filter(m => m.tipo === tipo)
+    if (categoria) {
+      lista = lista.filter(m => (m.categoria || 'Sem categoria') === categoria)
+    }
+    return lista.sort((a, b) => a.ordem - b.ordem)
+  }
+
+  async function moverModulo(modulo: PromptModulo, direcao: 'up' | 'down') {
+    const categoria = modulo.tipo === 'conteudo' ? (modulo.categoria || 'Sem categoria') : undefined
+    const ordenados = getModulosOrdenados(modulo.tipo, categoria)
+    const idx = ordenados.findIndex(m => m.id === modulo.id)
+    if (idx < 0) return
+
+    const targetIdx = direcao === 'up' ? idx - 1 : idx + 1
+    if (targetIdx < 0 || targetIdx >= ordenados.length) return
+
+    const outro = ordenados[targetIdx]
+
+    // Swap local (otimista)
+    const ordemA = modulo.ordem
+    const ordemB = outro.ordem
+    // Se ambos tem mesma ordem, usar indices como fallback
+    const novaOrdemA = ordemA === ordemB ? (direcao === 'up' ? ordemB - 1 : ordemB + 1) : ordemB
+    const novaOrdemB = ordemA === ordemB ? ordemA : ordemA
+
+    setModulos(prev => prev.map(m => {
+      if (m.id === modulo.id) return { ...m, ordem: novaOrdemA }
+      if (m.id === outro.id) return { ...m, ordem: novaOrdemB }
+      return m
+    }))
+
+    try {
+      await adminApi.post('/admin/api/prompts-modulos/prompts/reordenar', {
+        prompts: [
+          { id: modulo.id, ordem: novaOrdemA },
+          { id: outro.id, ordem: novaOrdemB },
+        ]
+      })
+    } catch (error) {
+      toast({
+        title: 'Erro ao reordenar',
+        description: error instanceof Error ? error.message : 'Erro desconhecido',
+        variant: 'destructive'
+      })
+      carregarModulos()
+    }
+  }
+
+  function handleMoveUp(modulo: PromptModulo) {
+    moverModulo(modulo, 'up')
+  }
+
+  function handleMoveDown(modulo: PromptModulo) {
+    moverModulo(modulo, 'down')
+  }
+
+  async function handleDragReorder(items: { id: number; ordem: number }[]) {
+    // Atualização otimista
+    setModulos(prev => {
+      const updated = [...prev]
+      for (const item of items) {
+        const idx = updated.findIndex(m => m.id === item.id)
+        if (idx >= 0) updated[idx] = { ...updated[idx], ordem: item.ordem }
+      }
+      return updated
+    })
+
+    try {
+      await adminApi.post('/admin/api/prompts-modulos/prompts/reordenar', {
+        prompts: items
+      })
+    } catch (error) {
+      toast({
+        title: 'Erro ao reordenar',
+        description: error instanceof Error ? error.message : 'Erro desconhecido',
+        variant: 'destructive'
+      })
+      carregarModulos()
     }
   }
 
@@ -1229,6 +1427,9 @@ export function PromptsModulosPage() {
               onDelete={abrirDialogExcluir}
               onToggle={toggleAtivo}
               onHistory={abrirHistorico}
+              onMoveUp={handleMoveUp}
+              onMoveDown={handleMoveDown}
+              onDragReorder={handleDragReorder}
             />
           )}
 
@@ -1241,6 +1442,9 @@ export function PromptsModulosPage() {
               onDelete={abrirDialogExcluir}
               onToggle={toggleAtivo}
               onHistory={abrirHistorico}
+              onMoveUp={handleMoveUp}
+              onMoveDown={handleMoveDown}
+              onDragReorder={handleDragReorder}
             />
           )}
 
@@ -1248,12 +1452,15 @@ export function PromptsModulosPage() {
           {modulosPorTipo.conteudo.length > 0 && (
             <div>
               {/* Header do tipo Conteúdo */}
-              <div className={`flex items-center gap-3 px-4 py-3 ${conteudoConfig.bgHeader} rounded-t-xl border border-b-0 ${conteudoConfig.borderHeader}`}>
-                <div className={`flex items-center justify-center w-8 h-8 ${conteudoConfig.iconBg} rounded-lg`}>
-                  <Lightbulb className={`h-4 w-4 ${conteudoConfig.iconColor}`} />
+              <div
+                className="flex items-center gap-3 px-4 py-3 rounded-t-xl"
+                style={{ background: conteudoConfig.bgHeader, border: `1px solid ${conteudoConfig.borderHeader}`, borderBottom: 'none' }}
+              >
+                <div className="flex items-center justify-center w-8 h-8 rounded-lg" style={{ background: conteudoConfig.iconBg }}>
+                  <Lightbulb className="h-4 w-4" style={{ color: conteudoConfig.iconColor }} />
                 </div>
-                <h3 className={`font-semibold ${conteudoConfig.titleColor}`}>{conteudoConfig.label}</h3>
-                <span className={`text-xs ${conteudoConfig.countBg} ${conteudoConfig.countColor} px-2 py-0.5 rounded-full font-medium`}>
+                <h3 className="font-semibold" style={{ color: conteudoConfig.titleColor }}>{conteudoConfig.label}</h3>
+                <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: conteudoConfig.countBg, color: conteudoConfig.countColor }}>
                   {modulosPorTipo.conteudo.length}
                 </span>
               </div>
@@ -1270,6 +1477,9 @@ export function PromptsModulosPage() {
                     onDelete={abrirDialogExcluir}
                     onToggle={toggleAtivo}
                     onHistory={abrirHistorico}
+                    onMoveUp={handleMoveUp}
+                    onMoveDown={handleMoveDown}
+                    onDragReorder={handleDragReorder}
                   />
                 ))}
               </div>
