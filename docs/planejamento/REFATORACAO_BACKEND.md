@@ -34,15 +34,15 @@
 | `create_all()` no startup | Sim (init_db.py:95) |
 | SQL manual de migracao | 330+ linhas em init_db.py |
 
-### Top 5 Hotspots
+### Top 5 Hotspots (original → atual)
 
-| # | Arquivo | Linhas | Problema |
-|---|---------|--------|----------|
-| 1 | `gerador_pecas/router.py` | 3.742 | DB direto, streaming 300+ linhas, IA inline |
-| 2 | `gerador_pecas/router_extraction.py` | 5.267 | 5 responsabilidades num arquivo |
-| 3 | `gerador_pecas/services_deterministic.py` | 2.616 | Regras + AST + variaveis + logging |
-| 4 | `pedido_calculo/router.py` | 1.789 | Import Gemini inline, XML + IA |
-| 5 | `bert_training/router.py` | 2.519 | Datasets + runs + workers + metricas |
+| # | Arquivo | Original | Atual | Status |
+|---|---------|----------|-------|--------|
+| 1 | `gerador_pecas/router.py` | 3.742 | 3.742 | Pendente (Fase 3/4) |
+| 2 | `gerador_pecas/router_extraction.py` | 5.267 | **0** | ✅ Eliminado (Fase 5a) |
+| 3 | `gerador_pecas/services_deterministic.py` | 2.616 | **772** | ✅ Split (Fase 5b) |
+| 4 | `pedido_calculo/router.py` | 1.789 | 1.789 | Pendente (Fase 3/4) |
+| 5 | `bert_training/router.py` | 2.519 | **28** | ✅ Split (Fase 5c) |
 
 ---
 
@@ -235,16 +235,43 @@ Arquivo original deletado. Dividido em 7 arquivos:
 
 **Nota**: `router_ext_questions.py` (1088) e `router_ext_variables.py` (1095) excedem 800 linhas porque os endpoints individuais sao grandes (ex: `listar_variaveis` = 245 linhas). Cada arquivo tem responsabilidade unica.
 
-### 5b. Split `services_deterministic.py` (2.616 linhas)
+### 5b. Split `services_deterministic.py` (2.616→772 linhas) ✅ COMPLETA
 
-- [ ] `deterministic/evaluator.py` (~600 linhas)
-- [ ] `deterministic/operators.py` (~400 linhas) — Strategy pattern
-- [ ] `deterministic/variable_resolver.py` (~400 linhas)
-- [ ] `deterministic/activation_logger.py` (~300 linhas)
+Estrategia: facade com re-exports (60+ importadores externos). Funcoes com `@patch` em testes
+permanecem no modulo original para compatibilidade.
 
-### 5c. Split `bert_training/router.py` (2.519 linhas)
+| Arquivo | Linhas | Conteudo |
+|---------|--------|----------|
+| `services_rule_evaluator.py` | 655 | DeterministicRuleEvaluator (AST puro) |
+| `services_rule_generator.py` | 612 | DeterministicRuleGenerator (geracao via Gemini) |
+| `services_mode_resolution.py` | 301 | Resolucao de modo ativacao + Regra de Ouro |
+| `services_rule_integrity.py` | 332 | RuleIntegrityValidator + helpers |
+| `services_deterministic.py` | 772 | Funcoes de ativacao + PromptVariableUsageSync + re-exports |
 
-- [ ] `routers/datasets.py`, `routers/training_runs.py`, `routers/jobs.py`, `routers/workers.py`, `routers/metrics.py`
+- [x] DeterministicRuleEvaluator extraido → `services_rule_evaluator.py`
+- [x] DeterministicRuleGenerator extraido → `services_rule_generator.py`
+- [x] Funcoes de resolucao de modo → `services_mode_resolution.py`
+- [x] RuleIntegrityValidator extraido → `services_rule_integrity.py`
+- [x] Facade com re-exports em `services_deterministic.py` (compatibilidade de patches)
+- [x] 424 testes passando, 0 failures
+
+### 5c. Split `bert_training/router.py` (2.519→28 linhas) ✅ COMPLETA
+
+Estrategia: aggregator router que inclui 5 sub-routers, mesmo prefix `/bert-training`.
+
+| Arquivo | Linhas | Conteudo |
+|---------|--------|----------|
+| `router_datasets.py` | 526 | Presets (2) + Datasets (10) |
+| `router_runs.py` | 998 | Runs CRUD (12) + progress + SSE |
+| `router_worker_api.py` | 286 | Jobs (4) + Metrics (1) + Logs (2) |
+| `router_system.py` | 394 | Workers (7) + Queue (1) + System (3) + Models (1) + Tests (4) |
+| `router_compare.py` | 470 | Compare CNJ (2) + helpers |
+| `router.py` | 28 | Aggregator (include_router) |
+
+- [x] 5 sub-routers criados
+- [x] router.py convertido em aggregator (28 linhas)
+- [x] 524 rotas preservadas, 59 testes de seguranca passando
+- [x] test_upload_hardening.py atualizado (path → router_datasets.py)
 
 **Risco**: Medio (muitos imports para atualizar)
 **Pre-requisito**: Fase 2
@@ -341,5 +368,7 @@ Fase 5 (Split) pode iniciar apos Fase 2 ─────────────�
 | 2026-02-12 | 5a | JsonSyncService extraido (sincronizar + reconciliar JSON, 785 linhas) | — |
 | 2026-02-12 | 5a | Split em 4 sub-routers + deletado router_extraction.py (4.170→0 linhas) | `373e08d` |
 | 2026-02-12 | 0.8 | ADR-0002: workflow Alembic documentado | `72c4d8a` |
-| 2026-02-12 | 1 | Removido FRONTEND_MODE + bloco legado (-239 linhas). Itens 1.3-1.7 bloqueados por iframe | — |
+| 2026-02-12 | 1 | Removido FRONTEND_MODE + bloco legado (-239 linhas). Itens 1.3-1.7 bloqueados por iframe | `95ed652` |
+| 2026-02-12 | 5b | Split services_deterministic.py: 3 classes + mode resolution extraidos (2616→772 linhas) | `ed5a59e` |
+| 2026-02-12 | 5c | Split bert_training/router.py em 5 sub-routers (2519→28 linhas aggregator) | `00f573c` |
 | | | | |
