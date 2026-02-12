@@ -355,34 +355,42 @@ Wave 1 (lint)
 ## Progresso
 
 ### Wave 1 — Lint Zero + Regras Anti-Regressao
-- **Status**: PENDENTE
-- **Inicio**: —
-- **Conclusao**: —
-- **Metricas pos**: errors=?, warnings=?
+- **Status**: CONCLUIDA
+- **Inicio**: 2026-02-12
+- **Conclusao**: 2026-02-12
+- **Commit**: `72c3240`
+- **Metricas pos**: errors=0, warnings=0 (35 arquivos, 105+/102-)
+- **Notas**: Regras anti-regressao (fetch ban, token ban) pendentes para eslint.config.js — sera adicionado na Wave 3
 
 ### Wave 2 — Streaming Compartilhado
-- **Status**: PENDENTE
-- **Inicio**: —
-- **Conclusao**: —
-- **Metricas pos**: streaming pages migradas=0/5
+- **Status**: CONCLUIDA
+- **Inicio**: 2026-02-12
+- **Conclusao**: 2026-02-12
+- **Commit**: `a96c9f5`
+- **Metricas pos**: streaming pages migradas=5/5, ~400 linhas duplicadas removidas
+- **Novo modulo**: `src/services/api/streaming.ts` (parseSSELine, readSSEStream, fetchSSEStream, useStreamingFetch)
+- **Nota**: CumprimentoBetaPage ainda tem streaming inline (fora do escopo — pagina beta)
 
 ### Wave 3 — Eliminar fetch() Direto e Token Leak
-- **Status**: PENDENTE
-- **Inicio**: —
-- **Conclusao**: —
-- **Metricas pos**: fetch direto em pages=11, token direto=5
+- **Status**: CONCLUIDA
+- **Inicio**: 2026-02-12
+- **Conclusao**: 2026-02-12
+- **Commits**: `de05929` (parte 1) + `a96c9f5` (parte 2 junto com Wave 2)
+- **Metricas pos**: fetch direto nao-streaming em pages=0, token direto em pages=0
+- **Regras lint**: `no-restricted-globals` (fetch) e `no-restricted-syntax` (token) adicionadas
+- **Nota**: 7 fetch() de streaming permanecem (agora via useStreamingFetch, nao mais diretos)
 
 ### Wave 4 — Reducao de Paginas Gigantes
-- **Status**: PENDENTE
-- **Inicio**: —
+- **Status**: EM EXECUCAO
+- **Inicio**: 2026-02-12
 - **Conclusao**: —
-- **Metricas pos**: pages > 1200 linhas=8
+- **Metricas pos**: pages > 1200 linhas=8 (alvo: 0)
 
 ### Wave 5 — Testes Faltantes
-- **Status**: PENDENTE
-- **Inicio**: —
+- **Status**: EM EXECUCAO
+- **Inicio**: 2026-02-12
 - **Conclusao**: —
-- **Metricas pos**: pages sem teste=4
+- **Metricas pos**: pages sem teste=4 (alvo: 0)
 
 ### Wave 6 — Inline Styles e Hex Hardcoded
 - **Status**: PENDENTE
