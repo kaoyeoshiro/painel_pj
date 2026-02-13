@@ -202,7 +202,7 @@ export function FeedbacksPage() {
           </Button>
         }
       />
-      <ContentArea className="space-y-6" maxWidthClass="max-w-full">
+      <ContentArea className="space-y-6">
         {/* ============================================================= */}
         {/* Filtros globais                                                */}
         {/* ============================================================= */}
