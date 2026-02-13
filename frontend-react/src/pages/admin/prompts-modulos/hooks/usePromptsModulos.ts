@@ -522,15 +522,24 @@ export function usePromptsModulos() {
   async function criarGrupo() {
     if (!novoGrupoNome.trim()) return
     try {
+      const nome = novoGrupoNome.trim()
+      // Auto-generate slug from name
+      const slug = nome
+        .toLowerCase()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g, '') // Remove accents
+        .replace(/[^a-z0-9]+/g, '-')     // Replace non-alphanumeric with hyphens
+        .replace(/^-|-$/g, '')            // Trim leading/trailing hyphens
+
       await adminApi.post('/admin/api/prompts-modulos/grupos', {
-        nome: novoGrupoNome.trim(),
-        descricao: novoGrupoDescricao.trim() || null,
+        nome,
+        slug,
         ordem: grupos.length + 1,
         ativo: true,
       })
       toast({
         title: 'Grupo criado',
-        description: `Grupo "${novoGrupoNome}" criado com sucesso`,
+        description: `Grupo "${nome}" criado com sucesso`,
       })
       setNovoGrupoNome('')
       setNovoGrupoDescricao('')

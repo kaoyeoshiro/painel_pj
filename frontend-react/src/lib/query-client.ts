@@ -55,7 +55,7 @@ export const queryKeys = {
   // Gerador de Pecas
   geradorPecas: {
     all: ['gerador-pecas'] as const,
-    tiposPeca: () => [...queryKeys.geradorPecas.all, 'tipos-peca'] as const,
+    tiposPeca: (groupId?: number | null) => [...queryKeys.geradorPecas.all, 'tipos-peca', groupId ?? 'all'] as const,
     historico: (filters?: Record<string, unknown>) => [...queryKeys.geradorPecas.all, 'historico', stableFilterKey(filters)] as const,
     historicoDetail: (id: number) => [...queryKeys.geradorPecas.all, 'historico', id] as const,
     grupos: () => [...queryKeys.geradorPecas.all, 'grupos'] as const,

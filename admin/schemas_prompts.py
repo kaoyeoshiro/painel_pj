@@ -9,7 +9,7 @@ Contem todos os modelos de request/response usados pelos endpoints de prompts.
 from datetime import datetime
 from typing import List, Optional
 
-from pydantic import BaseModel, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 # ==========================================
@@ -152,21 +152,23 @@ class DiffResponse(BaseModel):
 # ==========================================
 
 class PromptGroupBase(BaseModel):
-    name: str
+    nome: str = Field(validation_alias="name")
     slug: str
-    active: bool = True
-    order: int = 0
+    ativo: bool = Field(default=True, validation_alias="active")
+    ordem: int = Field(default=0, validation_alias="order")
 
 
 class PromptGroupCreate(PromptGroupBase):
-    pass
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class PromptGroupUpdate(BaseModel):
-    name: Optional[str] = None
+    nome: Optional[str] = Field(default=None, validation_alias="name")
     slug: Optional[str] = None
-    active: Optional[bool] = None
-    order: Optional[int] = None
+    ativo: Optional[bool] = Field(default=None, validation_alias="active")
+    ordem: Optional[int] = Field(default=None, validation_alias="order")
+
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class PromptGroupResponse(PromptGroupBase):
@@ -174,31 +176,34 @@ class PromptGroupResponse(PromptGroupBase):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
 
 class PromptSubgroupBase(BaseModel):
     group_id: int
-    name: str
+    nome: str = Field(validation_alias="name")
     slug: str
-    active: bool = True
-    order: int = 0
+    ativo: bool = Field(default=True, validation_alias="active")
+    ordem: int = Field(default=0, validation_alias="order")
 
 
 class PromptSubgroupCreate(BaseModel):
     """Schema para criacao de subgrupo (group_id vem da URL, nao do body)."""
-    name: str
+    nome: str = Field(validation_alias="name")
     slug: str
-    active: bool = True
-    order: int = 0
+    ativo: bool = Field(default=True, validation_alias="active")
+    ordem: int = Field(default=0, validation_alias="order")
+
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class PromptSubgroupUpdate(BaseModel):
-    name: Optional[str] = None
+    nome: Optional[str] = Field(default=None, validation_alias="name")
     slug: Optional[str] = None
-    active: Optional[bool] = None
-    order: Optional[int] = None
+    ativo: Optional[bool] = Field(default=None, validation_alias="active")
+    ordem: Optional[int] = Field(default=None, validation_alias="order")
+
+    model_config = ConfigDict(populate_by_name=True)
 
 
 class PromptSubgroupResponse(PromptSubgroupBase):
@@ -206,8 +211,7 @@ class PromptSubgroupResponse(PromptSubgroupBase):
     created_at: datetime
     updated_at: datetime
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True, populate_by_name=True)
 
 
 # ==========================================

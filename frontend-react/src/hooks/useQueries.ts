@@ -30,10 +30,13 @@ import type { TipoPecaResponse, HistoricoItem, GeracaoDetalhe } from '@/types/ge
 // GERADOR DE PEÇAS HOOKS
 // ============================================================
 
-export function useTiposPeca(options?: { enabled?: boolean }) {
+export function useTiposPeca(groupId?: number | null, options?: { enabled?: boolean }) {
   return useQuery({
-    queryKey: queryKeys.geradorPecas.tiposPeca(),
-    queryFn: () => geradorApi.get<TipoPecaResponse>('/tipos-peca'),
+    queryKey: queryKeys.geradorPecas.tiposPeca(groupId),
+    queryFn: () => {
+      const params = groupId ? `?group_id=${groupId}` : ''
+      return geradorApi.get<TipoPecaResponse>(`/tipos-peca${params}`)
+    },
     staleTime: 1000 * 60 * 60, // 1 hora - tipos de peça raramente mudam
     ...options,
   })
@@ -61,6 +64,8 @@ export function useGeracaoDetalhe(
 
 interface GruposResponse {
   grupos: Array<{ id: number; nome: string; slug: string }>
+  default_group_id: number | null
+  requires_selection: boolean
 }
 
 export function useGruposDisponiveis(options?: { enabled?: boolean }) {

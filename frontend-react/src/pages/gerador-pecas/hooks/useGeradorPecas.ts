@@ -122,7 +122,7 @@ export function useGeradorPecas() {
   const {
     data: tiposPecaData,
     isLoading: isLoadingTipos,
-  } = useTiposPeca()
+  } = useTiposPeca(selectedGroupId)
 
   const {
     data: historico,
@@ -174,6 +174,22 @@ export function useGeradorPecas() {
     }
     setSelectedSubcategorias([])
   }, [subcategoriasData, selectedGroupId])
+
+  // Auto-select default group
+  useEffect(() => {
+    if (gruposData && selectedGroupId === null) {
+      if (gruposData.default_group_id) {
+        setSelectedGroupId(gruposData.default_group_id)
+      } else if (gruposData.grupos.length === 1) {
+        setSelectedGroupId(gruposData.grupos[0].id)
+      }
+    }
+  }, [gruposData, selectedGroupId])
+
+  // Reset tipo de peça when group changes
+  useEffect(() => {
+    setTipoPeca('')
+  }, [selectedGroupId])
 
   // ==========================================================================
   // Hook compartilhado de streaming SSE (POST-based)

@@ -668,6 +668,35 @@ async def listar_subgrupos_por_grupo(
     }
 
 
+@router.get("/grupos/{group_id}/subcategorias")
+async def listar_subcategorias_por_grupo(
+    group_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Lista subcategorias ativas de um grupo para filtragem na geração.
+    """
+    grupo, _ = _resolver_grupo_e_subcategorias(current_user, db, group_id, [])
+
+    subcategoria_repo = PromptSubcategoriaReadRepository(db)
+    from admin.models_prompt_groups import PromptSubcategoria
+    subcategorias = (
+        subcategoria_repo.query()
+        .filter(
+            PromptSubcategoria.group_id == grupo.id,
+            PromptSubcategoria.active == True,
+        )
+        .order_by(PromptSubcategoria.order, PromptSubcategoria.nome)
+        .all()
+    )
+
+    return [
+        {"id": s.id, "nome": s.nome}
+        for s in subcategorias
+    ]
+
+
 @router.post("/parecer/upload")
 async def upload_parecer_natjus_pdf(
     arquivo: UploadFile = File(..., description="Arquivo PDF do parecer NATJus"),

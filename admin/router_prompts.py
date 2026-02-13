@@ -449,10 +449,10 @@ async def criar_grupo(
         raise HTTPException(status_code=400, detail="Slug de grupo ja existe")
 
     grupo = PromptGroup(
-        name=grupo_data.name.strip(),
+        name=grupo_data.nome.strip(),
         slug=slug,
-        active=grupo_data.active,
-        order=grupo_data.order
+        active=grupo_data.ativo,
+        order=grupo_data.ordem
     )
     group_repo.add(grupo)
     group_repo.commit()
@@ -479,9 +479,12 @@ async def atualizar_grupo(
             raise HTTPException(status_code=400, detail="Slug de grupo ja existe")
         grupo.slug = slug
 
+    # Map Portuguese schema field names to English ORM attribute names
+    _group_field_map = {"nome": "name", "ativo": "active", "ordem": "order"}
     update_data = grupo_data.model_dump(exclude_unset=True, exclude={"slug"})
     for field, value in update_data.items():
-        setattr(grupo, field, value)
+        orm_field = _group_field_map.get(field, field)
+        setattr(grupo, orm_field, value)
 
     group_repo.commit()
     group_repo.refresh(grupo)
@@ -541,10 +544,10 @@ async def criar_subgrupo(
 
     subgrupo = PromptSubgroup(
         group_id=group_id,
-        name=subgrupo_data.name.strip(),
+        name=subgrupo_data.nome.strip(),
         slug=slug,
-        active=subgrupo_data.active,
-        order=subgrupo_data.order
+        active=subgrupo_data.ativo,
+        order=subgrupo_data.ordem
     )
     subgroup_repo.add(subgrupo)
     subgroup_repo.commit()
@@ -577,9 +580,12 @@ async def atualizar_subgrupo(
             raise HTTPException(status_code=400, detail="Slug de subgrupo ja existe no grupo")
         subgrupo.slug = slug
 
+    # Map Portuguese schema field names to English ORM attribute names
+    _subgroup_field_map = {"nome": "name", "ativo": "active", "ordem": "order"}
     update_data = subgrupo_data.model_dump(exclude_unset=True, exclude={"slug"})
     for field, value in update_data.items():
-        setattr(subgrupo, field, value)
+        orm_field = _subgroup_field_map.get(field, field)
+        setattr(subgrupo, orm_field, value)
 
     subgroup_repo.commit()
     subgroup_repo.refresh(subgrupo)
