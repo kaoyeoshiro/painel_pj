@@ -114,6 +114,7 @@ export function useGeradorPecas() {
   const [parecerUploadId, setParecerUploadId] = useState<string | null>(null)
   const parecerUploadIdRef = useRef<string | null>(null)
   const parecerUserChoiceRef = useRef<string | null>(null)
+  const parecerTriggerModeRef = useRef<'automatico' | 'semi_automatico'>('automatico')
 
   // --- Sidebar ---
   const [showSidebar, setShowSidebar] = useState(false)
@@ -240,6 +241,7 @@ export function useGeradorPecas() {
           break
         }
         case 'parecer_natjus_ausente':
+          parecerTriggerModeRef.current = 'automatico'
           setShowParecerDialog(true)
           setPageState('idle')
           break
@@ -326,6 +328,7 @@ export function useGeradorPecas() {
           break
         }
         case 'parecer_natjus_ausente':
+          parecerTriggerModeRef.current = 'automatico'
           setShowParecerDialog(true)
           setPageState('idle')
           break
@@ -385,6 +388,7 @@ export function useGeradorPecas() {
         numero_cnj: numeroCNJ,
         tipo_peca: tipoPeca,
         parecer_upload_id: parecerUploadIdRef.current || undefined,
+        parecer_user_choice_when_missing: parecerUserChoiceRef.current || undefined,
         group_id: selectedGroupId || undefined,
       })
 
@@ -412,6 +416,7 @@ export function useGeradorPecas() {
     } catch (error) {
       const errMsg = error instanceof Error ? error.message : String(error)
       if (errMsg.includes('PARECER_NATJUS_MISSING') || errMsg.includes('Parecer NATJus')) {
+        parecerTriggerModeRef.current = 'semi_automatico'
         setShowParecerDialog(true)
         setPageState('idle')
       } else {
@@ -532,8 +537,10 @@ export function useGeradorPecas() {
         setParecerFile(null)
         toast({ title: 'Sucesso', description: 'Parecer NATJus anexado. Retomando geração...' })
         setIsUploadingParecer(false)
-        // Auto-resume: retoma a geração no ponto onde parou
-        if (inputMode === 'cnj') {
+        // Auto-resume: retoma a geração no modo que disparou o dialog
+        if (parecerTriggerModeRef.current === 'semi_automatico') {
+          iniciarCuradoria()
+        } else if (inputMode === 'cnj') {
           iniciarGeracaoAutomatica()
         } else {
           iniciarGeracaoPdf()
@@ -544,19 +551,21 @@ export function useGeradorPecas() {
         setIsUploadingParecer(false)
       },
     })
-  }, [parecerFile, numeroCNJ, tipoPeca, toast, uploadParecerMutation, inputMode, iniciarGeracaoAutomatica, iniciarGeracaoPdf])
+  }, [parecerFile, numeroCNJ, tipoPeca, toast, uploadParecerMutation, inputMode, iniciarGeracaoAutomatica, iniciarGeracaoPdf, iniciarCuradoria])
 
   const handleContinuarSemParecer = useCallback(() => {
     if (!window.confirm('Confirmar continuidade sem parecer NATJus? A ausencia sera registrada em auditoria.')) return
     setShowParecerDialog(false)
     setParecerFile(null)
     parecerUserChoiceRef.current = 'continue_without'
-    if (inputMode === 'cnj') {
+    if (parecerTriggerModeRef.current === 'semi_automatico') {
+      iniciarCuradoria()
+    } else if (inputMode === 'cnj') {
       iniciarGeracaoAutomatica()
     } else {
       iniciarGeracaoPdf()
     }
-  }, [inputMode, iniciarGeracaoAutomatica, iniciarGeracaoPdf])
+  }, [inputMode, iniciarGeracaoAutomatica, iniciarGeracaoPdf, iniciarCuradoria])
 
   // ==========================================================================
   // Editor - Chat
