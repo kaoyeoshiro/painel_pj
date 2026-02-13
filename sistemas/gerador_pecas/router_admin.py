@@ -7,6 +7,7 @@ Router de administração do Gerador de Peças
 
 import logging
 from fastapi import APIRouter, HTTPException, Depends
+from sqlalchemy import text as sql_text
 from sqlalchemy.orm import Session
 from app.repositories.sqlalchemy.session_ops import session_query
 from typing import Optional, List, Any
@@ -402,18 +403,49 @@ async def obter_activation_trace(
     - Para LLM: justificativa e evidências citadas
     - Variáveis do processo utilizadas na decisão
     """
-    geracao = session_query(db, GeracaoPeca).filter(GeracaoPeca.id == geracao_id).first()
-    if not geracao:
-        raise HTTPException(status_code=404, detail="Geração não encontrada")
+    # Busca dados via raw SQL para evitar SELECT de colunas que podem não existir (migration pendente)
+    # Primeiro tenta com activation_trace, senão faz fallback sem ela
+    trace_data = None
+    curadoria_meta = None
+    modo_ativacao = None
+    row = None
 
-    # Tenta obter activation_trace salvo
-    trace_data = _safe_get_attr(geracao, 'activation_trace')
+    try:
+        row = db.execute(
+            sql_text("""
+                SELECT activation_trace, curadoria_metadata, modo_ativacao_agente2
+                FROM geracoes_pecas WHERE id = :id
+            """),
+            {"id": geracao_id},
+        ).fetchone()
+        if row:
+            trace_data = row[0]
+            curadoria_meta = row[1] or {}
+            modo_ativacao = row[2]
+    except Exception:
+        # activation_trace pode não existir ainda — rollback e fallback sem ela
+        db.rollback()
+        try:
+            row = db.execute(
+                sql_text("""
+                    SELECT curadoria_metadata, modo_ativacao_agente2
+                    FROM geracoes_pecas WHERE id = :id
+                """),
+                {"id": geracao_id},
+            ).fetchone()
+            if row:
+                curadoria_meta = row[0] or {}
+                modo_ativacao = row[1]
+        except Exception:
+            db.rollback()
+
+    if row is None:
+        raise HTTPException(status_code=404, detail="Geração não encontrada")
 
     if not trace_data:
         # Tenta extrair traces da curadoria_metadata (retrocompatibilidade)
-        curadoria_meta = _safe_get_attr(geracao, 'curadoria_metadata') or {}
-        decision_traces = curadoria_meta.get('decision_traces')
-        variaveis_snapshot = curadoria_meta.get('variaveis_snapshot')
+        decision_traces = curadoria_meta.get('decision_traces') if curadoria_meta else None
+        variaveis_snapshot = curadoria_meta.get('variaveis_snapshot') if curadoria_meta else None
 
         if decision_traces:
             # Constrói trace a partir dos dados de curadoria
@@ -422,7 +454,7 @@ async def obter_activation_trace(
                 trace_data = build_activation_trace(
                     decision_traces=decision_traces,
                     variaveis_snapshot=variaveis_snapshot or {},
-                    modo_ativacao=_safe_get_attr(geracao, 'modo_ativacao_agente2') or 'unknown',
+                    modo_ativacao=modo_ativacao or 'unknown',
                     db=db,
                 )
             except Exception as e:
@@ -433,7 +465,7 @@ async def obter_activation_trace(
         # Sem dados de trace — retorna resposta vazia
         return {
             "geracao_id": geracao_id,
-            "modo_ativacao": _safe_get_attr(geracao, 'modo_ativacao_agente2'),
+            "modo_ativacao": modo_ativacao,
             "summary": None,
             "variaveis_snapshot": None,
             "modulos": [],

@@ -762,8 +762,8 @@ class FeedbackRepository:
         data_inicio: Optional[datetime] = None,
         data_fim: Optional[datetime] = None,
     ) -> int:
-        """Conta geracoes de pecas."""
-        query = self.db.query(GeracaoPeca)
+        """Conta geracoes de pecas (usa func.count para evitar SELECT de colunas deferred)."""
+        query = self.db.query(func.count(GeracaoPeca.id))
         if ids_excluir:
             query = query.filter(~GeracaoPeca.usuario_id.in_(ids_excluir))
         if data_inicio and data_fim:
@@ -771,7 +771,7 @@ class FeedbackRepository:
                 GeracaoPeca.criado_em >= data_inicio,
                 GeracaoPeca.criado_em < data_fim,
             )
-        return query.count()
+        return query.scalar()
 
     def count_feedbacks_gp(
         self,

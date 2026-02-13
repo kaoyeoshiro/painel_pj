@@ -13,6 +13,7 @@ import { BreadcrumbBar } from '@/components/layout/BreadcrumbBar'
 import { ContentArea } from '@/components/layout/ContentArea'
 import { C } from '@/lib/designTokens'
 import { History, ChevronDown, ChevronRight, CheckCircle2, PlusCircle, XCircle, Eye } from 'lucide-react'
+import { ActivationTracePanel } from '@/components/gerador/ActivationTracePanel'
 
 interface Geracao {
   id: number
@@ -310,10 +311,11 @@ export function HistoricoGeradorPage() {
               </div>
 
               <Tabs defaultValue={selectedGeracao.modo_ativacao_agente2 === 'semi_automatico' ? 'curadoria' : 'prompt'} className="w-full">
-                <TabsList className={`grid w-full ${selectedGeracao.modo_ativacao_agente2 === 'semi_automatico' ? 'grid-cols-7' : 'grid-cols-6'}`}>
+                <TabsList className={`grid w-full ${selectedGeracao.modo_ativacao_agente2 === 'semi_automatico' ? 'grid-cols-8' : 'grid-cols-7'}`}>
                   {selectedGeracao.modo_ativacao_agente2 === 'semi_automatico' && (
                     <TabsTrigger value="curadoria">Curadoria</TabsTrigger>
                   )}
+                  <TabsTrigger value="ativacao">Ativação</TabsTrigger>
                   <TabsTrigger value="prompt">Prompt</TabsTrigger>
                   <TabsTrigger value="resumo">Resumo</TabsTrigger>
                   <TabsTrigger value="minuta">Minuta</TabsTrigger>
@@ -342,6 +344,10 @@ export function HistoricoGeradorPage() {
                     )}
                   </TabsContent>
                 )}
+
+                <TabsContent value="ativacao" className="-mx-6 -mb-4">
+                  <ActivationTracePanel geracaoId={selectedGeracao.id} adminMode />
+                </TabsContent>
 
                 <TabsContent value="prompt">
                   <Card>
