@@ -155,9 +155,11 @@ export function useGeradorPecas() {
     }
   }, [versoesData])
 
-  // Rendered markdown — uses streaming content while tokens are arriving
+  // Rendered markdown — uses streaming content while tokens are arriving.
+  // Fallback: if minutaMarkdown is empty (stream ended without 'sucesso'),
+  // use accumulated streamingContent to avoid blank page.
   const { html: minutaHtml } = useMarkdown(
-    isStreamingContent ? streamingContent : minutaMarkdown
+    isStreamingContent ? streamingContent : (minutaMarkdown || streamingContent)
   )
 
   // Auto-scroll chat
@@ -266,6 +268,10 @@ export function useGeradorPecas() {
       parecer_upload_id: parecerUploadIdRef.current || undefined,
       parecer_user_choice_when_missing: parecerUserChoiceRef.current || undefined,
     }).then(() => {
+      // Fallback: if stream ended without 'sucesso', preserve accumulated content
+      if (streamingContentRef.current) {
+        setMinutaMarkdown((prev) => prev || streamingContentRef.current)
+      }
       setIsStreamingContent(false)
       setPageState((prev) => prev === 'streaming' ? 'idle' : prev)
     }).catch(() => {
@@ -342,6 +348,10 @@ export function useGeradorPecas() {
 
     await startSSEFormData('/gerador-pecas/api/processar-pdfs-stream', formData)
       .then(() => {
+        // Fallback: if stream ended without 'sucesso', preserve accumulated content
+        if (streamingContentRef.current) {
+          setMinutaMarkdown((prev) => prev || streamingContentRef.current)
+        }
         setIsStreamingContent(false)
         setPageState((prev) => prev === 'streaming' ? 'idle' : prev)
       })
@@ -473,6 +483,12 @@ export function useGeradorPecas() {
       variaveis_snapshot: Object.keys(curadoriaVariaveis).length > 0 ? curadoriaVariaveis : undefined,
       parecer_context: Object.keys(curadoriaParecer).length > 0 ? curadoriaParecer : undefined,
       observacao_usuario: observacao || undefined,
+    }).then(() => {
+      // Fallback: if stream ended without 'sucesso', preserve accumulated content
+      if (streamingContentRef.current) {
+        setMinutaMarkdown((prev) => prev || streamingContentRef.current)
+      }
+      setIsStreamingContent(false)
     }).catch(() => {
       // Erro ja tratado pelo onError do hook
     })

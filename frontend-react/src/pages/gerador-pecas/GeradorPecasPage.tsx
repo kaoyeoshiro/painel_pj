@@ -168,12 +168,12 @@ export function GeradorPecasPage() {
             : <Scale className="h-5 w-5 text-white" />
           }
           headerActions={
-            h.isStreamingContent ? undefined : (
             <>
               <Button
                 onClick={() => guardAction(h.exportarDocx)}
                 size="sm"
-                className="text-white/70 hover:text-white"
+                disabled={h.isStreamingContent}
+                className="text-white/70 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed"
                 style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.15)' }}
               >
                 <Download className="mr-2 h-4 w-4" /> DOCX
@@ -181,7 +181,8 @@ export function GeradorPecasPage() {
               <Button
                 onClick={() => guardAction(h.copiarMinuta)}
                 size="sm"
-                className="text-white/70 hover:text-white"
+                disabled={h.isStreamingContent}
+                className="text-white/70 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed"
                 style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.15)' }}
               >
                 <Copy className="mr-2 h-4 w-4" /> Copiar
@@ -189,13 +190,13 @@ export function GeradorPecasPage() {
               <Button
                 onClick={h.abrirHistoricoVersoes}
                 size="sm"
-                className="text-white/70 hover:text-white"
+                disabled={h.isStreamingContent}
+                className="text-white/70 hover:text-white disabled:opacity-30 disabled:cursor-not-allowed"
                 style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.15)' }}
               >
                 <RotateCcw className="mr-2 h-4 w-4" /> Versoes
               </Button>
             </>
-            )
           }
           documentContent={
             <div
@@ -205,18 +206,16 @@ export function GeradorPecasPage() {
             />
           }
           chatPanel={
-            h.isStreamingContent ? undefined : (
-              <ChatPanel
-                messages={h.chatMessages}
-                inputValue={h.chatInput}
-                onInputChange={h.setChatInput}
-                onSend={h.enviarMensagemChat}
-                isSending={h.isSendingChat}
-                placeholder="Descreva a alteracao desejada..."
-                title="Assistente de Edicao"
-                subtitle="Solicite alteracoes na peca"
-              />
-            )
+            <ChatPanel
+              messages={h.chatMessages}
+              inputValue={h.chatInput}
+              onInputChange={h.setChatInput}
+              onSend={h.enviarMensagemChat}
+              isSending={h.isSendingChat || h.isStreamingContent}
+              placeholder={h.isStreamingContent ? 'Aguarde a geracao finalizar...' : 'Descreva a alteracao desejada...'}
+              title="Assistente de Edicao"
+              subtitle={h.isStreamingContent ? 'Disponivel apos a geracao' : 'Solicite alteracoes na peca'}
+            />
           }
           feedbackSection={
             !hasFeedback && h.geracaoId ? (
