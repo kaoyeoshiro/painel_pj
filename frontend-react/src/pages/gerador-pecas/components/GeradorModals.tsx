@@ -4,6 +4,7 @@
  * Contem: ProgressModal, ParecerDialog, FeedbackDialog, VersionHistoryDialog.
  */
 
+import { useState } from 'react'
 import {
   Loader2,
   Check,
@@ -14,6 +15,7 @@ import {
   RotateCcw,
   History,
   AlertTriangle,
+  Scale,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Button } from '@/components/ui/button'
@@ -25,18 +27,35 @@ import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
 import { C } from '@/lib/designTokens'
 import type { AgentStatus } from '@/types/gerador-pecas'
-import { AGENT_META, formatDateTime } from '../types'
+import { formatDateTime } from '../types'
 import type { VersionItem } from '../types'
 
 // ============================================================================
-// 1. ProgressModal
+// 1. ProgressModal — Vertical Stepper
 // ============================================================================
+
+const PROGRESS_STEPS = [
+  { numero: 1, label: 'Coletando documentos', description: 'Busca documentos no TJ-MS' },
+  { numero: 2, label: 'Analisando argumentos', description: 'Identifica argumentos e teses' },
+  { numero: 3, label: 'Redigindo peca', description: 'Gera a peca juridica' },
+] as const
+
+function computeProgress(statuses: Record<number, AgentStatus>): number {
+  let p = 0
+  for (let i = 1; i <= 3; i++) {
+    const s = statuses[i]
+    if (s === 'concluido' || s === 'erro') p += 33.33
+    else if (s === 'ativo') p += 16.66
+  }
+  return Math.min(Math.round(p), 100)
+}
 
 interface ProgressModalProps {
   open: boolean
   onCancel: () => void
   agentStatuses: Record<number, AgentStatus>
   progressMessage: string
+  numeroCNJ?: string
 }
 
 export function ProgressModal({
@@ -44,90 +63,183 @@ export function ProgressModal({
   onCancel,
   agentStatuses,
   progressMessage,
+  numeroCNJ,
 }: ProgressModalProps) {
+  const completedCount = [1, 2, 3].filter((i) => agentStatuses[i] === 'concluido').length
+  const progress = computeProgress(agentStatuses)
+  const [isCancelling, setIsCancelling] = useState(false)
+
+  const handleCancel = () => {
+    setIsCancelling(true)
+    setTimeout(() => {
+      onCancel()
+      setIsCancelling(false)
+    }, 150)
+  }
+
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) onCancel() }}>
       <DialogContent
-        className="max-w-md rounded-2xl border-slate-200 p-0 shadow-xl"
+        hideCloseButton
+        className="max-w-[420px] gap-0 rounded-3xl sm:rounded-3xl border-0 bg-white p-0 shadow-2xl"
         onInteractOutside={(e) => e.preventDefault()}
         onEscapeKeyDown={(e) => e.preventDefault()}
       >
-        <div className="rounded-t-2xl px-6 py-5" style={{ background: C.navy950 }}>
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2.5 text-base text-white">
-              <Loader2 className="h-4 w-4 animate-spin text-white/70" />
+        {/* Header */}
+        <div className="px-8 pt-8">
+          <DialogHeader className="space-y-0">
+            <DialogTitle
+              className="flex items-center gap-3 text-xl font-bold tracking-tight"
+              style={{ color: C.text900 }}
+            >
+              <div
+                className="flex h-10 w-10 items-center justify-center rounded-xl"
+                style={{ background: C.navy950 }}
+              >
+                <Scale className="h-5 w-5 text-white" />
+              </div>
               Gerando Peca
             </DialogTitle>
-            <DialogDescription className="sr-only">Progresso da geracao da peca juridica</DialogDescription>
+            <DialogDescription className="sr-only">
+              Progresso da geracao da peca juridica
+            </DialogDescription>
           </DialogHeader>
+          {numeroCNJ && (
+            <p className="mt-2 text-[13px] font-medium" style={{ color: C.text500 }}>
+              Processo: {numeroCNJ}
+            </p>
+          )}
+          <p className="mt-1 text-[12px]" style={{ color: C.text400 }}>
+            Isso pode levar alguns segundos
+          </p>
         </div>
 
-        <div className="px-6 pb-6">
-          <p className="mt-4 text-sm" style={{ color: C.text500 }}>{progressMessage || 'Iniciando...'}</p>
+        {/* Progress bar */}
+        <div className="px-8 pt-6">
+          <div className="mb-2 flex items-center justify-between">
+            <span
+              className="text-[11px] font-semibold uppercase tracking-wider"
+              style={{ color: C.text400 }}
+            >
+              Progresso
+            </span>
+            <span className="text-[11px] font-semibold" style={{ color: C.navy700 }}>
+              {completedCount} de 3 etapas
+            </span>
+          </div>
+          <div
+            className="h-1.5 w-full overflow-hidden rounded-full"
+            style={{ background: C.gray100 }}
+          >
+            <div
+              className="h-full rounded-full transition-all duration-700 ease-out"
+              style={{
+                width: `${progress}%`,
+                background: `linear-gradient(90deg, ${C.navy700}, ${C.navy500})`,
+              }}
+            />
+          </div>
+          <p
+            className="mt-2.5 min-h-[16px] text-[12px] font-medium"
+            style={{ color: C.text500 }}
+          >
+            {progressMessage || 'Iniciando...'}
+          </p>
+        </div>
 
-          {/* Agent pipeline */}
-          <div className="mt-5 space-y-2">
-            {AGENT_META.map((agent) => {
-              const status = agentStatuses[agent.numero]
-              const Icon = agent.icon
-              return (
-                <div
-                  key={agent.numero}
-                  className={cn(
-                    'flex items-center gap-3 rounded-xl border p-3 transition-all',
-                    status === 'ativo' && 'border-slate-300 bg-slate-50',
-                    status === 'concluido' && 'border-emerald-200 bg-emerald-50/50',
-                    status === 'erro' && 'border-red-200 bg-red-50/50',
-                    status === 'aguardando' && 'border-slate-100 bg-slate-50/50',
-                  )}
-                >
+        {/* Vertical Stepper */}
+        <div className="px-8 pt-4 pb-2">
+          {PROGRESS_STEPS.map((step, index) => {
+            const status = agentStatuses[step.numero]
+            const isLast = index === PROGRESS_STEPS.length - 1
+
+            return (
+              <div key={step.numero} className="flex gap-4">
+                {/* Circle + connector */}
+                <div className="flex flex-col items-center">
                   <div
                     className={cn(
-                      'flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg transition-all',
+                      'relative flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full transition-all duration-500',
                       status === 'concluido' && 'bg-emerald-500 text-white',
                       status === 'erro' && 'bg-red-500 text-white',
-                      status === 'aguardando' && 'text-white',
+                      status === 'aguardando' && 'border-2 bg-white',
+                      status === 'ativo' && 'text-white',
                     )}
                     style={{
-                      background: status === 'ativo' ? C.navy950
-                        : status === 'aguardando' ? C.gray200
-                        : undefined,
-                      color: status === 'aguardando' ? C.text400 : undefined,
+                      ...(status === 'aguardando' ? { borderColor: C.gray300 } : {}),
+                      ...(status === 'ativo'
+                        ? { background: C.navy950, boxShadow: `0 0 0 4px ${C.navy100}` }
+                        : {}),
+                      ...(status === 'concluido'
+                        ? { boxShadow: '0 1px 3px rgba(16,185,129,0.3)' }
+                        : {}),
                     }}
                   >
                     {status === 'ativo' ? (
-                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                      <Loader2 className="h-4 w-4 animate-spin" />
                     ) : status === 'concluido' ? (
-                      <Check className="h-3.5 w-3.5" />
+                      <Check className="h-4 w-4" strokeWidth={2.5} />
                     ) : status === 'erro' ? (
-                      <X className="h-3.5 w-3.5" />
+                      <X className="h-4 w-4" strokeWidth={2.5} />
                     ) : (
-                      <Icon className="h-3.5 w-3.5" />
+                      <span className="text-[13px] font-semibold" style={{ color: C.text400 }}>
+                        {step.numero}
+                      </span>
                     )}
                   </div>
-                  <div className="min-w-0 flex-1">
-                    <p className="text-sm font-medium text-slate-700">{agent.nome}</p>
-                    <p className="text-[11px] text-slate-400">{agent.descricao}</p>
-                  </div>
-                  {status === 'ativo' && (
-                    <span className="flex-shrink-0 text-[11px] font-medium text-slate-500">Ativo</span>
-                  )}
-                  {status === 'concluido' && (
-                    <span className="flex-shrink-0 text-[11px] font-medium text-emerald-600">OK</span>
+                  {!isLast && (
+                    <div
+                      className="my-1 w-0.5 flex-1 rounded-full transition-colors duration-500"
+                      style={{
+                        minHeight: 20,
+                        background:
+                          status === 'concluido' || status === 'erro'
+                            ? C.statusSuccess
+                            : C.gray200,
+                      }}
+                    />
                   )}
                 </div>
-              )
-            })}
-          </div>
 
-          <Separator className="my-4" />
+                {/* Step text */}
+                <div className={cn('pt-1.5', !isLast ? 'pb-5' : 'pb-0')}>
+                  <p
+                    className={cn(
+                      'text-[14px] font-semibold leading-tight transition-colors duration-300',
+                      status === 'concluido' && 'text-emerald-700',
+                      status === 'erro' && 'text-red-700',
+                    )}
+                    style={{
+                      ...(status === 'ativo' ? { color: C.text900 } : {}),
+                      ...(status === 'aguardando' ? { color: C.text400 } : {}),
+                    }}
+                  >
+                    {step.label}
+                  </p>
+                  <p className="mt-0.5 text-[12px]" style={{ color: C.text400 }}>
+                    {step.description}
+                  </p>
+                </div>
+              </div>
+            )
+          })}
+        </div>
 
+        {/* Footer */}
+        <div className="px-8 pb-6 pt-3">
+          <div style={{ borderTop: `1px solid ${C.gray100}` }} />
           <button
-            onClick={onCancel}
-            className="flex w-full items-center justify-center gap-2 rounded-xl border border-slate-200 py-2.5 text-sm font-medium text-slate-500 transition-colors hover:bg-slate-50 hover:text-slate-700"
+            onClick={handleCancel}
+            disabled={isCancelling}
+            className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border py-2.5 text-[13px] font-medium transition-all hover:bg-slate-50 disabled:opacity-60"
+            style={{ borderColor: C.gray200, color: C.text500 }}
           >
-            <X className="h-3.5 w-3.5" />
-            Cancelar
+            {isCancelling ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : (
+              <X className="h-3.5 w-3.5" />
+            )}
+            {isCancelling ? 'Cancelando...' : 'Cancelar geracao'}
           </button>
         </div>
       </DialogContent>
