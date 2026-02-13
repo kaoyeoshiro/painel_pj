@@ -11,7 +11,6 @@ import {
   useTiposPeca,
   useHistoricoGerador,
   useGruposDisponiveis,
-  useSubcategorias,
   useExcluirGeracao,
   useVersoesGeracao,
   useRestaurarVersao,
@@ -56,8 +55,10 @@ export function useGeradorPecas() {
 
   // --- Group/Subcategory filtering ---
   const [selectedGroupId, setSelectedGroupId] = useState<number | null>(null)
-  const [subcategorias, setSubcategorias] = useState<Array<{ id: number; nome: string }>>([])
-  const [selectedSubcategorias, setSelectedSubcategorias] = useState<number[]>([])
+  // Subcategorias — campo legado, desabilitado na UI (backend mantido)
+  const subcategorias: Array<{ id: number; nome: string }> = []
+  const selectedSubcategorias: number[] = []
+  const setSelectedSubcategorias = () => {}
 
   // --- Agent progress ---
   const [agentStatuses, setAgentStatuses] = useState<Record<number, AgentStatus>>({
@@ -131,7 +132,7 @@ export function useGeradorPecas() {
 
   const { data: gruposData } = useGruposDisponiveis()
 
-  const { data: subcategoriasData } = useSubcategorias(selectedGroupId)
+  // useSubcategorias — desabilitado (campo legado)
 
   // --- Mutations ---
   const { invalidateGeradorHistorico } = useInvalidateQueries()
@@ -165,15 +166,7 @@ export function useGeradorPecas() {
     }
   }, [chatMessages])
 
-  // Update subcategorias when query data changes
-  useEffect(() => {
-    if (subcategoriasData) {
-      setSubcategorias(subcategoriasData)
-    } else if (!selectedGroupId) {
-      setSubcategorias([])
-    }
-    setSelectedSubcategorias([])
-  }, [subcategoriasData, selectedGroupId])
+  // Effect de subcategorias removido — campo legado desabilitado
 
   // Auto-select default group
   useEffect(() => {
@@ -262,7 +255,6 @@ export function useGeradorPecas() {
       tipo_peca: tipoPeca || undefined,
       observacao_usuario: observacao || undefined,
       group_id: selectedGroupId || undefined,
-      subcategoria_ids: selectedSubcategorias.length > 0 ? selectedSubcategorias : undefined,
       parecer_upload_id: parecerUploadId || undefined,
       parecer_user_choice_when_missing: parecerUserChoiceRef.current || undefined,
     }).then(() => {
@@ -270,7 +262,7 @@ export function useGeradorPecas() {
     }).catch(() => {
       // Erro ja tratado pelo onError do hook
     })
-  }, [numeroCNJ, tipoPeca, observacao, selectedGroupId, selectedSubcategorias, parecerUploadId, toast, startSSE, invalidateGeradorHistorico])
+  }, [numeroCNJ, tipoPeca, observacao, selectedGroupId, parecerUploadId, toast, startSSE, invalidateGeradorHistorico])
 
   // ==========================================================================
   // Processar - Modo PDF Upload
@@ -294,7 +286,6 @@ export function useGeradorPecas() {
     if (tipoPeca) formData.append('tipo_peca', tipoPeca)
     if (observacao) formData.append('observacao_usuario', observacao)
     if (selectedGroupId) formData.append('group_id', String(selectedGroupId))
-    if (selectedSubcategorias.length > 0) formData.append('subcategoria_ids', JSON.stringify(selectedSubcategorias))
     if (parecerUploadId) formData.append('parecer_upload_id', parecerUploadId)
     if (parecerUserChoiceRef.current) formData.append('parecer_user_choice_when_missing', parecerUserChoiceRef.current)
 
@@ -340,7 +331,7 @@ export function useGeradorPecas() {
       .catch(() => {
         // Erro ja tratado pelo onError do hook
       })
-  }, [pdfFiles, tipoPeca, observacao, selectedGroupId, selectedSubcategorias, parecerUploadId, toast, startSSEFormData, invalidateGeradorHistorico])
+  }, [pdfFiles, tipoPeca, observacao, selectedGroupId, parecerUploadId, toast, startSSEFormData, invalidateGeradorHistorico])
 
   // ==========================================================================
   // Processar - Modo Semi-Automatico (Curadoria)
@@ -367,7 +358,6 @@ export function useGeradorPecas() {
         tipo_peca: tipoPeca,
         parecer_upload_id: parecerUploadId || undefined,
         group_id: selectedGroupId || undefined,
-        subcategoria_ids: selectedSubcategorias.length > 0 ? selectedSubcategorias : undefined,
       })
 
       setCuradoriaModulos(result.modulos)
@@ -392,7 +382,7 @@ export function useGeradorPecas() {
     } finally {
       setIsCuradoriaLoading(false)
     }
-  }, [numeroCNJ, tipoPeca, parecerUploadId, selectedGroupId, selectedSubcategorias, toast])
+  }, [numeroCNJ, tipoPeca, parecerUploadId, selectedGroupId, toast])
 
   // ==========================================================================
   // Curadoria - Gerar com selecionados

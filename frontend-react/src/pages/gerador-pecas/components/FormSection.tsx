@@ -1,7 +1,7 @@
 /**
  * Secao de formulario do Gerador de Pecas.
  *
- * Contem: tabs CNJ/PDF, tipo de peca, grupo/subcategorias, observacao,
+ * Contem: tabs CNJ/PDF, tipo de peca, grupo, observacao,
  * botoes de acao, pipeline visual, historico recente e estado vazio.
  */
 
@@ -9,7 +9,6 @@ import {
   FileText,
   Upload,
   X,
-  Check,
   Search,
   Zap,
   Eye,
@@ -259,36 +258,7 @@ export function FormSection({ h }: FormSectionProps) {
               </div>
             )}
 
-            {/* Subcategorias */}
-            {h.subcategorias.length > 0 && (
-              <div>
-                <Label className="text-[15px] font-medium text-slate-600">Subcategorias</Label>
-                <div className="mt-2.5 flex flex-wrap gap-2">
-                  {h.subcategorias.map((sub) => {
-                    const isSelected = h.selectedSubcategorias.includes(sub.id)
-                    return (
-                      <button
-                        key={sub.id}
-                        type="button"
-                        onClick={() => h.setSelectedSubcategorias(prev =>
-                          isSelected ? prev.filter(id => id !== sub.id) : [...prev, sub.id]
-                        )}
-                        className={cn(
-                          'rounded-full border px-3 py-1.5 text-xs font-medium transition-all',
-                          isSelected
-                            ? 'border-[#253D52] bg-[#253D52] text-white'
-                            : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300',
-                        )}
-                        disabled={h.isFormDisabled}
-                      >
-                        {isSelected && <Check className="mr-1 inline h-3 w-3" />}
-                        {sub.nome}
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-            )}
+            {/* Subcategorias — campo legado, ocultado da UI (backend mantido) */}
 
             {/* Observacao */}
             <div>
