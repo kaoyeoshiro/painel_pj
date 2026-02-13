@@ -124,6 +124,14 @@ class UserBase(BaseModel):
     full_name: str = Field(..., min_length=2, max_length=200)
     role: str = Field(default="user", pattern="^(admin|user)$")
 
+    @field_validator('email', mode='before')
+    @classmethod
+    def empty_email_to_none(cls, v):
+        """Converte email vazio para None (campo opcional)."""
+        if isinstance(v, str) and v.strip() == '':
+            return None
+        return v
+
     @field_validator('full_name')
     @classmethod
     def validate_full_name_no_xss(cls, v):
@@ -171,6 +179,14 @@ class UserUpdate(BaseModel):
     setor: Optional[str] = Field(None, max_length=120)
     default_group_id: Optional[int] = None
     allowed_group_ids: Optional[List[int]] = None
+
+    @field_validator('email', mode='before')
+    @classmethod
+    def empty_email_to_none(cls, v):
+        """Converte email vazio para None (campo opcional)."""
+        if isinstance(v, str) and v.strip() == '':
+            return None
+        return v
 
     @field_validator('full_name')
     @classmethod

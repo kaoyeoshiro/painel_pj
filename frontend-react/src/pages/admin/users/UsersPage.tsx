@@ -240,8 +240,8 @@ export function UsersPage() {
         // Editar usuario existente
         const updateData: UserUpdate = {
           full_name: formData.full_name,
-          email: formData.email || undefined,
-          setor: formData.setor || undefined,
+          email: formData.email?.trim() || undefined,
+          setor: formData.setor?.trim() || undefined,
           role: formData.role,
           is_active: formIsActive,
           sistemas_permitidos: formData.sistemas_permitidos,
@@ -257,8 +257,14 @@ export function UsersPage() {
           description: 'Usuario atualizado com sucesso',
         })
       } else {
-        // Criar novo usuario
-        await usersApi.post('', formData)
+        // Criar novo usuario — limpa campos opcionais vazios
+        const createData = {
+          ...formData,
+          email: formData.email?.trim() || undefined,
+          setor: formData.setor?.trim() || undefined,
+          password: formData.password?.trim() || undefined,
+        }
+        await usersApi.post('', createData)
         toast({
           title: 'Usuario criado',
           description: 'Usuario criado com sucesso',

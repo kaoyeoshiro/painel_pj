@@ -16,7 +16,7 @@ from auth.schemas import UserCreate, UserUpdate, UserResponse
 from auth.security import get_password_hash
 from auth.dependencies import require_admin
 from config import DEFAULT_USER_PASSWORD
-from admin.models_prompt_groups import PromptGroup
+from admin.models_prompt_groups import PromptGroup, user_prompt_groups
 
 # SECURITY: Audit Logging
 from utils.audit import (
@@ -115,7 +115,7 @@ async def create_user(
     # Define senha (padrão ou informada)
     password = user_data.password if user_data.password else DEFAULT_USER_PASSWORD
     
-    # Cria usuário
+    # Cria usuário (sem groups no construtor para evitar race condition)
     new_user = User(
         username=user_data.username,
         email=user_data.email,
@@ -126,12 +126,24 @@ async def create_user(
         permissoes_especiais=user_data.permissoes_especiais,
         setor=user_data.setor,
         default_group_id=default_group.id if default_group else None,
-        allowed_groups=allowed_groups,
         must_change_password=True,  # Força troca no primeiro acesso
         is_active=True
     )
-    
+
     db.add(new_user)
+    db.flush()  # Obtém o ID do novo usuário
+
+    # Limpa entradas órfãs na tabela de associação (se houver)
+    db.execute(
+        user_prompt_groups.delete().where(
+            user_prompt_groups.c.user_id == new_user.id
+        )
+    )
+
+    # Agora associa os grupos
+    if allowed_groups:
+        new_user.allowed_groups = allowed_groups
+
     db.commit()
     db.refresh(new_user)
 
