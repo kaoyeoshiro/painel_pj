@@ -88,6 +88,9 @@ export function ModulosTipoPecaPage() {
   const [modulosPorTipo, setModulosPorTipo] = useState<Map<string, Modulo[]>>(new Map())
   const [carregandoModulos, setCarregandoModulos] = useState<Set<string>>(new Set())
 
+  // Estado de expansão das subcategorias (colapsadas por padrão)
+  const [subcatsExpandidas, setSubcatsExpandidas] = useState<Set<string>>(new Set())
+
   // Estado de alterações pendentes: Map<tipo_peca_slug, Map<modulo_id, boolean>>
   const [alteracoesPendentes, setAlteracoesPendentes] = useState<Map<string, Map<number, boolean>>>(new Map())
 
@@ -574,44 +577,69 @@ export function ModulosTipoPecaPage() {
                         Nenhum módulo disponível
                       </div>
                     ) : (
-                      <div className="space-y-4">
-                        {Array.from(agruparModulosPorCategoria(modulos).entries()).map(([cat, mods]) => (
-                          <div key={cat}>
-                            <h4 className="font-semibold text-sm mb-2" style={{ color: C.text700 }}>
-                              {cat}
-                            </h4>
-                            <div className="space-y-2">
-                              {mods.map(modulo => {
-                                const estadoAtual = getEstadoModulo(slug, modulo)
-                                const foiAlterado = alteracoesPendentes.get(slug)?.has(modulo.modulo_id)
+                      <div className="space-y-2">
+                        {Array.from(agruparModulosPorCategoria(modulos).entries()).map(([cat, mods]) => {
+                          const subcatKey = `${slug}:${cat}`
+                          const subcatAberta = subcatsExpandidas.has(subcatKey)
+                          const ativosNaCat = mods.filter(m => getEstadoModulo(slug, m)).length
 
-                                return (
-                                  <div
-                                    key={modulo.modulo_id}
-                                    className={`flex items-start gap-3 p-3 rounded border ${
-                                      foiAlterado ? 'bg-amber-50 border-amber-200' : 'bg-white'
-                                    }`}
-                                  >
-                                    <input
-                                      type="checkbox"
-                                      checked={estadoAtual}
-                                      onChange={() => toggleModulo(slug, modulo.modulo_id, modulo.ativo_tipo_peca)}
-                                      className="mt-1"
-                                    />
-                                    <div className="flex-1">
-                                      <div className="font-medium">{modulo.titulo}</div>
-                                      {modulo.condicao_ativacao && (
-                                        <div className="text-sm mt-1" style={{ color: C.text500 }}>
-                                          Condição: {modulo.condicao_ativacao}
+                          return (
+                            <div key={cat} className="border rounded-lg overflow-hidden" style={{ borderColor: C.gray200 }}>
+                              <div
+                                className="flex items-center justify-between px-3 py-2 cursor-pointer select-none transition-colors"
+                                style={{ background: C.gray50 }}
+                                onMouseEnter={(e) => { e.currentTarget.style.background = C.gray100 }}
+                                onMouseLeave={(e) => { e.currentTarget.style.background = C.gray50 }}
+                                onClick={() => setSubcatsExpandidas(prev => {
+                                  const next = new Set(prev)
+                                  next.has(subcatKey) ? next.delete(subcatKey) : next.add(subcatKey)
+                                  return next
+                                })}
+                              >
+                                <div className="flex items-center gap-2">
+                                  <span className="text-xs">{subcatAberta ? '▼' : '▶'}</span>
+                                  <h4 className="font-semibold text-sm" style={{ color: C.text700 }}>{cat}</h4>
+                                </div>
+                                <span className="text-xs" style={{ color: C.text500 }}>
+                                  {ativosNaCat}/{mods.length} ativos
+                                </span>
+                              </div>
+
+                              {subcatAberta && (
+                                <div className="p-2 space-y-2">
+                                  {mods.map(modulo => {
+                                    const estadoAtual = getEstadoModulo(slug, modulo)
+                                    const foiAlterado = alteracoesPendentes.get(slug)?.has(modulo.modulo_id)
+
+                                    return (
+                                      <div
+                                        key={modulo.modulo_id}
+                                        className={`flex items-start gap-3 p-3 rounded border ${
+                                          foiAlterado ? 'bg-amber-50 border-amber-200' : 'bg-white'
+                                        }`}
+                                      >
+                                        <input
+                                          type="checkbox"
+                                          checked={estadoAtual}
+                                          onChange={() => toggleModulo(slug, modulo.modulo_id, modulo.ativo_tipo_peca)}
+                                          className="mt-1"
+                                        />
+                                        <div className="flex-1">
+                                          <div className="font-medium">{modulo.titulo}</div>
+                                          {modulo.condicao_ativacao && (
+                                            <div className="text-sm mt-1" style={{ color: C.text500 }}>
+                                              Condição: {modulo.condicao_ativacao}
+                                            </div>
+                                          )}
                                         </div>
-                                      )}
-                                    </div>
-                                  </div>
-                                )
-                              })}
+                                      </div>
+                                    )
+                                  })}
+                                </div>
+                              )}
                             </div>
-                          </div>
-                        ))}
+                          )
+                        })}
                       </div>
                     )}
                   </div>
