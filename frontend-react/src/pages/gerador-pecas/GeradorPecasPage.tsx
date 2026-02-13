@@ -13,6 +13,7 @@ import { ChatPanel } from '@/components/layout/ChatPanel'
 import { TooltipProvider } from '@/components/ui/tooltip'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/components/ui/toast'
+import { cn } from '@/lib/utils'
 import { C, FONT_DOC } from '@/lib/designTokens'
 import { FeedbackStarsCard } from '@/components/shared/FeedbackStarsCard'
 import { FeedbackGateModal } from '@/components/shared/FeedbackGateModal'
@@ -128,7 +129,10 @@ export function GeradorPecasPage() {
         />
 
         {/* Conteudo principal */}
-        <div className="mx-auto w-full max-w-pge flex-1 overflow-y-auto px-4 py-6 sm:px-6 lg:px-10">
+        <div className={cn(
+          'mx-auto w-full max-w-pge flex-1 px-4 py-6 sm:px-6 lg:px-10',
+          h.pageState === 'curadoria_preview' ? 'flex min-h-0 flex-col overflow-hidden' : 'overflow-y-auto',
+        )}>
 
           {/* Estado: Formulario (idle / streaming / erro) */}
           {(h.pageState === 'idle' || h.isFormDisabled) && h.pageState !== 'curadoria_preview' && h.pageState !== 'resultado' && h.pageState !== 'editando' && (
@@ -261,6 +265,7 @@ export function GeradorPecasPage() {
           onCancel={h.voltarParaInicio}
           agentStatuses={h.agentStatuses}
           progressMessage={h.progressMessage}
+          numeroCNJ={h.numeroCNJ_raw}
         />
 
         <ParecerDialog
