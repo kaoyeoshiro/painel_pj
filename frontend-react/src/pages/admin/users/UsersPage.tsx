@@ -208,6 +208,32 @@ export function UsersPage() {
 
   // Salvar usuario (criar ou editar)
   const handleSave = async () => {
+    // Validacao de campos obrigatorios antes de enviar ao backend
+    if (!editingUser) {
+      const missing: string[] = []
+      if (!formData.username?.trim()) missing.push('Username')
+      if (!formData.full_name?.trim()) missing.push('Nome Completo')
+      if (!formData.password?.trim()) missing.push('Senha')
+      if (missing.length > 0) {
+        toast({
+          title: 'Campos obrigatorios',
+          description: `Preencha os campos: ${missing.join(', ')}`,
+          variant: 'destructive',
+        })
+        return
+      }
+    } else {
+      // Edicao — nome completo continua obrigatorio
+      if (!formData.full_name?.trim()) {
+        toast({
+          title: 'Campo obrigatorio',
+          description: 'Nome Completo e obrigatorio',
+          variant: 'destructive',
+        })
+        return
+      }
+    }
+
     try {
       if (editingUser) {
         // Editar usuario existente
@@ -258,11 +284,11 @@ export function UsersPage() {
   const handleDeleteConfirm = async () => {
     if (!deletingUser) return
 
-    // Nao permitir excluir usuario admin
+    // Nao permitir desativar usuario admin
     if (deletingUser.username === 'admin') {
       toast({
         title: 'Operacao nao permitida',
-        description: 'Nao e possivel excluir o usuario admin',
+        description: 'Nao e possivel desativar o usuario admin',
         variant: 'destructive',
       })
       setShowDeleteDialog(false)
@@ -272,14 +298,14 @@ export function UsersPage() {
     try {
       await usersApi.delete(`/${deletingUser.id}`)
       toast({
-        title: 'Usuario excluido',
-        description: 'Usuario excluido com sucesso',
+        title: 'Usuario desativado',
+        description: 'O usuario foi desativado com sucesso. Para reativa-lo, use a opcao Editar.',
       })
       setShowDeleteDialog(false)
       loadUsers()
     } catch (error) {
       toast({
-        title: 'Erro ao excluir usuario',
+        title: 'Erro ao desativar usuario',
         description: error instanceof Error ? error.message : 'Erro desconhecido',
         variant: 'destructive',
       })
@@ -452,7 +478,7 @@ export function UsersPage() {
             onClick={() => handleDeleteClick(user)}
             disabled={user.username === 'admin'}
           >
-            Excluir
+            Desativar
           </Button>
         </div>
       ),
@@ -729,21 +755,22 @@ export function UsersPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Dialog de confirmacao de exclusao */}
+      {/* Dialog de confirmacao de desativacao */}
       <Dialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Confirmar Exclusao</DialogTitle>
+            <DialogTitle>Confirmar Desativacao</DialogTitle>
           </DialogHeader>
           <p>
-            Tem certeza que deseja excluir o usuario <strong>{deletingUser?.username}</strong>?
+            Tem certeza que deseja desativar o usuario <strong>{deletingUser?.username}</strong>?
+            O usuario ficara inativo mas permanecera no sistema.
           </p>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>
               Cancelar
             </Button>
             <Button variant="destructive" onClick={handleDeleteConfirm}>
-              Excluir
+              Desativar
             </Button>
           </DialogFooter>
         </DialogContent>
