@@ -359,7 +359,7 @@
       if (modal) modal.classList.add("hidden");
     }
     slugify(texto) {
-      return texto.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "_").replace(/^_|_$/g, "");
+      return texto.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
     }
     async criarSubcategoria() {
       const nomeInput = document.getElementById("subcategoria-nome");
@@ -575,10 +575,21 @@
       }
       const chatInput = document.getElementById("chat-input");
       if (chatInput) {
-        chatInput.addEventListener("keypress", (e) => {
+        chatInput.addEventListener("keydown", (e) => {
           if (e.key === "Enter" && !e.shiftKey) {
             e.preventDefault();
             this.enviarMensagemChat();
+          }
+        });
+        chatInput.addEventListener("input", () => {
+          chatInput.style.height = "auto";
+          const maxH = 144;
+          if (chatInput.scrollHeight > maxH) {
+            chatInput.style.height = maxH + "px";
+            chatInput.style.overflowY = "auto";
+          } else {
+            chatInput.style.height = chatInput.scrollHeight + "px";
+            chatInput.style.overflowY = "hidden";
           }
         });
       }
@@ -1298,13 +1309,21 @@
         `;
       }
       const chatInput = document.getElementById("chat-input");
-      if (chatInput) chatInput.value = "";
+      if (chatInput) {
+        chatInput.value = "";
+        chatInput.style.height = "";
+        chatInput.style.overflowY = "hidden";
+      }
     }
     async enviarMensagemChat() {
       const input = document.getElementById("chat-input");
       const mensagem = input?.value.trim();
       if (!mensagem || this.isProcessingEdit) return;
-      if (input) input.value = "";
+      if (input) {
+        input.value = "";
+        input.style.height = "";
+        input.style.overflowY = "hidden";
+      }
       this.isProcessingEdit = true;
       this.adicionarMensagemChat("user", mensagem);
       this.mostrarTypingIndicator();

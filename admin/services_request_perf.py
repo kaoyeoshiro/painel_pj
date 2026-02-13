@@ -6,6 +6,7 @@ Servicos para logs de performance detalhados de requests.
 import asyncio
 import logging
 from datetime import datetime, timedelta
+from utils.timezone import get_utc_now
 from typing import Optional, List, Dict, Any
 from sqlalchemy.orm import Session
 from sqlalchemy import func, desc, Integer
@@ -106,7 +107,7 @@ def get_request_perf_logs(
     Returns:
         Lista de RequestPerfLog
     """
-    start_date = datetime.utcnow() - timedelta(hours=hours)
+    start_date = get_utc_now() - timedelta(hours=hours)
 
     query = db.query(RequestPerfLog).filter(
         RequestPerfLog.created_at >= start_date
@@ -140,7 +141,7 @@ def get_request_perf_summary(
     Returns:
         Dicionario com estatisticas
     """
-    start_date = datetime.utcnow() - timedelta(hours=hours)
+    start_date = get_utc_now() - timedelta(hours=hours)
 
     query = db.query(
         func.count(RequestPerfLog.id).label('total'),
@@ -224,7 +225,7 @@ def get_slowest_requests(
     """
     Retorna os requests mais lentos.
     """
-    start_date = datetime.utcnow() - timedelta(hours=hours)
+    start_date = get_utc_now() - timedelta(hours=hours)
 
     query = db.query(RequestPerfLog).filter(
         RequestPerfLog.created_at >= start_date
@@ -245,7 +246,7 @@ def cleanup_old_logs(db: Session, days: int = 7) -> int:
     Returns:
         Numero de logs removidos
     """
-    cutoff = datetime.utcnow() - timedelta(days=days)
+    cutoff = get_utc_now() - timedelta(days=days)
 
     count = db.query(RequestPerfLog).filter(
         RequestPerfLog.created_at < cutoff

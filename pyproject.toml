@@ -40,5 +40,8 @@ markers = [
     "integration: Testes de integracao CI-friendly com dados sinteticos",
     "local_integration: Testes de integracao local com dados reais (requer Excel)",
     "gpu_required: Testes que requerem GPU CUDA real",
-    "slow: Testes lentos (mais de 1 minuto)"
+    "slow: Testes lentos (mais de 1 minuto)",
+    "unit: Testes unitários puros (sem DB/IO)",
+    "security: Testes de segurança (XSS, rate limit, quota, upload, torch)",
+    "e2e: Testes end-to-end"
 ]

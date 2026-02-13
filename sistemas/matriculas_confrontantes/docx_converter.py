@@ -12,6 +12,7 @@ Autor: Portal PGE-MS
 import os
 import re
 from datetime import datetime
+from utils.timezone import now_local
 from pathlib import Path
 from typing import Optional, Dict, Any
 
@@ -263,7 +264,7 @@ def gerar_relatorio_docx(
         metadata["modelo"] = modelo
 
     # Adiciona data/hora atual
-    metadata["data_analise"] = datetime.now().strftime("%d/%m/%Y %H:%M")
+    metadata["data_analise"] = now_local().strftime("%d/%m/%Y %H:%M")
 
     return converter.convert_relatorio(
         relatorio_texto=relatorio_texto,

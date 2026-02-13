@@ -27,6 +27,7 @@ fitz.TOOLS.mupdf_warnings(False)  # Suprime warnings de imagens JPEG2000 corromp
 # Usar lock centralizado para TODAS as operações com fitz
 # Sem isso, múltiplas threads causam Segmentation Fault em produção.
 from utils.pymupdf_lock import pymupdf_lock as _PYMUPDF_LOCK
+from utils.timezone import get_utc_now
 
 from sqlalchemy.orm import Session
 
@@ -54,7 +55,7 @@ class DocumentClassification:
     fallback_aplicado: bool = False
     fallback_motivo: Optional[str] = None
     erro: Optional[str] = None
-    timestamp: datetime = field(default_factory=datetime.utcnow)
+    timestamp: datetime = field(default_factory=get_utc_now)
 
     def to_dict(self) -> Dict[str, Any]:
         """Converte para dicionário para serialização."""

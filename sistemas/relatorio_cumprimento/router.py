@@ -21,15 +21,15 @@ import time
 from datetime import datetime, timezone, timedelta
 from typing import Optional, List, Dict, AsyncGenerator
 
-from fastapi import APIRouter, HTTPException, Depends, Query
+from fastapi import APIRouter, HTTPException, Depends, Query, Request
 from fastapi.responses import FileResponse, StreamingResponse
-from pydantic import BaseModel
 from sqlalchemy.orm import Session
-
+from app.repositories.sqlalchemy.session_ops import session_query
 from auth.dependencies import get_current_active_user, get_current_user_from_token_or_query
 from auth.models import User
 from database.connection import get_db
 from utils.timezone import to_iso_utc
+from .schemas import ProcessarRequest, ExportarDocxRequest, EditarRelatorioRequest, FeedbackRequest
 
 from .models import (
     GeracaoRelatorioCumprimento,
@@ -40,6 +40,10 @@ from .models import (
     InfoTransitoJulgado
 )
 from .services import RelatorioCumprimentoService
+
+# SECURITY: Rate Limiting para endpoints de IA
+from utils.rate_limit import limiter, LIMITS, get_user_identifier
+from utils.quota_manager import check_ai_quota
 
 # Detector de Agravo de Instrumento
 from sistemas.pedido_calculo.document_downloader import DocumentDownloader
@@ -59,42 +63,13 @@ os.makedirs(TEMP_DIR, exist_ok=True)
 
 
 # ============================================
-# Request/Response Models
-# ============================================
-
-class ProcessarRequest(BaseModel):
-    """Request para processar processo de cumprimento"""
-    numero_cnj: str
-    sobrescrever_existente: bool = False
-
-
-class ExportarDocxRequest(BaseModel):
-    """Request para exportar markdown para DOCX"""
-    markdown: str
-    numero_processo: Optional[str] = None
-
-
-class EditarRelatorioRequest(BaseModel):
-    """Request para editar relatório via chat"""
-    geracao_id: int
-    mensagem_usuario: str
-
-
-class FeedbackRequest(BaseModel):
-    """Request para enviar feedback sobre o relatório gerado"""
-    geracao_id: int
-    avaliacao: str  # 'correto', 'parcial', 'incorreto', 'erro_ia'
-    nota: Optional[int] = None
-    comentario: Optional[str] = None
-    campos_incorretos: Optional[list] = None
-
-
-# ============================================
 # Endpoints
 # ============================================
 
 @router.post("/processar-stream")
+@limiter.limit(LIMITS["ai"], key_func=get_user_identifier)
 async def processar_stream(
+    request: Request,
     req: ProcessarRequest,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
@@ -109,6 +84,7 @@ async def processar_stream(
     4. Localiza trânsito em julgado
     5. Gera relatório com IA
     """
+    await check_ai_quota(current_user)
     import logging
     logger = logging.getLogger(__name__)
 
@@ -424,7 +400,7 @@ async def processar_stream(
                     logger.error(f"{log_prefix} GERACAO_ERROR | geracao_id={geracao_id} | error={event['error']}")
                     yield f"data: {json.dumps({'tipo': 'erro', 'mensagem': event['error']})}\n\n"
                     # Re-fetch geracao para garantir estado atualizado da sessão
-                    geracao = db.query(GeracaoRelatorioCumprimento).filter(
+                    geracao = session_query(db, GeracaoRelatorioCumprimento).filter(
                         GeracaoRelatorioCumprimento.id == geracao_id
                     ).first()
                     if geracao:
@@ -442,7 +418,7 @@ async def processar_stream(
                 )
                 yield f"data: {json.dumps({'tipo': 'erro', 'mensagem': 'Relatório gerado está vazio. Por favor, tente novamente.'})}\n\n"
                 # Re-fetch geracao para garantir estado atualizado da sessão
-                geracao = db.query(GeracaoRelatorioCumprimento).filter(
+                geracao = session_query(db, GeracaoRelatorioCumprimento).filter(
                     GeracaoRelatorioCumprimento.id == geracao_id
                 ).first()
                 if geracao:
@@ -452,7 +428,7 @@ async def processar_stream(
                 return
 
             # Re-fetch geracao para garantir estado atualizado da sessão após streaming longo
-            geracao = db.query(GeracaoRelatorioCumprimento).filter(
+            geracao = session_query(db, GeracaoRelatorioCumprimento).filter(
                 GeracaoRelatorioCumprimento.id == geracao_id
             ).first()
 
@@ -490,25 +466,34 @@ async def processar_stream(
             yield f"data: {json.dumps({'tipo': 'sucesso', 'geracao_id': geracao_id, 'request_id': request_id, 'dados_cumprimento': dados_cumprimento.to_dict(), 'dados_principal': dados_principal.to_dict() if dados_principal else None, 'relatorio_markdown': relatorio_completo, 'documentos_baixados': [d.to_dict() for d in documentos], 'transito_julgado': transito_julgado.to_dict()})}\n\n"
 
         except Exception as e:
-            import traceback
-            traceback.print_exc()
-            tempo_total = int(time.time() - tempo_inicio)
-            logger.error(
-                f"{log_prefix} PROCESSAR_STREAM_EXCEPTION | "
-                f"geracao_id={geracao_id} | "
-                f"tempo_total={tempo_total}s | "
-                f"error={str(e)}"
-            )
-            yield f"data: {json.dumps({'tipo': 'erro', 'mensagem': f'Erro inesperado: {str(e)}'})}\n\n"
+            # Safety net: garante que o evento de erro SEMPRE e enviado ao frontend,
+            # mesmo que logging/traceback falhe (ex: charmap encoding no Windows)
+            erro_msg = str(e)
+            try:
+                tempo_total = int(time.time() - tempo_inicio)
+                logger.error(
+                    f"{log_prefix} PROCESSAR_STREAM_EXCEPTION | "
+                    f"geracao_id={geracao_id} | "
+                    f"tempo_total={tempo_total}s | "
+                    f"error={erro_msg}",
+                    exc_info=True
+                )
+            except Exception:
+                pass  # Nao deixa falha de logging matar o SSE stream
 
-            if geracao_id:
-                geracao = db.query(GeracaoRelatorioCumprimento).filter(
-                    GeracaoRelatorioCumprimento.id == geracao_id
-                ).first()
-                if geracao:
-                    geracao.status = StatusProcessamento.ERRO.value
-                    geracao.erro_mensagem = str(e)
-                    db.commit()
+            yield f"data: {json.dumps({'tipo': 'erro', 'mensagem': f'Erro durante análise: {erro_msg}'}, ensure_ascii=True)}\n\n"
+
+            try:
+                if geracao_id:
+                    geracao = session_query(db, GeracaoRelatorioCumprimento).filter(
+                        GeracaoRelatorioCumprimento.id == geracao_id
+                    ).first()
+                    if geracao:
+                        geracao.status = StatusProcessamento.ERRO.value
+                        geracao.erro_mensagem = erro_msg[:500]
+                        db.commit()
+            except Exception:
+                pass  # DB cleanup nao deve impedir envio do evento de erro
 
     return StreamingResponse(
         event_generator(),
@@ -857,7 +842,7 @@ async def verificar_processo_existente(
     """
     numero_cnj_limpo = numero_cnj.replace(".", "").replace("-", "").replace("/", "").strip()
 
-    geracao_existente = db.query(GeracaoRelatorioCumprimento).filter(
+    geracao_existente = session_query(db, GeracaoRelatorioCumprimento).filter(
         GeracaoRelatorioCumprimento.numero_cumprimento == numero_cnj_limpo,
         GeracaoRelatorioCumprimento.usuario_id == current_user.id
     ).order_by(GeracaoRelatorioCumprimento.criado_em.desc()).first()
@@ -891,7 +876,7 @@ async def listar_historico(
     """
     Lista histórico de relatórios gerados pelo usuário.
     """
-    historico = db.query(GeracaoRelatorioCumprimento).filter(
+    historico = session_query(db, GeracaoRelatorioCumprimento).filter(
         GeracaoRelatorioCumprimento.usuario_id == current_user.id,
         GeracaoRelatorioCumprimento.status == StatusProcessamento.CONCLUIDO.value
     ).order_by(GeracaoRelatorioCumprimento.criado_em.desc()).limit(50).all()
@@ -924,7 +909,7 @@ async def obter_historico(
     """
     Obtém um relatório específico do histórico.
     """
-    geracao = db.query(GeracaoRelatorioCumprimento).filter(
+    geracao = session_query(db, GeracaoRelatorioCumprimento).filter(
         GeracaoRelatorioCumprimento.id == id,
         GeracaoRelatorioCumprimento.usuario_id == current_user.id
     ).first()
@@ -964,32 +949,34 @@ async def enviar_feedback(
     try:
         from .models import FeedbackRelatorioCumprimento
 
-        geracao = db.query(GeracaoRelatorioCumprimento).filter(
+        geracao = session_query(db, GeracaoRelatorioCumprimento).filter(
             GeracaoRelatorioCumprimento.id == req.geracao_id
         ).first()
 
         if not geracao:
             raise HTTPException(status_code=404, detail="Geração não encontrada")
 
-        feedback_existente = db.query(FeedbackRelatorioCumprimento).filter(
-            FeedbackRelatorioCumprimento.geracao_id == req.geracao_id
+        # Upsert: atualiza se ja existe, cria se nao
+        feedback_existente = session_query(db, FeedbackRelatorioCumprimento).filter(
+            FeedbackRelatorioCumprimento.geracao_id == req.geracao_id,
+            FeedbackRelatorioCumprimento.usuario_id == current_user.id,
         ).first()
 
         if feedback_existente:
-            raise HTTPException(
-                status_code=400,
-                detail="Feedback já foi enviado para esta geração"
+            feedback_existente.nota = req.nota
+            feedback_existente.avaliacao = req.avaliacao
+            feedback_existente.comentario = req.comentario
+            feedback_existente.campos_incorretos = req.campos_incorretos
+        else:
+            feedback = FeedbackRelatorioCumprimento(
+                geracao_id=req.geracao_id,
+                usuario_id=current_user.id,
+                nota=req.nota,
+                avaliacao=req.avaliacao,
+                comentario=req.comentario,
+                campos_incorretos=req.campos_incorretos,
             )
-
-        feedback = FeedbackRelatorioCumprimento(
-            geracao_id=req.geracao_id,
-            usuario_id=current_user.id,
-            avaliacao=req.avaliacao,
-            nota=req.nota,
-            comentario=req.comentario,
-            campos_incorretos=req.campos_incorretos
-        )
-        db.add(feedback)
+            db.add(feedback)
         db.commit()
 
         return {"success": True, "message": "Feedback registrado com sucesso"}
@@ -1010,7 +997,7 @@ async def obter_feedback(
     try:
         from .models import FeedbackRelatorioCumprimento
 
-        feedback = db.query(FeedbackRelatorioCumprimento).filter(
+        feedback = session_query(db, FeedbackRelatorioCumprimento).filter(
             FeedbackRelatorioCumprimento.geracao_id == geracao_id
         ).first()
 
@@ -1028,3 +1015,8 @@ async def obter_feedback(
 
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+
+
+

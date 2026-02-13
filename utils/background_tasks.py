@@ -29,6 +29,7 @@ from typing import Any, Callable, Coroutine, Optional, TypeVar, List
 from functools import wraps
 from contextlib import contextmanager
 from datetime import datetime
+from utils.timezone import get_utc_now
 
 # Tenta usar logging estruturado se disponível
 try:
@@ -193,7 +194,7 @@ def get_background_stats() -> dict:
         "completed_total": _completed_count,
         "failed_total": _failed_count,
         "in_memory": len(_pending_tasks),
-        "timestamp": datetime.utcnow().isoformat()
+        "timestamp": get_utc_now().isoformat()
     }
 
 

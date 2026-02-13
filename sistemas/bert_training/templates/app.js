@@ -1238,14 +1238,34 @@ Acompanhe na aba "Acompanhar".`);
   }
   async function startInferenceServer() {
     try {
+      showToast("Iniciando servidor de infer\xEAncia...", "info");
       const response = await apiCall("/api/workers/start-inference", { method: "POST" });
       if (response && response.ok) {
-        showToast("Servidor de infer\xEAncia iniciando...", "success");
-        setTimeout(() => checkWorkerConnection(), 3e3);
+        showToast("Servidor iniciado. Aguardando conexao...", "success");
+        // Polling ate conectar (max 15s)
+        let attempts = 0;
+        const poll = setInterval(async () => {
+          attempts++;
+          try {
+            const health = await fetch(`${WORKER_URL}/health`, { method: "GET" });
+            if (health.ok) {
+              clearInterval(poll);
+              checkWorkerConnection();
+              showToast("Servidor de infer\xEAncia conectado!", "success");
+            }
+          } catch {}
+          if (attempts > 15) {
+            clearInterval(poll);
+            checkWorkerConnection();
+            showToast("Servidor pode estar demorando para iniciar. Verifique bert_inference.log", "warning");
+          }
+        }, 1000);
+      } else {
+        showToast("Falha ao iniciar servidor. Verifique os logs.", "error");
       }
     } catch (e) {
       console.error("Erro ao iniciar servidor de infer\xEAncia:", e);
-      showToast("Erro ao iniciar servidor", "error");
+      showToast("Erro ao iniciar servidor: " + e.message, "error");
     }
   }
   async function loadCompletedModels() {

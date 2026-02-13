@@ -134,7 +134,7 @@ class TestSlugGeneration(unittest.TestCase):
         """
         TESTE: Criar variável com slug base inexistente => não adiciona sufixo.
         """
-        from sistemas.gerador_pecas.router_extraction import _get_unique_slug
+        from sistemas.gerador_pecas.extraction_helpers import _get_unique_slug
 
         # Slug que não existe
         slug = _get_unique_slug(self.db, "novo_slug")
@@ -145,7 +145,7 @@ class TestSlugGeneration(unittest.TestCase):
         """
         TESTE: Criar variável com slug base existente ATIVO => adiciona _2.
         """
-        from sistemas.gerador_pecas.router_extraction import _get_unique_slug
+        from sistemas.gerador_pecas.extraction_helpers import _get_unique_slug
 
         categoria = self._criar_categoria()
 
@@ -163,7 +163,7 @@ class TestSlugGeneration(unittest.TestCase):
 
         Este é o cenário principal do Bug 1.
         """
-        from sistemas.gerador_pecas.router_extraction import _get_unique_slug
+        from sistemas.gerador_pecas.extraction_helpers import _get_unique_slug
 
         categoria = self._criar_categoria()
 
@@ -181,7 +181,7 @@ class TestSlugGeneration(unittest.TestCase):
         TESTE: ensure_variable_for_question deve REATIVAR variável inativa,
         não criar nova com sufixo.
         """
-        from sistemas.gerador_pecas.router_extraction import ensure_variable_for_question
+        from sistemas.gerador_pecas.extraction_helpers import ensure_variable_for_question
         from sistemas.gerador_pecas.models_extraction import ExtractionVariable
 
         categoria = self._criar_categoria("decisoes", namespace_prefix="decisoes")
@@ -218,7 +218,7 @@ class TestSlugGeneration(unittest.TestCase):
         TESTE: Se existirem múltiplas variáveis inativas com mesmo slug base,
         a primeira deve ser reativada.
         """
-        from sistemas.gerador_pecas.router_extraction import _get_unique_slug
+        from sistemas.gerador_pecas.extraction_helpers import _get_unique_slug
 
         categoria = self._criar_categoria()
 
@@ -234,7 +234,7 @@ class TestSlugGeneration(unittest.TestCase):
         """
         TESTE: Se existe slug ATIVO e slug_2 INATIVO, deve gerar slug_3.
         """
-        from sistemas.gerador_pecas.router_extraction import _get_unique_slug
+        from sistemas.gerador_pecas.extraction_helpers import _get_unique_slug
 
         categoria = self._criar_categoria()
 

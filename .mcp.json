@@ -1,0 +1,7 @@
+{
+  "github": {
+    "type": "stdio",
+    "command": "gh",
+    "args": ["mcp", "serve"]
+  }
+}

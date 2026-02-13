@@ -249,8 +249,8 @@ class XMLParserTJMS:
 
     def _extrair_documentos(self, processo: ProcessoTJMS) -> None:
         """Extrai metadados de documentos."""
-        for doc_node in self._root.findall(".//ns2:documento", NS):
-            doc = self._parse_documento(doc_node)
+        for idx, doc_node in enumerate(self._root.findall(".//ns2:documento", NS)):
+            doc = self._parse_documento(doc_node, idx)
             if doc:
                 processo.documentos.append(doc)
 
@@ -260,7 +260,7 @@ class XMLParserTJMS:
             reverse=True
         )
 
-    def _parse_documento(self, doc_node: ET.Element) -> Optional[DocumentoMetadata]:
+    def _parse_documento(self, doc_node: ET.Element, index: int = 0) -> Optional[DocumentoMetadata]:
         """Parseia metadados de um documento."""
         doc_id = doc_node.attrib.get("idDocumento", "")
         if not doc_id:
@@ -291,6 +291,12 @@ class XMLParserTJMS:
         if sigilo_str.isdigit():
             nivel_sigilo = int(sigilo_str)
 
+        # Ordem de insercao (do atributo XML ou indice de parsing)
+        ordem = index
+        ordem_str = doc_node.attrib.get("ordem", "")
+        if ordem_str and ordem_str.isdigit():
+            ordem = int(ordem_str)
+
         return DocumentoMetadata(
             id=doc_id,
             tipo_codigo=tipo_codigo,
@@ -299,6 +305,7 @@ class XMLParserTJMS:
             data_juntada=data_juntada,
             mimetype=mimetype,
             nivel_sigilo=nivel_sigilo,
+            ordem=ordem,
         )
 
     def _detectar_processo_origem(self, processo: ProcessoTJMS) -> None:

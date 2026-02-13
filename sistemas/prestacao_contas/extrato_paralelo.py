@@ -369,7 +369,7 @@ class ExtratorParalelo:
                         )
 
                         import xml.etree.ElementTree as ET
-                        root = ET.fromstring(xml_docs)
+                        root = ET.fromstring(xml_docs)  # nosec B314 - XML vem de API SOAP interna (TJ-MS)
                         conteudo_bytes = None
 
                         for elem in root.iter():

@@ -287,6 +287,20 @@ class JobProgressUpdate(BaseModel):
     error_message: Optional[str] = None
 
 
+class JobCompleteRequest(BaseModel):
+    """Dados para marcar job como completo."""
+    worker_token: str
+    final_accuracy: float
+    final_macro_f1: float
+    final_weighted_f1: float
+    model_fingerprint: Optional[str] = None
+
+
+class JobStatusRequest(BaseModel):
+    """Dados para verificar status do job."""
+    worker_token: str
+
+
 # ==================== Metric Schemas ====================
 
 class MetricCreate(BaseModel):

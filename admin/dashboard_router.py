@@ -13,6 +13,7 @@ Autor: LAB/PGE-MS
 """
 
 from datetime import datetime
+from utils.timezone import get_utc_now
 from typing import Dict, Any, Optional
 
 from fastapi import APIRouter, Depends, Request
@@ -53,7 +54,7 @@ async def get_dashboard_metrics(
     cache_status = _get_cache_status()
 
     return {
-        "timestamp": datetime.utcnow().isoformat() + "Z",
+        "timestamp": get_utc_now().isoformat() + "Z",
         "metrics": metrics,
         "circuit_breakers": cb_status,
         "cache": cache_status

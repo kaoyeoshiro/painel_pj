@@ -26,6 +26,7 @@ from sqlalchemy.orm import Session
 
 from .models_extraction import ExtractionVariable, ExtractionQuestion, PromptVariableUsage
 from .models_resumo_json import CategoriaResumoJSON
+from utils.timezone import get_utc_now
 
 logger = logging.getLogger(__name__)
 
@@ -183,7 +184,7 @@ class SlugRenameService:
                 # Move o valor para a nova chave
                 schema[new_slug] = schema.pop(old_slug)
                 categoria.formato_json = json.dumps(schema, ensure_ascii=False, indent=2)
-                categoria.atualizado_em = datetime.utcnow()
+                categoria.atualizado_em = get_utc_now()
                 result.categoria_json_atualizada = True
                 result.detalhes.append(f"JSON da categoria '{categoria.nome}' atualizado")
                 logger.info(f"[SLUG-RENAME] JSON categoria {categoria.id} atualizado: {old_slug} -> {new_slug}")
@@ -201,7 +202,7 @@ class SlugRenameService:
 
         if pergunta and pergunta.nome_variavel_sugerido == old_slug:
             pergunta.nome_variavel_sugerido = new_slug
-            pergunta.atualizado_em = datetime.utcnow()
+            pergunta.atualizado_em = get_utc_now()
             result.perguntas_atualizadas += 1
             result.detalhes.append(f"Pergunta id={pergunta.id} atualizada")
 
@@ -236,7 +237,7 @@ class SlugRenameService:
                     atualizado = True
 
             if atualizado:
-                prompt.atualizado_em = datetime.utcnow()
+                prompt.atualizado_em = get_utc_now()
                 result.prompts_atualizados += 1
                 result.detalhes.append(f"Prompt '{prompt.nome}' (id={prompt.id}) atualizado")
                 logger.info(f"[SLUG-RENAME] Prompt {prompt.id} atualizado: {old_slug} -> {new_slug}")
@@ -253,7 +254,7 @@ class SlugRenameService:
                 )
                 if count > 0:
                     regra.regra_deterministica = nova_regra
-                    regra.atualizado_em = datetime.utcnow()
+                    regra.atualizado_em = get_utc_now()
                     result.regras_tipo_peca_atualizadas += 1
                     result.detalhes.append(
                         f"Regra tipo_peca '{regra.tipo_peca}' do modulo {regra.modulo_id} atualizada"
@@ -312,7 +313,7 @@ class SlugRenameService:
 
         for var in variaveis_dependentes:
             var.depends_on_variable = new_slug
-            var.atualizado_em = datetime.utcnow()
+            var.atualizado_em = get_utc_now()
             result.variaveis_dependentes_atualizadas += 1
 
             # Atualiza dependency_config se existir
@@ -333,7 +334,7 @@ class SlugRenameService:
 
         for perg in perguntas_dependentes:
             perg.depends_on_variable = new_slug
-            perg.atualizado_em = datetime.utcnow()
+            perg.atualizado_em = get_utc_now()
             result.perguntas_dependentes_atualizadas += 1
 
             # Atualiza dependency_config se existir
@@ -373,7 +374,7 @@ class SlugRenameService:
                     )
                     if modificado:
                         var.dependency_config = updated_config
-                        var.atualizado_em = datetime.utcnow()
+                        var.atualizado_em = get_utc_now()
                         logger.info(f"[SLUG-RENAME] dependency_config de variavel {var.id} atualizado")
 
         # Busca perguntas com dependency_config complexo
@@ -391,7 +392,7 @@ class SlugRenameService:
                     )
                     if modificado:
                         perg.dependency_config = updated_config
-                        perg.atualizado_em = datetime.utcnow()
+                        perg.atualizado_em = get_utc_now()
                         logger.info(f"[SLUG-RENAME] dependency_config de pergunta {perg.id} atualizado")
 
     def renomear(
@@ -463,7 +464,7 @@ class SlugRenameService:
 
             # 1. Atualiza a variavel (fonte de verdade)
             variavel.slug = novo_slug
-            variavel.atualizado_em = datetime.utcnow()
+            variavel.atualizado_em = get_utc_now()
             result.detalhes.append(f"Variavel id={variavel.id} atualizada")
 
             # 2. Propaga para JSON da categoria
@@ -702,7 +703,7 @@ class SlugConsistencyChecker:
 
             # Salva JSON atualizado
             categoria.formato_json = json.dumps(schema, ensure_ascii=False, indent=2)
-            categoria.atualizado_em = datetime.utcnow()
+            categoria.atualizado_em = get_utc_now()
             if user_id:
                 categoria.atualizado_por = user_id
 

@@ -1,0 +1,176 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest'
+import { render, screen, waitFor } from '@testing-library/react'
+import { UsersPage } from '../UsersPage'
+import { usersApi } from '@/lib/api'
+
+// Mock do usersApi
+vi.mock('@/lib/api', () => ({
+  usersApi: {
+    get: vi.fn(),
+    post: vi.fn(),
+    put: vi.fn(),
+    delete: vi.fn(),
+  },
+  getToken: vi.fn(() => null),
+}))
+
+// Mock do toast
+vi.mock('@/hooks/use-toast', () => ({
+  useToast: () => ({
+    toast: vi.fn(),
+  }),
+}))
+
+// Mock useRouterState to return /admin/ path so PageHeader renders admin variant
+vi.mock('@tanstack/react-router', () => ({
+  useNavigate: () => vi.fn(),
+  useRouterState: (opts?: { select?: (s: unknown) => unknown }) => {
+    const state = { location: { pathname: '/admin/users' } }
+    return opts?.select ? opts.select(state) : state
+  },
+  Link: ({ children, to, ...props }: Record<string, unknown>) => {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports -- vi.mock factory é hoisted; import estático não disponível
+    const { createElement } = require('react') as typeof import('react')
+    return createElement('a', { href: to, ...props }, children)
+  },
+}))
+
+describe('UsersPage', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  it('renders title and "Novo Usuario" button', async () => {
+    // Mock API retornando array vazio
+    vi.mocked(usersApi.get).mockResolvedValue([])
+
+    render(<UsersPage />)
+
+    // Verificar titulo (PageHeader renders h2 in admin mode)
+    expect(screen.getByText('Gerenciamento de Usuarios')).toBeInTheDocument()
+
+    // Verificar botao de criar usuario
+    expect(screen.getByRole('button', { name: /novo usuario/i })).toBeInTheDocument()
+
+    // Aguardar carregamento dos dados
+    await waitFor(() => {
+      expect(usersApi.get).toHaveBeenCalledWith('?skip=0&limit=200')
+    })
+  })
+
+  it('shows user table with data', async () => {
+    // Mock API retornando usuarios
+    const mockUsers = [
+      {
+        id: 1,
+        username: 'john.doe',
+        full_name: 'John Doe',
+        email: 'john@example.com',
+        setor: 'TI',
+        role: 'admin' as const,
+        is_active: true,
+        created_at: '2024-01-01T00:00:00Z',
+        sistemas_permitidos: ['gerador_pecas'],
+      },
+      {
+        id: 2,
+        username: 'jane.smith',
+        full_name: 'Jane Smith',
+        email: null,
+        setor: 'Juridico',
+        role: 'user' as const,
+        is_active: true,
+        created_at: '2024-01-02T00:00:00Z',
+        sistemas_permitidos: null,
+      },
+    ]
+    vi.mocked(usersApi.get).mockResolvedValue(mockUsers)
+
+    render(<UsersPage />)
+
+    // Aguardar carregamento dos dados
+    await waitFor(() => {
+      expect(screen.getByText('john.doe')).toBeInTheDocument()
+    })
+
+    // Verificar dados da tabela
+    expect(screen.getByText('john.doe')).toBeInTheDocument()
+    expect(screen.getByText('John Doe')).toBeInTheDocument()
+    expect(screen.getByText('jane.smith')).toBeInTheDocument()
+    expect(screen.getByText('Jane Smith')).toBeInTheDocument()
+    expect(screen.getByText('TI')).toBeInTheDocument()
+    expect(screen.getByText('Juridico')).toBeInTheDocument()
+
+    // Verificar badges de perfil
+    expect(screen.getByText('Admin')).toBeInTheDocument()
+    // "Usuario" appears both as table header and as badge text, use getAllByText
+    expect(screen.getAllByText('Usuario').length).toBeGreaterThanOrEqual(2)
+
+    // Verificar botoes de acao
+    const editButtons = screen.getAllByRole('button', { name: /editar/i })
+    expect(editButtons).toHaveLength(2)
+
+    const resetButtons = screen.getAllByRole('button', { name: /resetar senha/i })
+    expect(resetButtons).toHaveLength(2)
+
+    const deleteButtons = screen.getAllByRole('button', { name: /excluir/i })
+    expect(deleteButtons).toHaveLength(2)
+  })
+
+  it('shows loading state', () => {
+    // Mock API com delay para simular loading
+    vi.mocked(usersApi.get).mockImplementation(
+      () => new Promise((resolve) => setTimeout(() => resolve([]), 100))
+    )
+
+    render(<UsersPage />)
+
+    // Verificar que a tabela esta em estado de loading
+    expect(screen.getByText('Gerenciamento de Usuarios')).toBeInTheDocument()
+  })
+
+  it('handles API error gracefully', async () => {
+    // Mock API retornando erro
+    vi.mocked(usersApi.get).mockRejectedValue(new Error('Erro ao carregar usuarios'))
+
+    const { container } = render(<UsersPage />)
+
+    // Aguardar tentativa de carregamento
+    await waitFor(() => {
+      expect(usersApi.get).toHaveBeenCalledWith('?skip=0&limit=200')
+    })
+
+    // Verificar que a pagina ainda renderiza
+    expect(screen.getByText('Gerenciamento de Usuarios')).toBeInTheDocument()
+    expect(container).toBeTruthy()
+  })
+
+  it('disables delete button for admin user', async () => {
+    // Mock API retornando usuario admin
+    const mockUsers = [
+      {
+        id: 1,
+        username: 'admin',
+        full_name: 'Administrator',
+        email: 'admin@example.com',
+        setor: null,
+        role: 'admin' as const,
+        is_active: true,
+        created_at: '2024-01-01T00:00:00Z',
+        sistemas_permitidos: null,
+      },
+    ]
+    vi.mocked(usersApi.get).mockResolvedValue(mockUsers)
+
+    render(<UsersPage />)
+
+    // Aguardar carregamento dos dados
+    await waitFor(() => {
+      expect(screen.getByText('admin')).toBeInTheDocument()
+    })
+
+    // Verificar que o botao de excluir esta desabilitado
+    const deleteButton = screen.getByRole('button', { name: /excluir/i })
+    expect(deleteButton).toBeDisabled()
+  })
+})

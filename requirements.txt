@@ -8,9 +8,6 @@ uvicorn>=0.27.0
 python-multipart>=0.0.9
 werkzeug>=3.0.0
 
-# Templates
-Jinja2>=3.1.0
-
 # Banco de Dados
 sqlalchemy>=2.0.0
 psycopg2-binary>=2.9.0
@@ -28,7 +25,6 @@ python-dotenv>=1.0.1
 requests>=2.32.0
 httpx[http2]>=0.27.0
 aiohttp>=3.9.0
-nest_asyncio>=1.6.0
 
 # Rate Limiting
 slowapi>=0.1.9  # SECURITY: Proteção contra DoS/brute-force
@@ -42,7 +38,7 @@ defusedxml>=0.7.1  # SECURITY: Proteção contra XXE
 
 # Geração de documentos
 python-docx>=1.1.0
-docx2pdf>=0.1.8  # Conversão DOCX->PDF via MS Word (Windows)
+docx2pdf>=0.1.8  # Conversão DOCX->PDF via MS Word (Windows only, opcional)
 
 # PDF e imagens (Matrículas Confrontantes e Agente TJ-MS)
 PyMuPDF>=1.23.0
@@ -52,18 +48,21 @@ Pillow>=10.0.0
 # Busca vetorial (embeddings)
 numpy>=1.24.0
 
-# BERT Training (análise de dados)
+# Machine Learning (BERT Training)
 pandas>=2.0.0
 openpyxl>=3.1.0
+torch>=2.0.0
+transformers>=4.30.0
+scikit-learn>=1.3.0
 
 # Scrapper de Subconta (Prestação de Contas)
 playwright>=1.40.0
-pytest-playwright>=0.4.0  # Para testes E2E de frontend
-rich>=13.0.0
+
+# Timezone
+pytz>=2024.1
 
 # ==================================================
 # Instalação
 # ==================================================
 # pip install -r requirements.txt
 # playwright install chromium  # Após instalar playwright
-pytz>=2024.1

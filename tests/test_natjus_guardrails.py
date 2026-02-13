@@ -13,6 +13,9 @@ Ref: Incidente de produção 2026-02-06 (processo 0828724-58.2025.8.12.0110)
 """
 
 import pytest
+
+pytestmark = pytest.mark.unit
+
 from unittest.mock import MagicMock, patch
 from dataclasses import dataclass, field
 from typing import Optional, List

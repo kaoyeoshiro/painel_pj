@@ -644,7 +644,7 @@ async def baixar_documentos_paralelo(
 
 def extrair_documentos_xml(xml_text: str) -> List[DocumentoTJMS]:
     """Extrai lista de documentos do XML de resposta"""
-    root = ET.fromstring(xml_text)
+    root = ET.fromstring(xml_text)  # nosec B314 - XML vem de API SOAP interna (TJ-MS)
     docs = []
 
     for elem in root.iter():
@@ -719,8 +719,8 @@ def extrair_dados_processo_xml(xml_text: str) -> Optional[DadosProcesso]:
         DadosProcesso com polo ativo, polo passivo e demais dados
     """
     try:
-        root = ET.fromstring(xml_text)
-        
+        root = ET.fromstring(xml_text)  # nosec B314 - XML vem de API SOAP interna (TJ-MS)
+
         # Busca o elemento dadosBasicos
         dados_basicos = None
         for elem in root.iter():
@@ -913,7 +913,7 @@ def extrair_info_processo_xml(xml_text: str) -> dict:
     }
 
     try:
-        root = ET.fromstring(xml_text)
+        root = ET.fromstring(xml_text)  # nosec B314 - XML vem de API SOAP interna (TJ-MS)
 
         # Procurar classeProcessual no XML
         for elem in root.iter():
@@ -986,7 +986,7 @@ def extrair_conteudo_pdf(pdf_bytes: bytes, max_paginas_imagem: int = 10) -> Cont
                 for page in doc:
                     texto_completo += page.get_text()
 
-                # Se tem texto suficiente (mais de 200 chars), retorna texto
+                # Se tem texto suficiente (mais de 200 chars), tenta extrair texto
                 if len(texto_completo.strip()) > 200:
                     # Usa pymupdf4llm para extração otimizada
                     try:
@@ -998,11 +998,18 @@ def extrair_conteudo_pdf(pdf_bytes: bytes, max_paginas_imagem: int = 10) -> Cont
                             md_text = pymupdf4llm.to_markdown(doc)
                         finally:
                             sys.stderr = old_stderr
-                        # pymupdf4llm já formata bem, mas aplicamos normalização leve
-                        return ConteudoPDF(tipo='texto', conteudo=md_text, paginas=num_paginas)
+                        # Re-valida: pymupdf4llm pode strip watermarks/headers,
+                        # resultando em texto muito curto mesmo que get_text() tenha > 200.
+                        # Ex: PDFs escaneados com assinatura digital têm ~450 chars em get_text()
+                        # mas apenas "fls. N" (~6 chars) em pymupdf4llm.
+                        if len(md_text.strip()) > 200:
+                            return ConteudoPDF(tipo='texto', conteudo=md_text, paginas=num_paginas)
+                        # Texto insuficiente após pymupdf4llm → fall through para imagens
                     except Exception:
-                        # Fallback com normalização
-                        return ConteudoPDF(tipo='texto', conteudo=_normalizar_texto_pdf(texto_completo), paginas=num_paginas)
+                        # Fallback com normalização - também re-valida
+                        texto_normalizado = _normalizar_texto_pdf(texto_completo)
+                        if len(texto_normalizado.strip()) > 200:
+                            return ConteudoPDF(tipo='texto', conteudo=texto_normalizado, paginas=num_paginas)
 
                 # PDF digitalizado - converter páginas para imagens
                 imagens = []
@@ -1494,7 +1501,7 @@ RESUMOS DOS DOCUMENTOS PARA ANÁLISE:
                     # Filtrar documentos usando códigos permitidos ou filtro legado
                     # Aplica também lógica especial de "primeiro documento" (ex: Petição Inicial)
                     docs_filtrados = []
-                    codigos_primeiro_usados = set()  # Rastreia códigos especiais já usados
+                    codigos_primeiro_lote = {}  # codigo -> data_key do primeiro lote encontrado
 
                     for d in docs_para_analisar:
                         if not d.tipo_documento:
@@ -1507,12 +1514,15 @@ RESUMOS DOS DOCUMENTOS PARA ANÁLISE:
                             continue
 
                         # Verifica se é código de "primeiro documento" (ex: Petição Inicial)
+                        # Permite múltiplas partes do mesmo lote (mesma data/hora = mesma digitalização)
                         if codigo in self.codigos_primeiro_doc:
-                            # Se já pegamos um documento com este código, pula os demais
-                            if codigo in codigos_primeiro_usados:
-                                continue
-                            # Marca como usado
-                            codigos_primeiro_usados.add(codigo)
+                            data_key = d.data_juntada.strftime('%Y%m%d%H%M') if d.data_juntada else 'sem_data'
+                            if codigo in codigos_primeiro_lote:
+                                # Mesmo lote (mesma data/hora) = mesma digitalização, permite
+                                if codigos_primeiro_lote[codigo] != data_key:
+                                    continue  # Lote diferente = documento separado, bloqueia
+                            else:
+                                codigos_primeiro_lote[codigo] = data_key
 
                         docs_filtrados.append(d)
 

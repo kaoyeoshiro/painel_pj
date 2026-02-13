@@ -1,0 +1,24 @@
+# Configuração Ruff para Portal PGE-MS
+# Modo warn-only: não bloqueia CI ainda
+
+[lint]
+select = ["E", "W", "F"]
+
+ignore = [
+    "E501",  # line too long (muitos arquivos legados)
+    "E402",  # module level import not at top (imports condicionais)
+    "F401",  # imported but unused (re-exports intencionais)
+    "W291",  # trailing whitespace
+    "W292",  # no newline at end of file
+    "W293",  # whitespace before ':'
+]
+
+[lint.per-file-ignores]
+"__init__.py" = ["F401"]
+"tests/*" = ["E501"]
+"scripts/*" = ["E402"]
+
+[format]
+quote-style = "double"
+indent-style = "space"
+line-length = 120

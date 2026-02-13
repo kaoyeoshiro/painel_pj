@@ -10,6 +10,7 @@ Autor: LAB/PGE-MS
 import os
 import re
 from datetime import datetime
+from utils.timezone import now_local
 from pathlib import Path
 from typing import Optional, List
 
@@ -295,7 +296,7 @@ def _adicionar_rodape(doc: Document):
     doc.add_paragraph()
 
     # Data em português
-    agora = datetime.now()
+    agora = now_local()
     mes_pt = MESES_PT_BR[agora.month]
     data = f"{agora.day} de {mes_pt} de {agora.year}"
 
@@ -345,7 +346,7 @@ async def converter_parecer_docx(
 
     # Salva documento
     numero_limpo = re.sub(r'[^\d]', '', numero_cnj)
-    nome_arquivo = f"parecer_{numero_limpo}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.docx"
+    nome_arquivo = f"parecer_{numero_limpo}_{now_local().strftime('%Y%m%d_%H%M%S')}.docx"
     caminho = TEMP_DIR / nome_arquivo
 
     doc.save(str(caminho))

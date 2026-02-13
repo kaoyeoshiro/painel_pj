@@ -16,13 +16,17 @@ import json
 import logging
 from typing import Optional, List
 from datetime import datetime
-from fastapi import APIRouter, HTTPException, Depends, Query, BackgroundTasks
+from fastapi import APIRouter, HTTPException, Depends, Query, BackgroundTasks, Request
 from fastapi.responses import FileResponse, StreamingResponse
 from sqlalchemy.orm import Session
-
+from app.repositories.sqlalchemy.session_ops import session_query
 from database.connection import get_db
 from auth.models import User
 from auth.dependencies import get_current_active_user
+
+# SECURITY: Rate Limiting para endpoints de IA
+from utils.rate_limit import limiter, LIMITS, get_user_identifier
+from utils.quota_manager import check_ai_quota
 from sistemas.cumprimento_beta.dependencies import require_beta_access, get_user_pode_acessar_beta
 from sistemas.cumprimento_beta.models import (
     SessaoCumprimentoBeta, DocumentoBeta, JSONResumoBeta,
@@ -139,13 +143,13 @@ async def listar_sessoes(
     db: Session = Depends(get_db)
 ):
     """Lista sessões do usuário atual."""
-    query = db.query(SessaoCumprimentoBeta).filter(
+    query = session_query(db, SessaoCumprimentoBeta).filter(
         SessaoCumprimentoBeta.user_id == current_user.id
     )
 
     # Admin pode ver todas
     if current_user.role == "admin":
-        query = db.query(SessaoCumprimentoBeta)
+        query = session_query(db, SessaoCumprimentoBeta)
 
     total = query.count()
     sessoes = query.order_by(
@@ -179,7 +183,7 @@ def _obter_sessao_usuario(
     current_user: User
 ) -> SessaoCumprimentoBeta:
     """Obtém sessão verificando permissão do usuário"""
-    sessao = db.query(SessaoCumprimentoBeta).filter(
+    sessao = session_query(db, SessaoCumprimentoBeta).filter(
         SessaoCumprimentoBeta.id == sessao_id
     ).first()
 
@@ -195,15 +199,15 @@ def _obter_sessao_usuario(
 
 def _sessao_para_response(sessao: SessaoCumprimentoBeta, db: Session) -> StatusSessaoResponse:
     """Converte sessão para response"""
-    tem_consolidacao = db.query(ConsolidacaoBeta).filter(
+    tem_consolidacao = session_query(db, ConsolidacaoBeta).filter(
         ConsolidacaoBeta.sessao_id == sessao.id
     ).count() > 0
 
-    total_conversas = db.query(ConversaBeta).filter(
+    total_conversas = session_query(db, ConversaBeta).filter(
         ConversaBeta.sessao_id == sessao.id
     ).count()
 
-    total_pecas = db.query(PecaGeradaBeta).filter(
+    total_pecas = session_query(db, PecaGeradaBeta).filter(
         PecaGeradaBeta.sessao_id == sessao.id
     ).count()
 
@@ -232,7 +236,9 @@ def _sessao_para_response(sessao: SessaoCumprimentoBeta, db: Session) -> StatusS
 # ==========================================
 
 @router.post("/sessoes/{sessao_id}/processar")
+@limiter.limit(LIMITS["ai"], key_func=get_user_identifier)
 async def processar_sessao(
+    request: Request,
     sessao_id: int,
     background_tasks: BackgroundTasks,
     current_user: User = Depends(require_beta_access),
@@ -243,6 +249,7 @@ async def processar_sessao(
 
     Baixa documentos, avalia relevância e extrai JSONs.
     """
+    await check_ai_quota(current_user)
     sessao = _obter_sessao_usuario(db, sessao_id, current_user)
 
     # Verifica se já está processando
@@ -271,7 +278,7 @@ async def _processar_agente1_background(sessao_id: int):
 
     db = SessionLocal()
     try:
-        sessao = db.query(SessaoCumprimentoBeta).filter(
+        sessao = session_query(db, SessaoCumprimentoBeta).filter(
             SessaoCumprimentoBeta.id == sessao_id
         ).first()
 
@@ -294,7 +301,7 @@ async def listar_documentos(
     """Lista documentos de uma sessão com status de relevância."""
     sessao = _obter_sessao_usuario(db, sessao_id, current_user)
 
-    query = db.query(DocumentoBeta).filter(
+    query = session_query(db, DocumentoBeta).filter(
         DocumentoBeta.sessao_id == sessao_id
     )
 
@@ -331,7 +338,7 @@ async def obter_consolidacao(
     """Obtém consolidação de uma sessão."""
     sessao = _obter_sessao_usuario(db, sessao_id, current_user)
 
-    consolidacao = db.query(ConsolidacaoBeta).filter(
+    consolidacao = session_query(db, ConsolidacaoBeta).filter(
         ConsolidacaoBeta.sessao_id == sessao_id
     ).first()
 
@@ -351,7 +358,9 @@ async def obter_consolidacao(
 
 
 @router.post("/sessoes/{sessao_id}/consolidar")
+@limiter.limit(LIMITS["ai"], key_func=get_user_identifier)
 async def iniciar_consolidacao(
+    request: Request,
     sessao_id: int,
     streaming: bool = Query(True),
     current_user: User = Depends(require_beta_access),
@@ -362,6 +371,7 @@ async def iniciar_consolidacao(
 
     Se streaming=True, retorna SSE com chunks.
     """
+    await check_ai_quota(current_user)
     sessao = _obter_sessao_usuario(db, sessao_id, current_user)
 
     if sessao.status not in [StatusSessao.CONSOLIDANDO, StatusSessao.CHATBOT]:
@@ -391,9 +401,11 @@ async def _consolidar_streaming(db: Session, sessao: SessaoCumprimentoBeta):
 # ==========================================
 
 @router.post("/sessoes/{sessao_id}/chat")
+@limiter.limit(LIMITS["ai"], key_func=get_user_identifier)
 async def enviar_mensagem(
+    request: Request,
     sessao_id: int,
-    request: MensagemChatRequest,
+    chat_request: MensagemChatRequest,
     streaming: bool = Query(True),
     current_user: User = Depends(require_beta_access),
     db: Session = Depends(get_db)
@@ -403,6 +415,7 @@ async def enviar_mensagem(
 
     Se streaming=True, retorna SSE com chunks.
     """
+    await check_ai_quota(current_user)
     sessao = _obter_sessao_usuario(db, sessao_id, current_user)
 
     if sessao.status not in [StatusSessao.CHATBOT, StatusSessao.CONSOLIDANDO]:
@@ -413,11 +426,11 @@ async def enviar_mensagem(
 
     if streaming:
         return StreamingResponse(
-            _chat_streaming(db, sessao, request.conteudo),
+            _chat_streaming(db, sessao, chat_request.conteudo),
             media_type="text/event-stream"
         )
 
-    mensagem = await enviar_mensagem_chat(db, sessao, request.conteudo)
+    mensagem = await enviar_mensagem_chat(db, sessao, chat_request.conteudo)
     return MensagemChatResponse(
         id=mensagem.id,
         role=mensagem.role,
@@ -468,13 +481,16 @@ async def listar_conversas(
 # ==========================================
 
 @router.post("/sessoes/{sessao_id}/gerar-peca")
+@limiter.limit(LIMITS["ai"], key_func=get_user_identifier)
 async def criar_peca(
+    request: Request,
     sessao_id: int,
-    request: GerarPecaRequest,
+    peca_request: GerarPecaRequest,
     current_user: User = Depends(require_beta_access),
     db: Session = Depends(get_db)
 ):
     """Gera uma peça jurídica."""
+    await check_ai_quota(current_user)
     sessao = _obter_sessao_usuario(db, sessao_id, current_user)
 
     if sessao.status not in [StatusSessao.CHATBOT, StatusSessao.CONSOLIDANDO]:
@@ -486,8 +502,8 @@ async def criar_peca(
     peca = await gerar_peca(
         db=db,
         sessao=sessao,
-        tipo_peca=request.tipo_peca,
-        instrucoes=request.instrucoes_adicionais
+        tipo_peca=peca_request.tipo_peca,
+        instrucoes=peca_request.instrucoes_adicionais
     )
 
     download_url = f"/api/cumprimento-beta/sessoes/{sessao_id}/pecas/{peca.id}/download"
@@ -555,3 +571,8 @@ async def download_peca(
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         filename=filename
     )
+
+
+
+
+

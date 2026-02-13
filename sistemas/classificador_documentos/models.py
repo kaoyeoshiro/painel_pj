@@ -93,8 +93,8 @@ class ProjetoClassificacao(Base):
     usuario_id = Column(Integer, ForeignKey("users.id"), nullable=False)
 
     # Timestamps
-    criado_em = Column(DateTime, default=get_utc_now)
-    atualizado_em = Column(DateTime, default=get_utc_now, onupdate=get_utc_now)
+    criado_em = Column(DateTime(timezone=True), default=get_utc_now)
+    atualizado_em = Column(DateTime(timezone=True), default=get_utc_now, onupdate=get_utc_now)
 
     # Relacionamentos
     codigos = relationship("CodigoDocumentoProjeto", back_populates="projeto", cascade="all, delete-orphan")
@@ -140,7 +140,7 @@ class CodigoDocumentoProjeto(Base):
     ativo = Column(Boolean, default=True)
 
     # Timestamps
-    criado_em = Column(DateTime, default=get_utc_now)
+    criado_em = Column(DateTime(timezone=True), default=get_utc_now)
 
     # Relacionamentos
     projeto = relationship("ProjetoClassificacao", back_populates="codigos")
@@ -178,16 +178,16 @@ class ExecucaoClassificacao(Base):
     usuario_id = Column(Integer, ForeignKey("users.id"), nullable=True)
 
     # Campos para detecção de travamento e recuperação (ADR-0010)
-    ultimo_heartbeat = Column(DateTime, nullable=True)  # Atualizado a cada documento processado
+    ultimo_heartbeat = Column(DateTime(timezone=True), nullable=True)  # Atualizado a cada documento processado
     ultimo_codigo_processado = Column(String(100), nullable=True)  # Código do último documento processado
     tentativas_retry = Column(Integer, default=0)  # Quantas vezes a execução foi retomada
     max_retries = Column(Integer, default=3)  # Limite de retomadas
     rota_origem = Column(String(200), default="/classificador/")  # Rota que iniciou a execução
 
     # Timestamps
-    iniciado_em = Column(DateTime, nullable=True)
-    finalizado_em = Column(DateTime, nullable=True)
-    criado_em = Column(DateTime, default=get_utc_now)
+    iniciado_em = Column(DateTime(timezone=True), nullable=True)
+    finalizado_em = Column(DateTime(timezone=True), nullable=True)
+    criado_em = Column(DateTime(timezone=True), default=get_utc_now)
 
     # Relacionamentos
     projeto = relationship("ProjetoClassificacao", back_populates="execucoes")
@@ -200,8 +200,15 @@ class ExecucaoClassificacao(Base):
             return False
         if not self.ultimo_heartbeat:
             return False
-        from datetime import timedelta
-        return (get_utc_now() - self.ultimo_heartbeat) > timedelta(minutes=5)
+        from datetime import timedelta, timezone
+        agora = get_utc_now()
+        heartbeat = self.ultimo_heartbeat
+        # Normaliza para comparação segura (naive vs aware)
+        if heartbeat.tzinfo is None:
+            heartbeat = heartbeat.replace(tzinfo=timezone.utc)
+        if agora.tzinfo is None:
+            agora = agora.replace(tzinfo=timezone.utc)
+        return (agora - heartbeat) > timedelta(minutes=5)
 
     @property
     def pode_retomar(self) -> bool:
@@ -258,11 +265,11 @@ class ResultadoClassificacao(Base):
     erro_mensagem = Column(Text, nullable=True)
     erro_stack = Column(Text, nullable=True)  # Stack trace para debug
     tentativas = Column(Integer, default=0)  # Contador de tentativas
-    ultimo_erro_em = Column(DateTime, nullable=True)  # Timestamp do último erro
+    ultimo_erro_em = Column(DateTime(timezone=True), nullable=True)  # Timestamp do ultimo erro
 
     # Timestamps
-    processado_em = Column(DateTime, nullable=True)
-    criado_em = Column(DateTime, default=get_utc_now)
+    processado_em = Column(DateTime(timezone=True), nullable=True)
+    criado_em = Column(DateTime(timezone=True), default=get_utc_now)
 
     # Relacionamentos
     execucao = relationship("ExecucaoClassificacao", back_populates="resultados")
@@ -304,8 +311,8 @@ class PromptClassificacao(Base):
     usuario_id = Column(Integer, ForeignKey("users.id"), nullable=True)
 
     # Timestamps
-    criado_em = Column(DateTime, default=get_utc_now)
-    atualizado_em = Column(DateTime, default=get_utc_now, onupdate=get_utc_now)
+    criado_em = Column(DateTime(timezone=True), default=get_utc_now)
+    atualizado_em = Column(DateTime(timezone=True), default=get_utc_now, onupdate=get_utc_now)
 
     # Relacionamentos
     projetos = relationship("ProjetoClassificacao", back_populates="prompt")
@@ -345,7 +352,7 @@ class LogClassificacaoIA(Base):
     erro = Column(Text, nullable=True)
 
     # Timestamp
-    criado_em = Column(DateTime, default=get_utc_now)
+    criado_em = Column(DateTime(timezone=True), default=get_utc_now)
 
     def __repr__(self):
         return f"<LogClassificacaoIA(id={self.id}, sucesso={self.sucesso})>"

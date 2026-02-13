@@ -73,7 +73,7 @@ class ConfigCache:
     def _make_key(self, *parts) -> str:
         """Cria chave de cache a partir de partes"""
         key_str = ":".join(str(p) for p in parts)
-        return hashlib.md5(key_str.encode()).hexdigest()[:16]
+        return hashlib.md5(key_str.encode(), usedforsecurity=False).hexdigest()[:16]
 
     def get(self, key: str) -> Tuple[bool, Any]:
         """

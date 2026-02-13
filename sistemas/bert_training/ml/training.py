@@ -2,7 +2,7 @@
 """
 Loop de treinamento do classificador BERT.
 
-Adaptado do projeto E:\Projetos\BERT para integração com o portal PGE.
+Adaptado do projeto BERT para integracao com o portal PGE.
 """
 
 import torch

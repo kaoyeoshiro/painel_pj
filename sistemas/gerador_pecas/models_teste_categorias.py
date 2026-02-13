@@ -47,10 +47,10 @@ class TesteDocumento(Base):
     revisado = Column(Boolean, default=False, index=True)
 
     # Timestamps
-    data_criacao = Column(DateTime, default=get_utc_now)
-    data_download = Column(DateTime, nullable=True)
-    data_classificacao = Column(DateTime, nullable=True)
-    data_revisao = Column(DateTime, nullable=True)
+    data_criacao = Column(DateTime(timezone=True), default=get_utc_now)
+    data_download = Column(DateTime(timezone=True), nullable=True)
+    data_classificacao = Column(DateTime(timezone=True), nullable=True)
+    data_revisao = Column(DateTime(timezone=True), nullable=True)
 
     # Constraint: um processo por usuario/categoria
     __table_args__ = (
@@ -94,7 +94,7 @@ class TesteObservacao(Base):
 
     texto = Column(Text, nullable=True)
 
-    data_atualizacao = Column(DateTime, default=get_utc_now, onupdate=get_utc_now)
+    data_atualizacao = Column(DateTime(timezone=True), default=get_utc_now, onupdate=get_utc_now)
 
     __table_args__ = (
         UniqueConstraint('usuario_id', 'categoria_id', name='uq_teste_obs_usuario_categoria'),

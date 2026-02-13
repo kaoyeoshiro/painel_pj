@@ -8,6 +8,7 @@ de saída dos resumos de documentos baseados no código do documento TJ-MS.
 
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from app.repositories.sqlalchemy.session_ops import session_query
 from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, field_validator
 from datetime import datetime
@@ -21,6 +22,7 @@ from auth.models import User
 from auth.dependencies import get_current_active_user
 from sistemas.gerador_pecas.models_resumo_json import CategoriaResumoJSON, CategoriaResumoJSONHistorico
 from admin.perf_context import perf_ctx
+from utils.timezone import get_utc_now
 
 router = APIRouter(prefix="/categorias-resumo-json", tags=["Categorias Resumo JSON"])
 
@@ -175,7 +177,7 @@ def buscar_categoria_por_codigo(db: Session, codigo_documento: int) -> Optional[
     Se não encontrar, retorna a categoria residual.
     """
     # Busca categoria específica para o código
-    categorias = db.query(CategoriaResumoJSON).filter(
+    categorias = session_query(db, CategoriaResumoJSON).filter(
         CategoriaResumoJSON.ativo == True,
         CategoriaResumoJSON.is_residual == False
     ).all()
@@ -185,7 +187,7 @@ def buscar_categoria_por_codigo(db: Session, codigo_documento: int) -> Optional[
             return cat
     
     # Se não achou, retorna a residual
-    residual = db.query(CategoriaResumoJSON).filter(
+    residual = session_query(db, CategoriaResumoJSON).filter(
         CategoriaResumoJSON.ativo == True,
         CategoriaResumoJSON.is_residual == True
     ).first()
@@ -195,7 +197,7 @@ def buscar_categoria_por_codigo(db: Session, codigo_documento: int) -> Optional[
 
 def obter_todas_categorias_ativas(db: Session) -> List[CategoriaResumoJSON]:
     """Retorna todas as categorias ativas ordenadas"""
-    return db.query(CategoriaResumoJSON).filter(
+    return session_query(db, CategoriaResumoJSON).filter(
         CategoriaResumoJSON.ativo == True
     ).order_by(CategoriaResumoJSON.ordem).all()
 
@@ -213,7 +215,7 @@ async def listar_categorias(
 ):
     """Lista todas as categorias de formato de resumo JSON"""
     perf_ctx.set_action("listar_categorias")
-    query = db.query(CategoriaResumoJSON)
+    query = session_query(db, CategoriaResumoJSON)
 
     if apenas_ativos:
         query = query.filter(CategoriaResumoJSON.ativo == True)
@@ -221,7 +223,7 @@ async def listar_categorias(
     # Filtra apenas categorias que possuem variáveis de extração
     if apenas_com_variaveis:
         from sistemas.gerador_pecas.models_extraction import ExtractionVariable
-        subquery = db.query(ExtractionVariable.categoria_id).filter(
+        subquery = session_query(db, ExtractionVariable.categoria_id).filter(
             ExtractionVariable.categoria_id.isnot(None)
         ).distinct().subquery()
         query = query.filter(CategoriaResumoJSON.id.in_(subquery))
@@ -242,7 +244,7 @@ async def listar_codigos_disponiveis(
     from sistemas.gerador_pecas.agente_tjms import CATEGORIAS_MAP
     
     # Busca todas as categorias ativas
-    categorias = db.query(CategoriaResumoJSON).filter(
+    categorias = session_query(db, CategoriaResumoJSON).filter(
         CategoriaResumoJSON.ativo == True
     ).all()
     
@@ -309,7 +311,7 @@ async def obter_categoria(
     """Obtém uma categoria específica"""
     perf_ctx.set_action("obter_categoria")
 
-    categoria = db.query(CategoriaResumoJSON).filter(
+    categoria = session_query(db, CategoriaResumoJSON).filter(
         CategoriaResumoJSON.id == categoria_id
     ).first()
 
@@ -330,7 +332,7 @@ async def criar_categoria(
     verificar_permissao(current_user)
     
     # Verifica se já existe com mesmo nome
-    existente = db.query(CategoriaResumoJSON).filter(
+    existente = session_query(db, CategoriaResumoJSON).filter(
         CategoriaResumoJSON.nome == categoria_data.nome
     ).first()
     
@@ -342,13 +344,13 @@ async def criar_categoria(
     
     # Se está criando como residual, desativa outras residuais
     if categoria_data.is_residual:
-        db.query(CategoriaResumoJSON).filter(
+        session_query(db, CategoriaResumoJSON).filter(
             CategoriaResumoJSON.is_residual == True
         ).update({"is_residual": False, "atualizado_por": current_user.id})
     
     # Verifica se algum código já está em outra categoria
     if categoria_data.codigos_documento:
-        categorias_existentes = db.query(CategoriaResumoJSON).filter(
+        categorias_existentes = session_query(db, CategoriaResumoJSON).filter(
             CategoriaResumoJSON.ativo == True
         ).all()
         
@@ -384,7 +386,7 @@ async def atualizar_categoria(
     perf_ctx.set_action("atualizar_categoria")
     verificar_permissao(current_user)
     
-    categoria = db.query(CategoriaResumoJSON).filter(
+    categoria = session_query(db, CategoriaResumoJSON).filter(
         CategoriaResumoJSON.id == categoria_id
     ).first()
     
@@ -392,7 +394,7 @@ async def atualizar_categoria(
         raise HTTPException(status_code=404, detail="Categoria não encontrada")
     
     # Calcula versão para histórico
-    ultimo_historico = db.query(CategoriaResumoJSONHistorico).filter(
+    ultimo_historico = session_query(db, CategoriaResumoJSONHistorico).filter(
         CategoriaResumoJSONHistorico.categoria_id == categoria_id
     ).order_by(CategoriaResumoJSONHistorico.versao.desc()).first()
     
@@ -412,14 +414,14 @@ async def atualizar_categoria(
     
     # Se está marcando como residual, desmarca outras
     if categoria_data.is_residual:
-        db.query(CategoriaResumoJSON).filter(
+        session_query(db, CategoriaResumoJSON).filter(
             CategoriaResumoJSON.is_residual == True,
             CategoriaResumoJSON.id != categoria_id
         ).update({"is_residual": False, "atualizado_por": current_user.id})
     
     # Verifica conflitos de códigos
     if categoria_data.codigos_documento is not None:
-        categorias_existentes = db.query(CategoriaResumoJSON).filter(
+        categorias_existentes = session_query(db, CategoriaResumoJSON).filter(
             CategoriaResumoJSON.ativo == True,
             CategoriaResumoJSON.id != categoria_id
         ).all()
@@ -439,11 +441,11 @@ async def atualizar_categoria(
     
     # Se marcou como gerado por IA, salva timestamp
     if categoria_data.json_gerado_por_ia:
-        categoria.json_gerado_em = datetime.utcnow()
+        categoria.json_gerado_em = get_utc_now()
         categoria.json_gerado_por = current_user.id
 
     categoria.atualizado_por = current_user.id
-    categoria.atualizado_em = datetime.utcnow()
+    categoria.atualizado_em = get_utc_now()
 
     # ==========================================================================
     # DETECCAO E PROPAGACAO AUTOMATICA DE RENOMEACAO DE SLUGS
@@ -471,7 +473,7 @@ async def atualizar_categoria(
             slugs_adicionados = slugs_novos - slugs_antigos
 
             # Busca variaveis ativas da categoria
-            variaveis_categoria = db.query(ExtractionVariable).filter(
+            variaveis_categoria = session_query(db, ExtractionVariable).filter(
                 ExtractionVariable.categoria_id == categoria_id,
                 ExtractionVariable.ativo == True
             ).all()
@@ -535,7 +537,7 @@ async def atualizar_categoria(
                 slugs_no_json = set(k for k, v in schema_novo.items() if isinstance(v, dict))
 
                 # Recarrega variaveis (podem ter sido atualizadas)
-                variaveis_categoria = db.query(ExtractionVariable).filter(
+                variaveis_categoria = session_query(db, ExtractionVariable).filter(
                     ExtractionVariable.categoria_id == categoria_id,
                     ExtractionVariable.ativo == True
                 ).all()
@@ -544,22 +546,22 @@ async def atualizar_categoria(
                 for variavel in variaveis_categoria:
                     if variavel.slug not in slugs_no_json:
                         variavel.ativo = False
-                        variavel.atualizado_em = datetime.utcnow()
+                        variavel.atualizado_em = get_utc_now()
                         logger.info(f"Variavel orfa desativada: slug={variavel.slug}")
 
                         if variavel.source_question_id:
-                            pergunta = db.query(ExtractionQuestion).filter(
+                            pergunta = session_query(db, ExtractionQuestion).filter(
                                 ExtractionQuestion.id == variavel.source_question_id
                             ).first()
                             if pergunta and pergunta.ativo:
                                 pergunta.ativo = False
                                 pergunta.atualizado_por = current_user.id
-                                pergunta.atualizado_em = datetime.utcnow()
+                                pergunta.atualizado_em = get_utc_now()
 
                 # Atualiza tipo/descricao de variaveis existentes
                 for slug, campo_info in schema_novo.items():
                     if isinstance(campo_info, dict):
-                        variavel = db.query(ExtractionVariable).filter(
+                        variavel = session_query(db, ExtractionVariable).filter(
                             ExtractionVariable.slug == slug,
                             ExtractionVariable.categoria_id == categoria_id
                         ).first()
@@ -570,11 +572,11 @@ async def atualizar_categoria(
 
                             if tipo_json and variavel.tipo != tipo_json:
                                 variavel.tipo = tipo_json
-                                variavel.atualizado_em = datetime.utcnow()
+                                variavel.atualizado_em = get_utc_now()
 
                             if descricao_json and variavel.descricao != descricao_json:
                                 variavel.descricao = descricao_json
-                                variavel.atualizado_em = datetime.utcnow()
+                                variavel.atualizado_em = get_utc_now()
 
         except Exception as e:
             logger.warning(f"Erro ao processar mudancas de slug: {e}")
@@ -594,7 +596,7 @@ async def desativar_categoria(
     """Desativa uma categoria (soft delete)"""
     verificar_permissao(current_user)
     
-    categoria = db.query(CategoriaResumoJSON).filter(
+    categoria = session_query(db, CategoriaResumoJSON).filter(
         CategoriaResumoJSON.id == categoria_id
     ).first()
     
@@ -625,14 +627,14 @@ async def listar_historico(
     db: Session = Depends(get_db)
 ):
     """Lista histórico de versões de uma categoria"""
-    categoria = db.query(CategoriaResumoJSON).filter(
+    categoria = session_query(db, CategoriaResumoJSON).filter(
         CategoriaResumoJSON.id == categoria_id
     ).first()
     
     if not categoria:
         raise HTTPException(status_code=404, detail="Categoria não encontrada")
     
-    historico = db.query(CategoriaResumoJSONHistorico).filter(
+    historico = session_query(db, CategoriaResumoJSONHistorico).filter(
         CategoriaResumoJSONHistorico.categoria_id == categoria_id
     ).order_by(CategoriaResumoJSONHistorico.versao.desc()).all()
     
@@ -686,7 +688,7 @@ async def info_extracao(
     - Número de variáveis criadas
     """
     perf_ctx.set_action("info_extracao_categoria")
-    categoria = db.query(CategoriaResumoJSON).filter(
+    categoria = session_query(db, CategoriaResumoJSON).filter(
         CategoriaResumoJSON.id == categoria_id
     ).first()
     
@@ -696,13 +698,13 @@ async def info_extracao(
     from .models_extraction import ExtractionQuestion, ExtractionVariable
     
     # Conta perguntas ativas
-    perguntas_count = db.query(ExtractionQuestion).filter(
+    perguntas_count = session_query(db, ExtractionQuestion).filter(
         ExtractionQuestion.categoria_id == categoria_id,
         ExtractionQuestion.ativo == True
     ).count()
     
     # Conta variáveis
-    variaveis_count = db.query(ExtractionVariable).filter(
+    variaveis_count = session_query(db, ExtractionVariable).filter(
         ExtractionVariable.categoria_id == categoria_id,
         ExtractionVariable.ativo == True
     ).count()
@@ -736,7 +738,7 @@ async def get_codigos_ignorados(
     """
     from admin.models import ConfiguracaoIA
 
-    config = db.query(ConfiguracaoIA).filter(
+    config = session_query(db, ConfiguracaoIA).filter(
         ConfiguracaoIA.sistema == "gerador_pecas",
         ConfiguracaoIA.chave == "codigos_ignorar_extracao_json"
     ).first()
@@ -770,7 +772,7 @@ async def update_codigos_ignorados(
     """
     from admin.models import ConfiguracaoIA
 
-    config = db.query(ConfiguracaoIA).filter(
+    config = session_query(db, ConfiguracaoIA).filter(
         ConfiguracaoIA.sistema == "gerador_pecas",
         ConfiguracaoIA.chave == "codigos_ignorar_extracao_json"
     ).first()
@@ -939,7 +941,7 @@ async def reparar_todas_consistencias(
 
     from .services_slug_rename import SlugConsistencyChecker
 
-    categorias = db.query(CategoriaResumoJSON).filter(
+    categorias = session_query(db, CategoriaResumoJSON).filter(
         CategoriaResumoJSON.ativo == True
     ).all()
 
@@ -974,3 +976,8 @@ async def reparar_todas_consistencias(
         total_correcoes=total_correcoes,
         detalhes=detalhes
     )
+
+
+
+
+

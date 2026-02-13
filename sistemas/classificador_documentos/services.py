@@ -82,6 +82,13 @@ class ClassificadorService:
 
     def criar_prompt(self, nome: str, conteudo: str, descricao: str = None, usuario_id: int = None, codigos_documento: str = None) -> PromptClassificacao:
         """Cria um novo prompt"""
+        # Verifica se já existe prompt com mesmo nome (constraint unique)
+        existente = self.db.query(PromptClassificacao).filter(
+            PromptClassificacao.nome == nome
+        ).first()
+        if existente:
+            raise ValueError(f"Já existe um prompt com o nome '{nome}'")
+
         prompt = PromptClassificacao(
             nome=nome,
             conteudo=conteudo,

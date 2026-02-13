@@ -25,7 +25,7 @@ class RequestPerfLog(Base):
     __tablename__ = "request_perf_logs"
 
     id = Column(Integer, primary_key=True, index=True)
-    created_at = Column(DateTime, default=get_utc_now, index=True)
+    created_at = Column(DateTime(timezone=True), default=get_utc_now, index=True)
 
     # Identificacao
     request_id = Column(String(36), nullable=False, index=True)

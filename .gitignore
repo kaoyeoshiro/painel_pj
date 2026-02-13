@@ -28,6 +28,7 @@ dumps/
 # Uploads (opcional - pode querer versionar estrutura vazia)
 sistemas/matriculas_confrontantes/uploads/*
 !sistemas/matriculas_confrontantes/uploads/.gitkeep
+sistemas/gerador_pecas/uploads_parecer_natjus/
 
 # Build
 dist/
@@ -39,12 +40,8 @@ node_modules/
 npm_install.log
 package-lock.json
 
-# TypeScript build outputs (generated from src/)
-# Arquivos de sistemas são versionados para deploy
-frontend/static/js/api.js
-frontend/static/js/ui.js
-frontend/static/js/index.js
-frontend/static/js/*.js.map
+# Frontend legado desabilitado (apagao controlado 2026-02-12)
+frontend__DISABLED/
 
 # OS
 .DS_Store
@@ -84,3 +81,40 @@ run_teste.bat
 # Claude local settings
 .claude/settings.local.json
 .playwright-mcp/
+
+# === SonarQube (config local de dev) ===
+.scannerwork/
+.sonar-scanner/
+sonar-bugs.json
+sonar-hotspots.json
+docker-compose.sonarqube.yml
+sonar-project.properties
+
+# === Arquivos temporários do projeto ===
+tmp_*
+*.pid
+.bert_worker_token
+data/
+bert_models/
+e2e-artifacts/
+scripts/_debug_*
+test_gemini_direct.py
+%TEMP%*
+
+# Artefatos locais de auditoria/refactor
+temp_diff.txt
+tmp_main_before.py
+*main_before.py
+docs/_archive/legacy_candidates/
+
+# Artefatos de testes frontend-react
+frontend-react/.vite/
+frontend-react/playwright-report/
+frontend-react/playwright-output.txt
+frontend-react/test-results/
+frontend-react/test-results.json
+frontend-react/reports/
+frontend-react/prints/
+frontend-react/vitest-check.txt
+frontend-react/vitest-final.txt
+frontend-react/vitest-output*.txt

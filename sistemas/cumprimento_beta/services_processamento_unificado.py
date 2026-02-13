@@ -14,6 +14,7 @@ import logging
 import time
 from typing import List, Optional, Dict, Any, Tuple
 from datetime import datetime
+from utils.timezone import get_utc_now
 from dataclasses import dataclass
 from sqlalchemy.orm import Session
 
@@ -25,7 +26,7 @@ from sistemas.cumprimento_beta.constants import (
 )
 from sistemas.gerador_pecas.extrator_resumo_json import obter_criterios_relevancia
 from sistemas.gerador_pecas.models_resumo_json import CategoriaResumoJSON
-from sistemas.gerador_pecas.gemini_client import chamar_gemini_async
+from services.gemini_service import chamar_gemini as chamar_gemini_async
 
 logger = logging.getLogger(__name__)
 
@@ -387,7 +388,7 @@ class ProcessamentoUnificadoService:
                 continue
 
             doc.modelo_avaliacao = self._modelo
-            doc.avaliado_em = datetime.utcnow()
+            doc.avaliado_em = get_utc_now()
 
             if resultado.erro:
                 erros += 1

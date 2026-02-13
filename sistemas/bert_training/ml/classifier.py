@@ -2,7 +2,7 @@
 """
 Classificador BERT para classificação de texto.
 
-Adaptado do projeto E:\Projetos\BERT para integração com o portal PGE.
+Adaptado do projeto BERT para integracao com o portal PGE.
 """
 
 import torch
@@ -38,7 +38,7 @@ class BertClassifier(nn.Module):
 
         # Carrega o modelo base
         logger.info(f"Carregando modelo base: {model_name}")
-        base_model = AutoModelForPreTraining.from_pretrained(model_name)
+        base_model = AutoModelForPreTraining.from_pretrained(model_name)  # nosec B615 - modelo controlado internamente
 
         # Extrai apenas o encoder BERT
         self.bert = base_model.bert
@@ -173,7 +173,9 @@ class BertClassifier(nn.Module):
             Tuple de (modelo, label_map, tokenizer_name, truncation_side)
         """
         path = Path(path)
-        checkpoint = torch.load(path / 'model.pt', map_location=device)
+        # SECURITY: Usa safe_torch_load para prevenir RCE via pickle deserialization
+        from utils.safe_torch import safe_torch_load
+        checkpoint = safe_torch_load(path / 'model.pt', map_location='cpu')
 
         # Recria o modelo
         model = cls(
@@ -182,7 +184,8 @@ class BertClassifier(nn.Module):
             dropout_prob=checkpoint['config']['dropout_prob']
         )
 
-        model.load_state_dict(checkpoint['model_state_dict'])
+        # assign=True evita erro "Cannot copy out of meta tensor" em PyTorch 2.x
+        model.load_state_dict(checkpoint['model_state_dict'], assign=True)
         model.to(device)
         model.eval()
 

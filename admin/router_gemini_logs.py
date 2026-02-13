@@ -11,14 +11,18 @@ Endpoints:
 """
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from pydantic import BaseModel
 from sqlalchemy.orm import Session
-from typing import Optional, List, Dict, Any
+from typing import Optional
 from datetime import datetime, timedelta
+from utils.timezone import get_utc_now
 
 from database.connection import get_db
 from auth.dependencies import require_admin
 from auth.models import User
+from admin.schemas_gemini_logs import (
+    LogsResponse, SummaryResponse, SystemsResponse,
+    ModelsResponse, CleanupResponse,
+)
 
 from admin.services_gemini_logs import (
     get_gemini_logs,
@@ -28,67 +32,11 @@ from admin.services_gemini_logs import (
     cleanup_old_gemini_logs,
     cleanup_excess_gemini_logs
 )
+from admin.repositories_performance import (
+    GeminiLogsRepository, get_gemini_logs_repository,
+)
 
 router = APIRouter(prefix="/admin/api/gemini-logs", tags=["Gemini Logs"])
-
-
-# ==================================================
-# SCHEMAS
-# ==================================================
-
-class LogEntry(BaseModel):
-    id: int
-    created_at: Optional[str]
-    user_id: Optional[int]
-    username: Optional[str]
-    sistema: str
-    modulo: Optional[str]
-    model: str
-    prompt_chars: int
-    prompt_tokens_estimated: Optional[int]
-    has_images: bool
-    has_search: bool
-    temperature: Optional[float]
-    response_tokens: Optional[int]
-    success: bool
-    cached: bool
-    error: Optional[str]
-    time_prepare_ms: Optional[float]
-    time_connect_ms: Optional[float]
-    time_ttft_ms: Optional[float]
-    time_generation_ms: Optional[float]
-    time_total_ms: float
-    retry_count: int
-
-
-class LogsResponse(BaseModel):
-    logs: List[Dict[str, Any]]
-    total: int
-    limit: int
-    offset: int
-
-
-class SummaryResponse(BaseModel):
-    period_hours: int
-    total_calls: int
-    stats: Dict[str, Any]
-    by_sistema: List[Dict[str, Any]]
-    by_model: List[Dict[str, Any]]
-    slowest_calls: List[Dict[str, Any]]
-    recent_errors: List[Dict[str, Any]]
-
-
-class SystemsResponse(BaseModel):
-    systems: List[str]
-
-
-class ModelsResponse(BaseModel):
-    models: List[str]
-
-
-class CleanupResponse(BaseModel):
-    deleted_count: int
-    message: str
 
 
 # ==================================================
@@ -117,7 +65,7 @@ async def list_logs(
     - user_id: ID do usuário
     - hours: Período em horas (padrão: 24h)
     """
-    start_date = datetime.utcnow() - timedelta(hours=hours)
+    start_date = get_utc_now() - timedelta(hours=hours)
 
     logs = get_gemini_logs(
         db=db,
@@ -328,7 +276,8 @@ async def get_thinking_level_status(
     sistema: Optional[str] = Query(None, description="Sistema específico ou todos"),
     hours: int = Query(24, ge=1, le=168, description="Período em horas para análise"),
     current_user: User = Depends(require_admin),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    gemini_repo: GeminiLogsRepository = Depends(get_gemini_logs_repository)
 ):
     """
     Verifica se o thinking_level configurado está sendo usado efetivamente.
@@ -340,12 +289,9 @@ async def get_thinking_level_status(
     Retorna alertas quando há discrepâncias, indicando que a configuração
     pode não estar sendo aplicada corretamente.
     """
-    from sqlalchemy import func, and_
-    from admin.models_gemini_logs import GeminiApiLog
-    from admin.models import ConfiguracaoIA
     from services.ia_params_resolver import AGENTES_POR_SISTEMA, get_ia_params
 
-    start_date = datetime.utcnow() - timedelta(hours=hours)
+    start_date = get_utc_now() - timedelta(hours=hours)
 
     # Obtém sistemas para análise
     if sistema:
@@ -383,20 +329,7 @@ async def get_thinking_level_status(
             }
 
         # Busca logs reais do sistema no período
-        logs_sistema = db.query(
-            GeminiApiLog.modulo,
-            GeminiApiLog.thinking_level,
-            func.count(GeminiApiLog.id).label('count')
-        ).filter(
-            and_(
-                GeminiApiLog.sistema == sis,
-                GeminiApiLog.created_at >= start_date,
-                GeminiApiLog.success == True
-            )
-        ).group_by(
-            GeminiApiLog.modulo,
-            GeminiApiLog.thinking_level
-        ).all()
+        logs_sistema = gemini_repo.buscar_thinking_level_por_sistema(sis, start_date)
 
         # Agrupa por módulo
         uso_real = {}
@@ -561,16 +494,12 @@ async def get_slowest_requests(
 async def get_request_perf_detail(
     request_id: str,
     current_user: User = Depends(require_admin),
-    db: Session = Depends(get_db)
+    gemini_repo: GeminiLogsRepository = Depends(get_gemini_logs_repository)
 ):
     """
     Retorna detalhes completos de um request especifico, incluindo timeline.
     """
-    from admin.models_request_perf import RequestPerfLog
-
-    log = db.query(RequestPerfLog).filter(
-        RequestPerfLog.request_id == request_id
-    ).first()
+    log = gemini_repo.buscar_request_perf_por_id(request_id)
 
     if not log:
         raise HTTPException(status_code=404, detail="Request nao encontrado")

@@ -37,3 +37,44 @@ def event_loop():
     loop = asyncio.new_event_loop()
     yield loop
     loop.close()
+
+
+@pytest.fixture
+def mock_db_session():
+    """Mock de sessão do banco de dados para testes unitários."""
+    from unittest.mock import MagicMock
+    session = MagicMock()
+    session.query.return_value = session
+    session.filter.return_value = session
+    session.first.return_value = None
+    session.all.return_value = []
+    session.commit.return_value = None
+    session.rollback.return_value = None
+    session.close.return_value = None
+    return session
+
+
+@pytest.fixture
+def fake_admin_user():
+    """Usuário admin fake para testes."""
+    from unittest.mock import MagicMock
+    user = MagicMock()
+    user.id = 1
+    user.username = "admin_test"
+    user.full_name = "Admin Teste"
+    user.is_admin = True
+    user.is_active = True
+    return user
+
+
+@pytest.fixture
+def fake_regular_user():
+    """Usuário regular fake para testes."""
+    from unittest.mock import MagicMock
+    user = MagicMock()
+    user.id = 2
+    user.username = "user_test"
+    user.full_name = "User Teste"
+    user.is_admin = False
+    user.is_active = True
+    return user

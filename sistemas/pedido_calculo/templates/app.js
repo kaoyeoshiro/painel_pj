@@ -52,12 +52,26 @@
       document.getElementById("btn-enviar-chat")?.addEventListener("click", () => {
         this.enviarMensagemChat();
       });
-      document.getElementById("chat-input")?.addEventListener("keypress", (e) => {
-        if (e.key === "Enter" && !e.shiftKey) {
-          e.preventDefault();
-          this.enviarMensagemChat();
-        }
-      });
+      const chatInputEl = document.getElementById("chat-input");
+      if (chatInputEl) {
+        chatInputEl.addEventListener("keydown", (e) => {
+          if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            this.enviarMensagemChat();
+          }
+        });
+        chatInputEl.addEventListener("input", () => {
+          chatInputEl.style.height = "auto";
+          const maxH = 144;
+          if (chatInputEl.scrollHeight > maxH) {
+            chatInputEl.style.height = maxH + "px";
+            chatInputEl.style.overflowY = "auto";
+          } else {
+            chatInputEl.style.height = chatInputEl.scrollHeight + "px";
+            chatInputEl.style.overflowY = "hidden";
+          }
+        });
+      }
       document.getElementById("btn-copiar-minuta")?.addEventListener("click", () => {
         this.copiarMinuta();
       });
@@ -301,6 +315,8 @@
       const mensagem = input.value.trim();
       if (!mensagem) return;
       input.value = "";
+      input.style.height = "";
+      input.style.overflowY = "hidden";
       this.isProcessingEdit = true;
       this.adicionarMensagemChat("user", mensagem);
       this.mostrarTypingIndicator();

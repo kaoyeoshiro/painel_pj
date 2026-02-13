@@ -1,0 +1,284 @@
+[
+  {
+    "path": "/",
+    "component": "unknown",
+    "type": "react-router",
+    "file": "frontend-react/src/router.tsx"
+  },
+  {
+    "path": "/login",
+    "component": "LoginPage",
+    "type": "react-router",
+    "file": "frontend-react/src/router.tsx"
+  },
+  {
+    "path": "/dashboard",
+    "component": "DashboardPageV2",
+    "type": "react-router",
+    "file": "frontend-react/src/router.tsx"
+  },
+  {
+    "path": "/gerador-pecas",
+    "component": "GeradorPecasPage",
+    "type": "react-router",
+    "file": "frontend-react/src/router.tsx"
+  },
+  {
+    "path": "/extrator-autos",
+    "component": "ExtratorAutosPage",
+    "type": "react-router",
+    "file": "frontend-react/src/router.tsx"
+  },
+  {
+    "path": "/classificador",
+    "component": "ClassificadorPage",
+    "type": "react-router",
+    "file": "frontend-react/src/router.tsx"
+  },
+  {
+    "path": "/pedido-calculo",
+    "component": "PedidoCalculoPage",
+    "type": "react-router",
+    "file": "frontend-react/src/router.tsx"
+  },
+  {
+    "path": "/prestacao-contas",
+    "component": "PrestacaoContasPage",
+    "type": "react-router",
+    "file": "frontend-react/src/router.tsx"
+  },
+  {
+    "path": "/relatorio-cumprimento",
+    "component": "RelatorioCumprimentoPage",
+    "type": "react-router",
+    "file": "frontend-react/src/router.tsx"
+  },
+  {
+    "path": "/cumprimento-beta",
+    "component": "CumprimentoBetaPage",
+    "type": "react-router",
+    "file": "frontend-react/src/router.tsx"
+  },
+  {
+    "path": "/assistencia",
+    "component": "AssistenciaPage",
+    "type": "react-router",
+    "file": "frontend-react/src/router.tsx"
+  },
+  {
+    "path": "/matriculas",
+    "component": "MatriculasPage",
+    "type": "react-router",
+    "file": "frontend-react/src/router.tsx"
+  },
+  {
+    "path": "/bert-training",
+    "component": "BertTrainingPage",
+    "type": "react-router",
+    "file": "frontend-react/src/router.tsx"
+  },
+  {
+    "path": "/change-password",
+    "component": "ChangePasswordPage",
+    "type": "react-router",
+    "file": "frontend-react/src/router.tsx"
+  },
+  {
+    "path": "/dev/design-system",
+    "component": "DesignSystemPage",
+    "type": "react-router",
+    "file": "frontend-react/src/router.tsx"
+  },
+  {
+    "path": "/admin/users",
+    "component": "UsersPage",
+    "type": "react-router",
+    "file": "frontend-react/src/router.tsx"
+  },
+  {
+    "path": "/admin/prompts",
+    "component": "PromptsPage",
+    "type": "react-router",
+    "file": "frontend-react/src/router.tsx"
+  },
+  {
+    "path": "/admin/prompts-config",
+    "component": "PromptsPage",
+    "type": "react-router",
+    "file": "frontend-react/src/router.tsx"
+  },
+  {
+    "path": "/admin/prompts-modulos",
+    "component": "PromptsModulosPage",
+    "type": "react-router",
+    "file": "frontend-react/src/router.tsx"
+  },
+  {
+    "path": "/admin/feedbacks",
+    "component": "FeedbacksPage",
+    "type": "react-router",
+    "file": "frontend-react/src/router.tsx"
+  },
+  {
+    "path": "/admin/performance",
+    "component": "PerformancePage",
+    "type": "react-router",
+    "file": "frontend-react/src/router.tsx"
+  },
+  {
+    "path": "/admin/variaveis",
+    "component": "VariaveisPage",
+    "type": "react-router",
+    "file": "frontend-react/src/router.tsx"
+  },
+  {
+    "path": "/admin/categorias-json",
+    "component": "CategoriasJsonPage",
+    "type": "react-router",
+    "file": "frontend-react/src/router.tsx"
+  },
+  {
+    "path": "/admin/categorias-resumo-json",
+    "component": "CategoriasJsonPage",
+    "type": "react-router",
+    "file": "frontend-react/src/router.tsx"
+  },
+  {
+    "path": "/admin/historico-gerador",
+    "component": "HistoricoGeradorPage",
+    "type": "react-router",
+    "file": "frontend-react/src/router.tsx"
+  },
+  {
+    "path": "/admin/gerador-pecas/historico",
+    "component": "HistoricoGeradorPage",
+    "type": "react-router",
+    "file": "frontend-react/src/router.tsx"
+  },
+  {
+    "path": "/admin/historico-pedido-calculo",
+    "component": "HistoricoPedidoCalculoPage",
+    "type": "react-router",
+    "file": "frontend-react/src/router.tsx"
+  },
+  {
+    "path": "/admin/pedido-calculo/debug",
+    "component": "HistoricoPedidoCalculoPage",
+    "type": "react-router",
+    "file": "frontend-react/src/router.tsx"
+  },
+  {
+    "path": "/admin/historico-prestacao-contas",
+    "component": "HistoricoPrestacaoContasPage",
+    "type": "react-router",
+    "file": "frontend-react/src/router.tsx"
+  },
+  {
+    "path": "/admin/prestacao-contas/debug",
+    "component": "HistoricoPrestacaoContasPage",
+    "type": "react-router",
+    "file": "frontend-react/src/router.tsx"
+  },
+  {
+    "path": "/admin/modulos-tipo-peca",
+    "component": "ModulosTipoPecaPage",
+    "type": "react-router",
+    "file": "frontend-react/src/router.tsx"
+  },
+  {
+    "path": "/admin/config-pecas",
+    "component": "ConfigPecasPage",
+    "type": "react-router",
+    "file": "frontend-react/src/router.tsx"
+  },
+  {
+    "path": "/admin/teste-ativacao",
+    "component": "TesteAtivacaoPage",
+    "type": "react-router",
+    "file": "frontend-react/src/router.tsx"
+  },
+  {
+    "path": "/admin/prompts-modulos/teste",
+    "component": "TesteAtivacaoPage",
+    "type": "react-router",
+    "file": "frontend-react/src/router.tsx"
+  },
+  {
+    "path": "/admin/teste-categorias",
+    "component": "TesteCategoriasPage",
+    "type": "react-router",
+    "file": "frontend-react/src/router.tsx"
+  },
+  {
+    "path": "/admin/categorias-resumo-json/teste",
+    "component": "TesteCategoriasPage",
+    "type": "react-router",
+    "file": "frontend-react/src/router.tsx"
+  },
+  {
+    "path": "/admin/tjms-docs",
+    "component": "TjmsDocsPage",
+    "type": "react-router",
+    "file": "frontend-react/src/router.tsx"
+  },
+  {
+    "path": "/admin/tjms-docs/plano",
+    "component": "TjmsDocsPage",
+    "type": "react-router",
+    "file": "frontend-react/src/router.tsx"
+  },
+  {
+    "path": "/admin/restaurar-slugs",
+    "component": "RestaurarSlugsPage",
+    "type": "react-router",
+    "file": "frontend-react/src/router.tsx"
+  },
+  {
+    "path": "/dashboard",
+    "component": "",
+    "type": "link",
+    "file": "frontend-react/src/components/layout/AdminLegacyTopbar.tsx"
+  },
+  {
+    "path": "/dashboard",
+    "component": "",
+    "type": "link",
+    "file": "frontend-react/src/components/layout/AdminLegacyTopbar.tsx"
+  },
+  {
+    "path": "/dashboard",
+    "component": "",
+    "type": "link",
+    "file": "frontend-react/src/components/layout/AdminLegacyTopbar.tsx"
+  },
+  {
+    "path": "/dashboard",
+    "component": "",
+    "type": "link",
+    "file": "frontend-react/src/components/layout/SystemTopbar.tsx"
+  },
+  {
+    "path": "/dashboard",
+    "component": "",
+    "type": "link",
+    "file": "frontend-react/src/pages/change-password/ChangePasswordPage.tsx"
+  },
+  {
+    "path": "/admin/teste-categorias",
+    "component": "",
+    "type": "link",
+    "file": "frontend-react/src/pages/admin/categorias-json/CategoriasJsonPage.tsx"
+  },
+  {
+    "path": "/admin/teste-ativacao",
+    "component": "",
+    "type": "link",
+    "file": "frontend-react/src/pages/admin/prompts-modulos/PromptsModulosPage.tsx"
+  },
+  {
+    "path": "/admin/tjms-docs/plano",
+    "component": "",
+    "type": "link",
+    "file": "frontend-react/src/pages/admin/tjms-docs/TjmsDocsPage.tsx"
+  }
+]

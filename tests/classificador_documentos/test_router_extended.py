@@ -44,6 +44,21 @@ def mock_db():
     return db
 
 
+@pytest.fixture
+def mock_request():
+    """Mock do Request para SlowAPI"""
+    from starlette.requests import Request
+    from starlette.datastructures import Headers
+    req = Mock(spec=Request)
+    req.client = Mock()
+    req.client.host = "127.0.0.1"
+    req.headers = Headers({})
+    req.scope = {"type": "http", "path": "/test"}
+    req.url = Mock()
+    req.url.path = "/test"
+    return req
+
+
 class TestPromptEndpointsExtended:
     """Testes estendidos de prompts"""
 
@@ -573,7 +588,7 @@ class TestClassificacaoAvulsaExtended:
     """Testes estendidos de classificação avulsa"""
 
     @pytest.mark.asyncio
-    async def test_classificar_avulso_com_prompt_id(self, mock_auth, mock_db):
+    async def test_classificar_avulso_com_prompt_id(self, mock_auth, mock_db, mock_request):
         """Testa classificação avulsa usando prompt_id"""
         from sistemas.classificador_documentos.router import classificar_documento_avulso
         from sistemas.classificador_documentos.services import ClassificadorService
@@ -610,13 +625,14 @@ class TestClassificacaoAvulsaExtended:
                     posicao_chunk="fim",
                     tamanho_chunk=512,
                     current_user=mock_auth,
-                    db=mock_db
+                    db=mock_db,
+                    request=mock_request
                 )
 
                 assert result["sucesso"] is True
 
     @pytest.mark.asyncio
-    async def test_classificar_avulso_prompt_nao_encontrado(self, mock_auth, mock_db):
+    async def test_classificar_avulso_prompt_nao_encontrado(self, mock_auth, mock_db, mock_request):
         """Testa classificação avulsa com prompt_id inexistente"""
         from sistemas.classificador_documentos.router import classificar_documento_avulso
         from sistemas.classificador_documentos.services import ClassificadorService
@@ -639,13 +655,14 @@ class TestClassificacaoAvulsaExtended:
                     posicao_chunk="fim",
                     tamanho_chunk=512,
                     current_user=mock_auth,
-                    db=mock_db
+                    db=mock_db,
+                    request=mock_request
                 )
 
             assert exc_info.value.status_code == 404
 
     @pytest.mark.asyncio
-    async def test_classificar_avulso_com_prompt_texto(self, mock_auth, mock_db):
+    async def test_classificar_avulso_com_prompt_texto(self, mock_auth, mock_db, mock_request):
         """Testa classificação avulsa usando prompt_texto"""
         from sistemas.classificador_documentos.router import classificar_documento_avulso
         from sistemas.classificador_documentos.services import ClassificadorService
@@ -677,7 +694,8 @@ class TestClassificacaoAvulsaExtended:
                 posicao_chunk="fim",
                 tamanho_chunk=512,
                 current_user=mock_auth,
-                db=mock_db
+                db=mock_db,
+                request=mock_request
             )
 
             assert result["sucesso"] is True

@@ -20,6 +20,7 @@ USO:
 Autor: LAB/PGE-MS
 """
 
+import io
 import logging
 import sys
 from typing import Optional
@@ -110,7 +111,16 @@ def configure_stdlib_logging():
     # Nível base
     root_level = logging.INFO if IS_PRODUCTION else logging.DEBUG
 
-    # Handler para stdout
+    # No Windows, força UTF-8 no stdout/stderr para evitar crash
+    # com caracteres Unicode (ex: ○ U+25CB) no encoding cp1252 do console
+    if sys.platform == "win32":
+        for std_stream in (sys.stdout, sys.stderr):
+            if hasattr(std_stream, "reconfigure"):
+                try:
+                    std_stream.reconfigure(encoding="utf-8", errors="replace")
+                except Exception:
+                    pass  # Ignora se ja reconfigurado ou stream nao suporta
+
     handler = logging.StreamHandler(sys.stdout)
     handler.setLevel(root_level)
 

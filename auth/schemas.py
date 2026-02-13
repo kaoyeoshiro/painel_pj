@@ -10,6 +10,7 @@ from typing import Optional, List
 from datetime import datetime
 
 from utils.password_policy import validate_password, MIN_PASSWORD_LENGTH
+from utils.sanitize import validate_no_html, sanitize_user_field
 
 
 # ==========================================
@@ -102,6 +103,16 @@ class ChangePasswordRequest(BaseModel):
         return validate_password(v)
 
 
+class ChangePasswordRequestSimple(BaseModel):
+    """
+    Request de troca de senha SEM validacao automatica de forca.
+
+    A validacao e feita manualmente no endpoint para retornar mensagens mais amigaveis.
+    """
+    current_password: str
+    new_password: str
+
+
 # ==========================================
 # Schemas de Usuário
 # ==========================================
@@ -112,6 +123,20 @@ class UserBase(BaseModel):
     email: Optional[EmailStr] = None
     full_name: str = Field(..., min_length=2, max_length=200)
     role: str = Field(default="user", pattern="^(admin|user)$")
+
+    @field_validator('email', mode='before')
+    @classmethod
+    def empty_email_to_none(cls, v):
+        """Converte email vazio para None (campo opcional)."""
+        if isinstance(v, str) and v.strip() == '':
+            return None
+        return v
+
+    @field_validator('full_name')
+    @classmethod
+    def validate_full_name_no_xss(cls, v):
+        """SECURITY: Rejeita payloads XSS em full_name."""
+        return validate_no_html(v, "Nome completo")
 
 
 class UserCreate(UserBase):
@@ -136,6 +161,12 @@ class UserCreate(UserBase):
             return validate_password(v)
         return v
 
+    @field_validator('setor')
+    @classmethod
+    def validate_setor_no_xss(cls, v):
+        """SECURITY: Sanitiza HTML em setor."""
+        return sanitize_user_field(v, "Setor")
+
 
 class UserUpdate(BaseModel):
     """Schema para atualização de usuário"""
@@ -148,6 +179,26 @@ class UserUpdate(BaseModel):
     setor: Optional[str] = Field(None, max_length=120)
     default_group_id: Optional[int] = None
     allowed_group_ids: Optional[List[int]] = None
+
+    @field_validator('email', mode='before')
+    @classmethod
+    def empty_email_to_none(cls, v):
+        """Converte email vazio para None (campo opcional)."""
+        if isinstance(v, str) and v.strip() == '':
+            return None
+        return v
+
+    @field_validator('full_name')
+    @classmethod
+    def validate_full_name_no_xss(cls, v):
+        """SECURITY: Sanitiza HTML em full_name."""
+        return sanitize_user_field(v, "Nome completo")
+
+    @field_validator('setor')
+    @classmethod
+    def validate_setor_no_xss(cls, v):
+        """SECURITY: Sanitiza HTML em setor."""
+        return sanitize_user_field(v, "Setor")
 
 
 class UserResponse(UserBase):

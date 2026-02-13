@@ -3,8 +3,11 @@
 Endpoints da API para normalização de texto.
 """
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from typing import List
+
+# SECURITY: Rate Limiting
+from utils.rate_limit import limiter, LIMITS
 
 from .models import (
     NormalizationMode,
@@ -46,7 +49,8 @@ router = APIRouter(
     9. Limpeza final
     """
 )
-async def normalize_text(request: NormalizationRequest) -> NormalizationResponse:
+@limiter.limit(LIMITS["default"])
+async def normalize_text(http_request: Request, request: NormalizationRequest) -> NormalizationResponse:
     """
     Normaliza texto extraído de PDF.
 
@@ -78,7 +82,8 @@ async def normalize_text(request: NormalizationRequest) -> NormalizationResponse
     summary="Lista modos de normalização disponíveis",
     description="Retorna os modos de normalização disponíveis com descrições."
 )
-async def get_normalization_modes() -> List[dict]:
+@limiter.limit(LIMITS["default"])
+async def get_normalization_modes(request: Request) -> List[dict]:
     """
     Lista modos de normalização disponíveis.
 
@@ -128,7 +133,8 @@ async def get_normalization_modes() -> List[dict]:
     summary="Preview de normalização",
     description="Retorna preview da normalização com primeiros/últimos caracteres e estatísticas."
 )
-async def preview_normalization(request: NormalizationRequest) -> dict:
+@limiter.limit(LIMITS["default"])
+async def preview_normalization(http_request: Request, request: NormalizationRequest) -> dict:
     """
     Preview de normalização sem retornar texto completo.
 

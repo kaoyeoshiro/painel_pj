@@ -23,6 +23,7 @@ from docx.shared import Pt, Inches, Cm
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 
 from sistemas.gerador_pecas.models import GeracaoPeca
+from utils.timezone import now_local
 from admin.models_prompts import PromptModulo
 from admin.models import ConfiguracaoIA
 from admin.models_prompt_groups import CategoriaOrdem
@@ -688,7 +689,7 @@ Ante o exposto, requer seja julgado **improcedente** o pedido formulado na inici
 
 ---
 
-*Campo Grande/MS, {datetime.now().strftime('%d de %B de %Y')}*
+*Campo Grande/MS, {now_local().strftime('%d de %B de %Y')}*
 
 **[NOME DO PROCURADOR]**
 Procurador do Estado
@@ -712,7 +713,7 @@ OAB/MS nº [NÚMERO]
         Returns:
             Dict com status e minuta atualizada
         """
-        from sistemas.gerador_pecas.gemini_client import chamar_gemini_async
+        from services.gemini_service import chamar_gemini as chamar_gemini_async
 
         try:
             # Busca o prompt de sistema do banco de dados (ou usa o padrão)

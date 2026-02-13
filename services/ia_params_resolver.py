@@ -68,6 +68,17 @@ DEFAULTS = {
     # IMPORTANTE: None causava TTFT de 60s+ porque Gemini 3 usa "high" como default
 }
 
+# Mapeamento de valores legados PT-BR para valores padrão da API
+THINKING_LEVEL_NORMALIZE = {
+    "baixo": "low",
+    "médio": "medium",
+    "medio": "medium",  # sem acento
+    "alto": "high",
+    "nenhum": "none",
+    "mínimo": "minimal",
+    "minimo": "minimal",  # sem acento
+}
+
 
 # Mapeamento de chaves legadas para o novo padrão
 # Formato: {(sistema, chave_legada): agente_slug}
@@ -362,6 +373,17 @@ def get_ia_params(
                 result.thinking_level = valor.strip().lower()
                 result.thinking_level_source = "global"
 
+    # Normaliza valores legados PT-BR
+    if result.thinking_level:
+        normalized = THINKING_LEVEL_NORMALIZE.get(result.thinking_level, result.thinking_level)
+        if normalized != result.thinking_level:
+            logger.info(f"[IAParams] Normalized thinking_level '{result.thinking_level}' -> '{normalized}'")
+            result.thinking_level = normalized
+
+    # Handle "none" explicitly: means "don't send any thinking config"
+    if result.thinking_level == "none":
+        result.thinking_level = None
+
     # Valida thinking_level
     if result.thinking_level and result.thinking_level not in ("minimal", "low", "medium", "high"):
         logger.warning(f"[IAParams] thinking_level inválido '{result.thinking_level}', usando None")
@@ -449,4 +471,5 @@ __all__ = [
     "get_config_per_agent",
     "AGENTES_POR_SISTEMA",
     "DEFAULTS",
+    "THINKING_LEVEL_NORMALIZE",
 ]

@@ -21,13 +21,14 @@ from fastapi import APIRouter, Depends, HTTPException, status, Response
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, field_validator
 from sqlalchemy.orm import Session
-
+from app.repositories.sqlalchemy.session_ops import session_query
 from database.connection import get_db
 from auth.models import User
 from auth.dependencies import get_current_active_user
 from sistemas.gerador_pecas.models_resumo_json import CategoriaResumoJSON
 from sistemas.gerador_pecas.models_teste_categorias import TesteDocumento, TesteObservacao
 from services.text_normalizer import text_normalizer
+from utils.timezone import get_utc_now, now_local
 
 # PDF manipulation
 try:
@@ -52,7 +53,7 @@ _PDF_CACHE_TTL_MINUTES = 30
 
 def _limpar_cache_expirado():
     """Remove PDFs expirados do cache"""
-    agora = datetime.utcnow()
+    agora = get_utc_now()
     expirados = [k for k, v in _pdf_cache.items() if v['expires_at'] < agora]
     for k in expirados:
         del _pdf_cache[k]
@@ -66,7 +67,7 @@ def armazenar_pdf_cache(pdf_base64: str, processo: str) -> str:
     _pdf_cache[token] = {
         'pdf_base64': pdf_base64,
         'processo': processo,
-        'expires_at': datetime.utcnow() + timedelta(minutes=_PDF_CACHE_TTL_MINUTES)
+        'expires_at': get_utc_now() + timedelta(minutes=_PDF_CACHE_TTL_MINUTES)
     }
     return token
 
@@ -79,7 +80,7 @@ def obter_pdf_cache(token: str) -> Optional[bytes]:
         return None
 
     entry = _pdf_cache[token]
-    if entry['expires_at'] < datetime.utcnow():
+    if entry['expires_at'] < get_utc_now():
         del _pdf_cache[token]
         return None
 
@@ -246,7 +247,7 @@ def normalizar_processo(numero: str) -> tuple[bool, str, str]:
 
     # Valida ano (dígitos 9-13) - deve estar entre 1900 e ano atual + 1
     ano = int(digitos[9:13])
-    ano_atual = datetime.now().year
+    ano_atual = now_local().year
     if not (1900 <= ano <= ano_atual + 1):
         return False, "", f"Ano do processo inválido: {ano}"
 
@@ -725,7 +726,7 @@ async def baixar_documentos_categoria(
     verificar_permissao(current_user)
 
     # Busca categoria
-    categoria = db.query(CategoriaResumoJSON).filter(
+    categoria = session_query(db, CategoriaResumoJSON).filter(
         CategoriaResumoJSON.id == request.categoria_id
     ).first()
 
@@ -895,7 +896,7 @@ async def classificar_documento(
     inicio = time.time()
 
     # Busca categoria
-    categoria = db.query(CategoriaResumoJSON).filter(
+    categoria = session_query(db, CategoriaResumoJSON).filter(
         CategoriaResumoJSON.id == request.categoria_id
     ).first()
 
@@ -943,7 +944,7 @@ async def classificar_lote(
     verificar_permissao(current_user)
 
     # Busca categoria
-    categoria = db.query(CategoriaResumoJSON).filter(
+    categoria = session_query(db, CategoriaResumoJSON).filter(
         CategoriaResumoJSON.id == request.categoria_id
     ).first()
 
@@ -1024,7 +1025,7 @@ async def classificar_com_comparacao(
     verificar_permissao(current_user)
 
     # Busca categoria
-    categoria = db.query(CategoriaResumoJSON).filter(
+    categoria = session_query(db, CategoriaResumoJSON).filter(
         CategoriaResumoJSON.id == request.categoria_id
     ).first()
 
@@ -1160,7 +1161,7 @@ async def listar_categorias_ativas(
     """Lista categorias ativas para seleção no teste"""
     verificar_permissao(current_user)
 
-    categorias = db.query(CategoriaResumoJSON).filter(
+    categorias = session_query(db, CategoriaResumoJSON).filter(
         CategoriaResumoJSON.ativo == True
     ).order_by(CategoriaResumoJSON.ordem, CategoriaResumoJSON.nome).all()
 
@@ -1188,7 +1189,7 @@ async def obter_formato_categoria(
     """Obtém o formato JSON de uma categoria"""
     verificar_permissao(current_user)
 
-    categoria = db.query(CategoriaResumoJSON).filter(
+    categoria = session_query(db, CategoriaResumoJSON).filter(
         CategoriaResumoJSON.id == categoria_id
     ).first()
 
@@ -1252,7 +1253,7 @@ async def listar_documentos_categoria(
     """
     verificar_permissao(current_user)
 
-    documentos = db.query(TesteDocumento).filter(
+    documentos = session_query(db, TesteDocumento).filter(
         TesteDocumento.usuario_id == current_user.id,
         TesteDocumento.categoria_id == categoria_id
     ).order_by(TesteDocumento.data_criacao.desc()).all()
@@ -1275,13 +1276,13 @@ async def salvar_documento(
     verificar_permissao(current_user)
 
     # Busca documento existente
-    doc = db.query(TesteDocumento).filter(
+    doc = session_query(db, TesteDocumento).filter(
         TesteDocumento.usuario_id == current_user.id,
         TesteDocumento.categoria_id == request.categoria_id,
         TesteDocumento.processo == request.processo
     ).first()
 
-    agora = datetime.utcnow()
+    agora = get_utc_now()
 
     if doc:
         # Atualiza existente
@@ -1338,13 +1339,13 @@ async def salvar_documentos_lote(
 
     resultados = []
     for req in documentos:
-        doc = db.query(TesteDocumento).filter(
+        doc = session_query(db, TesteDocumento).filter(
             TesteDocumento.usuario_id == current_user.id,
             TesteDocumento.categoria_id == req.categoria_id,
             TesteDocumento.processo == req.processo
         ).first()
 
-        agora = datetime.utcnow()
+        agora = get_utc_now()
 
         if doc:
             doc.status = req.status
@@ -1397,7 +1398,7 @@ async def excluir_documento(
     """
     verificar_permissao(current_user)
 
-    doc = db.query(TesteDocumento).filter(
+    doc = session_query(db, TesteDocumento).filter(
         TesteDocumento.id == documento_id,
         TesteDocumento.usuario_id == current_user.id
     ).first()
@@ -1422,7 +1423,7 @@ async def excluir_erros_categoria(
     """
     verificar_permissao(current_user)
 
-    count = db.query(TesteDocumento).filter(
+    count = session_query(db, TesteDocumento).filter(
         TesteDocumento.usuario_id == current_user.id,
         TesteDocumento.categoria_id == categoria_id,
         TesteDocumento.status == 'erro'
@@ -1448,7 +1449,7 @@ async def obter_observacao(
     """
     verificar_permissao(current_user)
 
-    obs = db.query(TesteObservacao).filter(
+    obs = session_query(db, TesteObservacao).filter(
         TesteObservacao.usuario_id == current_user.id,
         TesteObservacao.categoria_id == categoria_id
     ).first()
@@ -1468,7 +1469,7 @@ async def salvar_observacao(
     """
     verificar_permissao(current_user)
 
-    obs = db.query(TesteObservacao).filter(
+    obs = session_query(db, TesteObservacao).filter(
         TesteObservacao.usuario_id == current_user.id,
         TesteObservacao.categoria_id == categoria_id
     ).first()
@@ -1544,3 +1545,8 @@ async def servir_pdf(token: str):
             "Cache-Control": "private, max-age=1800"
         }
     )
+
+
+
+
+

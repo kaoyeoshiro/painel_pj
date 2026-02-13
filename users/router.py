@@ -7,6 +7,7 @@ SECURITY: Todas as ações de usuários são registradas no audit log.
 
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
+from app.repositories.sqlalchemy.session_ops import session_query
 from typing import List
 
 from database.connection import get_db
@@ -15,7 +16,7 @@ from auth.schemas import UserCreate, UserUpdate, UserResponse
 from auth.security import get_password_hash
 from auth.dependencies import require_admin
 from config import DEFAULT_USER_PASSWORD
-from admin.models_prompt_groups import PromptGroup
+from admin.models_prompt_groups import PromptGroup, user_prompt_groups
 
 # SECURITY: Audit Logging
 from utils.audit import (
@@ -37,7 +38,7 @@ async def list_users(
     
     **Acesso:** Apenas administradores
     """
-    users = db.query(User).offset(skip).limit(limit).all()
+    users = session_query(db, User).offset(skip).limit(limit).all()
     return users
 
 
@@ -59,7 +60,7 @@ async def create_user(
     SECURITY: Ação registrada no audit log.
     """
     # Verifica se username já existe
-    existing_user = db.query(User).filter(User.username == user_data.username).first()
+    existing_user = session_query(db, User).filter(User.username == user_data.username).first()
     if existing_user:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
@@ -68,7 +69,7 @@ async def create_user(
     
     # Verifica se email já existe (se informado)
     if user_data.email:
-        existing_email = db.query(User).filter(User.email == user_data.email).first()
+        existing_email = session_query(db, User).filter(User.email == user_data.email).first()
         if existing_email:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -87,7 +88,7 @@ async def create_user(
 
     if tem_gerador_pecas:
         if user_data.default_group_id:
-            default_group = db.query(PromptGroup).filter(PromptGroup.id == user_data.default_group_id).first()
+            default_group = session_query(db, PromptGroup).filter(PromptGroup.id == user_data.default_group_id).first()
             if not default_group:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
@@ -95,7 +96,7 @@ async def create_user(
                 )
         else:
             # Tenta usar grupo padrão "ps" se disponível
-            default_group = db.query(PromptGroup).filter(PromptGroup.slug == "ps").first()
+            default_group = session_query(db, PromptGroup).filter(PromptGroup.slug == "ps").first()
 
         allowed_ids = user_data.allowed_group_ids or []
         if not allowed_ids and default_group:
@@ -104,7 +105,7 @@ async def create_user(
             allowed_ids.append(default_group.id)
 
         if allowed_ids:
-            allowed_groups = db.query(PromptGroup).filter(PromptGroup.id.in_(allowed_ids)).all()
+            allowed_groups = session_query(db, PromptGroup).filter(PromptGroup.id.in_(allowed_ids)).all()
             if len(allowed_groups) != len(set(allowed_ids)):
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
@@ -114,7 +115,7 @@ async def create_user(
     # Define senha (padrão ou informada)
     password = user_data.password if user_data.password else DEFAULT_USER_PASSWORD
     
-    # Cria usuário
+    # Cria usuário (sem groups no construtor para evitar race condition)
     new_user = User(
         username=user_data.username,
         email=user_data.email,
@@ -125,12 +126,24 @@ async def create_user(
         permissoes_especiais=user_data.permissoes_especiais,
         setor=user_data.setor,
         default_group_id=default_group.id if default_group else None,
-        allowed_groups=allowed_groups,
         must_change_password=True,  # Força troca no primeiro acesso
         is_active=True
     )
-    
+
     db.add(new_user)
+    db.flush()  # Obtém o ID do novo usuário
+
+    # Limpa entradas órfãs na tabela de associação (se houver)
+    db.execute(
+        user_prompt_groups.delete().where(
+            user_prompt_groups.c.user_id == new_user.id
+        )
+    )
+
+    # Agora associa os grupos
+    if allowed_groups:
+        new_user.allowed_groups = allowed_groups
+
     db.commit()
     db.refresh(new_user)
 
@@ -151,7 +164,7 @@ async def get_user(
     
     **Acesso:** Apenas administradores
     """
-    user = db.query(User).filter(User.id == user_id).first()
+    user = session_query(db, User).filter(User.id == user_id).first()
     
     if not user:
         raise HTTPException(
@@ -183,7 +196,7 @@ async def update_user(
 
     SECURITY: Ação registrada no audit log.
     """
-    user = db.query(User).filter(User.id == user_id).first()
+    user = session_query(db, User).filter(User.id == user_id).first()
     
     if not user:
         raise HTTPException(
@@ -207,7 +220,7 @@ async def update_user(
     
     # Verifica email duplicado
     if user_data.email and user_data.email != user.email:
-        existing_email = db.query(User).filter(User.email == user_data.email).first()
+        existing_email = session_query(db, User).filter(User.email == user_data.email).first()
         if existing_email:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
@@ -231,7 +244,7 @@ async def update_user(
             allowed_ids = user_data.allowed_group_ids
             allowed_groups = []
             if allowed_ids:
-                allowed_groups = db.query(PromptGroup).filter(PromptGroup.id.in_(allowed_ids)).all()
+                allowed_groups = session_query(db, PromptGroup).filter(PromptGroup.id.in_(allowed_ids)).all()
                 if len(allowed_groups) != len(set(allowed_ids)):
                     raise HTTPException(
                         status_code=status.HTTP_400_BAD_REQUEST,
@@ -240,7 +253,7 @@ async def update_user(
             user.allowed_groups = allowed_groups
 
         if default_group_provided:
-            default_group = db.query(PromptGroup).filter(PromptGroup.id == user_data.default_group_id).first()
+            default_group = session_query(db, PromptGroup).filter(PromptGroup.id == user_data.default_group_id).first()
             if not default_group:
                 raise HTTPException(
                     status_code=status.HTTP_400_BAD_REQUEST,
@@ -302,7 +315,7 @@ async def delete_user(
 
     SECURITY: Ação registrada no audit log.
     """
-    user = db.query(User).filter(User.id == user_id).first()
+    user = session_query(db, User).filter(User.id == user_id).first()
 
     if not user:
         raise HTTPException(
@@ -343,7 +356,7 @@ async def reset_password(
 
     SECURITY: Ação registrada no audit log.
     """
-    user = db.query(User).filter(User.id == user_id).first()
+    user = session_query(db, User).filter(User.id == user_id).first()
 
     if not user:
         raise HTTPException(
@@ -368,3 +381,8 @@ async def reset_password(
         "message": f"Senha do usuário '{user.username}' resetada com sucesso",
         "new_password": DEFAULT_USER_PASSWORD
     }
+
+
+
+
+

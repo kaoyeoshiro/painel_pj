@@ -31,6 +31,7 @@ import os
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from threading import Lock
+from utils.timezone import get_utc_now
 from typing import Any, Dict, List, Optional, Set
 
 # Tenta usar logging estruturado
@@ -97,7 +98,7 @@ class FeatureFlagStore:
 
         Usa cache para evitar queries frequentes.
         """
-        now = datetime.utcnow()
+        now = get_utc_now()
 
         # Verifica cache
         if not force and self._last_db_load:
@@ -284,7 +285,7 @@ class FeatureFlagStore:
                 return False
 
             self._flags[name].enabled = enabled
-            self._flags[name].updated_at = datetime.utcnow()
+            self._flags[name].updated_at = get_utc_now()
             logger.info(f"[FeatureFlag] {name} set to {enabled}")
             return True
 

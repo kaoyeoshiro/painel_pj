@@ -6,16 +6,69 @@ Router para gerenciamento de prompts modulares
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session, joinedload
 from typing import List, Optional, Any, Dict
-from pydantic import BaseModel
 from datetime import datetime
+from utils.timezone import get_utc_now
+
+from admin.schemas_prompts import (
+    CategoriaOrdemBase,
+    CategoriaOrdemCreate,
+    CategoriaOrdemResponse,
+    CategoriaOrdemUpdate,
+    ConfigurarModulosTipoPecaRequest,
+    DiffResponse,
+    ExportarSelecionadosRequest,
+    ImportarModulosRequest,
+    ImportarModulosResponse,
+    ModuloTipoPecaItem,
+    ModuloTipoPecaResponse,
+    PromptGroupBase,
+    PromptGroupCreate,
+    PromptGroupResponse,
+    PromptGroupUpdate,
+    PromptHistoricoResponse,
+    PromptModuloBase,
+    PromptModuloCreate,
+    PromptModuloResponse,
+    PromptModuloUpdate,
+    PromptSubcategoriaBase,
+    PromptSubcategoriaCreate,
+    PromptSubcategoriaResponse,
+    PromptSubcategoriaUpdate,
+    PromptSubgroupBase,
+    PromptSubgroupCreate,
+    PromptSubgroupResponse,
+    PromptSubgroupUpdate,
+    RegraTipoPecaCreate,
+    RegraTipoPecaResponse,
+    ReordenarCategoriasPromptsRequest,
+    ReordenarPromptItem,
+    ReordenarPromptsRequest,
+)
 import difflib
 
-from database.connection import get_db
 from utils.timezone import to_iso_utc, now_utc
 from auth.models import User
 from auth.dependencies import get_current_active_user, require_admin
 from admin.models_prompts import PromptModulo, PromptModuloHistorico, ModuloTipoPeca, RegraDeterministicaTipoPeca
-from admin.models_prompt_groups import PromptGroup, PromptSubgroup, PromptSubcategoria
+from admin.models_prompt_groups import PromptGroup, PromptSubgroup, PromptSubcategoria, CategoriaOrdem
+from admin.repositories import (
+    get_prompt_modulo_repo,
+    get_prompt_modulo_historico_repo,
+    get_prompt_group_repo,
+    get_prompt_subgroup_repo,
+    get_prompt_subcategoria_repo,
+    get_modulo_tipo_peca_repo,
+    get_regra_tipo_peca_repo,
+    get_categoria_ordem_repo,
+    PromptModuloRepository,
+    PromptModuloHistoricoRepository,
+    PromptGroupRepository,
+    PromptSubgroupRepository,
+    PromptSubcategoriaRepository,
+    ModuloTipoPecaRepository,
+    RegraDeterministicaTipoPecaRepository,
+    CategoriaOrdemRepository,
+)
 
 router = APIRouter(prefix="/prompts-modulos", tags=["Prompts Modulares"])
 
@@ -86,224 +139,6 @@ def normalizar_booleanos_regra(regra: Optional[Dict[str, Any]]) -> Optional[Dict
 
 
 # ==========================================
-# Schemas
-# ==========================================
-
-class PromptModuloBase(BaseModel):
-    tipo: str  # 'base', 'peca', 'conteudo'
-    categoria: Optional[str] = None
-    subcategoria: Optional[str] = None  # Campo texto legado
-    subcategoria_ids: Optional[List[int]] = []  # IDs das subcategorias (muitos-para-muitos)
-    group_id: Optional[int] = None
-    subgroup_id: Optional[int] = None
-    nome: str
-    titulo: str
-    condicao_ativacao: Optional[str] = None  # Situação em que o prompt deve ser ativado (para Agente 2)
-    conteudo: str  # Conteúdo do prompt (para Agente 3)
-    # Modo de ativação: 'llm' (padrão) ou 'deterministic'
-    modo_ativacao: Optional[str] = 'llm'
-    # Regra determinística PRIMÁRIA (AST JSON) - apenas quando modo_ativacao = 'deterministic'
-    regra_deterministica: Optional[dict] = None
-    # Texto original da regra primária em linguagem natural
-    regra_texto_original: Optional[str] = None
-    # Regra determinística SECUNDÁRIA (fallback) - avaliada se primária não existe
-    regra_deterministica_secundaria: Optional[dict] = None
-    # Texto original da regra secundária em linguagem natural
-    regra_secundaria_texto_original: Optional[str] = None
-    # Se deve avaliar regra secundária quando primária não existe
-    fallback_habilitado: Optional[bool] = False
-    tags: Optional[List[str]] = []
-    ativo: bool = True
-    ordem: int = 0
-
-
-class PromptModuloCreate(PromptModuloBase):
-    pass
-
-
-class PromptModuloUpdate(BaseModel):
-    titulo: Optional[str] = None
-    categoria: Optional[str] = None  # Campo texto para agrupamento visual
-    subcategoria: Optional[str] = None  # Campo texto legado para organização
-    group_id: Optional[int] = None
-    subgroup_id: Optional[int] = None
-    subcategoria_ids: Optional[List[int]] = None  # IDs das subcategorias (muitos-para-muitos)
-    condicao_ativacao: Optional[str] = None  # Atualiza condição de ativação
-    conteudo: Optional[str] = None
-    # Modo de ativação: 'llm' ou 'deterministic'
-    modo_ativacao: Optional[str] = None
-    # Regra determinística PRIMÁRIA (AST JSON)
-    regra_deterministica: Optional[dict] = None
-    # Texto original da regra primária em linguagem natural
-    regra_texto_original: Optional[str] = None
-    # Regra determinística SECUNDÁRIA (fallback)
-    regra_deterministica_secundaria: Optional[dict] = None
-    # Texto original da regra secundária em linguagem natural
-    regra_secundaria_texto_original: Optional[str] = None
-    # Se deve avaliar regra secundária quando primária não existe
-    fallback_habilitado: Optional[bool] = None
-    tags: Optional[List[str]] = None
-    ativo: Optional[bool] = None
-    ordem: Optional[int] = None
-    motivo: Optional[str] = None  # Opcional - motivo da alteração
-
-
-class PromptModuloResponse(BaseModel):
-    id: int
-    tipo: str
-    categoria: Optional[str] = None
-    subcategoria: Optional[str] = None
-    subcategoria_ids: List[int] = []
-    subcategorias_nomes: List[str] = []  # Nomes das subcategorias para exibição
-    group_id: Optional[int] = None
-    subgroup_id: Optional[int] = None
-    nome: str
-    titulo: str
-    condicao_ativacao: Optional[str] = None
-    conteudo: str
-    # Modo de ativação: 'llm' ou 'deterministic'
-    modo_ativacao: Optional[str] = 'llm'
-    # Regra determinística PRIMÁRIA (AST JSON)
-    regra_deterministica: Optional[dict] = None
-    # Texto original da regra primária em linguagem natural
-    regra_texto_original: Optional[str] = None
-    # Regra determinística SECUNDÁRIA (fallback)
-    regra_deterministica_secundaria: Optional[dict] = None
-    # Texto original da regra secundária em linguagem natural
-    regra_secundaria_texto_original: Optional[str] = None
-    # Se deve avaliar regra secundária quando primária não existe
-    fallback_habilitado: Optional[bool] = False
-    # Palavras-chave para ativação
-    palavras_chave: Optional[List[str]] = []
-    tags: Optional[List[str]] = []
-    ativo: bool = True
-    ordem: int = 0
-    versao: int
-    criado_por: Optional[int]
-    criado_em: datetime
-    atualizado_por: Optional[int]
-    atualizado_em: Optional[datetime]
-
-    class Config:
-        from_attributes = True
-
-
-class PromptHistoricoResponse(BaseModel):
-    id: int
-    modulo_id: int
-    group_id: Optional[int] = None
-    subgroup_id: Optional[int] = None
-    versao: int
-    condicao_ativacao: Optional[str]
-    conteudo: str
-    tags: Optional[List[str]]
-    alterado_por: Optional[int]
-    alterado_em: datetime
-    motivo: Optional[str]
-    diff_resumo: Optional[str]
-
-    class Config:
-        from_attributes = True
-
-
-class DiffResponse(BaseModel):
-    v1: int
-    v2: int
-    diff_html: str
-    alteracoes: int
-
-
-class PromptGroupBase(BaseModel):
-    name: str
-    slug: str
-    active: bool = True
-    order: int = 0
-
-
-class PromptGroupCreate(PromptGroupBase):
-    pass
-
-
-class PromptGroupUpdate(BaseModel):
-    name: Optional[str] = None
-    slug: Optional[str] = None
-    active: Optional[bool] = None
-    order: Optional[int] = None
-
-
-class PromptGroupResponse(PromptGroupBase):
-    id: int
-    created_at: datetime
-    updated_at: datetime
-
-    class Config:
-        from_attributes = True
-
-
-class PromptSubgroupBase(BaseModel):
-    group_id: int
-    name: str
-    slug: str
-    active: bool = True
-    order: int = 0
-
-
-class PromptSubgroupCreate(BaseModel):
-    """Schema para criacao de subgrupo (group_id vem da URL, nao do body)."""
-    name: str
-    slug: str
-    active: bool = True
-    order: int = 0
-
-
-class PromptSubgroupUpdate(BaseModel):
-    name: Optional[str] = None
-    slug: Optional[str] = None
-    active: Optional[bool] = None
-    order: Optional[int] = None
-
-
-class PromptSubgroupResponse(PromptSubgroupBase):
-    id: int
-    created_at: datetime
-    updated_at: datetime
-
-    class Config:
-        from_attributes = True
-
-
-# Schemas para Subcategorias
-class PromptSubcategoriaBase(BaseModel):
-    nome: str
-    slug: str
-    descricao: Optional[str] = None
-    active: bool = True
-    order: int = 0
-
-
-class PromptSubcategoriaCreate(PromptSubcategoriaBase):
-    pass
-
-
-class PromptSubcategoriaUpdate(BaseModel):
-    nome: Optional[str] = None
-    slug: Optional[str] = None
-    descricao: Optional[str] = None
-    active: Optional[bool] = None
-    order: Optional[int] = None
-
-
-class PromptSubcategoriaResponse(PromptSubcategoriaBase):
-    id: int
-    group_id: int
-    created_at: datetime
-    updated_at: datetime
-
-    class Config:
-        from_attributes = True
-
-
-# ==========================================
 # Funções auxiliares
 # ==========================================
 
@@ -356,12 +191,11 @@ async def listar_modulos(
     busca: Optional[str] = None,
     apenas_ativos: bool = True,
     current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
+    modulo_repo: PromptModuloRepository = Depends(get_prompt_modulo_repo),
 ):
     """Lista todos os módulos de prompts com filtros"""
-    from admin.models_prompts import prompt_modulo_subcategorias
 
-    query = db.query(PromptModulo)
+    query = modulo_repo.query()
 
     if apenas_ativos:
         query = query.filter(PromptModulo.ativo == True)
@@ -397,9 +231,7 @@ async def listar_modulos(
     # Filtro por subcategorias (assuntos) - lógica OR (qualquer um dos assuntos selecionados)
     # NOTA: Usa subquery para evitar DISTINCT em colunas JSON (PostgreSQL não suporta)
     if subcategoria_ids:
-        subquery_ids = db.query(prompt_modulo_subcategorias.c.modulo_id).filter(
-            prompt_modulo_subcategorias.c.subcategoria_id.in_(subcategoria_ids)
-        ).distinct().subquery()
+        subquery_ids = modulo_repo.get_subcategoria_modulo_ids(subcategoria_ids)
         query = query.filter(PromptModulo.id.in_(subquery_ids))
 
     if busca:
@@ -426,7 +258,7 @@ async def listar_modulos(
     for modulo in modulos:
         # Calcula o modo efetivo REAL
         effective_mode = resolve_activation_mode_from_db(
-            db=db,
+            db=modulo_repo.db,
             modulo_id=modulo.id,
             modo_ativacao_salvo=modulo.modo_ativacao,
             regra_primaria=modulo.regra_deterministica,
@@ -479,25 +311,15 @@ async def listar_categorias(
     group_id: Optional[int] = None,
     apenas_ativos: bool = True,
     current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
+    modulo_repo: PromptModuloRepository = Depends(get_prompt_modulo_repo),
 ):
     """Lista todas as categorias disponíveis (de módulos ativos por padrão)"""
-    query = db.query(PromptModulo.categoria).distinct().filter(
-        PromptModulo.categoria.isnot(None),
-        PromptModulo.tipo.in_(["base", "peca", "conteudo"])  # Apenas tipos válidos
-    )
-    if apenas_ativos:
-        query = query.filter(PromptModulo.ativo == True)
-    if group_id:
-        query = query.filter(PromptModulo.group_id == group_id)
-    categorias = query.all()
-    return [c[0] for c in categorias if c[0]]
+    return modulo_repo.get_distinct_categorias_for_listing(group_id, apenas_ativos)
 
 
 @router.get("/tipos")
 async def listar_tipos(
     current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
 ):
     """Lista todos os tipos de módulos (sem 'base' - o base fica em Prompts de IA)"""
     return ["peca", "conteudo"]
@@ -507,19 +329,20 @@ async def listar_tipos(
 async def listar_tipos_peca(
     group_id: Optional[int] = None,
     current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
+    modulo_repo: PromptModuloRepository = Depends(get_prompt_modulo_repo),
 ):
     """
     Lista todos os tipos de peça disponíveis (módulos tipo='peca').
-    Tipos de peça são globais (não pertencem a grupos específicos).
-    O parâmetro group_id é ignorado pois tipos de peça são sempre globais.
+    Filtra por group_id quando fornecido para evitar duplicatas entre grupos.
     """
-    query = db.query(PromptModulo).filter(
+    query = modulo_repo.query().filter(
         PromptModulo.tipo == "peca",
         PromptModulo.ativo == True
     )
 
-    # Tipos de peça são globais - não filtra por grupo
+    if group_id:
+        query = query.filter(PromptModulo.group_id == group_id)
+
     modulos_peca = query.order_by(PromptModulo.ordem).all()
 
     return [
@@ -537,23 +360,24 @@ async def listar_tipos_peca(
 async def resumo_configuracao_tipos_peca(
     group_id: Optional[int] = None,
     current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
+    modulo_repo: PromptModuloRepository = Depends(get_prompt_modulo_repo),
 ):
     """
     Retorna um resumo da configuração de módulos por tipo de peça.
     Mostra quantos módulos estão ativos para cada tipo.
-    O group_id filtra apenas os módulos de conteúdo, não os tipos de peça.
+    Filtra tipos e conteúdos por group_id quando fornecido.
     """
-    from sqlalchemy import func, case
-
-    # Busca tipos de peça (são globais, não filtra por grupo)
-    tipos_peca = db.query(PromptModulo).filter(
+    # Busca tipos de peça (filtra por grupo para evitar duplicatas)
+    query_tipos = modulo_repo.query().filter(
         PromptModulo.tipo == "peca",
         PromptModulo.ativo == True
-    ).all()
+    )
+    if group_id:
+        query_tipos = query_tipos.filter(PromptModulo.group_id == group_id)
+    tipos_peca = query_tipos.all()
 
     # Conta total de módulos de conteúdo
-    query_conteudo = db.query(PromptModulo).filter(
+    query_conteudo = modulo_repo.query().filter(
         PromptModulo.tipo == "conteudo",
         PromptModulo.ativo == True
     )
@@ -562,29 +386,15 @@ async def resumo_configuracao_tipos_peca(
     total_modulos = query_conteudo.count()
 
     # Query única para contar ativos/inativos por tipo_peca (evita N+1)
-    # Importante: filtra por group_id quando especificado para manter consistência
-    # com total_modulos que também é filtrado
-    query_contagens = db.query(
-        ModuloTipoPeca.tipo_peca,
-        func.sum(case((ModuloTipoPeca.ativo == True, 1), else_=0)).label('ativos'),
-        func.sum(case((ModuloTipoPeca.ativo == False, 1), else_=0)).label('inativos')
-    ).join(
-        PromptModulo,
-        ModuloTipoPeca.modulo_id == PromptModulo.id
-    ).filter(
-        PromptModulo.tipo == "conteudo",
-        PromptModulo.ativo == True
-    )
-    if group_id:
-        query_contagens = query_contagens.filter(PromptModulo.group_id == group_id)
-    contagens = query_contagens.group_by(ModuloTipoPeca.tipo_peca).all()
+    contagens = modulo_repo.get_resumo_contagens_tipo_peca(group_id)
 
-    # Mapeia resultados
+    # Mapeia resultados — usa nome como chave (é o identificador em ModuloTipoPeca)
     contagens_map = {c.tipo_peca: {'ativos': int(c.ativos or 0), 'inativos': int(c.inativos or 0)} for c in contagens}
 
     resultado = []
     for tipo in tipos_peca:
-        contagem = contagens_map.get(tipo.categoria, {'ativos': 0, 'inativos': 0})
+        chave = tipo.nome  # nome é o identificador real (ex: "contestacao")
+        contagem = contagens_map.get(chave, {'ativos': 0, 'inativos': 0})
         ativos = contagem['ativos']
         inativos = contagem['inativos']
 
@@ -592,7 +402,7 @@ async def resumo_configuracao_tipos_peca(
         sem_config = total_modulos - ativos - inativos
 
         resultado.append({
-            "tipo_peca": tipo.categoria,
+            "tipo_peca": chave,
             "titulo": tipo.titulo,
             "modulos_ativos": ativos + sem_config,  # Inclui sem config como ativos
             "modulos_inativos": inativos,
@@ -618,9 +428,9 @@ async def resumo_configuracao_tipos_peca(
 async def listar_grupos(
     apenas_ativos: bool = True,
     current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
+    group_repo: PromptGroupRepository = Depends(get_prompt_group_repo),
 ):
-    query = db.query(PromptGroup)
+    query = group_repo.query()
     if apenas_ativos:
         query = query.filter(PromptGroup.active == True)
     grupos = query.order_by(PromptGroup.order, PromptGroup.name).all()
@@ -631,7 +441,7 @@ async def listar_grupos(
 async def criar_grupo(
     grupo_data: PromptGroupCreate,
     current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
+    group_repo: PromptGroupRepository = Depends(get_prompt_group_repo),
 ):
     verificar_permissao_prompts(current_user, "criar")
 
@@ -639,19 +449,19 @@ async def criar_grupo(
     if not slug:
         raise HTTPException(status_code=400, detail="Slug do grupo e obrigatorio")
 
-    existente = db.query(PromptGroup).filter(PromptGroup.slug == slug).first()
+    existente = group_repo.get_by_slug(slug)
     if existente:
         raise HTTPException(status_code=400, detail="Slug de grupo ja existe")
 
     grupo = PromptGroup(
-        name=grupo_data.name.strip(),
+        name=grupo_data.nome.strip(),
         slug=slug,
-        active=grupo_data.active,
-        order=grupo_data.order
+        active=grupo_data.ativo,
+        order=grupo_data.ordem
     )
-    db.add(grupo)
-    db.commit()
-    db.refresh(grupo)
+    group_repo.add(grupo)
+    group_repo.commit()
+    group_repo.refresh(grupo)
     return grupo
 
 
@@ -660,30 +470,29 @@ async def atualizar_grupo(
     group_id: int,
     grupo_data: PromptGroupUpdate,
     current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
+    group_repo: PromptGroupRepository = Depends(get_prompt_group_repo),
 ):
     verificar_permissao_prompts(current_user, "editar")
 
-    grupo = db.query(PromptGroup).filter(PromptGroup.id == group_id).first()
+    grupo = group_repo.get_by_id(group_id)
     if not grupo:
         raise HTTPException(status_code=404, detail="Grupo nao encontrado")
 
     if grupo_data.slug:
         slug = grupo_data.slug.strip().lower()
-        existente = db.query(PromptGroup).filter(
-            PromptGroup.slug == slug,
-            PromptGroup.id != group_id
-        ).first()
-        if existente:
+        if group_repo.check_slug_exists(slug, exclude_id=group_id):
             raise HTTPException(status_code=400, detail="Slug de grupo ja existe")
         grupo.slug = slug
 
+    # Map Portuguese schema field names to English ORM attribute names
+    _group_field_map = {"nome": "name", "ativo": "active", "ordem": "order"}
     update_data = grupo_data.model_dump(exclude_unset=True, exclude={"slug"})
     for field, value in update_data.items():
-        setattr(grupo, field, value)
+        orm_field = _group_field_map.get(field, field)
+        setattr(grupo, orm_field, value)
 
-    db.commit()
-    db.refresh(grupo)
+    group_repo.commit()
+    group_repo.refresh(grupo)
     return grupo
 
 
@@ -692,7 +501,7 @@ async def listar_subgrupos(
     group_id: int,
     apenas_ativos: bool = True,
     current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
+    subgroup_repo: PromptSubgroupRepository = Depends(get_prompt_subgroup_repo),
 ):
     """
     Lista subgrupos operacionais de um grupo.
@@ -700,7 +509,7 @@ async def listar_subgrupos(
     Subgrupos sao recortes operacionais (ex: Conhecimento, Cumprimento).
     NAO confundir com Categorias (Preliminar, Merito, Eventualidade).
     """
-    query = db.query(PromptSubgroup).filter(PromptSubgroup.group_id == group_id)
+    query = subgroup_repo.query().filter(PromptSubgroup.group_id == group_id)
     if apenas_ativos:
         query = query.filter(PromptSubgroup.active == True)
     subgrupos = query.order_by(PromptSubgroup.order, PromptSubgroup.name).all()
@@ -712,7 +521,8 @@ async def criar_subgrupo(
     group_id: int,
     subgrupo_data: PromptSubgroupCreate,
     current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
+    group_repo: PromptGroupRepository = Depends(get_prompt_group_repo),
+    subgroup_repo: PromptSubgroupRepository = Depends(get_prompt_subgroup_repo),
 ):
     """
     Cria um subgrupo operacional para um grupo.
@@ -722,7 +532,7 @@ async def criar_subgrupo(
     """
     verificar_permissao_prompts(current_user, "criar")
 
-    grupo = db.query(PromptGroup).filter(PromptGroup.id == group_id).first()
+    grupo = group_repo.get_by_id(group_id)
     if not grupo:
         raise HTTPException(status_code=404, detail="Grupo nao encontrado")
 
@@ -730,7 +540,7 @@ async def criar_subgrupo(
     if not slug:
         raise HTTPException(status_code=400, detail="Slug do subgrupo e obrigatorio")
 
-    existente = db.query(PromptSubgroup).filter(
+    existente = subgroup_repo.query().filter(
         PromptSubgroup.group_id == group_id,
         PromptSubgroup.slug == slug
     ).first()
@@ -739,14 +549,14 @@ async def criar_subgrupo(
 
     subgrupo = PromptSubgroup(
         group_id=group_id,
-        name=subgrupo_data.name.strip(),
+        name=subgrupo_data.nome.strip(),
         slug=slug,
-        active=subgrupo_data.active,
-        order=subgrupo_data.order
+        active=subgrupo_data.ativo,
+        order=subgrupo_data.ordem
     )
-    db.add(subgrupo)
-    db.commit()
-    db.refresh(subgrupo)
+    subgroup_repo.add(subgrupo)
+    subgroup_repo.commit()
+    subgroup_repo.refresh(subgrupo)
     return subgrupo
 
 
@@ -755,18 +565,18 @@ async def atualizar_subgrupo(
     subgroup_id: int,
     subgrupo_data: PromptSubgroupUpdate,
     current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
+    subgroup_repo: PromptSubgroupRepository = Depends(get_prompt_subgroup_repo),
 ):
     """Atualiza um subgrupo operacional."""
     verificar_permissao_prompts(current_user, "editar")
 
-    subgrupo = db.query(PromptSubgroup).filter(PromptSubgroup.id == subgroup_id).first()
+    subgrupo = subgroup_repo.get_by_id(subgroup_id)
     if not subgrupo:
         raise HTTPException(status_code=404, detail="Subgrupo nao encontrado")
 
     if subgrupo_data.slug:
         slug = subgrupo_data.slug.strip().lower()
-        existente = db.query(PromptSubgroup).filter(
+        existente = subgroup_repo.query().filter(
             PromptSubgroup.group_id == subgrupo.group_id,
             PromptSubgroup.slug == slug,
             PromptSubgroup.id != subgroup_id
@@ -775,12 +585,15 @@ async def atualizar_subgrupo(
             raise HTTPException(status_code=400, detail="Slug de subgrupo ja existe no grupo")
         subgrupo.slug = slug
 
+    # Map Portuguese schema field names to English ORM attribute names
+    _subgroup_field_map = {"nome": "name", "ativo": "active", "ordem": "order"}
     update_data = subgrupo_data.model_dump(exclude_unset=True, exclude={"slug"})
     for field, value in update_data.items():
-        setattr(subgrupo, field, value)
+        orm_field = _subgroup_field_map.get(field, field)
+        setattr(subgrupo, orm_field, value)
 
-    db.commit()
-    db.refresh(subgrupo)
+    subgroup_repo.commit()
+    subgroup_repo.refresh(subgrupo)
     return subgrupo
 
 
@@ -789,20 +602,18 @@ async def deletar_subgrupo(
     subgroup_id: int,
     force: bool = False,
     current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
+    subgroup_repo: PromptSubgroupRepository = Depends(get_prompt_subgroup_repo),
 ):
     """Deleta um subgrupo. Use force=true para remover associacoes e deletar mesmo com modulos vinculados."""
     verificar_permissao_prompts(current_user, "excluir")
 
     try:
-        subgrupo = db.query(PromptSubgroup).filter(PromptSubgroup.id == subgroup_id).first()
+        subgrupo = subgroup_repo.get_by_id(subgroup_id)
         if not subgrupo:
             raise HTTPException(status_code=404, detail="Subgrupo nao encontrado")
 
         # Verifica se há módulos usando este subgrupo
-        modulos_usando = db.query(PromptModulo).filter(
-            PromptModulo.subgroup_id == subgroup_id
-        ).count()
+        modulos_usando = subgroup_repo.count_modulos_using_subgroup(subgroup_id)
 
         if modulos_usando > 0 and not force:
             raise HTTPException(
@@ -814,18 +625,14 @@ async def deletar_subgrupo(
         if force:
             # Remove referência nos módulos
             if modulos_usando > 0:
-                db.query(PromptModulo).filter(
-                    PromptModulo.subgroup_id == subgroup_id
-                ).update({PromptModulo.subgroup_id: None}, synchronize_session=False)
+                subgroup_repo.clear_subgroup_references(subgroup_id)
 
             # Remove referência no histórico de módulos (foreign key constraint)
-            db.query(PromptModuloHistorico).filter(
-                PromptModuloHistorico.subgroup_id == subgroup_id
-            ).update({PromptModuloHistorico.subgroup_id: None}, synchronize_session=False)
+            subgroup_repo.clear_subgroup_references_historico(subgroup_id)
 
         nome = subgrupo.name
-        db.delete(subgrupo)
-        db.commit()
+        subgroup_repo.delete(subgrupo)
+        subgroup_repo.commit()
 
         if modulos_usando > 0:
             return {"message": f"Subgrupo '{nome}' deletado com sucesso. {modulos_usando} modulo(s) foram desvinculados."}
@@ -834,7 +641,7 @@ async def deletar_subgrupo(
     except HTTPException:
         raise
     except Exception as e:
-        db.rollback()
+        subgroup_repo.rollback()
         raise HTTPException(status_code=500, detail=f"Erro ao deletar subgrupo: {str(e)}")
 
 
@@ -846,18 +653,16 @@ async def deletar_subgrupo(
 async def listar_todas_subcategorias(
     apenas_ativas: bool = True,
     current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
+    subcategoria_repo: PromptSubcategoriaRepository = Depends(get_prompt_subcategoria_repo),
+    group_repo: PromptGroupRepository = Depends(get_prompt_group_repo),
 ):
     """Lista todas as subcategorias (assuntos) de todos os grupos"""
-    query = db.query(PromptSubcategoria).join(PromptGroup)
-    if apenas_ativas:
-        query = query.filter(PromptSubcategoria.active == True)
-    subcategorias = query.order_by(PromptGroup.name, PromptSubcategoria.order, PromptSubcategoria.nome).all()
+    subcategorias = subcategoria_repo.list_all_with_group_join(apenas_ativas)
 
     # Retorna com nome do grupo para facilitar exibição
     result = []
     for sub in subcategorias:
-        grupo = db.query(PromptGroup).filter(PromptGroup.id == sub.group_id).first()
+        grupo = group_repo.get_by_id(sub.group_id)
         result.append({
             "id": sub.id,
             "group_id": sub.group_id,
@@ -878,10 +683,10 @@ async def listar_subcategorias(
     group_id: int,
     apenas_ativas: bool = True,
     current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
+    subcategoria_repo: PromptSubcategoriaRepository = Depends(get_prompt_subcategoria_repo),
 ):
     """Lista subcategorias de um grupo"""
-    query = db.query(PromptSubcategoria).filter(PromptSubcategoria.group_id == group_id)
+    query = subcategoria_repo.query().filter(PromptSubcategoria.group_id == group_id)
     if apenas_ativas:
         query = query.filter(PromptSubcategoria.active == True)
     subcategorias = query.order_by(PromptSubcategoria.order, PromptSubcategoria.nome).all()
@@ -893,12 +698,13 @@ async def criar_subcategoria(
     group_id: int,
     subcategoria_data: PromptSubcategoriaCreate,
     current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
+    group_repo: PromptGroupRepository = Depends(get_prompt_group_repo),
+    subcategoria_repo: PromptSubcategoriaRepository = Depends(get_prompt_subcategoria_repo),
 ):
     """Cria uma nova subcategoria para um grupo"""
     verificar_permissao_prompts(current_user, "criar")
 
-    grupo = db.query(PromptGroup).filter(PromptGroup.id == group_id).first()
+    grupo = group_repo.get_by_id(group_id)
     if not grupo:
         raise HTTPException(status_code=404, detail="Grupo nao encontrado")
 
@@ -906,7 +712,7 @@ async def criar_subcategoria(
     if not slug:
         raise HTTPException(status_code=400, detail="Slug da subcategoria e obrigatorio")
 
-    existente = db.query(PromptSubcategoria).filter(
+    existente = subcategoria_repo.query().filter(
         PromptSubcategoria.group_id == group_id,
         PromptSubcategoria.slug == slug
     ).first()
@@ -921,9 +727,9 @@ async def criar_subcategoria(
         active=subcategoria_data.active,
         order=subcategoria_data.order
     )
-    db.add(subcategoria)
-    db.commit()
-    db.refresh(subcategoria)
+    subcategoria_repo.add(subcategoria)
+    subcategoria_repo.commit()
+    subcategoria_repo.refresh(subcategoria)
     return subcategoria
 
 
@@ -932,18 +738,18 @@ async def atualizar_subcategoria(
     subcategoria_id: int,
     subcategoria_data: PromptSubcategoriaUpdate,
     current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
+    subcategoria_repo: PromptSubcategoriaRepository = Depends(get_prompt_subcategoria_repo),
 ):
     """Atualiza uma subcategoria"""
     verificar_permissao_prompts(current_user, "editar")
 
-    subcategoria = db.query(PromptSubcategoria).filter(PromptSubcategoria.id == subcategoria_id).first()
+    subcategoria = subcategoria_repo.get_by_id(subcategoria_id)
     if not subcategoria:
         raise HTTPException(status_code=404, detail="Subcategoria nao encontrada")
 
     if subcategoria_data.slug:
         slug = subcategoria_data.slug.strip().lower().replace(" ", "_")
-        existente = db.query(PromptSubcategoria).filter(
+        existente = subcategoria_repo.query().filter(
             PromptSubcategoria.group_id == subcategoria.group_id,
             PromptSubcategoria.slug == slug,
             PromptSubcategoria.id != subcategoria_id
@@ -956,8 +762,8 @@ async def atualizar_subcategoria(
     for field, value in update_data.items():
         setattr(subcategoria, field, value)
 
-    db.commit()
-    db.refresh(subcategoria)
+    subcategoria_repo.commit()
+    subcategoria_repo.refresh(subcategoria)
     return subcategoria
 
 
@@ -965,17 +771,18 @@ async def atualizar_subcategoria(
 async def deletar_subcategoria(
     subcategoria_id: int,
     current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
+    subcategoria_repo: PromptSubcategoriaRepository = Depends(get_prompt_subcategoria_repo),
+    modulo_repo: PromptModuloRepository = Depends(get_prompt_modulo_repo),
 ):
     """Deleta uma subcategoria"""
     verificar_permissao_prompts(current_user, "deletar")
 
-    subcategoria = db.query(PromptSubcategoria).filter(PromptSubcategoria.id == subcategoria_id).first()
+    subcategoria = subcategoria_repo.get_by_id(subcategoria_id)
     if not subcategoria:
         raise HTTPException(status_code=404, detail="Subcategoria nao encontrada")
 
     # Verifica se há módulos usando esta subcategoria
-    modulos_usando = db.query(PromptModulo).filter(
+    modulos_usando = modulo_repo.query().filter(
         PromptModulo.subcategoria == subcategoria.slug,
         PromptModulo.group_id == subcategoria.group_id
     ).count()
@@ -986,8 +793,8 @@ async def deletar_subcategoria(
             detail=f"Nao e possivel deletar: {modulos_usando} modulo(s) estao usando esta subcategoria"
         )
 
-    db.delete(subcategoria)
-    db.commit()
+    subcategoria_repo.delete(subcategoria)
+    subcategoria_repo.commit()
     return {"message": "Subcategoria deletada com sucesso"}
 
 
@@ -995,10 +802,10 @@ async def deletar_subcategoria(
 async def obter_modulo(
     modulo_id: int,
     current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
+    modulo_repo: PromptModuloRepository = Depends(get_prompt_modulo_repo),
 ):
     """Obtém um módulo específico"""
-    modulo = db.query(PromptModulo).filter(PromptModulo.id == modulo_id).first()
+    modulo = modulo_repo.get_by_id(modulo_id)
 
     if not modulo:
         raise HTTPException(status_code=404, detail="Módulo não encontrado")
@@ -1015,7 +822,7 @@ async def obter_modulo(
     # ==========================================================================
     from sistemas.gerador_pecas.services_deterministic import resolve_activation_mode_from_db
     response["effective_activation_mode"] = resolve_activation_mode_from_db(
-        db=db,
+        db=modulo_repo.db,
         modulo_id=modulo.id,
         modo_ativacao_salvo=modulo.modo_ativacao,
         regra_primaria=modulo.regra_deterministica,
@@ -1028,7 +835,7 @@ async def obter_modulo(
     if response["effective_activation_mode"] == 'deterministic':
         try:
             from sistemas.gerador_pecas.services_deterministic import RuleIntegrityValidator
-            validator = RuleIntegrityValidator(db)
+            validator = RuleIntegrityValidator(modulo_repo.db)
             validacao = validator.validar_modulo(modulo.id)
             response["validacao_integridade"] = {
                 "valido": validacao["valido"],
@@ -1047,30 +854,33 @@ async def obter_modulo(
 async def criar_modulo(
     modulo_data: PromptModuloCreate,
     current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
+    modulo_repo: PromptModuloRepository = Depends(get_prompt_modulo_repo),
+    group_repo: PromptGroupRepository = Depends(get_prompt_group_repo),
+    subgroup_repo: PromptSubgroupRepository = Depends(get_prompt_subgroup_repo),
+    subcategoria_repo: PromptSubcategoriaRepository = Depends(get_prompt_subcategoria_repo),
 ):
     """Cria um novo módulo de prompt"""
     verificar_permissao_prompts(current_user, "criar")
-    
+
     # Verifica se já existe com mesmo nome
     if modulo_data.tipo == "peca":
         # Para peça, verifica apenas tipo + nome (categoria/subcategoria são null)
-        existente = db.query(PromptModulo).filter(
+        existente = modulo_repo.query().filter(
             PromptModulo.tipo == "peca",
             PromptModulo.nome == modulo_data.nome
         ).first()
     else:
-        existente = db.query(PromptModulo).filter(
+        # Verifica constraint unique do banco: (tipo, nome, group_id)
+        existente = modulo_repo.query().filter(
             PromptModulo.tipo == modulo_data.tipo,
-            PromptModulo.categoria == modulo_data.categoria,
-            PromptModulo.subcategoria == modulo_data.subcategoria,
-            PromptModulo.nome == modulo_data.nome
+            PromptModulo.nome == modulo_data.nome,
+            PromptModulo.group_id == modulo_data.group_id
         ).first()
 
     if existente:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Já existe um módulo com este nome" if modulo_data.tipo == "peca" else "Já existe um módulo com esta combinação tipo/categoria/subcategoria/nome"
+            detail="Já existe um módulo com este nome" if modulo_data.tipo == "peca" else "Já existe um módulo com este nome neste grupo"
         )
 
     group_id = modulo_data.group_id
@@ -1081,14 +891,14 @@ async def criar_modulo(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Grupo e obrigatorio para modulo de conteudo"
             )
-        grupo = db.query(PromptGroup).filter(PromptGroup.id == group_id).first()
+        grupo = group_repo.get_by_id(group_id)
         if not grupo:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="Grupo invalido"
             )
         if subgroup_id:
-            subgrupo = db.query(PromptSubgroup).filter(
+            subgrupo = subgroup_repo.query().filter(
                 PromptSubgroup.id == subgroup_id,
                 PromptSubgroup.group_id == group_id
             ).first()
@@ -1144,15 +954,15 @@ async def criar_modulo(
 
     # Adiciona subcategorias se fornecidas
     if modulo_data.subcategoria_ids:
-        subcategorias = db.query(PromptSubcategoria).filter(
+        subcategorias = subcategoria_repo.query().filter(
             PromptSubcategoria.id.in_(modulo_data.subcategoria_ids),
             PromptSubcategoria.group_id == group_id
         ).all()
         modulo.subcategorias = subcategorias
 
-    db.add(modulo)
-    db.commit()
-    db.refresh(modulo)
+    modulo_repo.add(modulo)
+    modulo_repo.commit()
+    modulo_repo.refresh(modulo)
 
     # ==========================================================================
     # BANCO VETORIAL: Cria embedding se for módulo de conteúdo
@@ -1187,13 +997,15 @@ async def atualizar_modulo(
     modulo_id: int,
     modulo_data: PromptModuloUpdate,
     current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
+    modulo_repo: PromptModuloRepository = Depends(get_prompt_modulo_repo),
+    historico_repo: PromptModuloHistoricoRepository = Depends(get_prompt_modulo_historico_repo),
+    subcategoria_repo: PromptSubcategoriaRepository = Depends(get_prompt_subcategoria_repo),
 ):
     """Atualiza um módulo (cria nova versão no histórico)"""
     verificar_permissao_prompts(current_user, "editar")
-    
-    modulo = db.query(PromptModulo).filter(PromptModulo.id == modulo_id).first()
-    
+
+    modulo = modulo_repo.get_by_id(modulo_id)
+
     if not modulo:
         raise HTTPException(status_code=404, detail="Módulo não encontrado")
 
@@ -1223,8 +1035,8 @@ async def atualizar_modulo(
         motivo=modulo_data.motivo,
         diff_resumo=diff_resumo
     )
-    db.add(historico)
-    
+    historico_repo.add(historico)
+
     # Atualiza módulo
     update_data = modulo_data.model_dump(exclude_unset=True, exclude={"motivo", "subcategoria_ids"})
 
@@ -1246,7 +1058,7 @@ async def atualizar_modulo(
     fallback_final = update_data.get("fallback_habilitado", modulo.fallback_habilitado or False)
 
     modo_correto = resolve_activation_mode_from_db(
-        db=db,
+        db=modulo_repo.db,
         modulo_id=modulo_id,
         modo_ativacao_salvo=update_data.get("modo_ativacao", modulo.modo_ativacao),
         regra_primaria=regra_primaria_final,
@@ -1284,7 +1096,7 @@ async def atualizar_modulo(
     # Atualiza subcategorias se fornecidas
     if modulo_data.subcategoria_ids is not None:
         group_id_atual = modulo.group_id
-        subcategorias = db.query(PromptSubcategoria).filter(
+        subcategorias = subcategoria_repo.query().filter(
             PromptSubcategoria.id.in_(modulo_data.subcategoria_ids),
             PromptSubcategoria.group_id == group_id_atual
         ).all() if modulo_data.subcategoria_ids else []
@@ -1292,16 +1104,16 @@ async def atualizar_modulo(
 
     modulo.versao += 1
     modulo.atualizado_por = current_user.id
-    modulo.atualizado_em = datetime.utcnow()
+    modulo.atualizado_em = get_utc_now()
 
-    db.commit()
-    db.refresh(modulo)
+    modulo_repo.commit()
+    modulo_repo.refresh(modulo)
 
     # Sincroniza uso de variáveis se modo determinístico
     if modulo.modo_ativacao == 'deterministic' and modulo.regra_deterministica:
         try:
             from sistemas.gerador_pecas.services_deterministic import PromptVariableUsageSync
-            sync = PromptVariableUsageSync(db)
+            sync = PromptVariableUsageSync(modulo_repo.db)
             # Passa tanto regra primária quanto secundária para sincronizar todas as variáveis usadas
             sync.atualizar_uso(
                 modulo.id,
@@ -1315,7 +1127,7 @@ async def atualizar_modulo(
         # Remove registros de uso se voltou para modo LLM
         try:
             from sistemas.gerador_pecas.services_deterministic import PromptVariableUsageSync
-            sync = PromptVariableUsageSync(db)
+            sync = PromptVariableUsageSync(modulo_repo.db)
             sync.atualizar_uso(modulo.id, None, None)
         except Exception as e:
             import logging
@@ -1352,7 +1164,7 @@ async def atualizar_modulo(
     if modulo.modo_ativacao == 'deterministic':
         try:
             from sistemas.gerador_pecas.services_deterministic import RuleIntegrityValidator
-            validator = RuleIntegrityValidator(db)
+            validator = RuleIntegrityValidator(modulo_repo.db)
             validacao = validator.validar_modulo(modulo.id)
             response["validacao_integridade"] = {
                 "valido": validacao["valido"],
@@ -1371,20 +1183,20 @@ async def atualizar_modulo(
 async def desativar_modulo(
     modulo_id: int,
     current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
+    modulo_repo: PromptModuloRepository = Depends(get_prompt_modulo_repo),
 ):
     """Desativa um módulo (soft delete)"""
     verificar_permissao_prompts(current_user, "excluir")
-    
-    modulo = db.query(PromptModulo).filter(PromptModulo.id == modulo_id).first()
-    
+
+    modulo = modulo_repo.get_by_id(modulo_id)
+
     if not modulo:
         raise HTTPException(status_code=404, detail="Módulo não encontrado")
-    
+
     modulo.ativo = False
     modulo.atualizado_por = current_user.id
-    db.commit()
-    
+    modulo_repo.commit()
+
     return {"message": f"Módulo '{modulo.titulo}' desativado com sucesso"}
 
 
@@ -1392,19 +1204,19 @@ async def desativar_modulo(
 async def toggle_modulo_ativo(
     modulo_id: int,
     current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
+    modulo_repo: PromptModuloRepository = Depends(get_prompt_modulo_repo),
 ):
     """Alterna o status ativo/inativo de um módulo."""
     verificar_permissao_prompts(current_user, "editar")
 
-    modulo = db.query(PromptModulo).filter(PromptModulo.id == modulo_id).first()
+    modulo = modulo_repo.get_by_id(modulo_id)
 
     if not modulo:
         raise HTTPException(status_code=404, detail="Módulo não encontrado")
 
     modulo.ativo = not modulo.ativo
     modulo.atualizado_por = current_user.id
-    db.commit()
+    modulo_repo.commit()
 
     return {
         "success": True,
@@ -1419,27 +1231,26 @@ async def toggle_modulo_ativo(
 async def excluir_modulo_permanente(
     modulo_id: int,
     current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
+    modulo_repo: PromptModuloRepository = Depends(get_prompt_modulo_repo),
+    historico_repo: PromptModuloHistoricoRepository = Depends(get_prompt_modulo_historico_repo),
 ):
     """Exclui um módulo permanentemente (incluindo histórico)"""
     verificar_permissao_prompts(current_user, "excluir")
-    
-    modulo = db.query(PromptModulo).filter(PromptModulo.id == modulo_id).first()
-    
+
+    modulo = modulo_repo.get_by_id(modulo_id)
+
     if not modulo:
         raise HTTPException(status_code=404, detail="Módulo não encontrado")
-    
+
     titulo = modulo.titulo
-    
+
     # Remove histórico primeiro
-    db.query(PromptModuloHistorico).filter(
-        PromptModuloHistorico.modulo_id == modulo_id
-    ).delete()
-    
+    historico_repo.delete_by_modulo(modulo_id)
+
     # Remove o módulo
-    db.delete(modulo)
-    db.commit()
-    
+    modulo_repo.delete(modulo)
+    modulo_repo.commit()
+
     return {"message": f"Módulo '{titulo}' excluído permanentemente"}
 
 
@@ -1451,18 +1262,17 @@ async def excluir_modulo_permanente(
 async def listar_historico(
     modulo_id: int,
     current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
+    modulo_repo: PromptModuloRepository = Depends(get_prompt_modulo_repo),
+    historico_repo: PromptModuloHistoricoRepository = Depends(get_prompt_modulo_historico_repo),
 ):
     """Lista histórico de versões de um módulo"""
-    modulo = db.query(PromptModulo).filter(PromptModulo.id == modulo_id).first()
-    
+    modulo = modulo_repo.get_by_id(modulo_id)
+
     if not modulo:
         raise HTTPException(status_code=404, detail="Módulo não encontrado")
-    
-    historico = db.query(PromptModuloHistorico).filter(
-        PromptModuloHistorico.modulo_id == modulo_id
-    ).order_by(PromptModuloHistorico.versao.desc()).all()
-    
+
+    historico = historico_repo.list_by_modulo(modulo_id, limit=1000)
+
     return historico
 
 
@@ -1471,17 +1281,14 @@ async def obter_versao(
     modulo_id: int,
     versao: int,
     current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
+    historico_repo: PromptModuloHistoricoRepository = Depends(get_prompt_modulo_historico_repo),
 ):
     """Obtém uma versão específica do histórico"""
-    historico = db.query(PromptModuloHistorico).filter(
-        PromptModuloHistorico.modulo_id == modulo_id,
-        PromptModuloHistorico.versao == versao
-    ).first()
-    
+    historico = historico_repo.get_by_modulo_versao(modulo_id, versao)
+
     if not historico:
         raise HTTPException(status_code=404, detail="Versão não encontrada")
-    
+
     return historico
 
 
@@ -1491,23 +1298,21 @@ async def restaurar_versao(
     versao: int,
     motivo: str,
     current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
+    modulo_repo: PromptModuloRepository = Depends(get_prompt_modulo_repo),
+    historico_repo: PromptModuloHistoricoRepository = Depends(get_prompt_modulo_historico_repo),
 ):
     """Restaura uma versão anterior (cria nova versão com conteúdo antigo)"""
     verificar_permissao_prompts(current_user, "editar")
-    
-    modulo = db.query(PromptModulo).filter(PromptModulo.id == modulo_id).first()
+
+    modulo = modulo_repo.get_by_id(modulo_id)
     if not modulo:
         raise HTTPException(status_code=404, detail="Módulo não encontrado")
-    
-    historico = db.query(PromptModuloHistorico).filter(
-        PromptModuloHistorico.modulo_id == modulo_id,
-        PromptModuloHistorico.versao == versao
-    ).first()
-    
+
+    historico = historico_repo.get_by_modulo_versao(modulo_id, versao)
+
     if not historico:
         raise HTTPException(status_code=404, detail="Versão não encontrada")
-    
+
     # Salva versão atual no histórico
     novo_historico = PromptModuloHistorico(
         modulo_id=modulo.id,
@@ -1522,8 +1327,8 @@ async def restaurar_versao(
         motivo=f"Restauração para v{versao}: {motivo}",
         diff_resumo=gerar_diff_resumo(modulo.conteudo, historico.conteudo)
     )
-    db.add(novo_historico)
-    
+    historico_repo.add(novo_historico)
+
     # Restaura conteúdo
     modulo.group_id = historico.group_id
     modulo.subgroup_id = historico.subgroup_id
@@ -1533,10 +1338,10 @@ async def restaurar_versao(
     modulo.tags = historico.tags
     modulo.versao += 1
     modulo.atualizado_por = current_user.id
-    modulo.atualizado_em = datetime.utcnow()
-    
-    db.commit()
-    
+    modulo.atualizado_em = get_utc_now()
+
+    modulo_repo.commit()
+
     return {"message": f"Versão {versao} restaurada com sucesso. Nova versão: {modulo.versao}"}
 
 
@@ -1546,33 +1351,28 @@ async def comparar_versoes(
     v1: int,
     v2: int,
     current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
+    modulo_repo: PromptModuloRepository = Depends(get_prompt_modulo_repo),
+    historico_repo: PromptModuloHistoricoRepository = Depends(get_prompt_modulo_historico_repo),
 ):
     """Compara duas versões de um módulo"""
-    modulo = db.query(PromptModulo).filter(PromptModulo.id == modulo_id).first()
+    modulo = modulo_repo.get_by_id(modulo_id)
     if not modulo:
         raise HTTPException(status_code=404, detail="Módulo não encontrado")
-    
+
     # Obtém versão v1
     if v1 == modulo.versao:
         conteudo_v1 = modulo.conteudo
     else:
-        hist_v1 = db.query(PromptModuloHistorico).filter(
-            PromptModuloHistorico.modulo_id == modulo_id,
-            PromptModuloHistorico.versao == v1
-        ).first()
+        hist_v1 = historico_repo.get_by_modulo_versao(modulo_id, v1)
         if not hist_v1:
             raise HTTPException(status_code=404, detail=f"Versão {v1} não encontrada")
         conteudo_v1 = hist_v1.conteudo
-    
+
     # Obtém versão v2
     if v2 == modulo.versao:
         conteudo_v2 = modulo.conteudo
     else:
-        hist_v2 = db.query(PromptModuloHistorico).filter(
-            PromptModuloHistorico.modulo_id == modulo_id,
-            PromptModuloHistorico.versao == v2
-        ).first()
+        hist_v2 = historico_repo.get_by_modulo_versao(modulo_id, v2)
         if not hist_v2:
             raise HTTPException(status_code=404, detail=f"Versão {v2} não encontrada")
         conteudo_v2 = hist_v2.conteudo
@@ -1595,10 +1395,10 @@ async def comparar_versoes(
 @router.get("/exportar/todos")
 async def exportar_todos(
     current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
+    modulo_repo: PromptModuloRepository = Depends(get_prompt_modulo_repo),
 ):
     """Exporta todos os módulos em formato JSON"""
-    modulos = db.query(PromptModulo).filter(PromptModulo.ativo == True).all()
+    modulos = modulo_repo.query().filter(PromptModulo.ativo == True).all()
 
     export_data = {
         "versao": "2.0",
@@ -1641,22 +1441,17 @@ async def exportar_todos(
     return export_data
 
 
-class ExportarSelecionadosRequest(BaseModel):
-    """Schema para exportação de módulos selecionados"""
-    ids: List[int]
-
-
 @router.post("/exportar/selecionados")
 async def exportar_selecionados(
     req: ExportarSelecionadosRequest,
     current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
+    modulo_repo: PromptModuloRepository = Depends(get_prompt_modulo_repo),
 ):
     """Exporta módulos selecionados em formato JSON compatível com importação"""
     if not req.ids:
         raise HTTPException(status_code=400, detail="Nenhum módulo selecionado")
 
-    modulos = db.query(PromptModulo).filter(PromptModulo.id.in_(req.ids)).all()
+    modulos = modulo_repo.query().filter(PromptModulo.id.in_(req.ids)).all()
 
     export_data = {
         "versao": "2.0",
@@ -1700,28 +1495,10 @@ async def exportar_selecionados(
     return export_data
 
 
-class ImportarModulosRequest(BaseModel):
-    """Schema para importação de módulos"""
-    modulos: List[dict]
-    sobrescrever_existentes: bool = False
-
-
-class ImportarModulosResponse(BaseModel):
-    """Resposta da importação"""
-    total_recebidos: int
-    criados: int
-    atualizados: int
-    ignorados: int
-    grupos_criados: int = 0
-    subgrupos_criados: int = 0
-    subcategorias_criadas: int = 0
-    erros: List[str]
-
-
-def _obter_ou_criar_grupo(db: Session, grupo_slug: str, grupo_name: str = None) -> PromptGroup:
+def _obter_ou_criar_grupo(group_repo: PromptGroupRepository, grupo_slug: str, grupo_name: str = None) -> PromptGroup:
     """Obtém um grupo existente ou cria um novo se não existir."""
     slug_normalizado = str(grupo_slug).lower().strip()
-    grupo = db.query(PromptGroup).filter(PromptGroup.slug == slug_normalizado).first()
+    grupo = group_repo.get_by_slug(slug_normalizado)
 
     if not grupo:
         # Cria o grupo automaticamente
@@ -1732,13 +1509,13 @@ def _obter_ou_criar_grupo(db: Session, grupo_slug: str, grupo_name: str = None) 
             active=True,
             order=0
         )
-        db.add(grupo)
-        db.flush()  # Garante que o ID seja gerado
+        group_repo.add(grupo)
+        group_repo.flush()  # Garante que o ID seja gerado
 
     return grupo
 
 
-def _obter_ou_criar_subgrupo(db: Session, grupo: PromptGroup, subgrupo_slug: str, subgrupo_name: str = None) -> PromptSubgroup:
+def _obter_ou_criar_subgrupo(subgroup_repo: PromptSubgroupRepository, grupo: PromptGroup, subgrupo_slug: str, subgrupo_name: str = None) -> PromptSubgroup:
     """
     Obtém um subgrupo existente ou cria um novo se não existir.
 
@@ -1746,7 +1523,7 @@ def _obter_ou_criar_subgrupo(db: Session, grupo: PromptGroup, subgrupo_slug: str
     NAO confundir com Categorias (Preliminar, Merito, Eventualidade).
     """
     slug_normalizado = str(subgrupo_slug).lower().strip()
-    subgrupo = db.query(PromptSubgroup).filter(
+    subgrupo = subgroup_repo.query().filter(
         PromptSubgroup.group_id == grupo.id,
         PromptSubgroup.slug == slug_normalizado
     ).first()
@@ -1761,18 +1538,16 @@ def _obter_ou_criar_subgrupo(db: Session, grupo: PromptGroup, subgrupo_slug: str
             active=True,
             order=0
         )
-        db.add(subgrupo)
-        db.flush()
+        subgroup_repo.add(subgrupo)
+        subgroup_repo.flush()
 
     return subgrupo
 
 
-def _obter_ou_criar_subcategoria(db: Session, grupo: PromptGroup, subcat_slug: str, subcat_nome: str = None) -> "PromptSubcategoria":
+def _obter_ou_criar_subcategoria(subcategoria_repo: PromptSubcategoriaRepository, grupo: PromptGroup, subcat_slug: str, subcat_nome: str = None) -> PromptSubcategoria:
     """Obtém uma subcategoria existente ou cria uma nova se não existir."""
-    from admin.models_prompt_groups import PromptSubcategoria
-
     slug_normalizado = str(subcat_slug).lower().strip()
-    subcategoria = db.query(PromptSubcategoria).filter(
+    subcategoria = subcategoria_repo.query().filter(
         PromptSubcategoria.group_id == grupo.id,
         PromptSubcategoria.slug == slug_normalizado
     ).first()
@@ -1787,8 +1562,8 @@ def _obter_ou_criar_subcategoria(db: Session, grupo: PromptGroup, subcat_slug: s
             active=True,
             order=0
         )
-        db.add(subcategoria)
-        db.flush()
+        subcategoria_repo.add(subcategoria)
+        subcategoria_repo.flush()
 
     return subcategoria
 
@@ -1797,7 +1572,11 @@ def _obter_ou_criar_subcategoria(db: Session, grupo: PromptGroup, subcat_slug: s
 async def importar_modulos(
     dados: ImportarModulosRequest,
     current_user: User = Depends(require_admin),
-    db: Session = Depends(get_db)
+    modulo_repo: PromptModuloRepository = Depends(get_prompt_modulo_repo),
+    historico_repo: PromptModuloHistoricoRepository = Depends(get_prompt_modulo_historico_repo),
+    group_repo: PromptGroupRepository = Depends(get_prompt_group_repo),
+    subgroup_repo: PromptSubgroupRepository = Depends(get_prompt_subgroup_repo),
+    subcategoria_repo: PromptSubcategoriaRepository = Depends(get_prompt_subcategoria_repo),
 ):
     """
     Importa módulos de prompts a partir de arquivo JSON.
@@ -1901,20 +1680,18 @@ async def importar_modulos(
                     if cache_key in grupos_cache:
                         grupo = grupos_cache[cache_key]
                     else:
-                        grupo_existia = db.query(PromptGroup).filter(
-                            PromptGroup.slug == grupo_slug.lower()
-                        ).first() is not None
+                        grupo_existia = group_repo.get_by_slug(grupo_slug.lower()) is not None
 
-                        grupo = _obter_ou_criar_grupo(db, grupo_slug, grupo_name)
+                        grupo = _obter_ou_criar_grupo(group_repo, grupo_slug, grupo_name)
                         grupos_cache[cache_key] = grupo
 
                         if not grupo_existia:
                             grupos_criados += 1
                 else:
                     # Usa grupo padrão "ps" se não informado
-                    grupo = db.query(PromptGroup).filter(PromptGroup.slug == "ps").first()
+                    grupo = group_repo.get_by_slug("ps")
                     if not grupo:
-                        grupo = _obter_ou_criar_grupo(db, "ps", "Prestação de Saúde")
+                        grupo = _obter_ou_criar_grupo(group_repo, "ps", "Prestação de Saúde")
                         grupos_criados += 1
 
                 if not grupo:
@@ -1927,19 +1704,19 @@ async def importar_modulos(
                     if cache_key in subgrupos_cache:
                         subgrupo = subgrupos_cache[cache_key]
                     else:
-                        subgrupo_existia = db.query(PromptSubgroup).filter(
+                        subgrupo_existia = subgroup_repo.query().filter(
                             PromptSubgroup.group_id == grupo.id,
                             PromptSubgroup.slug == subgrupo_slug.lower()
                         ).first() is not None
 
-                        subgrupo = _obter_ou_criar_subgrupo(db, grupo, subgrupo_slug, subgrupo_name)
+                        subgrupo = _obter_ou_criar_subgrupo(subgroup_repo, grupo, subgrupo_slug, subgrupo_name)
                         subgrupos_cache[cache_key] = subgrupo
 
                         if not subgrupo_existia:
                             subgrupos_criados += 1
 
             # Verifica se já existe
-            existente = db.query(PromptModulo).filter(
+            existente = modulo_repo.query().filter(
                 PromptModulo.tipo == tipo,
                 PromptModulo.categoria == categoria,
                 PromptModulo.subcategoria == subcategoria,
@@ -1965,7 +1742,7 @@ async def importar_modulos(
                         motivo="Atualizado via importação JSON",
                         diff_resumo=diff_resumo
                     )
-                    db.add(historico)
+                    historico_repo.add(historico)
 
                     # Atualiza módulo existente
                     existente.titulo = titulo
@@ -1978,7 +1755,7 @@ async def importar_modulos(
                     existente.subgroup_id = subgrupo.id if subgrupo else None
                     existente.versao += 1
                     existente.atualizado_por = current_user.id
-                    existente.atualizado_em = datetime.utcnow()
+                    existente.atualizado_em = get_utc_now()
                     existente.ativo = True
 
                     modulo_para_associar = existente
@@ -2005,8 +1782,8 @@ async def importar_modulos(
                     criado_por=current_user.id,
                     atualizado_por=current_user.id
                 )
-                db.add(novo_modulo)
-                db.flush()  # Garante que o ID seja gerado
+                modulo_repo.add(novo_modulo)
+                modulo_repo.flush()  # Garante que o ID seja gerado
 
                 modulo_para_associar = novo_modulo
                 criados += 1
@@ -2031,7 +1808,7 @@ async def importar_modulos(
                         if cache_key in grupos_cache:
                             grupo_subcat = grupos_cache[cache_key]
                         else:
-                            grupo_subcat = _obter_ou_criar_grupo(db, subcat_group_slug)
+                            grupo_subcat = _obter_ou_criar_grupo(group_repo, subcat_group_slug)
                             grupos_cache[cache_key] = grupo_subcat
 
                     # Obtém ou cria a subcategoria
@@ -2039,13 +1816,12 @@ async def importar_modulos(
                     if cache_key in subcategorias_cache:
                         subcategoria_obj = subcategorias_cache[cache_key]
                     else:
-                        from admin.models_prompt_groups import PromptSubcategoria
-                        subcat_existia = db.query(PromptSubcategoria).filter(
+                        subcat_existia = subcategoria_repo.query().filter(
                             PromptSubcategoria.group_id == grupo_subcat.id,
                             PromptSubcategoria.slug == subcat_slug.lower()
                         ).first() is not None
 
-                        subcategoria_obj = _obter_ou_criar_subcategoria(db, grupo_subcat, subcat_slug, subcat_nome)
+                        subcategoria_obj = _obter_ou_criar_subcategoria(subcategoria_repo, grupo_subcat, subcat_slug, subcat_nome)
                         subcategorias_cache[cache_key] = subcategoria_obj
 
                         if not subcat_existia:
@@ -2058,7 +1834,7 @@ async def importar_modulos(
         except Exception as e:
             erros.append(f"Módulo {i+1}: {str(e)}")
 
-    db.commit()
+    modulo_repo.commit()
 
     return ImportarModulosResponse(
         total_recebidos=len(dados.modulos),
@@ -2076,51 +1852,29 @@ async def importar_modulos(
 # Endpoints: Associação Módulos x Tipos de Peça
 # ==========================================
 
-class ModuloTipoPecaItem(BaseModel):
-    """Item de associação módulo-tipo de peça"""
-    modulo_id: int
-    ativo: bool = True
-
-
-class ConfigurarModulosTipoPecaRequest(BaseModel):
-    """Request para configurar módulos de um tipo de peça"""
-    tipo_peca: str  # Ex: 'contestacao', 'recurso_apelacao'
-    modulos: List[ModuloTipoPecaItem]  # Lista de módulos com status
-
-
-class ModuloTipoPecaResponse(BaseModel):
-    """Resposta com informações do módulo e status por tipo de peça"""
-    modulo_id: int
-    nome: str
-    titulo: str
-    categoria: Optional[str]
-    subcategoria: Optional[str]
-    ativo_global: bool  # Se o módulo está ativo globalmente
-    ativo_tipo_peca: bool  # Se está ativo para este tipo de peça específico
-
-
 @router.get("/modulos-por-tipo-peca/{tipo_peca}")
 async def listar_modulos_por_tipo_peca(
     tipo_peca: str,
     group_id: Optional[int] = None,
     current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
+    modulo_repo: PromptModuloRepository = Depends(get_prompt_modulo_repo),
+    tipo_peca_repo: ModuloTipoPecaRepository = Depends(get_modulo_tipo_peca_repo),
 ):
     """
     Lista todos os módulos de conteúdo com status de ativação para um tipo de peça específico.
     Opcionalmente filtra por grupo.
     """
     # Busca todos os módulos de conteúdo ativos
-    query = db.query(PromptModulo).filter(
+    query = modulo_repo.query().filter(
         PromptModulo.tipo == "conteudo",
         PromptModulo.ativo == True
     )
     if group_id:
         query = query.filter(PromptModulo.group_id == group_id)
     modulos_conteudo = query.order_by(PromptModulo.categoria, PromptModulo.ordem).all()
-    
+
     # Busca associações existentes para este tipo de peça
-    associacoes = db.query(ModuloTipoPeca).filter(
+    associacoes = tipo_peca_repo.query().filter(
         ModuloTipoPeca.tipo_peca == tipo_peca
     ).all()
     
@@ -2155,24 +1909,21 @@ async def listar_modulos_por_tipo_peca(
 async def configurar_modulos_tipo_peca(
     req: ConfigurarModulosTipoPecaRequest,
     current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
+    tipo_peca_repo: ModuloTipoPecaRepository = Depends(get_modulo_tipo_peca_repo),
 ):
     """
     Configura quais módulos de conteúdo estão ativos para um tipo de peça específico.
     Permite ativar/desativar módulos em lote para um tipo de peça.
     """
     verificar_permissao_prompts(current_user, "editar")
-    
+
     atualizados = 0
     criados = 0
-    
+
     for item in req.modulos:
         # Verifica se já existe associação
-        associacao = db.query(ModuloTipoPeca).filter(
-            ModuloTipoPeca.modulo_id == item.modulo_id,
-            ModuloTipoPeca.tipo_peca == req.tipo_peca
-        ).first()
-        
+        associacao = tipo_peca_repo.get_by_modulo_tipo(item.modulo_id, req.tipo_peca)
+
         if associacao:
             # Atualiza
             if associacao.ativo != item.ativo:
@@ -2185,10 +1936,10 @@ async def configurar_modulos_tipo_peca(
                 tipo_peca=req.tipo_peca,
                 ativo=item.ativo
             )
-            db.add(nova_assoc)
+            tipo_peca_repo.add(nova_assoc)
             criados += 1
-    
-    db.commit()
+
+    tipo_peca_repo.commit()
     
     return {
         "success": True,
@@ -2203,35 +1954,33 @@ async def configurar_modulos_tipo_peca(
 async def ativar_todos_modulos(
     tipo_peca: str,
     current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
+    modulo_repo: PromptModuloRepository = Depends(get_prompt_modulo_repo),
+    tipo_peca_repo: ModuloTipoPecaRepository = Depends(get_modulo_tipo_peca_repo),
 ):
     """
     Ativa todos os módulos de conteúdo para um tipo de peça.
     """
     verificar_permissao_prompts(current_user, "editar")
-    
+
     # Busca todos os módulos de conteúdo ativos
-    modulos = db.query(PromptModulo).filter(
+    modulos = modulo_repo.query().filter(
         PromptModulo.tipo == "conteudo",
         PromptModulo.ativo == True
     ).all()
-    
+
     for modulo in modulos:
-        associacao = db.query(ModuloTipoPeca).filter(
-            ModuloTipoPeca.modulo_id == modulo.id,
-            ModuloTipoPeca.tipo_peca == tipo_peca
-        ).first()
-        
+        associacao = tipo_peca_repo.get_by_modulo_tipo(modulo.id, tipo_peca)
+
         if associacao:
             associacao.ativo = True
         else:
-            db.add(ModuloTipoPeca(
+            tipo_peca_repo.add(ModuloTipoPeca(
                 modulo_id=modulo.id,
                 tipo_peca=tipo_peca,
                 ativo=True
             ))
-    
-    db.commit()
+
+    tipo_peca_repo.commit()
     
     return {
         "success": True,
@@ -2244,35 +1993,33 @@ async def ativar_todos_modulos(
 async def desativar_todos_modulos(
     tipo_peca: str,
     current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
+    modulo_repo: PromptModuloRepository = Depends(get_prompt_modulo_repo),
+    tipo_peca_repo: ModuloTipoPecaRepository = Depends(get_modulo_tipo_peca_repo),
 ):
     """
     Desativa todos os módulos de conteúdo para um tipo de peça.
     """
     verificar_permissao_prompts(current_user, "editar")
-    
+
     # Busca todos os módulos de conteúdo ativos
-    modulos = db.query(PromptModulo).filter(
+    modulos = modulo_repo.query().filter(
         PromptModulo.tipo == "conteudo",
         PromptModulo.ativo == True
     ).all()
-    
+
     for modulo in modulos:
-        associacao = db.query(ModuloTipoPeca).filter(
-            ModuloTipoPeca.modulo_id == modulo.id,
-            ModuloTipoPeca.tipo_peca == tipo_peca
-        ).first()
-        
+        associacao = tipo_peca_repo.get_by_modulo_tipo(modulo.id, tipo_peca)
+
         if associacao:
             associacao.ativo = False
         else:
-            db.add(ModuloTipoPeca(
+            tipo_peca_repo.add(ModuloTipoPeca(
                 modulo_id=modulo.id,
                 tipo_peca=tipo_peca,
                 ativo=False
             ))
-    
-    db.commit()
+
+    tipo_peca_repo.commit()
 
     return {
         "success": True,
@@ -2285,34 +2032,12 @@ async def desativar_todos_modulos(
 # Endpoints: Regras Determinísticas por Tipo de Peça
 # ==========================================
 
-class RegraTipoPecaCreate(BaseModel):
-    """Schema para criar/atualizar regra determinística específica por tipo de peça."""
-    tipo_peca: str
-    regra_deterministica: dict
-    regra_texto_original: Optional[str] = None
-    ativo: bool = True
-
-
-class RegraTipoPecaResponse(BaseModel):
-    """Schema de resposta para regra por tipo de peça."""
-    id: int
-    modulo_id: int
-    tipo_peca: str
-    regra_deterministica: dict
-    regra_texto_original: Optional[str]
-    ativo: bool
-    criado_em: datetime
-    atualizado_em: datetime
-
-    class Config:
-        from_attributes = True
-
-
 @router.get("/{modulo_id}/regras-tipo-peca")
 async def listar_regras_tipo_peca(
     modulo_id: int,
     current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
+    modulo_repo: PromptModuloRepository = Depends(get_prompt_modulo_repo),
+    regra_repo: RegraDeterministicaTipoPecaRepository = Depends(get_regra_tipo_peca_repo),
 ):
     """
     Lista todas as regras determinísticas específicas por tipo de peça de um módulo.
@@ -2322,17 +2047,15 @@ async def listar_regras_tipo_peca(
     - Tipos de peça disponíveis para configuração
     """
     # Verifica se módulo existe
-    modulo = db.query(PromptModulo).filter(PromptModulo.id == modulo_id).first()
+    modulo = modulo_repo.get_by_id(modulo_id)
     if not modulo:
         raise HTTPException(status_code=404, detail="Módulo não encontrado")
 
     # Busca regras existentes
-    regras = db.query(RegraDeterministicaTipoPeca).filter(
-        RegraDeterministicaTipoPeca.modulo_id == modulo_id
-    ).order_by(RegraDeterministicaTipoPeca.tipo_peca).all()
+    regras = regra_repo.list_by_modulo(modulo_id)
 
     # Busca tipos de peça disponíveis (módulos do tipo "peca")
-    tipos_peca = db.query(PromptModulo).filter(
+    tipos_peca = modulo_repo.query().filter(
         PromptModulo.tipo == "peca",
         PromptModulo.ativo == True
     ).order_by(PromptModulo.ordem).all()
@@ -2365,7 +2088,7 @@ async def listar_regras_tipo_peca(
             for tp in tipos_peca
         ],
         # Validação de integridade: verifica variáveis inválidas nas regras
-        "validacao_integridade": _validar_integridade_modulo(db, modulo_id)
+        "validacao_integridade": _validar_integridade_modulo(modulo_repo.db, modulo_id)
     }
 
 
@@ -2391,7 +2114,8 @@ async def criar_regra_tipo_peca(
     modulo_id: int,
     regra: RegraTipoPecaCreate,
     current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
+    modulo_repo: PromptModuloRepository = Depends(get_prompt_modulo_repo),
+    regra_repo: RegraDeterministicaTipoPecaRepository = Depends(get_regra_tipo_peca_repo),
 ):
     """
     Cria uma regra determinística específica para um tipo de peça.
@@ -2402,17 +2126,12 @@ async def criar_regra_tipo_peca(
     verificar_permissao_prompts(current_user, "editar")
 
     # Verifica se módulo existe
-    modulo = db.query(PromptModulo).filter(PromptModulo.id == modulo_id).first()
+    modulo = modulo_repo.get_by_id(modulo_id)
     if not modulo:
         raise HTTPException(status_code=404, detail="Módulo não encontrado")
 
     # Verifica se já existe regra para este tipo de peça
-    existente = db.query(RegraDeterministicaTipoPeca).filter(
-        RegraDeterministicaTipoPeca.modulo_id == modulo_id,
-        RegraDeterministicaTipoPeca.tipo_peca == regra.tipo_peca
-    ).first()
-
-    if existente:
+    if regra_repo.check_exists_for_tipo_peca(modulo_id, regra.tipo_peca):
         raise HTTPException(
             status_code=400,
             detail=f"Já existe uma regra para o tipo de peça '{regra.tipo_peca}'. Use PUT para atualizar."
@@ -2431,7 +2150,7 @@ async def criar_regra_tipo_peca(
         criado_por=current_user.id
     )
 
-    db.add(nova_regra)
+    regra_repo.add(nova_regra)
 
     # AUTO-CORREÇÃO: Se criou regra por tipo de peça, força modo_ativacao para 'deterministic'
     if modulo.modo_ativacao != 'deterministic':
@@ -2443,8 +2162,8 @@ async def criar_regra_tipo_peca(
         )
         modulo.modo_ativacao = 'deterministic'
 
-    db.commit()
-    db.refresh(nova_regra)
+    regra_repo.commit()
+    regra_repo.refresh(nova_regra)
 
     return {
         "success": True,
@@ -2461,7 +2180,8 @@ async def atualizar_regra_tipo_peca(
     regra_id: int,
     dados: RegraTipoPecaCreate,
     current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
+    modulo_repo: PromptModuloRepository = Depends(get_prompt_modulo_repo),
+    regra_repo: RegraDeterministicaTipoPecaRepository = Depends(get_regra_tipo_peca_repo),
 ):
     """
     Atualiza uma regra determinística específica por tipo de peça.
@@ -2469,9 +2189,7 @@ async def atualizar_regra_tipo_peca(
     verificar_permissao_prompts(current_user, "editar")
 
     # Busca regra existente
-    regra = db.query(RegraDeterministicaTipoPeca).filter(
-        RegraDeterministicaTipoPeca.id == regra_id
-    ).first()
+    regra = regra_repo.get_by_id(regra_id)
 
     if not regra:
         raise HTTPException(status_code=404, detail="Regra não encontrada")
@@ -2484,17 +2202,11 @@ async def atualizar_regra_tipo_peca(
     regra.regra_texto_original = dados.regra_texto_original
     regra.ativo = dados.ativo
     regra.atualizado_por = current_user.id
-    regra.atualizado_em = datetime.utcnow()
+    regra.atualizado_em = get_utc_now()
 
     # Se mudou o tipo de peça, verifica se já existe outro
     if dados.tipo_peca != regra.tipo_peca:
-        existente = db.query(RegraDeterministicaTipoPeca).filter(
-            RegraDeterministicaTipoPeca.modulo_id == regra.modulo_id,
-            RegraDeterministicaTipoPeca.tipo_peca == dados.tipo_peca,
-            RegraDeterministicaTipoPeca.id != regra_id
-        ).first()
-
-        if existente:
+        if regra_repo.check_exists_for_tipo_peca(regra.modulo_id, dados.tipo_peca, exclude_id=regra_id):
             raise HTTPException(
                 status_code=400,
                 detail=f"Já existe uma regra para o tipo de peça '{dados.tipo_peca}'"
@@ -2503,7 +2215,7 @@ async def atualizar_regra_tipo_peca(
         regra.tipo_peca = dados.tipo_peca
 
     # AUTO-CORREÇÃO: Se atualizou regra por tipo de peça, força modo_ativacao para 'deterministic'
-    modulo = db.query(PromptModulo).filter(PromptModulo.id == regra.modulo_id).first()
+    modulo = modulo_repo.get_by_id(regra.modulo_id)
     if modulo and modulo.modo_ativacao != 'deterministic':
         import logging
         logger = logging.getLogger(__name__)
@@ -2513,7 +2225,7 @@ async def atualizar_regra_tipo_peca(
         )
         modulo.modo_ativacao = 'deterministic'
 
-    db.commit()
+    regra_repo.commit()
 
     return {
         "success": True,
@@ -2527,7 +2239,7 @@ async def atualizar_regra_tipo_peca(
 async def deletar_regra_tipo_peca(
     regra_id: int,
     current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
+    regra_repo: RegraDeterministicaTipoPecaRepository = Depends(get_regra_tipo_peca_repo),
 ):
     """
     Remove uma regra determinística específica por tipo de peça.
@@ -2535,9 +2247,7 @@ async def deletar_regra_tipo_peca(
     verificar_permissao_prompts(current_user, "editar")
 
     # Busca regra existente
-    regra = db.query(RegraDeterministicaTipoPeca).filter(
-        RegraDeterministicaTipoPeca.id == regra_id
-    ).first()
+    regra = regra_repo.get_by_id(regra_id)
 
     if not regra:
         raise HTTPException(status_code=404, detail="Regra não encontrada")
@@ -2545,8 +2255,8 @@ async def deletar_regra_tipo_peca(
     tipo_peca = regra.tipo_peca
     modulo_id = regra.modulo_id
 
-    db.delete(regra)
-    db.commit()
+    regra_repo.delete(regra)
+    regra_repo.commit()
 
     return {
         "success": True,
@@ -2560,7 +2270,7 @@ async def deletar_regra_tipo_peca(
 async def toggle_regra_tipo_peca(
     regra_id: int,
     current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
+    regra_repo: RegraDeterministicaTipoPecaRepository = Depends(get_regra_tipo_peca_repo),
 ):
     """
     Alterna o status ativo/inativo de uma regra por tipo de peça.
@@ -2568,18 +2278,16 @@ async def toggle_regra_tipo_peca(
     verificar_permissao_prompts(current_user, "editar")
 
     # Busca regra existente
-    regra = db.query(RegraDeterministicaTipoPeca).filter(
-        RegraDeterministicaTipoPeca.id == regra_id
-    ).first()
+    regra = regra_repo.get_by_id(regra_id)
 
     if not regra:
         raise HTTPException(status_code=404, detail="Regra não encontrada")
 
     regra.ativo = not regra.ativo
     regra.atualizado_por = current_user.id
-    regra.atualizado_em = datetime.utcnow()
+    regra.atualizado_em = get_utc_now()
 
-    db.commit()
+    regra_repo.commit()
 
     return {
         "success": True,
@@ -2593,57 +2301,23 @@ async def toggle_regra_tipo_peca(
 # Endpoints: Ordem das Categorias
 # ==========================================
 
-class CategoriaOrdemBase(BaseModel):
-    nome: str
-    ordem: int = 0
-    ativo: bool = True
-
-
-class CategoriaOrdemCreate(CategoriaOrdemBase):
-    pass
-
-
-class CategoriaOrdemUpdate(BaseModel):
-    ordem: Optional[int] = None
-    ativo: Optional[bool] = None
-
-
-class CategoriaOrdemResponse(CategoriaOrdemBase):
-    id: int
-    group_id: int
-    created_at: datetime
-    updated_at: datetime
-
-    class Config:
-        from_attributes = True
-
-
 @router.get("/grupos/{group_id}/categorias-ordem")
 async def listar_categorias_ordem(
     group_id: int,
     current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
+    cat_ordem_repo: CategoriaOrdemRepository = Depends(get_categoria_ordem_repo),
+    modulo_repo: PromptModuloRepository = Depends(get_prompt_modulo_repo),
 ):
     """
     Lista a ordem configurada das categorias para um grupo.
     Também retorna categorias existentes nos módulos que ainda não têm ordem configurada.
     """
-    from admin.models_prompt_groups import CategoriaOrdem
 
     # Busca categorias com ordem configurada
-    categorias_config = db.query(CategoriaOrdem).filter(
-        CategoriaOrdem.group_id == group_id
-    ).order_by(CategoriaOrdem.ordem).all()
+    categorias_config = cat_ordem_repo.list_by_group(group_id)
 
     # Busca categorias existentes nos módulos de conteúdo deste grupo
-    categorias_modulos = db.query(PromptModulo.categoria).distinct().filter(
-        PromptModulo.group_id == group_id,
-        PromptModulo.tipo == "conteudo",
-        PromptModulo.ativo == True,
-        PromptModulo.categoria.isnot(None),
-        PromptModulo.categoria != ""
-    ).all()
-    categorias_existentes = {c[0] for c in categorias_modulos if c[0]}
+    categorias_existentes = set(modulo_repo.get_categorias_conteudo_by_group(group_id))
 
     # Mapa de categorias configuradas
     config_map = {c.nome: c for c in categorias_config}
@@ -2689,17 +2363,17 @@ async def salvar_categorias_ordem(
     group_id: int,
     categorias: List[CategoriaOrdemCreate],
     current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
+    group_repo: PromptGroupRepository = Depends(get_prompt_group_repo),
+    cat_ordem_repo: CategoriaOrdemRepository = Depends(get_categoria_ordem_repo),
 ):
     """
     Salva a ordem das categorias para um grupo.
     Cria ou atualiza as configurações de ordem.
     """
     verificar_permissao_prompts(current_user, "editar")
-    from admin.models_prompt_groups import CategoriaOrdem
 
     # Verifica se o grupo existe
-    grupo = db.query(PromptGroup).filter(PromptGroup.id == group_id).first()
+    grupo = group_repo.get_by_id(group_id)
     if not grupo:
         raise HTTPException(status_code=404, detail="Grupo nao encontrado")
 
@@ -2708,10 +2382,7 @@ async def salvar_categorias_ordem(
 
     for cat_data in categorias:
         # Busca configuração existente
-        existente = db.query(CategoriaOrdem).filter(
-            CategoriaOrdem.group_id == group_id,
-            CategoriaOrdem.nome == cat_data.nome
-        ).first()
+        existente = cat_ordem_repo.get_by_group_categoria(group_id, cat_data.nome)
 
         if existente:
             existente.ordem = cat_data.ordem
@@ -2724,10 +2395,10 @@ async def salvar_categorias_ordem(
                 ordem=cat_data.ordem,
                 ativo=cat_data.ativo
             )
-            db.add(nova)
+            cat_ordem_repo.add(nova)
             criados += 1
 
-    db.commit()
+    cat_ordem_repo.commit()
 
     return {
         "success": True,
@@ -2742,22 +2413,18 @@ async def deletar_categoria_ordem(
     group_id: int,
     categoria_nome: str,
     current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
+    cat_ordem_repo: CategoriaOrdemRepository = Depends(get_categoria_ordem_repo),
 ):
     """Remove a configuração de ordem de uma categoria."""
     verificar_permissao_prompts(current_user, "excluir")
-    from admin.models_prompt_groups import CategoriaOrdem
 
-    config = db.query(CategoriaOrdem).filter(
-        CategoriaOrdem.group_id == group_id,
-        CategoriaOrdem.nome == categoria_nome
-    ).first()
+    config = cat_ordem_repo.get_by_group_categoria(group_id, categoria_nome)
 
     if not config:
         raise HTTPException(status_code=404, detail="Configuracao de categoria nao encontrada")
 
-    db.delete(config)
-    db.commit()
+    cat_ordem_repo.delete(config)
+    cat_ordem_repo.commit()
 
     return {"success": True, "message": f"Configuracao da categoria '{categoria_nome}' removida"}
 
@@ -2766,22 +2433,11 @@ async def deletar_categoria_ordem(
 # Endpoints: Reordenação de Prompts (Drag & Drop)
 # ==========================================
 
-class ReordenarPromptItem(BaseModel):
-    """Item para reordenação de prompt"""
-    id: int
-    ordem: int
-
-
-class ReordenarPromptsRequest(BaseModel):
-    """Request para reordenar múltiplos prompts"""
-    prompts: List[ReordenarPromptItem]
-
-
 @router.post("/prompts/reordenar")
 async def reordenar_prompts(
     request: ReordenarPromptsRequest,
     current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
+    modulo_repo: PromptModuloRepository = Depends(get_prompt_modulo_repo),
 ):
     """
     Reordena múltiplos prompts de uma vez.
@@ -2791,12 +2447,12 @@ async def reordenar_prompts(
 
     atualizados = []
     for item in request.prompts:
-        modulo = db.query(PromptModulo).filter(PromptModulo.id == item.id).first()
+        modulo = modulo_repo.get_by_id(item.id)
         if modulo:
             modulo.ordem = item.ordem
             atualizados.append({"id": modulo.id, "ordem": modulo.ordem})
 
-    db.commit()
+    modulo_repo.commit()
 
     return {
         "success": True,
@@ -2810,19 +2466,19 @@ async def atualizar_ordem_prompt(
     prompt_id: int,
     nova_ordem: int,
     current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
+    modulo_repo: PromptModuloRepository = Depends(get_prompt_modulo_repo),
 ):
     """
     Atualiza a ordem de um único prompt.
     """
     verificar_permissao_prompts(current_user, "editar")
 
-    modulo = db.query(PromptModulo).filter(PromptModulo.id == prompt_id).first()
+    modulo = modulo_repo.get_by_id(prompt_id)
     if not modulo:
         raise HTTPException(status_code=404, detail="Prompt não encontrado")
 
     modulo.ordem = nova_ordem
-    db.commit()
+    modulo_repo.commit()
 
     return {
         "success": True,
@@ -2831,17 +2487,12 @@ async def atualizar_ordem_prompt(
     }
 
 
-class ReordenarCategoriasPromptsRequest(BaseModel):
-    """Request para reordenar categorias e seus prompts"""
-    group_id: int
-    categorias: List[dict]  # [{nome, ordem, prompts: [{id, ordem}]}]
-
-
 @router.post("/prompts/reordenar-completo")
 async def reordenar_prompts_completo(
     request: ReordenarCategoriasPromptsRequest,
     current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
+    modulo_repo: PromptModuloRepository = Depends(get_prompt_modulo_repo),
+    cat_ordem_repo: CategoriaOrdemRepository = Depends(get_categoria_ordem_repo),
 ):
     """
     Reordena categorias e prompts dentro de cada categoria.
@@ -2851,7 +2502,6 @@ async def reordenar_prompts_completo(
     fixo do prompt que só pode ser alterado editando o prompt diretamente.
     """
     verificar_permissao_prompts(current_user, "editar")
-    from admin.models_prompt_groups import CategoriaOrdem
 
     categorias_atualizadas = 0
     prompts_atualizados = 0
@@ -2862,10 +2512,7 @@ async def reordenar_prompts_completo(
         prompts = cat_data.get("prompts", [])
 
         # Atualiza ou cria ordem da categoria
-        cat_ordem = db.query(CategoriaOrdem).filter(
-            CategoriaOrdem.group_id == request.group_id,
-            CategoriaOrdem.nome == nome_categoria
-        ).first()
+        cat_ordem = cat_ordem_repo.get_by_group_categoria(request.group_id, nome_categoria)
 
         if cat_ordem:
             cat_ordem.ordem = ordem_categoria
@@ -2876,7 +2523,7 @@ async def reordenar_prompts_completo(
                 ordem=ordem_categoria,
                 ativo=True
             )
-            db.add(cat_ordem)
+            cat_ordem_repo.add(cat_ordem)
         categorias_atualizadas += 1
 
         # Atualiza ordem dos prompts dentro da categoria
@@ -2884,12 +2531,12 @@ async def reordenar_prompts_completo(
             prompt_id = prompt_data.get("id")
             prompt_ordem = prompt_data.get("ordem", 0)
 
-            modulo = db.query(PromptModulo).filter(PromptModulo.id == prompt_id).first()
+            modulo = modulo_repo.get_by_id(prompt_id)
             if modulo:
                 modulo.ordem = prompt_ordem
                 prompts_atualizados += 1
 
-    db.commit()
+    modulo_repo.commit()
 
     return {
         "success": True,
@@ -2906,7 +2553,7 @@ async def reordenar_prompts_completo(
 async def validar_integridade_modulo(
     modulo_id: int,
     current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
+    modulo_repo: PromptModuloRepository = Depends(get_prompt_modulo_repo),
 ):
     """
     Valida integridade entre regras determinísticas e variáveis disponíveis.
@@ -2922,7 +2569,7 @@ async def validar_integridade_modulo(
     """
     from sistemas.gerador_pecas.services_deterministic import RuleIntegrityValidator
 
-    validator = RuleIntegrityValidator(db)
+    validator = RuleIntegrityValidator(modulo_repo.db)
     resultado = validator.validar_modulo(modulo_id)
 
     return resultado
@@ -2931,7 +2578,7 @@ async def validar_integridade_modulo(
 @router.get("/validar-integridade/todos")
 async def validar_integridade_todos_modulos(
     current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
+    modulo_repo: PromptModuloRepository = Depends(get_prompt_modulo_repo),
 ):
     """
     Valida integridade de todos os módulos com regras determinísticas.
@@ -2946,7 +2593,7 @@ async def validar_integridade_todos_modulos(
     """
     from sistemas.gerador_pecas.services_deterministic import RuleIntegrityValidator
 
-    validator = RuleIntegrityValidator(db)
+    validator = RuleIntegrityValidator(modulo_repo.db)
     resultado = validator.validar_todos_modulos()
 
     return resultado
@@ -2955,7 +2602,7 @@ async def validar_integridade_todos_modulos(
 @router.get("/variaveis-disponiveis")
 async def listar_variaveis_disponiveis(
     current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
+    modulo_repo: PromptModuloRepository = Depends(get_prompt_modulo_repo),
 ):
     """
     Lista todas as variáveis disponíveis para uso em regras determinísticas.
@@ -2971,7 +2618,7 @@ async def listar_variaveis_disponiveis(
     """
     from sistemas.gerador_pecas.services_deterministic import RuleIntegrityValidator
 
-    validator = RuleIntegrityValidator(db)
+    validator = RuleIntegrityValidator(modulo_repo.db)
     resultado = validator.obter_variaveis_disponiveis()
 
     return resultado
@@ -2984,7 +2631,7 @@ async def listar_variaveis_disponiveis(
 @router.get("/regra-de-ouro/verificar")
 async def verificar_modos_ativacao(
     current_user: User = Depends(require_admin),
-    db: Session = Depends(get_db)
+    modulo_repo: PromptModuloRepository = Depends(get_prompt_modulo_repo),
 ):
     """
     Verifica todos os módulos para identificar modos de ativação inconsistentes.
@@ -2998,8 +2645,8 @@ async def verificar_modos_ativacao(
     from sistemas.gerador_pecas.services_deterministic import corrigir_modos_ativacao_inconsistentes
 
     # Executa sem commit para apenas verificar
-    resultado = corrigir_modos_ativacao_inconsistentes(db, commit=False)
-    db.rollback()  # Garante que não houve alteração
+    resultado = corrigir_modos_ativacao_inconsistentes(modulo_repo.db, commit=False)
+    modulo_repo.rollback()  # Garante que não houve alteração
 
     return {
         "verificados": resultado["verificados"],
@@ -3017,7 +2664,7 @@ async def verificar_modos_ativacao(
 @router.post("/regra-de-ouro/corrigir")
 async def corrigir_modos_ativacao(
     current_user: User = Depends(require_admin),
-    db: Session = Depends(get_db)
+    modulo_repo: PromptModuloRepository = Depends(get_prompt_modulo_repo),
 ):
     """
     Corrige TODOS os módulos com modo de ativação inconsistente.
@@ -3033,7 +2680,7 @@ async def corrigir_modos_ativacao(
     """
     from sistemas.gerador_pecas.services_deterministic import corrigir_modos_ativacao_inconsistentes
 
-    resultado = corrigir_modos_ativacao_inconsistentes(db, commit=True)
+    resultado = corrigir_modos_ativacao_inconsistentes(modulo_repo.db, commit=True)
 
     return {
         "verificados": resultado["verificados"],
@@ -3051,7 +2698,8 @@ async def corrigir_modos_ativacao(
 async def verificar_modo_modulo(
     modulo_id: int,
     current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
+    modulo_repo: PromptModuloRepository = Depends(get_prompt_modulo_repo),
+    regra_repo: RegraDeterministicaTipoPecaRepository = Depends(get_regra_tipo_peca_repo),
 ):
     """
     Verifica o modo de ativação correto para um módulo específico.
@@ -3066,12 +2714,12 @@ async def verificar_modo_modulo(
         tem_regras_deterministicas
     )
 
-    modulo = db.query(PromptModulo).filter(PromptModulo.id == modulo_id).first()
+    modulo = modulo_repo.get_by_id(modulo_id)
     if not modulo:
         raise HTTPException(status_code=404, detail="Módulo não encontrado")
 
     modo_correto = resolve_activation_mode_from_db(
-        db=db,
+        db=modulo_repo.db,
         modulo_id=modulo_id,
         modo_ativacao_salvo=modulo.modo_ativacao,
         regra_primaria=modulo.regra_deterministica,
@@ -3080,7 +2728,7 @@ async def verificar_modo_modulo(
     )
 
     # Verifica regras por tipo de peça
-    regras_tipo_peca = db.query(RegraDeterministicaTipoPeca).filter(
+    regras_tipo_peca = regra_repo.query().filter(
         RegraDeterministicaTipoPeca.modulo_id == modulo_id,
         RegraDeterministicaTipoPeca.ativo == True
     ).all()

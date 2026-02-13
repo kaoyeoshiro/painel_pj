@@ -396,7 +396,7 @@ async def test_extrair_json_upload_parecer_natjus_usa_modelo_categoria(monkeypat
     )
 
     import sistemas.gerador_pecas.extrator_resumo_json as extrator_json
-    import sistemas.gerador_pecas.gemini_client as gemini_client
+    import services.gemini_service as gemini_client
 
     captured_prompt = {}
 
@@ -423,7 +423,7 @@ async def test_extrair_json_upload_parecer_natjus_usa_modelo_categoria(monkeypat
         "json_para_markdown",
         lambda payload: "**Diagnostico**: Nao recomendado pelo NAT",
     )
-    monkeypatch.setattr(gemini_client, "chamar_gemini_async", _fake_gemini)
+    monkeypatch.setattr(gemini_client, "chamar_gemini", _fake_gemini)
 
     resultado = await router_module._extrair_json_upload_parecer_natjus(
         db=MagicMock(),

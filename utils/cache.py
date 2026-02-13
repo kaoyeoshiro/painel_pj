@@ -315,7 +315,7 @@ def _hash_documento(texto: str, categoria_id: int) -> str:
     """
     import hashlib
     conteudo = f"{categoria_id}:{texto}"
-    return hashlib.md5(conteudo.encode('utf-8')).hexdigest()
+    return hashlib.md5(conteudo.encode('utf-8'), usedforsecurity=False).hexdigest()
 
 
 def get_cached_resumo(

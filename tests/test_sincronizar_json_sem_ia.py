@@ -145,7 +145,7 @@ class TestSincronizarJSONSemIA(unittest.TestCase):
     def _executar_sincronizacao(self, categoria_id, user):
         """Executa o endpoint de sincronização diretamente (sem HTTP)."""
         import asyncio
-        from sistemas.gerador_pecas.router_extraction import sincronizar_json_sem_ia
+        from sistemas.gerador_pecas.router_ext_models import sincronizar_json_sem_ia
 
         # Executa função async
         loop = asyncio.new_event_loop()
@@ -723,7 +723,7 @@ class TestPerguntaManualAtualizarJSON(unittest.TestCase):
 
     def _executar_sincronizacao(self, categoria_id, user):
         import asyncio
-        from sistemas.gerador_pecas.router_extraction import sincronizar_json_sem_ia
+        from sistemas.gerador_pecas.router_ext_models import sincronizar_json_sem_ia
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
         try:

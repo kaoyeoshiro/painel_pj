@@ -16,6 +16,7 @@ Autor: LAB/PGE-MS
 import json
 import time
 from datetime import date, datetime
+from utils.timezone import get_utc_now
 from typing import Dict, List, Optional, Any, Tuple, AsyncGenerator
 
 from sqlalchemy.orm import Session
@@ -943,12 +944,12 @@ class RelatorioCumprimentoService:
             historico.append({
                 "tipo": "usuario",
                 "mensagem": mensagem_usuario,
-                "timestamp": datetime.now().isoformat()
+                "timestamp": get_utc_now().isoformat()
             })
             historico.append({
                 "tipo": "assistente",
                 "mensagem": "Relatório atualizado conforme solicitado.",
-                "timestamp": datetime.now().isoformat()
+                "timestamp": get_utc_now().isoformat()
             })
             geracao.historico_chat = historico
             self.db.commit()

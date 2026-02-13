@@ -189,7 +189,7 @@ class TestAplicarJson(unittest.TestCase):
         }
 
         # Simula a reconciliação manualmente (como o endpoint faz)
-        from sistemas.gerador_pecas.router_extraction import aplicar_json_nas_perguntas
+        from sistemas.gerador_pecas.router_ext_models import aplicar_json_nas_perguntas
         # Como é async, vamos simular diretamente
 
         # Remove campo_b manualmente (como o endpoint faz)

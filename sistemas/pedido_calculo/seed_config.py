@@ -9,6 +9,7 @@ Execução:
 from database.connection import SessionLocal
 from admin.models import PromptConfig, ConfiguracaoIA
 from datetime import datetime
+from utils.timezone import get_utc_now
 
 
 SISTEMA = "pedido_calculo"
@@ -290,14 +291,14 @@ def seed_prompts(db):
                 descricao=prompt_data["descricao"],
                 conteudo=prompt_data["conteudo"],
                 is_active=True,
-                created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow()
+                created_at=get_utc_now(),
+                updated_at=get_utc_now()
             )
             db.add(prompt)
             print(f"✅ Prompt criado: {prompt_data['tipo']}")
         else:
             print(f"⏭️ Prompt já existe: {prompt_data['tipo']}")
-    
+
     db.commit()
 
 
@@ -308,7 +309,7 @@ def seed_configuracoes(db):
             ConfiguracaoIA.sistema == SISTEMA,
             ConfiguracaoIA.chave == config_data["chave"]
         ).first()
-        
+
         if not existing:
             config = ConfiguracaoIA(
                 sistema=SISTEMA,
@@ -316,8 +317,8 @@ def seed_configuracoes(db):
                 valor=config_data["valor"],
                 tipo_valor=config_data["tipo_valor"],
                 descricao=config_data["descricao"],
-                created_at=datetime.utcnow(),
-                updated_at=datetime.utcnow()
+                created_at=get_utc_now(),
+                updated_at=get_utc_now()
             )
             db.add(config)
             print(f"✅ Configuração criada: {config_data['chave']}")

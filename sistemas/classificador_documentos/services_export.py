@@ -14,6 +14,7 @@ import re
 import logging
 from typing import List, Dict, Any, Optional
 from datetime import datetime
+from utils.timezone import now_local
 
 from .models import ResultadoClassificacao, ExecucaoClassificacao
 
@@ -126,7 +127,7 @@ class ExportService:
                 ("Modelo", execucao.modelo_usado),
                 ("Iniciado em", execucao.iniciado_em.strftime("%d/%m/%Y %H:%M:%S") if execucao.iniciado_em else ""),
                 ("Finalizado em", execucao.finalizado_em.strftime("%d/%m/%Y %H:%M:%S") if execucao.finalizado_em else ""),
-                ("Exportado em", datetime.now().strftime("%d/%m/%Y %H:%M:%S"))
+                ("Exportado em", now_local().strftime("%d/%m/%Y %H:%M:%S"))
             ]
 
             for row_idx, (prop, valor) in enumerate(metadados, 2):

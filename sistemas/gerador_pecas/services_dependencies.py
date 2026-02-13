@@ -18,6 +18,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import and_
 
 from services.gemini_service import gemini_service, get_thinking_level
+from utils.timezone import get_utc_now
 from .models_extraction import (
     ExtractionQuestion, ExtractionVariable, DependencyOperator
 )
@@ -834,7 +835,7 @@ INSTRUÇÕES:
                 pergunta.dependency_operator = dep.get("operator", "equals")
                 pergunta.dependency_value = dep.get("value")
                 pergunta.dependency_inferred = True
-                pergunta.atualizado_em = datetime.utcnow()
+                pergunta.atualizado_em = get_utc_now()
 
                 atualizadas.append({
                     "id": pergunta.id,

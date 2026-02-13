@@ -47,8 +47,8 @@ class CenarioTesteAtivacao(Base):
     modulos_esperados_ativados = Column(JSON, nullable=True, default=list)  # IDs dos módulos esperados
 
     # Timestamps
-    criado_em = Column(DateTime, default=get_utc_now)
-    atualizado_em = Column(DateTime, default=get_utc_now, onupdate=get_utc_now)
+    criado_em = Column(DateTime(timezone=True), default=get_utc_now)
+    atualizado_em = Column(DateTime(timezone=True), default=get_utc_now, onupdate=get_utc_now)
 
     # Índices para consultas frequentes
     __table_args__ = (

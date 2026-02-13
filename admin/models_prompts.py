@@ -30,7 +30,7 @@ class ModuloTipoPeca(Base):
     modulo_id = Column(Integer, ForeignKey("prompt_modulos.id"), nullable=False, index=True)
     tipo_peca = Column(String(50), nullable=False, index=True)  # Ex: 'contestacao', 'recurso_apelacao'
     ativo = Column(Boolean, default=True)
-    criado_em = Column(DateTime, default=get_utc_now)
+    criado_em = Column(DateTime(timezone=True), default=get_utc_now)
 
     # Constraint de unicidade
     __table_args__ = (
@@ -75,8 +75,8 @@ class RegraDeterministicaTipoPeca(Base):
     ativo = Column(Boolean, default=True)
 
     # Auditoria
-    criado_em = Column(DateTime, default=get_utc_now)
-    atualizado_em = Column(DateTime, default=get_utc_now, onupdate=get_utc_now)
+    criado_em = Column(DateTime(timezone=True), default=get_utc_now)
+    atualizado_em = Column(DateTime(timezone=True), default=get_utc_now, onupdate=get_utc_now)
     criado_por = Column(Integer, ForeignKey("users.id"), nullable=True)
     atualizado_por = Column(Integer, ForeignKey("users.id"), nullable=True)
 
@@ -142,9 +142,9 @@ class PromptModulo(Base):
     
     # Auditoria
     criado_por = Column(Integer, ForeignKey("users.id"), nullable=True)
-    criado_em = Column(DateTime, default=get_utc_now)
+    criado_em = Column(DateTime(timezone=True), default=get_utc_now)
     atualizado_por = Column(Integer, ForeignKey("users.id"), nullable=True)
-    atualizado_em = Column(DateTime, default=get_utc_now, onupdate=get_utc_now)
+    atualizado_em = Column(DateTime(timezone=True), default=get_utc_now, onupdate=get_utc_now)
     
     # Relacionamentos
     historico = relationship("PromptModuloHistorico", back_populates="modulo", order_by="desc(PromptModuloHistorico.versao)")
@@ -191,7 +191,7 @@ class PromptModuloHistorico(Base):
     
     # Auditoria
     alterado_por = Column(Integer, ForeignKey("users.id"), nullable=True)
-    alterado_em = Column(DateTime, default=get_utc_now)
+    alterado_em = Column(DateTime(timezone=True), default=get_utc_now)
     motivo = Column(Text, nullable=True)
     diff_resumo = Column(Text, nullable=True)  # Resumo das alterações
     

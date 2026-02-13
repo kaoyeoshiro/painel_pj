@@ -3,7 +3,7 @@
 Modelos SQLAlchemy para o sistema de Prestação de Contas
 """
 
-from sqlalchemy import Column, Integer, String, Text, DateTime, Boolean, ForeignKey, JSON, Float
+from sqlalchemy import Column, Integer, String, Text, DateTime, Boolean, ForeignKey, JSON, Float, UniqueConstraint
 from sqlalchemy.orm import relationship
 
 from database.connection import Base
@@ -39,7 +39,7 @@ class GeracaoAnalise(Base):
 
     # Petição de prestação de contas
     peticao_prestacao_id = Column(String(50), nullable=True)
-    peticao_prestacao_data = Column(DateTime, nullable=True)
+    peticao_prestacao_data = Column(DateTime(timezone=True), nullable=True)
     peticao_prestacao_texto = Column(Text, nullable=True)
 
     # Documentos anexos (notas fiscais, comprovantes)
@@ -94,10 +94,10 @@ class GeracaoAnalise(Base):
     mensagem_erro_usuario = Column(Text, nullable=True)  # Mensagem amigável sobre o que falta
 
     # Expiração do estado salvo (24h após criação)
-    estado_expira_em = Column(DateTime, nullable=True)  # Se None ou expirado, recomeça do zero
+    estado_expira_em = Column(DateTime(timezone=True), nullable=True)  # Se None ou expirado, recomeca do zero
 
-    criado_em = Column(DateTime, default=get_utc_now)
-    atualizado_em = Column(DateTime, default=get_utc_now, onupdate=get_utc_now)
+    criado_em = Column(DateTime(timezone=True), default=get_utc_now)
+    atualizado_em = Column(DateTime(timezone=True), default=get_utc_now, onupdate=get_utc_now)
 
     # Relacionamentos
     logs_ia = relationship("LogChamadaIAPrestacao", back_populates="geracao", cascade="all, delete-orphan")
@@ -129,7 +129,7 @@ class LogChamadaIAPrestacao(Base):
     sucesso = Column(Boolean, default=True)
     erro = Column(Text, nullable=True)
 
-    criado_em = Column(DateTime, default=get_utc_now)
+    criado_em = Column(DateTime(timezone=True), default=get_utc_now)
 
     # Relacionamento
     geracao = relationship("GeracaoAnalise", back_populates="logs_ia")
@@ -138,21 +138,29 @@ class LogChamadaIAPrestacao(Base):
 class FeedbackPrestacao(Base):
     """Feedback do usuário sobre análise"""
     __tablename__ = "feedbacks_prestacao_contas"
+    __table_args__ = (
+        UniqueConstraint("geracao_id", "usuario_id", name="uq_feedbacks_prestacao_geracao_user"),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     geracao_id = Column(Integer, ForeignKey("geracoes_prestacao_contas.id"), nullable=False)
     usuario_id = Column(Integer, ForeignKey("users.id"), nullable=True)
 
-    avaliacao = Column(String(20), nullable=False)  # 'correto', 'parcial', 'incorreto', 'erro_ia'
-    nota = Column(Integer, nullable=True)  # 1-5
+    # Nota de 1 a 5 estrelas (campo primario)
+    nota = Column(Integer, nullable=False)
+
+    # Avaliação derivada de nota (backward compat): 'correto', 'parcial', 'incorreto', 'erro_ia'
+    avaliacao = Column(String(20), nullable=True)
+
+    # Comentário (obrigatório se nota <= 3)
     comentario = Column(Text, nullable=True)
 
-    # Campos específicos para feedback detalhado
+    # Campos específicos para feedback detalhado (legado, mantidos para compat)
     parecer_correto = Column(Boolean, nullable=True)
     valores_corretos = Column(Boolean, nullable=True)
     medicamento_correto = Column(Boolean, nullable=True)
 
-    criado_em = Column(DateTime, default=get_utc_now)
+    criado_em = Column(DateTime(timezone=True), default=get_utc_now)
 
     # Relacionamento
     geracao = relationship("GeracaoAnalise", back_populates="feedbacks")

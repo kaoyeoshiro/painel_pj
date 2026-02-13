@@ -10,6 +10,9 @@ Cobre:
 """
 
 import pytest
+
+pytestmark = pytest.mark.unit
+
 from typing import Dict, Any
 from sistemas.gerador_pecas.services_deterministic import (
     DeterministicRuleEvaluator,

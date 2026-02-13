@@ -104,8 +104,8 @@ class ModuloEmbedding(Base):
     ativo = Column(Boolean, default=True)
 
     # Auditoria
-    criado_em = Column(DateTime, default=get_utc_now)
-    atualizado_em = Column(DateTime, default=get_utc_now, onupdate=get_utc_now)
+    criado_em = Column(DateTime(timezone=True), default=get_utc_now)
+    atualizado_em = Column(DateTime(timezone=True), default=get_utc_now, onupdate=get_utc_now)
 
     # Nota: Removido relationship para evitar problemas de importação circular
     # Use join manual: db.query(ModuloEmbedding).join(PromptModulo, ...)

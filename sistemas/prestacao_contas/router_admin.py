@@ -16,8 +16,10 @@ from typing import Optional, List, Any
 
 from fastapi import APIRouter, HTTPException, Depends, Query, File, UploadFile, Form
 from sqlalchemy.orm import Session
+from app.repositories.sqlalchemy.session_ops import session_query
 from pydantic import BaseModel
 from datetime import datetime
+from utils.timezone import get_utc_now
 import base64
 
 from auth.dependencies import get_current_active_user
@@ -107,7 +109,12 @@ def _calcular_estado_expirado(geracao: GeracaoAnalise) -> bool:
     """Verifica se o estado salvo expirou."""
     if not geracao.estado_expira_em:
         return True
-    return datetime.utcnow() > geracao.estado_expira_em
+    expira_em = geracao.estado_expira_em
+    # Garante comparação entre datetimes do mesmo tipo (aware)
+    if expira_em.tzinfo is None:
+        from datetime import timezone
+        expira_em = expira_em.replace(tzinfo=timezone.utc)
+    return get_utc_now() > expira_em
 
 
 def _pode_anexar_documentos(geracao: GeracaoAnalise) -> bool:
@@ -131,7 +138,7 @@ async def listar_geracoes(
     if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Acesso restrito a administradores")
 
-    query = db.query(GeracaoAnalise)
+    query = session_query(db, GeracaoAnalise)
 
     if status:
         query = query.filter(GeracaoAnalise.status == status)
@@ -182,7 +189,7 @@ async def obter_geracao_admin(
     if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Acesso restrito a administradores")
 
-    geracao = db.query(GeracaoAnalise).filter(
+    geracao = session_query(db, GeracaoAnalise).filter(
         GeracaoAnalise.id == geracao_id
     ).first()
 
@@ -190,12 +197,12 @@ async def obter_geracao_admin(
         raise HTTPException(status_code=404, detail="Geração não encontrada")
 
     # Busca logs de IA
-    logs = db.query(LogChamadaIAPrestacao).filter(
+    logs = session_query(db, LogChamadaIAPrestacao).filter(
         LogChamadaIAPrestacao.geracao_id == geracao_id
     ).order_by(LogChamadaIAPrestacao.criado_em).all()
 
     # Conta feedbacks
-    total_feedbacks = db.query(FeedbackPrestacao).filter(
+    total_feedbacks = session_query(db, FeedbackPrestacao).filter(
         FeedbackPrestacao.geracao_id == geracao_id
     ).count()
 
@@ -259,7 +266,7 @@ async def listar_logs_geracao(
     if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Acesso restrito a administradores")
 
-    logs = db.query(LogChamadaIAPrestacao).filter(
+    logs = session_query(db, LogChamadaIAPrestacao).filter(
         LogChamadaIAPrestacao.geracao_id == geracao_id
     ).order_by(LogChamadaIAPrestacao.criado_em).all()
 
@@ -277,7 +284,7 @@ async def deletar_geracao(
     if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Acesso restrito a administradores")
 
-    geracao = db.query(GeracaoAnalise).filter(
+    geracao = session_query(db, GeracaoAnalise).filter(
         GeracaoAnalise.id == geracao_id
     ).first()
 
@@ -285,12 +292,12 @@ async def deletar_geracao(
         raise HTTPException(status_code=404, detail="Geração não encontrada")
 
     # Deleta logs relacionados
-    db.query(LogChamadaIAPrestacao).filter(
+    session_query(db, LogChamadaIAPrestacao).filter(
         LogChamadaIAPrestacao.geracao_id == geracao_id
     ).delete()
 
     # Deleta feedbacks relacionados
-    db.query(FeedbackPrestacao).filter(
+    session_query(db, FeedbackPrestacao).filter(
         FeedbackPrestacao.geracao_id == geracao_id
     ).delete()
 
@@ -311,28 +318,28 @@ async def obter_estatisticas(
     if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Acesso restrito a administradores")
 
-    total_geracoes = db.query(GeracaoAnalise).count()
-    total_concluidas = db.query(GeracaoAnalise).filter(
+    total_geracoes = session_query(db, GeracaoAnalise).count()
+    total_concluidas = session_query(db, GeracaoAnalise).filter(
         GeracaoAnalise.status == "concluido"
     ).count()
-    total_erros = db.query(GeracaoAnalise).filter(
+    total_erros = session_query(db, GeracaoAnalise).filter(
         GeracaoAnalise.status == "erro"
     ).count()
 
     # Por parecer
-    favoraveis = db.query(GeracaoAnalise).filter(
+    favoraveis = session_query(db, GeracaoAnalise).filter(
         GeracaoAnalise.parecer == "favoravel"
     ).count()
-    desfavoraveis = db.query(GeracaoAnalise).filter(
+    desfavoraveis = session_query(db, GeracaoAnalise).filter(
         GeracaoAnalise.parecer == "desfavoravel"
     ).count()
-    duvidas = db.query(GeracaoAnalise).filter(
+    duvidas = session_query(db, GeracaoAnalise).filter(
         GeracaoAnalise.parecer == "duvida"
     ).count()
 
     # Feedbacks
-    total_feedbacks = db.query(FeedbackPrestacao).count()
-    feedbacks_corretos = db.query(FeedbackPrestacao).filter(
+    total_feedbacks = session_query(db, FeedbackPrestacao).count()
+    feedbacks_corretos = session_query(db, FeedbackPrestacao).filter(
         FeedbackPrestacao.avaliacao == "correto"
     ).count()
 
@@ -373,7 +380,7 @@ async def upload_documentos_faltantes(
     from sistemas.pedido_calculo.document_downloader import extrair_texto_pdf
     from sistemas.prestacao_contas.services import converter_pdf_para_imagens
 
-    geracao = db.query(GeracaoAnalise).filter(
+    geracao = session_query(db, GeracaoAnalise).filter(
         GeracaoAnalise.id == geracao_id
     ).first()
 
@@ -455,3 +462,8 @@ async def upload_documentos_faltantes(
     except Exception as e:
         logger.exception(f"Erro ao processar documentos: {e}")
         raise HTTPException(status_code=500, detail=str(e))
+
+
+
+
+

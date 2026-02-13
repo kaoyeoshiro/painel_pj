@@ -10,6 +10,7 @@ import json
 import logging
 from typing import List, Optional, Tuple
 from datetime import datetime
+from utils.timezone import get_utc_now
 from sqlalchemy.orm import Session
 
 from admin.models import ConfiguracaoIA
@@ -20,7 +21,7 @@ from sistemas.cumprimento_beta.constants import (
 )
 from sistemas.cumprimento_beta.exceptions import PromptNaoEncontradoError, GeminiError
 from sistemas.gerador_pecas.extrator_resumo_json import obter_criterios_relevancia
-from sistemas.gerador_pecas.gemini_client import chamar_gemini_async
+from services.gemini_service import chamar_gemini as chamar_gemini_async
 
 logger = logging.getLogger(__name__)
 
@@ -219,7 +220,7 @@ class RelevanciaService:
                 irrelevantes += 1
                 sessao.documentos_irrelevantes += 1
 
-            doc.avaliado_em = datetime.utcnow()
+            doc.avaliado_em = get_utc_now()
 
             # Commit parcial a cada 5 documentos
             if (idx + 1) % 5 == 0:

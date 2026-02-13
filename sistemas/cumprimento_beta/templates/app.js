@@ -2828,6 +2828,7 @@
         border-top: 1px solid #e2e8f0;
         display: flex;
         gap: 12px;
+        align-items: flex-end;
       }
 
       .beta-chat-input {
@@ -2838,6 +2839,11 @@
         font-size: 14px;
         outline: none;
         resize: none;
+        min-height: 72px;
+        max-height: 144px;
+        overflow-y: hidden;
+        line-height: 1.5;
+        font-family: inherit;
       }
 
       .beta-chat-input:focus {
@@ -3065,16 +3071,17 @@
                 <!-- Messages will be added here -->
               </div>
               <div class="beta-chat-input-area">
-                <input
-                  type="text"
+                <textarea
                   id="chat-input"
                   class="beta-chat-input"
+                  rows="3"
                   placeholder="Digite sua mensagem..."
-                >
+                ></textarea>
                 <button id="btn-send-chat" class="beta-chat-send">
                   <i class="fas fa-paper-plane"></i>
                 </button>
               </div>
+              <p style="text-align:center;font-size:11px;color:#94a3b8;margin:4px 0 0;">Enter para enviar &bull; Shift+Enter para nova linha</p>
             </div>
           </section>
         </main>
@@ -3119,11 +3126,26 @@
       document.getElementById("btn-send-chat")?.addEventListener("click", () => {
         this.sendChatMessage();
       });
-      document.getElementById("chat-input")?.addEventListener("keypress", (e) => {
-        if (e.key === "Enter") {
-          this.sendChatMessage();
-        }
-      });
+      const betaChatInput = document.getElementById("chat-input");
+      if (betaChatInput) {
+        betaChatInput.addEventListener("keydown", (e) => {
+          if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            this.sendChatMessage();
+          }
+        });
+        betaChatInput.addEventListener("input", () => {
+          betaChatInput.style.height = "auto";
+          const maxH = 144;
+          if (betaChatInput.scrollHeight > maxH) {
+            betaChatInput.style.height = maxH + "px";
+            betaChatInput.style.overflowY = "auto";
+          } else {
+            betaChatInput.style.height = betaChatInput.scrollHeight + "px";
+            betaChatInput.style.overflowY = "hidden";
+          }
+        });
+      }
     }
     escapeHtml(str) {
       const div = document.createElement("div");
@@ -3389,6 +3411,8 @@
       const message = input?.value.trim();
       if (!message || !this.state.sessaoId) return;
       input.value = "";
+      input.style.height = "";
+      input.style.overflowY = "hidden";
       this.addChatMessage("user", message);
       this.addTypingIndicator();
       try {
@@ -3424,6 +3448,9 @@
       const input = document.getElementById("chat-input");
       if (input) {
         input.value = `Gere uma ${suggestion.tipo} para este processo`;
+        input.style.height = "auto";
+        input.style.height = Math.min(input.scrollHeight, 144) + "px";
+        input.style.overflowY = input.scrollHeight > 144 ? "auto" : "hidden";
         input.focus();
       }
     }

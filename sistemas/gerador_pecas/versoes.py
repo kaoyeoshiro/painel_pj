@@ -166,11 +166,15 @@ def obter_versoes(db: Session, geracao_id: int) -> List[Dict]:
     return [
         {
             "id": v.id,
+            "versao_id": v.id,
             "numero_versao": v.numero_versao,
             "origem": v.origem,
             "descricao_alteracao": v.descricao_alteracao,
             "criado_em": to_iso_utc(v.criado_em),
-            "resumo_diff": v.diff_anterior.get("resumo") if v.diff_anterior else "Versão inicial"
+            "created_at": to_iso_utc(v.criado_em),
+            "resumo_diff": v.diff_anterior.get("resumo") if v.diff_anterior else "Versão inicial",
+            "linhas_adicionadas": v.diff_anterior.get("total_adicionadas", 0) if v.diff_anterior else 0,
+            "linhas_removidas": v.diff_anterior.get("total_removidas", 0) if v.diff_anterior else 0,
         }
         for v in versoes
     ]
@@ -228,9 +232,15 @@ def comparar_versoes(db: Session, versao_id_1: int, versao_id_2: int) -> Optiona
     }
 
 
-def restaurar_versao(db: Session, geracao_id: int, versao_id: int) -> Optional[VersaoPeca]:
+def restaurar_versao(db: Session, geracao_id: int, versao_id: int) -> Tuple[Optional[VersaoPeca], str]:
     """
     Restaura uma versão anterior, criando uma nova versão com o conteúdo antigo.
+
+    Returns:
+        Tupla (nova_versao, status) onde status é:
+        - "ok": restauração bem-sucedida
+        - "not_found": versão não encontrada
+        - "same_content": conteúdo idêntico à versão atual
     """
     versao_antiga = db.query(VersaoPeca).filter(
         VersaoPeca.id == versao_id,
@@ -238,7 +248,7 @@ def restaurar_versao(db: Session, geracao_id: int, versao_id: int) -> Optional[V
     ).first()
 
     if not versao_antiga:
-        return None
+        return None, "not_found"
 
     # Cria nova versão com o conteúdo restaurado
     nova_versao, _ = criar_nova_versao(
@@ -249,11 +259,13 @@ def restaurar_versao(db: Session, geracao_id: int, versao_id: int) -> Optional[V
         origem='edicao_manual'
     )
 
-    # Atualiza o conteúdo na geração principal
-    if nova_versao:
-        geracao = db.query(GeracaoPeca).filter(GeracaoPeca.id == geracao_id).first()
-        if geracao:
-            geracao.conteudo_gerado = versao_antiga.conteudo
-            db.commit()
+    if not nova_versao:
+        return None, "same_content"
 
-    return nova_versao
+    # Atualiza o conteúdo na geração principal
+    geracao = db.query(GeracaoPeca).filter(GeracaoPeca.id == geracao_id).first()
+    if geracao:
+        geracao.conteudo_gerado = versao_antiga.conteudo
+        db.commit()
+
+    return nova_versao, "ok"

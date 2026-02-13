@@ -18,10 +18,12 @@ import logging
 import base64
 from datetime import datetime
 from typing import Optional, List
+from utils.timezone import get_utc_now
 
-from fastapi import APIRouter, HTTPException, Depends, Query, File, UploadFile, Form
+from fastapi import APIRouter, HTTPException, Depends, Query, File, UploadFile, Form, Request
 from fastapi.responses import StreamingResponse, FileResponse
 from sqlalchemy.orm import Session
+from app.repositories.sqlalchemy.session_ops import session_query
 from pydantic import BaseModel
 
 from auth.dependencies import get_current_active_user
@@ -39,6 +41,10 @@ from sistemas.prestacao_contas.schemas import (
 )
 from sistemas.prestacao_contas.services import OrquestradorPrestacaoContas
 
+# SECURITY: Rate Limiting para endpoints de IA
+from utils.rate_limit import limiter, LIMITS, get_user_identifier
+from utils.quota_manager import check_ai_quota
+
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["Prestação de Contas"])
@@ -49,8 +55,10 @@ router = APIRouter(tags=["Prestação de Contas"])
 # =====================================================
 
 @router.post("/analisar-stream")
+@limiter.limit(LIMITS["ai"], key_func=get_user_identifier)
 async def analisar_processo_stream(
-    request: AnalisarProcessoRequest,
+    request: Request,
+    analise_request: AnalisarProcessoRequest,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
@@ -59,9 +67,10 @@ async def analisar_processo_stream(
 
     Retorna eventos SSE com progresso do processamento.
     """
+    await check_ai_quota(current_user)
 
     async def gerar_eventos():
-        logger.debug(f"SSE: Iniciando stream para {request.numero_cnj}")
+        logger.debug(f"SSE: Iniciando stream para {analise_request.numero_cnj}")
         orquestrador = OrquestradorPrestacaoContas(
             db=db,
             usuario_id=current_user.id
@@ -69,16 +78,19 @@ async def analisar_processo_stream(
 
         try:
             async for evento in orquestrador.processar_completo(
-                numero_cnj=request.numero_cnj,
-                sobrescrever=request.sobrescrever_existente
+                numero_cnj=analise_request.numero_cnj,
+                sobrescrever=analise_request.sobrescrever_existente
             ):
                 evento_json = evento.model_dump_json()
                 yield f"data: {evento_json}\n\n"
         except Exception as e:
-            logger.error(f"SSE: Erro no stream: {e}")
-            import traceback
-            traceback.print_exc()
-            yield f'data: {{"tipo": "erro", "mensagem": "{str(e)}"}}\n\n'
+            # Safety net: garante envio do evento de erro mesmo com falha de encoding
+            erro_msg = str(e)
+            try:
+                logger.error(f"SSE: Erro no stream: {erro_msg}", exc_info=True)
+            except Exception:
+                pass
+            yield f"data: {json.dumps({'tipo': 'erro', 'mensagem': erro_msg}, ensure_ascii=True)}\n\n"
         finally:
             logger.debug("SSE: Stream finalizado")
 
@@ -146,33 +158,48 @@ async def registrar_feedback(
     """Registra feedback do usuário sobre a análise"""
 
     # Verifica se geração existe
-    geracao = db.query(GeracaoAnalise).filter(
+    geracao = session_query(db, GeracaoAnalise).filter(
         GeracaoAnalise.id == request.geracao_id
     ).first()
 
     if not geracao:
         raise HTTPException(status_code=404, detail="Análise não encontrada")
 
-    # Cria feedback
-    feedback = FeedbackPrestacao(
-        geracao_id=request.geracao_id,
-        usuario_id=current_user.id,
-        avaliacao=request.avaliacao,
-        nota=request.nota,
-        comentario=request.comentario,
-        parecer_correto=request.parecer_correto,
-        valores_corretos=request.valores_corretos,
-        medicamento_correto=request.medicamento_correto,
-    )
+    # Upsert: atualiza se ja existe, cria se nao
+    feedback_existente = session_query(db, FeedbackPrestacao).filter(
+        FeedbackPrestacao.geracao_id == request.geracao_id,
+        FeedbackPrestacao.usuario_id == current_user.id,
+    ).first()
 
-    db.add(feedback)
-    db.commit()
-    db.refresh(feedback)
+    if feedback_existente:
+        feedback_existente.nota = request.nota
+        feedback_existente.avaliacao = request.avaliacao
+        feedback_existente.comentario = request.comentario
+        feedback_existente.parecer_correto = request.parecer_correto
+        feedback_existente.valores_corretos = request.valores_corretos
+        feedback_existente.medicamento_correto = request.medicamento_correto
+        db.commit()
+        db.refresh(feedback_existente)
+        feedback = feedback_existente
+    else:
+        feedback = FeedbackPrestacao(
+            geracao_id=request.geracao_id,
+            usuario_id=current_user.id,
+            nota=request.nota,
+            avaliacao=request.avaliacao,
+            comentario=request.comentario,
+            parecer_correto=request.parecer_correto,
+            valores_corretos=request.valores_corretos,
+            medicamento_correto=request.medicamento_correto,
+        )
+        db.add(feedback)
+        db.commit()
+        db.refresh(feedback)
 
     return FeedbackResponse(
         sucesso=True,
         mensagem="Feedback registrado com sucesso",
-        feedback_id=feedback.id
+        feedback_id=feedback.id,
     )
 
 
@@ -193,7 +220,7 @@ async def exportar_parecer(
     """Exporta o parecer em formato DOCX"""
     from sistemas.prestacao_contas.docx_converter import converter_parecer_docx
 
-    geracao = db.query(GeracaoAnalise).filter(
+    geracao = session_query(db, GeracaoAnalise).filter(
         GeracaoAnalise.id == request.geracao_id
     ).first()
 
@@ -267,7 +294,7 @@ async def upload_documentos_faltantes(
     if not todos_arquivos:
         raise HTTPException(status_code=400, detail="Nenhum arquivo enviado. Selecione pelo menos um documento.")
 
-    geracao = db.query(GeracaoAnalise).filter(
+    geracao = session_query(db, GeracaoAnalise).filter(
         GeracaoAnalise.id == geracao_id
     ).first()
 
@@ -370,7 +397,7 @@ async def cancelar_por_falta_documentos(
     Cancela análise quando o usuário informa que não possui os documentos necessários.
     A análise é salva no histórico com status de erro.
     """
-    geracao = db.query(GeracaoAnalise).filter(
+    geracao = session_query(db, GeracaoAnalise).filter(
         GeracaoAnalise.id == request.geracao_id
     ).first()
 
@@ -415,7 +442,7 @@ async def continuar_sem_nota_fiscal(
     Permite ao usuário prosseguir com a análise mesmo sem ter encontrado
     a nota fiscal. A análise continuará com os documentos disponíveis.
     """
-    geracao = db.query(GeracaoAnalise).filter(
+    geracao = session_query(db, GeracaoAnalise).filter(
         GeracaoAnalise.id == request.geracao_id
     ).first()
 
@@ -479,7 +506,7 @@ async def reprocessar_com_documentos(
     Reprocessa uma análise existente usando os documentos já salvos.
     Não deleta o registro, apenas continua a análise de onde parou.
     """
-    geracao = db.query(GeracaoAnalise).filter(
+    geracao = session_query(db, GeracaoAnalise).filter(
         GeracaoAnalise.id == request.geracao_id
     ).first()
 
@@ -542,7 +569,7 @@ async def obter_extrato_subconta(
     """
     Retorna o PDF do extrato da subconta em base64.
     """
-    geracao = db.query(GeracaoAnalise).filter(
+    geracao = session_query(db, GeracaoAnalise).filter(
         GeracaoAnalise.id == geracao_id
     ).first()
 
@@ -635,7 +662,7 @@ async def verificar_processo_existente(
     numero_cnj_limpo = numero_cnj.replace(".", "").replace("-", "").replace("/", "").strip()
 
     # Busca registro existente (qualquer status)
-    geracao_existente = db.query(GeracaoAnalise).filter(
+    geracao_existente = session_query(db, GeracaoAnalise).filter(
         GeracaoAnalise.numero_cnj == numero_cnj_limpo,
         GeracaoAnalise.usuario_id == current_user.id
     ).order_by(GeracaoAnalise.criado_em.desc()).first()
@@ -672,8 +699,7 @@ def _calcular_estado_expirado(geracao: GeracaoAnalise) -> bool:
     """Verifica se o estado salvo expirou."""
     if not geracao.estado_expira_em:
         return True
-    from datetime import datetime
-    return datetime.utcnow() > geracao.estado_expira_em
+    return get_utc_now() > geracao.estado_expira_em
 
 
 def _pode_anexar_documentos(geracao: GeracaoAnalise) -> bool:
@@ -687,8 +713,7 @@ def _pode_anexar_documentos(geracao: GeracaoAnalise) -> bool:
     if geracao.documentos_faltantes and len(geracao.documentos_faltantes) > 0:
         # Verifica se não expirou
         if geracao.estado_expira_em:
-            from datetime import datetime
-            if datetime.utcnow() > geracao.estado_expira_em:
+            if get_utc_now() > geracao.estado_expira_em:
                 return True  # Expirou mas ainda pode anexar para reprocessar
         return True
 
@@ -708,7 +733,7 @@ async def listar_historico(
 ):
     """Lista histórico de análises do usuário"""
 
-    query = db.query(GeracaoAnalise).filter(
+    query = session_query(db, GeracaoAnalise).filter(
         GeracaoAnalise.usuario_id == current_user.id
     )
 
@@ -762,7 +787,7 @@ async def obter_geracao(
 ):
     """Obtém detalhes de uma análise específica"""
 
-    geracao = db.query(GeracaoAnalise).filter(
+    geracao = session_query(db, GeracaoAnalise).filter(
         GeracaoAnalise.id == geracao_id
     ).first()
 
@@ -817,3 +842,8 @@ async def obter_geracao(
         resposta_ia_bruta=geracao.resposta_ia_bruta,
         respostas_usuario=geracao.respostas_usuario,
     )
+
+
+
+
+

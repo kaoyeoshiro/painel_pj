@@ -81,11 +81,28 @@ class SourceResolver:
     Extensível para adicionar novas fontes especiais no futuro.
     """
 
-    # Códigos de fallback (usados APENAS se a categoria não existir no banco)
+    # Códigos de fallback (usados APENAS se a categoria não existir no banco).
+    # Consistente com o seed padrão em models_config_pecas.py.
+    # NOTA: Código 10 (Termo) NÃO está aqui — é documento preparatório,
+    # não petição inicial. Ver CODIGOS_PREPARATORIOS_PI.
     CODIGOS_PETICAO_INICIAL_FALLBACK = [9500, 500]
 
-    # Códigos de petição em geral (incluindo intermediárias) - hardcoded pois não é categoria especial
-    CODIGOS_PETICAO = [9500, 500, 510]
+    # -----------------------------------------------------------------------
+    # REGRA DE FRONTEIRA — Documentos preparatórios antes da Petição Inicial
+    # -----------------------------------------------------------------------
+    # Em processos antigos (e alguns modernos), o primeiro documento do
+    # processo é um "Termo" (código 10) — documento formal/preparatório que
+    # precede a petição substancial (500/9500).
+    #
+    # Sequência típica:  [10 (Termo)] → [500 (Petição)] → [outros docs]
+    #
+    # Regra: código 10 NÃO é petição inicial. Ele é ignorado na busca,
+    # e a primeira petição SUBSTANCIAL subsequente é a PI real.
+    #
+    # Este set é facilmente extensível: se no futuro outros códigos forem
+    # identificados como preparatórios, basta adicioná-los aqui.
+    # -----------------------------------------------------------------------
+    CODIGOS_PREPARATORIOS_PI: frozenset = frozenset({10})
 
     def __init__(self, db=None):
         """
@@ -374,12 +391,18 @@ class SourceResolver:
         """
         Resolve a petição inicial do processo.
 
-        Regra: Primeiro documento cronológico com código ∈ codigos_validos (config-driven).
+        Regra: Primeiro documento cronológico ELEGÍVEL como PI, desconsiderando
+        documentos preparatórios (ver CODIGOS_PREPARATORIOS_PI).
 
-        Critério de "primeiro documento":
+        Critério de "primeiro documento elegível":
         1. Documentos são ordenados por data (mais antigo primeiro)
         2. Se não houver data, usa a ordem original (assume já ordenado pelo TJ-MS)
-        3. Retorna o primeiro documento que tenha código na lista configurada
+        3. Documentos preparatórios (ex: código 10/Termo) são IGNORADOS
+        4. Retorna o primeiro documento substancial com código na lista configurada
+
+        Caso de fronteira documentado:
+            Sequência [10 (Termo), 500 (Petição)] → PI = doc 500
+            O código 10 não bloqueia nem é selecionado como PI.
 
         Args:
             documentos: Lista de DocumentoInfo
@@ -388,10 +411,14 @@ class SourceResolver:
         Returns:
             SourceResolutionResult
         """
-        # Filtra apenas documentos com códigos configurados no admin
+        # Filtra apenas documentos com códigos configurados no admin,
+        # excluindo explicitamente códigos preparatórios (ex: 10/Termo).
+        # Mesmo que um código preparatório esteja na config por engano,
+        # ele será filtrado aqui como safety net.
+        codigos_validos_set = set(codigos_validos) - self.CODIGOS_PREPARATORIOS_PI
         candidatos = [
             doc for doc in documentos
-            if doc.codigo in codigos_validos
+            if doc.codigo in codigos_validos_set
         ]
 
         if not candidatos:

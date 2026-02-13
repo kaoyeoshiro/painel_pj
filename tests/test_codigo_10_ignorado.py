@@ -96,7 +96,7 @@ class TestCodigo10Logica(unittest.TestCase):
             mock_query = MagicMock()
             mock_filter = MagicMock()
 
-            if model.__tablename__ == "config_ia":
+            if model.__tablename__ == "configuracoes_ia":
                 mock_filter.first.return_value = mock_config
                 mock_query.filter.return_value = mock_filter
             elif model.__tablename__ == "categorias_resumo_json":
@@ -182,7 +182,7 @@ class TestCodigo10Logica(unittest.TestCase):
             mock_query = MagicMock()
             mock_filter = MagicMock()
 
-            if model.__tablename__ == "config_ia":
+            if model.__tablename__ == "configuracoes_ia":
                 mock_filter.first.return_value = mock_config
                 mock_query.filter.return_value = mock_filter
             elif model.__tablename__ == "categorias_resumo_json":
@@ -217,9 +217,11 @@ class TestSourceResolverCodigo10(unittest.TestCase):
     o código 10 como petição inicial quando é o primeiro documento.
     """
 
-    def test_codigo_10_primeiro_documento_identificado_como_peticao_inicial(self):
+    def test_codigo_10_primeiro_doc_preparatorio_pi_e_500(self):
         """
-        TESTE: Código 10 como primeiro documento deve ser identificado como PI.
+        TESTE: Código 10 como primeiro documento é PREPARATÓRIO (Termo).
+        Mesmo configurado no DB como [9500, 500, 10], CODIGOS_PREPARATORIOS_PI
+        filtra código 10. A PI real (500) subsequente é retornada.
         """
         from sistemas.gerador_pecas.services_source_resolver import (
             SourceResolver, DocumentoInfo
@@ -239,7 +241,7 @@ class TestSourceResolverCodigo10(unittest.TestCase):
 
         resolver = SourceResolver(mock_db)
 
-        # Documentos: código 10 é o primeiro
+        # Documentos: código 10 é o primeiro (Termo), 500 é a petição real
         documentos = [
             DocumentoInfo(id="1", codigo=10, data=datetime(2024, 1, 1), ordem=0),
             DocumentoInfo(id="2", codigo=500, data=datetime(2024, 1, 2), ordem=1),
@@ -248,9 +250,9 @@ class TestSourceResolverCodigo10(unittest.TestCase):
         result = resolver.resolve("peticao_inicial", documentos)
 
         self.assertTrue(result.sucesso)
-        self.assertEqual(result.documento_id, "1",
-            "Código 10 como primeiro documento deve ser identificado como PI")
-        self.assertEqual(result.documento_info.codigo, 10)
+        self.assertEqual(result.documento_id, "2",
+            "Código 10 é preparatório (safety net). PI = doc 500")
+        self.assertEqual(result.documento_info.codigo, 500)
 
     def test_codigo_10_nao_primeiro_nao_identificado_como_peticao_inicial(self):
         """
@@ -290,7 +292,9 @@ class TestSourceResolverCodigo10(unittest.TestCase):
 
     def test_codigo_10_sem_config_usa_fallback_sem_10(self):
         """
-        TESTE: Sem config no banco, usa fallback [9500, 500] que não inclui 10.
+        TESTE: Sem config no banco, usa fallback [9500, 500] — código 10 NÃO está
+        no fallback e também é preparatório (CODIGOS_PREPARATORIOS_PI).
+        A PI real (500) subsequente é retornada.
         """
         from sistemas.gerador_pecas.services_source_resolver import (
             SourceResolver, DocumentoInfo
@@ -307,7 +311,7 @@ class TestSourceResolverCodigo10(unittest.TestCase):
 
         resolver = SourceResolver(mock_db)
 
-        # Documentos: código 10 é o primeiro
+        # Documentos: código 10 é o primeiro, 500 é o segundo
         documentos = [
             DocumentoInfo(id="1", codigo=10, data=datetime(2024, 1, 1), ordem=0),
             DocumentoInfo(id="2", codigo=500, data=datetime(2024, 1, 2), ordem=1),
@@ -315,10 +319,11 @@ class TestSourceResolverCodigo10(unittest.TestCase):
 
         result = resolver.resolve("peticao_inicial", documentos)
 
-        # Deve usar fallback [9500, 500] que não inclui 10
+        # Fallback é [9500, 500] — código 10 NÃO está incluído.
+        # Código 10 é preparatório. PI real = doc 500.
         self.assertTrue(result.sucesso)
         self.assertEqual(result.documento_id, "2",
-            "Sem config, código 10 não está no fallback, deve pegar 500")
+            "Fallback [9500,500] não inclui 10. PI = doc 500")
         self.assertEqual(result.documento_info.codigo, 500)
 
 

@@ -170,7 +170,7 @@ class TestCategoriasResumoJSONBase(unittest.TestCase):
 
     def _executar_sincronizacao(self, categoria_id, user):
         """Executa o endpoint de sincronização diretamente (sem HTTP)."""
-        from sistemas.gerador_pecas.router_extraction import sincronizar_json_sem_ia
+        from sistemas.gerador_pecas.router_ext_models import sincronizar_json_sem_ia
 
         loop = asyncio.new_event_loop()
         asyncio.set_event_loop(loop)
@@ -392,7 +392,7 @@ class TestCriacaoPerguntaVariavel(TestCategoriasResumoJSONBase):
         2. Variável deve existir no BD imediatamente
         """
         from sistemas.gerador_pecas.models_extraction import ExtractionVariable
-        from sistemas.gerador_pecas.router_extraction import ensure_variable_for_question
+        from sistemas.gerador_pecas.extraction_helpers import ensure_variable_for_question
 
         user = self._criar_usuario_admin()
         categoria = self._criar_categoria("test_cria_var")
@@ -429,7 +429,7 @@ class TestCriacaoPerguntaVariavel(TestCategoriasResumoJSONBase):
         2. Variável deve ser criada com tipo "text"
         """
         from sistemas.gerador_pecas.models_extraction import ExtractionVariable, ExtractionQuestion
-        from sistemas.gerador_pecas.router_extraction import ensure_variable_for_question
+        from sistemas.gerador_pecas.extraction_helpers import ensure_variable_for_question
 
         user = self._criar_usuario_admin()
         categoria = self._criar_categoria("test_tipo_default")
@@ -465,7 +465,7 @@ class TestCriacaoPerguntaVariavel(TestCategoriasResumoJSONBase):
         4. Dependência deve funcionar
         """
         from sistemas.gerador_pecas.models_extraction import ExtractionVariable
-        from sistemas.gerador_pecas.router_extraction import ensure_variable_for_question
+        from sistemas.gerador_pecas.extraction_helpers import ensure_variable_for_question
 
         user = self._criar_usuario_admin()
         categoria = self._criar_categoria("test_dependencia_imediata")
@@ -532,8 +532,8 @@ class TestCriacaoPerguntaVariavel(TestCategoriasResumoJSONBase):
         )
 
         # Tenta criar segunda pergunta com mesmo slug via endpoint
-        from sistemas.gerador_pecas.router_extraction import criar_pergunta
-        from sistemas.gerador_pecas.router_extraction import ExtractionQuestionCreate
+        from sistemas.gerador_pecas.router_ext_questions import criar_pergunta
+        from sistemas.gerador_pecas.schemas_extraction import ExtractionQuestionCreate
 
         data = ExtractionQuestionCreate(
             categoria_id=categoria.id,
@@ -563,7 +563,7 @@ class TestCriacaoPerguntaVariavel(TestCategoriasResumoJSONBase):
         3. Deve atualizar, não criar duplicata
         """
         from sistemas.gerador_pecas.models_extraction import ExtractionVariable
-        from sistemas.gerador_pecas.router_extraction import ensure_variable_for_question
+        from sistemas.gerador_pecas.extraction_helpers import ensure_variable_for_question
 
         user = self._criar_usuario_admin()
         categoria = self._criar_categoria("test_alterar_slug")
@@ -625,7 +625,7 @@ class TestReordenacaoComIA(TestCategoriasResumoJSONBase):
         2. IA sugere ordem que separa
         3. Correção determinística deve juntar
         """
-        from sistemas.gerador_pecas.router_extraction import _garantir_hierarquia_dependencias
+        from sistemas.gerador_pecas.extraction_helpers import _garantir_hierarquia_dependencias
 
         # Simula perguntas
         class PerguntaMock:
@@ -668,7 +668,7 @@ class TestReordenacaoComIA(TestCategoriasResumoJSONBase):
         2. IA sugere ordem que dispersa filhos
         3. Todos filhos devem ficar junto ao pai
         """
-        from sistemas.gerador_pecas.router_extraction import _garantir_hierarquia_dependencias
+        from sistemas.gerador_pecas.extraction_helpers import _garantir_hierarquia_dependencias
 
         class PerguntaMock:
             def __init__(self, id, slug, depends_on=None):
@@ -721,7 +721,7 @@ class TestReordenacaoComIA(TestCategoriasResumoJSONBase):
         2. IA sugere ordem que quebra hierarquia
         3. Correção mantém árvore: Pai -> Filho -> Neto
         """
-        from sistemas.gerador_pecas.router_extraction import _garantir_hierarquia_dependencias
+        from sistemas.gerador_pecas.extraction_helpers import _garantir_hierarquia_dependencias
 
         class PerguntaMock:
             def __init__(self, id, slug, depends_on=None):
@@ -778,7 +778,7 @@ class TestReordenacaoComIA(TestCategoriasResumoJSONBase):
         1. Perguntas sem dependências
         2. Ordem da IA deve ser preservada
         """
-        from sistemas.gerador_pecas.router_extraction import _garantir_hierarquia_dependencias
+        from sistemas.gerador_pecas.extraction_helpers import _garantir_hierarquia_dependencias
 
         class PerguntaMock:
             def __init__(self, id, slug, depends_on=None):

@@ -92,7 +92,7 @@ class CategoriaResumoJSON(Base):
     json_gerado_por_ia = Column(Boolean, default=False)
     
     # Data/hora em que o JSON foi gerado pela IA
-    json_gerado_em = Column(DateTime, nullable=True)
+    json_gerado_em = Column(DateTime(timezone=True), nullable=True)
     
     # Usuário que gerou/aprovou o JSON via IA
     json_gerado_por = Column(Integer, ForeignKey("users.id"), nullable=True)
@@ -106,9 +106,9 @@ class CategoriaResumoJSON(Base):
 
     # Auditoria
     criado_por = Column(Integer, ForeignKey("users.id"), nullable=True)
-    criado_em = Column(DateTime, default=get_utc_now)
+    criado_em = Column(DateTime(timezone=True), default=get_utc_now)
     atualizado_por = Column(Integer, ForeignKey("users.id"), nullable=True)
-    atualizado_em = Column(DateTime, default=get_utc_now, onupdate=get_utc_now)
+    atualizado_em = Column(DateTime(timezone=True), default=get_utc_now, onupdate=get_utc_now)
 
     @property
     def namespace(self) -> str:
@@ -151,7 +151,7 @@ class CategoriaResumoJSONHistorico(Base):
     
     # Auditoria
     alterado_por = Column(Integer, ForeignKey("users.id"), nullable=True)
-    alterado_em = Column(DateTime, default=get_utc_now)
+    alterado_em = Column(DateTime(timezone=True), default=get_utc_now)
     motivo = Column(Text, nullable=True)
     
     def __repr__(self):

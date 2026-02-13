@@ -232,23 +232,36 @@ def selecionar_melhor_nat(docs_nat: List["DocumentoTJMS"]) -> Optional["Document
     return docs_ordenados[0]
 
 
-def extrair_dados_peticao_inicial(resultado: "ResultadoAnalise") -> Dict[str, Any]:
+def extrair_dados_peticao_inicial(
+    resultado: "ResultadoAnalise",
+    codigos_pi: Optional[Set[int]] = None
+) -> Dict[str, Any]:
     """
     Extrai dados da petição inicial do resultado de análise.
 
-    Procura por documentos que sejam petição inicial (códigos 500, 9500)
+    Procura por documentos que sejam petição inicial (códigos config-driven)
     e tenta parsear o JSON do resumo.
 
     Args:
         resultado: Resultado da análise do processo
+        codigos_pi: Códigos de PI (config-driven). Se None, tenta buscar do
+                    SourceResolver; se indisponível, usa fallback {500, 9500, 10}.
 
     Returns:
         Dicionário com dados extraídos da petição inicial
     """
     import json
 
-    # Códigos de petição inicial
-    CODIGOS_PETICAO_INICIAL = {500, 9500, 10}
+    # Códigos de petição inicial - config-driven.
+    # NOTA: Código 10 (Termo) NÃO é PI — é documento preparatório.
+    # Ver CODIGOS_PREPARATORIOS_PI em services_source_resolver.py.
+    if codigos_pi is None:
+        try:
+            from sistemas.gerador_pecas.services_source_resolver import get_source_resolver
+            codigos_pi = set(get_source_resolver().get_codigos_validos("peticao_inicial"))
+        except Exception:
+            codigos_pi = {500, 9500}
+    CODIGOS_PETICAO_INICIAL = codigos_pi
 
     dados = {}
 
@@ -1040,7 +1053,7 @@ async def _processar_nat_para_markdown(
                         normalizar_json_com_schema,
                         json_para_markdown
                     )
-                    from sistemas.gerador_pecas.gemini_client import chamar_gemini_async
+                    from services.gemini_service import chamar_gemini as chamar_gemini_async
 
                     # Busca categoria NATJus por nome/correspondencia sem depender de codigo fixo
                     categoria = db_session.query(CategoriaResumoJSON).filter(

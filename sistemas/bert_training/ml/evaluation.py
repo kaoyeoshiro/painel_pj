@@ -2,7 +2,7 @@
 """
 Avaliação e métricas do modelo BERT.
 
-Adaptado do projeto E:\Projetos\BERT para integração com o portal PGE.
+Adaptado do projeto BERT para integracao com o portal PGE.
 """
 
 import torch

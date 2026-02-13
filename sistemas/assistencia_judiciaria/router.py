@@ -9,49 +9,29 @@ import re
 import json
 import tempfile
 from datetime import datetime
-from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends
+from fastapi import APIRouter, HTTPException, BackgroundTasks, Depends, Request
 from fastapi.responses import FileResponse
-from pydantic import BaseModel
 from typing import Optional
 from sqlalchemy.orm import Session
-
+from app.repositories.sqlalchemy.session_ops import session_query
 from auth.dependencies import get_current_active_user
 from auth.models import User
 from database.connection import get_db
-from utils.timezone import to_iso_utc
-from sistemas.assistencia_judiciaria.core.logic import full_flow, DEFAULT_MODEL
+# SECURITY: Rate Limiting para endpoints de IA
+from utils.rate_limit import limiter, LIMITS, get_user_identifier
+from utils.quota_manager import check_ai_quota
+from utils.timezone import to_iso_utc, get_utc_now
+from sistemas.assistencia_judiciaria.core.logic import full_flow, full_flow_async, DEFAULT_MODEL
+from app.adapters.gemini_adapter import GeminiAdapter
 from sistemas.assistencia_judiciaria.core.document import markdown_to_docx, docx_to_pdf
 from sistemas.assistencia_judiciaria.models import ConsultaProcesso, FeedbackAnalise
 from admin.models import ConfiguracaoIA
+from .schemas import ConsultationRequest, FeedbackRequest, DocumentRequest, SettingsRequest
 
 router = APIRouter(tags=["Assistência Judiciária"])
 
 # Caminho do arquivo de configurações
 SETTINGS_FILE = os.path.join(os.path.dirname(__file__), 'settings.json')
-
-
-class ConsultationRequest(BaseModel):
-    cnj: str
-    model: str = DEFAULT_MODEL
-    force: bool = False  # Forçar nova consulta mesmo se já existir cache
-
-
-class FeedbackRequest(BaseModel):
-    consulta_id: int
-    avaliacao: str  # 'correto', 'parcial', 'incorreto', 'erro_ia'
-    comentario: Optional[str] = None
-    campos_incorretos: Optional[list] = None
-
-
-class DocumentRequest(BaseModel):
-    markdown_text: str
-    cnj: str
-    format: str  # 'docx' or 'pdf'
-
-
-class SettingsRequest(BaseModel):
-    openrouter_api_key: str = ""
-    default_model: str = "google/gemini-3-flash-preview"
 
 
 def load_settings():
@@ -210,18 +190,21 @@ async def test_tjms_connection(current_user: User = Depends(get_current_active_u
 
 
 @router.post("/consultar")
+@limiter.limit(LIMITS["ai"], key_func=get_user_identifier)
 async def consultar_processo(
+    request: Request,
     req: ConsultationRequest,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
     """
     Consulta um processo no TJ-MS e gera relatório com IA.
-    
+
     - **cnj**: Número do processo no formato CNJ
     - **model**: Modelo de IA a ser usado (opcional)
     - **force**: Forçar nova consulta mesmo se já existir cache
     """
+    await check_ai_quota(current_user)
     import logging
     logger = logging.getLogger("assistencia_router")
     
@@ -232,7 +215,7 @@ async def consultar_processo(
         
         # Verifica se já existe consulta no cache (e não está forçando)
         if not req.force:
-            consulta_existente = db.query(ConsultaProcesso).filter(
+            consulta_existente = session_query(db, ConsultaProcesso).filter(
                 ConsultaProcesso.cnj == cnj_limpo
             ).first()
             
@@ -245,10 +228,13 @@ async def consultar_processo(
                     "consultado_em": to_iso_utc(consulta_existente.consultado_em)
                 }
         
-        # Faz nova consulta
-        logger.info("Iniciando full_flow...")
+        # Faz nova consulta via DIP (injecao de dependencia)
+        logger.info("Iniciando full_flow_async com GeminiAdapter (DIP)...")
         try:
-            dados, relatorio = full_flow(req.cnj, req.model)
+            ai_service = GeminiAdapter()
+            dados, relatorio = await full_flow_async(
+                req.cnj, req.model, ai_service=ai_service
+            )
         except RuntimeError as e:
             error_msg = str(e)
             if "Timeout" in error_msg or "timeout" in error_msg:
@@ -261,14 +247,14 @@ async def consultar_processo(
         logger.info("full_flow concluído com sucesso")
         
         # Busca o modelo real usado (configurado no banco)
-        config_modelo = db.query(ConfiguracaoIA).filter(
+        config_modelo = session_query(db, ConfiguracaoIA).filter(
             ConfiguracaoIA.sistema == "assistencia_judiciaria",
             ConfiguracaoIA.chave == "modelo_relatorio"
         ).first()
         modelo_real = config_modelo.valor if config_modelo else req.model
         
         # Salva ou atualiza no banco
-        consulta = db.query(ConsultaProcesso).filter(
+        consulta = session_query(db, ConsultaProcesso).filter(
             ConsultaProcesso.cnj == cnj_limpo
         ).first()
         
@@ -283,7 +269,7 @@ async def consultar_processo(
         consulta.dados_json = dados
         consulta.relatorio = relatorio
         consulta.modelo_usado = modelo_real
-        consulta.atualizado_em = datetime.utcnow()
+        consulta.atualizado_em = get_utc_now()
         
         db.commit()
         db.refresh(consulta)
@@ -311,7 +297,7 @@ async def listar_historico(
     Retorna as últimas 50 consultas ordenadas por data.
     """
     try:
-        consultas = db.query(ConsultaProcesso).filter(
+        consultas = session_query(db, ConsultaProcesso).filter(
             ConsultaProcesso.usuario_id == current_user.id
         ).order_by(ConsultaProcesso.consultado_em.desc()).limit(50).all()
         
@@ -336,7 +322,7 @@ async def excluir_historico(
 ):
     """Remove uma consulta do histórico do usuário - PRESERVA feedbacks."""
     try:
-        consulta = db.query(ConsultaProcesso).filter(
+        consulta = session_query(db, ConsultaProcesso).filter(
             ConsultaProcesso.id == consulta_id,
             ConsultaProcesso.usuario_id == current_user.id
         ).first()
@@ -346,7 +332,7 @@ async def excluir_historico(
         
         # Verifica se tem feedback associado - se tiver, não permite excluir
         from sistemas.assistencia_judiciaria.models import FeedbackAnalise
-        feedback = db.query(FeedbackAnalise).filter(FeedbackAnalise.consulta_id == consulta_id).first()
+        feedback = session_query(db, FeedbackAnalise).filter(FeedbackAnalise.consulta_id == consulta_id).first()
         if feedback:
             raise HTTPException(
                 status_code=400, 
@@ -434,31 +420,32 @@ async def enviar_feedback(
     """
     try:
         # Verifica se a consulta existe
-        consulta = db.query(ConsultaProcesso).filter(
+        consulta = session_query(db, ConsultaProcesso).filter(
             ConsultaProcesso.id == req.consulta_id
         ).first()
         
         if not consulta:
             raise HTTPException(status_code=404, detail="Consulta não encontrada")
         
-        # Verifica se já existe feedback para esta consulta
-        feedback_existente = db.query(FeedbackAnalise).filter(
-            FeedbackAnalise.consulta_id == req.consulta_id
+        # Upsert: atualiza se ja existe, cria se nao
+        feedback_existente = session_query(db, FeedbackAnalise).filter(
+            FeedbackAnalise.consulta_id == req.consulta_id,
+            FeedbackAnalise.usuario_id == current_user.id,
         ).first()
-        
+
         if feedback_existente:
-            # Atualiza feedback existente
+            feedback_existente.nota = req.nota
             feedback_existente.avaliacao = req.avaliacao
             feedback_existente.comentario = req.comentario
             feedback_existente.campos_incorretos = req.campos_incorretos
         else:
-            # Cria novo feedback
             feedback = FeedbackAnalise(
                 consulta_id=req.consulta_id,
                 usuario_id=current_user.id,
+                nota=req.nota,
                 avaliacao=req.avaliacao,
                 comentario=req.comentario,
-                campos_incorretos=req.campos_incorretos
+                campos_incorretos=req.campos_incorretos,
             )
             db.add(feedback)
         
@@ -479,7 +466,7 @@ async def obter_feedback(
 ):
     """Obtém o feedback de uma consulta específica."""
     try:
-        feedback = db.query(FeedbackAnalise).filter(
+        feedback = session_query(db, FeedbackAnalise).filter(
             FeedbackAnalise.consulta_id == consulta_id
         ).first()
         
@@ -507,7 +494,7 @@ async def contar_feedbacks_pendentes(
         from sqlalchemy import and_, not_, exists
         
         # Consultas do usuário sem feedback
-        count = db.query(ConsultaProcesso).filter(
+        count = session_query(db, ConsultaProcesso).filter(
             ConsultaProcesso.usuario_id == current_user.id,
             ConsultaProcesso.relatorio.isnot(None),
             ~exists().where(FeedbackAnalise.consulta_id == ConsultaProcesso.id)
@@ -516,3 +503,8 @@ async def contar_feedbacks_pendentes(
         return {"pendentes": count}
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+
+
+

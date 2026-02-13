@@ -1,0 +1,124 @@
+# Pipeline de seguranca — Portal PGE
+# Executa verificacoes de seguranca em cada push/PR
+name: Security
+
+on:
+  push:
+    branches: [main, feat/*, fix/*, refactor/*]
+  pull_request:
+    branches: [main]
+
+jobs:
+  security-checks:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: ci
+          POSTGRES_PASSWORD: ci
+          POSTGRES_DB: ci_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Instalar dependencias
+        run: |
+          pip install -r requirements.txt
+          pip install bandit pip-audit pytest
+
+      # ==========================================
+      # SAST — Analise estatica de seguranca
+      # ==========================================
+      - name: Bandit (SAST Python)
+        run: |
+          bandit -r sistemas/ auth/ utils/ services/ -ll --skip B101 -f json -o bandit-report.json || true
+          bandit -r sistemas/ auth/ utils/ services/ -ll --skip B101
+
+      # ==========================================
+      # Padroes perigosos
+      # ==========================================
+      - name: Verificar torch.load raw
+        run: |
+          echo "Verificando torch.load() sem safe_torch..."
+          VIOLATIONS=$(grep -rn "torch\.load(" sistemas/ --include="*.py" | grep -v "safe_torch" | grep -v "#" || true)
+          if [ -n "$VIOLATIONS" ]; then
+            echo "ERRO: torch.load() usado diretamente (use safe_torch_load):"
+            echo "$VIOLATIONS"
+            exit 1
+          fi
+          echo "OK: Nenhum torch.load() raw encontrado."
+
+      - name: Verificar dangerouslySetInnerHTML
+        run: |
+          echo "Verificando dangerouslySetInnerHTML..."
+          VIOLATIONS=$(grep -rn "dangerouslySetInnerHTML" frontend-react/src/ --include="*.tsx" --include="*.ts" || true)
+          if [ -n "$VIOLATIONS" ]; then
+            echo "AVISO: dangerouslySetInnerHTML encontrado (verificar se usa DOMPurify):"
+            echo "$VIOLATIONS"
+          fi
+          echo "OK"
+
+      - name: Verificar eval()
+        run: |
+          echo "Verificando eval() em Python..."
+          VIOLATIONS=$(grep -rn "eval(" sistemas/ auth/ utils/ --include="*.py" | grep -v "__pycache__" | grep -v "#" | grep -v "evaluate" || true)
+          if [ -n "$VIOLATIONS" ]; then
+            echo "AVISO: eval() encontrado:"
+            echo "$VIOLATIONS"
+          fi
+          echo "OK"
+
+      # ==========================================
+      # Dependencias vulneraveis
+      # ==========================================
+      - name: pip-audit (dependencias Python)
+        run: |
+          pip-audit --strict --desc || true
+
+      # ==========================================
+      # Alembic — validacao de migrations
+      # ==========================================
+      - name: Validar migrations Alembic
+        env:
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/ci_test
+        run: |
+          alembic upgrade head
+          echo "OK: Migrations aplicadas com sucesso"
+
+      # ==========================================
+      # Testes de seguranca
+      # ==========================================
+      - name: Testes de seguranca
+        env:
+          DATABASE_URL: postgresql://ci:ci@localhost:5432/ci_test
+        run: |
+          python -m pytest \
+            tests/test_xss_prevention.py \
+            tests/test_torch_load_safety.py \
+            tests/test_upload_hardening.py \
+            tests/test_quota_manager.py \
+            tests/test_rate_limiting.py \
+            -v --tb=short
+
+      # ==========================================
+      # Frontend (npm audit)
+      # ==========================================
+      - name: npm audit (frontend React)
+        working-directory: frontend-react
+        run: |
+          npm ci --ignore-scripts || true
+          npm audit --audit-level=high || true

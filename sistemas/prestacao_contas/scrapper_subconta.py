@@ -15,6 +15,7 @@ import time
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum
+from utils.timezone import get_utc_now
 from pathlib import Path
 from typing import Optional, Tuple
 
@@ -118,7 +119,7 @@ class ResultadoExtracao:
     pdf_bytes: Optional[bytes] = None
     texto_extraido: Optional[str] = None
     erro: Optional[str] = None
-    timestamp: str = field(default_factory=lambda: datetime.now().isoformat(timespec="seconds"))
+    timestamp: str = field(default_factory=lambda: get_utc_now().isoformat(timespec="seconds"))
 
 
 # ==========================
@@ -533,7 +534,7 @@ async def _tentar_endpoint_proxy(numero_processo: str) -> Optional[ResultadoExtr
                     pdf_bytes=pdf_bytes,
                     texto_extraido=data.get("texto_extraido"),
                     erro=data.get("erro"),
-                    timestamp=data.get("timestamp", datetime.now().isoformat(timespec="seconds")),
+                    timestamp=data.get("timestamp", get_utc_now().isoformat(timespec="seconds")),
                 )
             else:
                 logger.warning(f"Endpoint retornou status {response.status_code}")

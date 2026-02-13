@@ -7,6 +7,7 @@ Registra cada interação com o modelo de IA para debug e auditoria.
 
 import time
 from datetime import datetime
+from utils.timezone import get_utc_now
 from typing import Optional, Any, Dict
 from contextlib import contextmanager
 
@@ -134,7 +135,7 @@ class LogEntry:
         self.erro: Optional[str] = None
 
         # Timestamps
-        self.criado_em = datetime.utcnow()
+        self.criado_em = get_utc_now()
         self._inicio = time.time()
 
     def set_documento(self, documento_id: str, texto: str = None):

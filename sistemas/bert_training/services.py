@@ -9,6 +9,7 @@ import os
 import subprocess
 from datetime import datetime
 from pathlib import Path
+from utils.timezone import get_utc_now
 from typing import Optional, Dict, Any, List, Tuple
 import pandas as pd
 import logging
@@ -388,17 +389,17 @@ def claim_job(
 
     job.status = JobStatus.TRAINING
     job.worker_id = worker.id
-    job.claimed_at = datetime.utcnow()
-    job.started_at = datetime.utcnow()
+    job.claimed_at = get_utc_now()
+    job.started_at = get_utc_now()
 
     worker.current_job_id = job.id
-    worker.last_heartbeat = datetime.utcnow()
+    worker.last_heartbeat = get_utc_now()
 
     # Atualiza status do run para training
     run = db.query(BertRun).filter(BertRun.id == job.run_id).first()
     if run:
         run.status = "training"
-        run.started_at = datetime.utcnow()
+        run.started_at = get_utc_now()
 
     db.commit()
 
@@ -420,9 +421,9 @@ def update_job_progress(
     if status:
         job.status = status
         if status == JobStatus.TRAINING and not job.started_at:
-            job.started_at = datetime.utcnow()
+            job.started_at = get_utc_now()
         elif status in [JobStatus.COMPLETED, JobStatus.FAILED]:
-            job.completed_at = datetime.utcnow()
+            job.completed_at = get_utc_now()
 
     if current_epoch is not None:
         job.current_epoch = current_epoch
@@ -533,7 +534,7 @@ def finalize_run(
         run.status = "failed"
         run.error_message = error_message
 
-    run.completed_at = datetime.utcnow()
+    run.completed_at = get_utc_now()
     db.commit()
 
     logger.info(f"Run {run.id} finalizado: status={run.status}")
@@ -594,7 +595,7 @@ def update_worker_heartbeat(
     """
     Atualiza heartbeat do worker.
     """
-    worker.last_heartbeat = datetime.utcnow()
+    worker.last_heartbeat = get_utc_now()
     if current_job_id is not None:
         worker.current_job_id = current_job_id
     db.commit()
@@ -801,7 +802,7 @@ def calculate_progress_with_estimate(
 
     # Estima tempo restante baseado em tempo por epoca
     if job.started_at and current_epoch > 0:
-        elapsed = (datetime.utcnow() - job.started_at).total_seconds() / 60
+        elapsed = (get_utc_now() - job.started_at).total_seconds() / 60
         time_per_epoch = elapsed / current_epoch
         remaining_epochs = total_epochs - current_epoch
         estimated_remaining = time_per_epoch * remaining_epochs

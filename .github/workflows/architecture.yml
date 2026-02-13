@@ -1,0 +1,72 @@
+name: Architecture Boundaries
+
+on:
+  pull_request:
+    paths:
+      - 'app/**'
+      - 'services/**'
+      - 'sistemas/**'
+      - 'admin/**'
+      - 'utils/**'
+      - 'scripts/check_boundaries.py'
+      - '.github/workflows/architecture.yml'
+  push:
+    branches:
+      - main
+      - develop
+      - 'refactor/**'
+    paths:
+      - 'app/**'
+      - 'services/**'
+      - 'scripts/check_boundaries.py'
+
+jobs:
+  boundaries:
+    name: Check Architectural Boundaries
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Run boundary checks
+        run: python scripts/check_boundaries.py
+
+      - name: Annotate violations (if any)
+        if: failure()
+        run: |
+          echo "::error::Violações arquiteturais encontradas. Execute 'python scripts/check_boundaries.py' localmente para detalhes."
+
+  architecture-tests:
+    name: Architecture Tests (pytest)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Install dependencies
+        run: |
+          pip install pytest pytest-cov
+
+      - name: Run architecture tests
+        run: |
+          pytest tests/test_architecture_boundaries.py -v --tb=short
+
+      - name: Summary
+        if: always()
+        run: |
+          echo "### Architecture Tests Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ Testes de boundaries arquiteturais executados" >> $GITHUB_STEP_SUMMARY
+          echo "📊 Para detalhes, veja os logs acima" >> $GITHUB_STEP_SUMMARY

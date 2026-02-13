@@ -5,9 +5,10 @@
 ## Inicio Rapido
 
 1. **Novo no projeto?** Comece pelo [CLAUDE.md](../.claude/CLAUDE.md) (regras operacionais)
-2. **Entender a arquitetura?** Leia [arquitetura/ARQUITETURA_GERAL.md](arquitetura/ARQUITETURA_GERAL.md)
-3. **Trabalhar em um sistema?** Acesse [sistemas/](sistemas/)
-4. **Fazer deploy?** Siga o [operacoes/CHECKLIST_RELEASE_EQUIPE.md](operacoes/CHECKLIST_RELEASE_EQUIPE.md)
+2. **Programando com IA?** Comece por [ia/README_AI.md](ia/README_AI.md)
+3. **Entender a arquitetura?** Leia [arquitetura/ARQUITETURA_GERAL.md](arquitetura/ARQUITETURA_GERAL.md)
+4. **Trabalhar em um sistema?** Acesse [sistemas/](sistemas/)
+5. **Fazer deploy?** Siga o [operacoes/CHECKLIST_RELEASE_EQUIPE.md](operacoes/CHECKLIST_RELEASE_EQUIPE.md)
 
 ---
 
@@ -16,7 +17,10 @@
 ```
 docs/
 ├── README.md                 # Este arquivo (indice central)
+├── ia/                        # Contexto minimo para coding agents
 ├── arquitetura/              # Arquitetura e decisoes tecnicas
+├── decisions/                # ADRs do projeto (canônico)
+├── refatoracao/              # Relatórios de refatoração (canônico)
 ├── sistemas/                 # Documentacao por sistema
 ├── integracoes/              # Integracoes externas (TJ-MS, etc)
 ├── api/                      # Documentacao de API REST
@@ -28,6 +32,12 @@ docs/
 ├── _archive/                 # Documentos arquivados
 └── _outros/                  # Documentos sem classificacao
 ```
+
+## Canonico vs legado de docs
+
+- Canonico para ADRs novos: `docs/decisions/`
+- Canonico para notas de refactor: `docs/refatoracao/`
+- Migração física das pastas antigas (`docs/decisoes/`, `docs/refactoring/`) foi concluída em 2026-02-12.
 
 ---
 

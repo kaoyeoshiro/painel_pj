@@ -25,6 +25,7 @@ import httpx
 import hashlib
 import logging
 import time
+import json  # Movido do lazy import (linhas 2264, 2317)
 from typing import List, Optional, Dict, Any, Tuple, AsyncGenerator
 from dataclasses import dataclass, field
 from functools import lru_cache
@@ -55,241 +56,30 @@ except ImportError:
 
 
 # ============================================
-# INSTRUMENTAÇÃO DE MÉTRICAS
+# IMPORTS DOS SUBMÓDULOS (REFATORAÇÃO 2026-02)
 # ============================================
 
-@dataclass
-class GeminiMetrics:
-    """Métricas de uma chamada ao Gemini para diagnóstico de latência"""
-    timestamp: datetime = field(default_factory=datetime.utcnow)
-    model: str = ""
-    prompt_chars: int = 0
-    prompt_tokens_estimated: int = 0
-    response_tokens: int = 0
-
-    # Tempos em milissegundos
-    time_prepare_ms: float = 0      # Tempo preparando payload
-    time_connect_ms: float = 0      # Tempo conectando (TCP + TLS)
-    time_ttft_ms: float = 0         # Time to First Token (ou first byte)
-    time_generation_ms: float = 0   # Tempo gerando resposta
-    time_total_ms: float = 0        # Tempo total
-
-    # Status
-    success: bool = True
-    cached: bool = False
-    retry_count: int = 0
-    error: str = ""
-
-    # Auditoria de parâmetros por agente (novo)
-    sistema: str = ""               # Sistema que fez a chamada
-    agente: str = ""                # Agente específico
-    temperatura: float = 0.0        # Temperatura usada
-    max_tokens: Optional[int] = None  # Max tokens usado
-    thinking_level: Optional[str] = None  # Thinking level usado
-
-    # Fontes dos parâmetros (para auditoria)
-    modelo_source: str = ""         # "agent", "system", "global", "default"
-    temperatura_source: str = ""
-    max_tokens_source: str = ""
-
-    def to_dict(self) -> Dict[str, Any]:
-        result = {
-            "timestamp": self.timestamp.isoformat(),
-            "model": self.model,
-            "prompt_chars": self.prompt_chars,
-            "prompt_tokens_est": self.prompt_tokens_estimated,
-            "response_tokens": self.response_tokens,
-            "time_prepare_ms": round(self.time_prepare_ms, 2),
-            "time_connect_ms": round(self.time_connect_ms, 2),
-            "time_ttft_ms": round(self.time_ttft_ms, 2),
-            "time_generation_ms": round(self.time_generation_ms, 2),
-            "time_total_ms": round(self.time_total_ms, 2),
-            "success": self.success,
-            "cached": self.cached,
-            "retry_count": self.retry_count,
-            "error": self.error
-        }
-        # Adiciona campos de auditoria se preenchidos
-        if self.sistema:
-            result["sistema"] = self.sistema
-        if self.agente:
-            result["agente"] = self.agente
-        if self.modelo_source:
-            result["sources"] = {
-                "modelo": self.modelo_source,
-                "temperatura": self.temperatura_source,
-                "max_tokens": self.max_tokens_source,
-            }
-        return result
-
-    def log(self):
-        """Log estruturado das métricas"""
-        # Monta sufixo de auditoria se disponível
-        audit_suffix = ""
-        if self.sistema and self.agente:
-            sources_short = ""
-            if self.modelo_source:
-                sources_short = f" sources={{modelo:{self.modelo_source[:3]}, temp:{self.temperatura_source[:3]}, tokens:{self.max_tokens_source[:3]}}}"
-            audit_suffix = f" sistema={self.sistema} agente={self.agente}{sources_short}"
-
-        if self.success:
-            logger.info(
-                f"[Gemini] model={self.model} "
-                f"prompt={self.prompt_chars}chars "
-                f"response={self.response_tokens}tok "
-                f"prepare={self.time_prepare_ms:.0f}ms "
-                f"ttft={self.time_ttft_ms:.0f}ms "
-                f"total={self.time_total_ms:.0f}ms "
-                f"cached={self.cached}{audit_suffix}"
-            )
-        else:
-            logger.warning(
-                f"[Gemini] ERRO model={self.model} "
-                f"total={self.time_total_ms:.0f}ms "
-                f"retries={self.retry_count} "
-                f"error={self.error[:100]}{audit_suffix}"
-            )
-
-
-# ============================================
-# CACHE DE RESPOSTAS
-# ============================================
-
-class ResponseCache:
-    """Cache LRU com TTL para respostas do Gemini"""
-
-    def __init__(self, max_size: int = 100, ttl_seconds: int = 300):
-        self._cache: Dict[str, Tuple[Any, datetime]] = {}
-        self._max_size = max_size
-        self._ttl = timedelta(seconds=ttl_seconds)
-        self._hits = 0
-        self._misses = 0
-
-    def _make_key(self, prompt: str, system_prompt: str, model: str, temperature: float) -> str:
-        """Gera chave hash do prompt"""
-        content = f"{model}:{temperature}:{system_prompt}:{prompt}"
-        return hashlib.sha256(content.encode()).hexdigest()[:16]
-
-    def get(self, prompt: str, system_prompt: str, model: str, temperature: float) -> Optional[Any]:
-        """Busca no cache, retorna None se não encontrado ou expirado"""
-        key = self._make_key(prompt, system_prompt, model, temperature)
-
-        if key in self._cache:
-            value, timestamp = self._cache[key]
-            if datetime.utcnow() - timestamp < self._ttl:
-                self._hits += 1
-                return value
-            else:
-                del self._cache[key]
-
-        self._misses += 1
-        return None
-
-    def set(self, prompt: str, system_prompt: str, model: str, temperature: float, value: Any):
-        """Armazena no cache"""
-        # Evict se cheio (remove mais antigo)
-        if len(self._cache) >= self._max_size:
-            oldest_key = min(self._cache, key=lambda k: self._cache[k][1])
-            del self._cache[oldest_key]
-
-        key = self._make_key(prompt, system_prompt, model, temperature)
-        self._cache[key] = (value, datetime.utcnow())
-
-    def stats(self) -> Dict[str, Any]:
-        """Retorna estatísticas do cache"""
-        total = self._hits + self._misses
-        hit_rate = (self._hits / total * 100) if total > 0 else 0
-        return {
-            "size": len(self._cache),
-            "max_size": self._max_size,
-            "hits": self._hits,
-            "misses": self._misses,
-            "hit_rate": f"{hit_rate:.1f}%"
-        }
-
-
-# Cache global (singleton)
-_response_cache = ResponseCache(max_size=100, ttl_seconds=300)
-
-
-@dataclass
-class GeminiResponse:
-    """Resposta padronizada do Gemini"""
-    success: bool
-    content: str = ""
-    error: Optional[str] = None
-    tokens_used: int = 0
-    metrics: Optional[GeminiMetrics] = None  # Métricas de latência
-
-
-# ============================================
-# CONFIGURAÇÃO DE TIMEOUTS E RETRY
-# ============================================
-
-# Timeouts granulares (em segundos)
-# NOTA: Aumentados para suportar prompts grandes em processos complexos
-TIMEOUT_CONNECT = 15.0      # Tempo máximo para estabelecer conexão
-TIMEOUT_READ = 180.0        # Tempo máximo para ler resposta (aumentado de 120s para 180s)
-TIMEOUT_TOTAL = 240.0       # Tempo máximo total (aumentado para suportar prompts grandes)
-
-# Retry com backoff exponencial
-MAX_RETRIES = 3
-RETRY_BASE_DELAY = 1.0      # Delay inicial em segundos
-RETRY_MAX_DELAY = 10.0      # Delay máximo
-RETRY_ERRORS = (
-    httpx.ConnectTimeout,
-    httpx.ReadTimeout,
-    httpx.ConnectError,
-    aiohttp.ClientConnectorError,
-    aiohttp.ServerDisconnectedError,
+# Métricas e cache
+from services.gemini.metrics import (
+    GeminiMetrics,
+    GeminiResponse,
+    ResponseCache,
+    _response_cache,
 )
 
-# Status codes HTTP que devem fazer retry (erros temporários)
-RETRYABLE_STATUS_CODES = {429, 500, 502, 503, 504}
-
-# HTTP Client singleton
-_http_client: Optional[httpx.AsyncClient] = None
-_http_client_lock = asyncio.Lock()
-
-
-async def get_http_client() -> httpx.AsyncClient:
-    """
-    Retorna HTTP client singleton com connection pooling.
-
-    PERFORMANCE: Reutiliza conexões TCP/TLS entre chamadas.
-    """
-    global _http_client
-
-    if _http_client is None or _http_client.is_closed:
-        async with _http_client_lock:
-            # Double-check após adquirir lock
-            if _http_client is None or _http_client.is_closed:
-                _http_client = httpx.AsyncClient(
-                    timeout=httpx.Timeout(
-                        connect=TIMEOUT_CONNECT,
-                        read=TIMEOUT_READ,
-                        write=30.0,
-                        pool=10.0
-                    ),
-                    limits=httpx.Limits(
-                        max_keepalive_connections=10,
-                        max_connections=20,
-                        keepalive_expiry=30.0
-                    ),
-                    http2=True  # HTTP/2 para multiplexação
-                )
-                logger.info("[Gemini] HTTP client criado com connection pooling e HTTP/2")
-
-    return _http_client
-
-
-async def close_http_client():
-    """Fecha o HTTP client (para shutdown graceful)"""
-    global _http_client
-    if _http_client is not None:
-        await _http_client.aclose()
-        _http_client = None
-        logger.info("[Gemini] HTTP client fechado")
+# Configuração HTTP e retry
+from services.gemini.config import (
+    TIMEOUT_CONNECT,
+    TIMEOUT_READ,
+    TIMEOUT_TOTAL,
+    MAX_RETRIES,
+    RETRY_BASE_DELAY,
+    RETRY_MAX_DELAY,
+    RETRY_ERRORS,
+    RETRYABLE_STATUS_CODES,
+    get_http_client,
+    close_http_client,
+)
 
 
 class GeminiService:
@@ -701,91 +491,142 @@ class GeminiService:
 
         total_content = ""
         total_tokens = 0
+        last_error = None
 
-        try:
-            t_connect = time.perf_counter()
+        for attempt in range(MAX_RETRIES):
+            try:
+                t_connect = time.perf_counter()
 
-            # Usa httpx para streaming
-            client = await get_http_client()
+                # Usa httpx para streaming
+                client = await get_http_client()
 
-            async with client.stream("POST", url, json=payload, timeout=TIMEOUT_TOTAL) as response:
-                metrics.time_connect_ms = (time.perf_counter() - t_connect) * 1000
+                async with client.stream("POST", url, json=payload, timeout=TIMEOUT_TOTAL) as response:
+                    metrics.time_connect_ms = (time.perf_counter() - t_connect) * 1000
 
-                if response.status_code != 200:
-                    error_text = await response.aread()
-                    metrics.success = False
-                    metrics.error = f"HTTP {response.status_code}: {error_text.decode()[:200]}"
-                    metrics.time_total_ms = (time.perf_counter() - t_start) * 1000
-                    metrics.log()
-                    logger.error(f"[Gemini Stream] Erro: {metrics.error}")
-                    return
+                    if response.status_code != 200:
+                        error_text = await response.aread()
+                        error_msg = error_text.decode()[:200]
 
-                # Processa eventos SSE
-                buffer = ""
-                async for raw_chunk in response.aiter_bytes():
-                    buffer += raw_chunk.decode("utf-8")
+                        # Retry em status codes temporários (503, 429, 500, 502, 504)
+                        if response.status_code in RETRYABLE_STATUS_CODES:
+                            last_error = f"HTTP {response.status_code}: {error_msg}"
+                            metrics.retry_count = attempt + 1
 
-                    # Processa linhas completas
-                    while "\n" in buffer:
-                        line, buffer = buffer.split("\n", 1)
-                        line = line.strip()
+                            if attempt < MAX_RETRIES - 1:
+                                # Para 429, respeita Retry-After se presente
+                                retry_after = response.headers.get("Retry-After")
+                                if retry_after and response.status_code == 429:
+                                    try:
+                                        delay = min(float(retry_after), RETRY_MAX_DELAY)
+                                    except ValueError:
+                                        delay = min(RETRY_BASE_DELAY * (2 ** attempt), RETRY_MAX_DELAY)
+                                else:
+                                    delay = min(RETRY_BASE_DELAY * (2 ** attempt), RETRY_MAX_DELAY)
 
-                        if not line:
-                            continue
-
-                        # Formato SSE: "data: {...json...}"
-                        if line.startswith("data: "):
-                            json_str = line[6:]  # Remove "data: "
-
-                            try:
-                                data = __import__("json").loads(json_str)
-
-                                # Extrai texto do chunk
-                                candidates = data.get("candidates", [])
-                                if candidates:
-                                    content_obj = candidates[0].get("content", {})
-                                    parts = content_obj.get("parts", [])
-                                    for part in parts:
-                                        text = part.get("text", "")
-                                        if text:
-                                            # TTFT - primeiro chunk
-                                            if not first_chunk_received:
-                                                first_chunk_received = True
-                                                metrics.time_ttft_ms = (time.perf_counter() - t_start) * 1000
-                                                logger.info(
-                                                    f"[Gemini Stream] TTFT: {metrics.time_ttft_ms:.0f}ms "
-                                                    f"model={model}"
-                                                )
-
-                                            total_content += text
-                                            yield text
-
-                                # Extrai tokens se disponível
-                                usage = data.get("usageMetadata", {})
-                                if usage:
-                                    total_tokens = usage.get("totalTokenCount", total_tokens)
-
-                            except __import__("json").JSONDecodeError:
-                                # Linha não é JSON válido, ignora
+                                logger.warning(
+                                    f"[Gemini Stream] HTTP {response.status_code} - "
+                                    f"Retry {attempt + 1}/{MAX_RETRIES} após {delay:.1f}s"
+                                )
+                                await asyncio.sleep(delay)
                                 continue
 
-            # Finaliza métricas
-            metrics.success = True
-            metrics.response_tokens = total_tokens or len(total_content) // 4
-            metrics.time_generation_ms = (time.perf_counter() - t_start) * 1000 - metrics.time_ttft_ms
-            metrics.time_total_ms = (time.perf_counter() - t_start) * 1000
-            metrics.log()
+                        # Status code não retentável ou tentativas esgotadas
+                        metrics.success = False
+                        metrics.error = f"HTTP {response.status_code}: {error_msg}"
+                        metrics.time_total_ms = (time.perf_counter() - t_start) * 1000
+                        metrics.log()
+                        logger.error(f"[Gemini Stream] Erro: {metrics.error}")
+                        return
 
-            # Log assíncrono
-            asyncio.create_task(self._log_to_db(metrics, ctx, temperature=temperature, thinking_level=thinking_level))
+                    # Processa eventos SSE
+                    buffer = ""
+                    async for raw_chunk in response.aiter_bytes():
+                        buffer += raw_chunk.decode("utf-8")
 
-        except Exception as e:
-            metrics.success = False
-            metrics.error = str(e)
-            metrics.time_total_ms = (time.perf_counter() - t_start) * 1000
-            metrics.log()
-            logger.error(f"[Gemini Stream] Erro: {e}")
-            asyncio.create_task(self._log_to_db(metrics, ctx, temperature=temperature, thinking_level=thinking_level))
+                        # Processa linhas completas
+                        while "\n" in buffer:
+                            line, buffer = buffer.split("\n", 1)
+                            line = line.strip()
+
+                            if not line:
+                                continue
+
+                            # Formato SSE: "data: {...json...}"
+                            if line.startswith("data: "):
+                                json_str = line[6:]  # Remove "data: "
+
+                                try:
+                                    data = __import__("json").loads(json_str)
+
+                                    # Extrai texto do chunk
+                                    candidates = data.get("candidates", [])
+                                    if candidates:
+                                        content_obj = candidates[0].get("content", {})
+                                        parts = content_obj.get("parts", [])
+                                        for part in parts:
+                                            text = part.get("text", "")
+                                            if text:
+                                                # TTFT - primeiro chunk
+                                                if not first_chunk_received:
+                                                    first_chunk_received = True
+                                                    metrics.time_ttft_ms = (time.perf_counter() - t_start) * 1000
+                                                    logger.info(
+                                                        f"[Gemini Stream] TTFT: {metrics.time_ttft_ms:.0f}ms "
+                                                        f"model={model}"
+                                                    )
+
+                                                total_content += text
+                                                yield text
+
+                                    # Extrai tokens se disponível
+                                    usage = data.get("usageMetadata", {})
+                                    if usage:
+                                        total_tokens = usage.get("totalTokenCount", total_tokens)
+
+                                except __import__("json").JSONDecodeError:
+                                    # Linha não é JSON válido, ignora
+                                    continue
+
+                # Streaming concluído com sucesso - finaliza métricas
+                metrics.success = True
+                metrics.response_tokens = total_tokens or len(total_content) // 4
+                metrics.time_generation_ms = (time.perf_counter() - t_start) * 1000 - metrics.time_ttft_ms
+                metrics.time_total_ms = (time.perf_counter() - t_start) * 1000
+                metrics.log()
+
+                # Log assíncrono
+                asyncio.create_task(self._log_to_db(metrics, ctx, temperature=temperature, thinking_level=thinking_level))
+                return  # Sucesso, sai do loop
+
+            except RETRY_ERRORS as e:
+                last_error = e
+                metrics.retry_count = attempt + 1
+
+                if attempt < MAX_RETRIES - 1:
+                    delay = min(RETRY_BASE_DELAY * (2 ** attempt), RETRY_MAX_DELAY)
+                    logger.warning(
+                        f"[Gemini Stream] {type(e).__name__} - "
+                        f"Retry {attempt + 1}/{MAX_RETRIES} após {delay:.1f}s"
+                    )
+                    await asyncio.sleep(delay)
+                    continue
+
+                # Tentativas esgotadas
+                metrics.success = False
+                metrics.error = str(e)
+                metrics.time_total_ms = (time.perf_counter() - t_start) * 1000
+                metrics.log()
+                logger.error(f"[Gemini Stream] Erro após {MAX_RETRIES} tentativas: {e}")
+                asyncio.create_task(self._log_to_db(metrics, ctx, temperature=temperature, thinking_level=thinking_level))
+
+            except Exception as e:
+                metrics.success = False
+                metrics.error = str(e)
+                metrics.time_total_ms = (time.perf_counter() - t_start) * 1000
+                metrics.log()
+                logger.error(f"[Gemini Stream] Erro: {e}")
+                asyncio.create_task(self._log_to_db(metrics, ctx, temperature=temperature, thinking_level=thinking_level))
+                return  # Erro não retentável, sai imediatamente
 
     async def generate_with_sla(
         self,
@@ -1318,58 +1159,17 @@ class GeminiService:
         thinking_level: str = None,
         model: str = None
     ) -> Dict[str, Any]:
-        """
-        Monta o payload para chamada de texto.
+        """Delegação para o módulo payloads"""
+        from services.gemini.payloads import build_payload
+        return build_payload(
+            prompt=prompt,
+            system_prompt=system_prompt,
+            max_tokens=max_tokens,
+            temperature=temperature,
+            thinking_level=thinking_level,
+            model=model
+        )
 
-        Args:
-            thinking_level: Nível de raciocínio do Gemini 3. Valores válidos:
-                - None: Usa padrão do modelo (high/dynamic)
-                - "minimal": Quase sem thinking (melhor para chat/alta vazão) - só Flash
-                - "low": Mínimo thinking (bom para classificação simples)
-                - "medium": Balanceado - só Flash
-                - "high": Máximo raciocínio (padrão)
-            model: Nome do modelo (usado para validar thinking_level)
-        """
-        generation_config = {"temperature": temperature}
-
-        # Só adiciona maxOutputTokens se especificado (None = usa máximo do modelo)
-        if max_tokens is not None:
-            generation_config["maxOutputTokens"] = max_tokens
-
-        # Configura nível de thinking para Gemini 3
-        # - Gemini 3 Flash: suporta "minimal", "low", "medium", "high"
-        # - Gemini 3 Pro: suporta apenas "low", "high"
-        # - Gemini 2.x: não suporta thinkingConfig
-        if thinking_level and model:
-            model_lower = model.lower()
-            if "gemini-3" in model_lower:
-                if "flash" in model_lower:
-                    # Flash aceita todos os níveis
-                    valid_levels = ("minimal", "low", "medium", "high")
-                else:
-                    # Pro aceita apenas low e high
-                    valid_levels = ("low", "high")
-
-                if thinking_level in valid_levels:
-                    generation_config["thinkingConfig"] = {
-                        "thinkingLevel": thinking_level
-                    }
-                # Se nível inválido para o modelo, simplesmente ignora (usa default)
-
-        payload = {
-            "contents": [
-                {"role": "user", "parts": [{"text": prompt}]}
-            ],
-            "generationConfig": generation_config
-        }
-
-        if system_prompt:
-            payload["systemInstruction"] = {
-                "parts": [{"text": system_prompt}]
-            }
-
-        return payload
-    
     def _build_payload_with_images(
         self,
         prompt: str,
@@ -1380,75 +1180,17 @@ class GeminiService:
         thinking_level: str = None,
         model: str = None
     ) -> Dict[str, Any]:
-        """
-        Monta o payload para chamada com imagens.
-
-        Args:
-            thinking_level: Nível de raciocínio do Gemini 3. Valores válidos:
-                - None: Usa padrão do modelo (high/dynamic)
-                - "minimal": Quase sem thinking (melhor para chat/alta vazão) - só Flash
-                - "low": Mínimo thinking (bom para classificação simples)
-                - "medium": Balanceado - só Flash
-                - "high": Máximo raciocínio (padrão)
-            model: Nome do modelo (usado para validar thinking_level)
-        """
-        parts = []
-
-        # Adiciona imagens
-        for img_base64 in images_base64:
-            if img_base64.startswith("data:"):
-                # Formato: data:image/png;base64,<dados>
-                header, data = img_base64.split(",", 1)
-                mime_type = header.split(":")[1].split(";")[0]
-            else:
-                mime_type = "image/png"
-                data = img_base64
-
-            parts.append({
-                "inline_data": {
-                    "mime_type": mime_type,
-                    "data": data
-                }
-            })
-
-        # Adiciona prompt
-        parts.append({"text": prompt})
-
-        generation_config = {"temperature": temperature}
-        if max_tokens is not None:
-            generation_config["maxOutputTokens"] = max_tokens
-
-        # Configura nível de thinking para Gemini 3
-        # - Gemini 3 Flash: suporta "minimal", "low", "medium", "high"
-        # - Gemini 3 Pro: suporta apenas "low", "high"
-        # - Gemini 2.x: não suporta thinkingConfig
-        if thinking_level and model:
-            model_lower = model.lower()
-            if "gemini-3" in model_lower:
-                if "flash" in model_lower:
-                    # Flash aceita todos os níveis
-                    valid_levels = ("minimal", "low", "medium", "high")
-                else:
-                    # Pro aceita apenas low e high
-                    valid_levels = ("low", "high")
-
-                if thinking_level in valid_levels:
-                    generation_config["thinkingConfig"] = {
-                        "thinkingLevel": thinking_level
-                    }
-                # Se nível inválido para o modelo, simplesmente ignora (usa default)
-
-        payload = {
-            "contents": [{"role": "user", "parts": parts}],
-            "generationConfig": generation_config
-        }
-
-        if system_prompt:
-            payload["systemInstruction"] = {
-                "parts": [{"text": system_prompt}]
-            }
-
-        return payload
+        """Delegação para o módulo payloads"""
+        from services.gemini.payloads import build_payload_with_images
+        return build_payload_with_images(
+            prompt=prompt,
+            images_base64=images_base64,
+            system_prompt=system_prompt,
+            max_tokens=max_tokens,
+            temperature=temperature,
+            thinking_level=thinking_level,
+            model=model
+        )
     
     async def generate_with_search(
         self,
@@ -1813,65 +1555,19 @@ class GeminiService:
         return GeminiResponse(success=False, error=metrics.error, metrics=metrics)
 
     def _extract_content(self, data: Dict) -> str:
-        """Extrai conteúdo da resposta do Gemini"""
-        candidates = data.get("candidates", [])
-        if candidates:
-            # Verifica se há bloqueio
-            finish_reason = candidates[0].get("finishReason", "")
-            if finish_reason in ("SAFETY", "RECITATION", "OTHER"):
-                logger.warning(f"[Gemini] Resposta bloqueada: finishReason={finish_reason}")
-
-            content = candidates[0].get("content", {})
-            parts = content.get("parts", [])
-            if parts:
-                # Gemini 2.5 com thinking pode ter múltiplas parts
-                # A primeira pode ser "thought" e a segunda o texto real
-                for part in parts:
-                    text = part.get("text", "")
-                    if text:
-                        return text
-        else:
-            # Log para diagnóstico de respostas vazias
-            prompt_feedback = data.get("promptFeedback", {})
-            if prompt_feedback:
-                block_reason = prompt_feedback.get("blockReason", "")
-                if block_reason:
-                    logger.warning(f"[Gemini] Prompt bloqueado: blockReason={block_reason}")
-            else:
-                logger.warning(f"[Gemini] Resposta sem candidates. Keys: {list(data.keys())}")
-        return ""
+        """Delegação para o módulo parsers"""
+        from services.gemini.parsers import extract_content
+        return extract_content(data)
 
     def _extract_tokens(self, data: Dict) -> int:
-        """Extrai contagem de tokens da resposta"""
-        usage = data.get("usageMetadata", {})
-        return usage.get("totalTokenCount", 0)
+        """Delegação para o módulo parsers"""
+        from services.gemini.parsers import extract_tokens
+        return extract_tokens(data)
 
     def _extract_grounding_metadata(self, data: Dict) -> str:
-        """Extrai metadados de grounding (fontes consultadas)"""
-        candidates = data.get("candidates", [])
-        if not candidates:
-            return ""
-
-        grounding = candidates[0].get("groundingMetadata", {})
-        if not grounding:
-            return ""
-
-        # Extrai URLs das fontes
-        sources = grounding.get("webSearchQueries", [])
-        chunks = grounding.get("groundingChunks", [])
-
-        urls = []
-        for chunk in chunks:
-            web = chunk.get("web", {})
-            if web.get("uri"):
-                urls.append(web.get("uri"))
-
-        if urls:
-            return ", ".join(urls[:3])  # Máximo 3 URLs
-        elif sources:
-            return f"Buscas: {', '.join(sources[:3])}"
-
-        return ""
+        """Delegação para o módulo parsers"""
+        from services.gemini.parsers import extract_grounding_metadata
+        return extract_grounding_metadata(data)
 
     async def _log_to_db(
         self,
@@ -2261,8 +1957,6 @@ async def sse_with_heartbeat(
             async for chunk in sse_with_heartbeat(gen):
                 yield f"data: {json.dumps({'text': chunk})}\\n\\n"
     """
-    import json
-
     last_heartbeat = time.perf_counter()
     generator_exhausted = False
     pending_chunk = None
@@ -2314,8 +2008,6 @@ async def stream_to_sse(
                 media_type="text/event-stream"
             )
     """
-    import json
-
     # Envia evento de início
     yield f"event: start\ndata: {json.dumps({'status': 'started'})}\n\n"
 
