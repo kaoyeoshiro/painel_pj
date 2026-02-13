@@ -20,7 +20,7 @@ import {
   useInvalidateQueries,
 } from '@/hooks/useQueries'
 import { useMarkdown } from '@/hooks/useMarkdown'
-import { geradorApi, getToken } from '@/lib/api'
+import { geradorApi, apiRequest, getToken } from '@/lib/api'
 import { useStreamingFetch, fetchSSEStream } from '@/services/api/streaming'
 import type {
   GeracaoDetalhe,
@@ -28,6 +28,8 @@ import type {
   ModuloPreview,
   CuradoriaPreviewResponse,
   ModuloCuradoBackend,
+  ModuloDisponivel,
+  BuscaModulosResponse,
   EditorChatMessage,
   PageState,
   AgentStatus,
@@ -91,6 +93,12 @@ export function useGeradorPecas() {
   const [curadoriaVariaveis, setCuradoriaVariaveis] = useState<Record<string, unknown>>({})
   const [curadoriaParecer, setCuradoriaParecer] = useState<Record<string, unknown>>({})
   const [isCuradoriaLoading, setIsCuradoriaLoading] = useState(false)
+  const [curadoriaManualIds, setCuradoriaManualIds] = useState<Set<number>>(new Set())
+  const [curadoriaPreviewIds, setCuradoriaPreviewIds] = useState<number[]>([])
+  const [curadoriaAvailableModulos, setCuradoriaAvailableModulos] = useState<ModuloDisponivel[]>([])
+  const [isLoadingAvailable, setIsLoadingAvailable] = useState(false)
+  const [curadoriaSearchResults, setCuradoriaSearchResults] = useState<ModuloPreview[]>([])
+  const [isSearching, setIsSearching] = useState(false)
 
   // --- Editor/Chat ---
   const [chatMessages, setChatMessages] = useState<EditorChatMessage[]>([])
@@ -115,6 +123,7 @@ export function useGeradorPecas() {
   const parecerUploadIdRef = useRef<string | null>(null)
   const parecerUserChoiceRef = useRef<string | null>(null)
   const parecerTriggerModeRef = useRef<'automatico' | 'semi_automatico'>('automatico')
+  const parecerForcedToSemiAutoRef = useRef(false)
 
   // --- Sidebar ---
   const [showSidebar, setShowSidebar] = useState(false)
@@ -389,6 +398,7 @@ export function useGeradorPecas() {
         tipo_peca: tipoPeca,
         parecer_upload_id: parecerUploadIdRef.current || undefined,
         parecer_user_choice_when_missing: parecerUserChoiceRef.current || undefined,
+        parecer_forced_to_semi_auto: parecerForcedToSemiAutoRef.current || undefined,
         group_id: selectedGroupId || undefined,
       })
 
@@ -404,8 +414,11 @@ export function useGeradorPecas() {
           tag: m.origem_ativacao ?? '',
         }))
 
+      const previewIds = modulos.map((m) => m.id)
       setCuradoriaModulos(modulos)
-      setCuradoriaSelected(new Set(modulos.map((m) => m.id)))
+      setCuradoriaSelected(new Set(previewIds))
+      setCuradoriaPreviewIds(previewIds)
+      setCuradoriaManualIds(new Set())
       setCuradoriaResumo(result.curadoria?.resumo_consolidado || '')
       setCuradoriaDados(result.curadoria?.dados_extracao || {})
       setCuradoriaTraces(result.decision_traces || {})
@@ -413,6 +426,18 @@ export function useGeradorPecas() {
       setCuradoriaParecer(result.parecer_context || {})
       setAgentStatuses({ 1: 'concluido', 2: 'concluido', 3: 'aguardando' })
       setPageState('curadoria_preview')
+
+      // Fetch available modules in background (non-blocking)
+      const gId = selectedGroupId
+      if (gId) {
+        setIsLoadingAvailable(true)
+        apiRequest<ModuloDisponivel[]>(
+          `/admin/api/prompts-modulos?group_id=${gId}&tipo=conteudo&apenas_ativos=true`
+        )
+          .then((available) => setCuradoriaAvailableModulos(available))
+          .catch(() => { /* silently ignore — user can still use preview modules */ })
+          .finally(() => setIsLoadingAvailable(false))
+      }
     } catch (error) {
       const errMsg = error instanceof Error ? error.message : String(error)
       if (errMsg.includes('PARECER_NATJUS_MISSING') || errMsg.includes('Parecer NATJus')) {
@@ -446,8 +471,8 @@ export function useGeradorPecas() {
     setProgressMessage('Gerando peca com modulos curados...')
     setAgentStatuses({ 1: 'concluido', 2: 'concluido', 3: 'ativo' })
 
-    const previewIds = curadoriaModulos.map((m) => m.id)
-    const manuaisIds = selectedIds.filter((id) => !previewIds.includes(id))
+    const manuaisIds = Array.from(curadoriaManualIds)
+    const excludedIds = curadoriaPreviewIds.filter((id) => !curadoriaSelected.has(id))
 
     // Define handler de eventos SSE para curadoria
     sseEventHandlerRef.current = (event) => {
@@ -493,8 +518,9 @@ export function useGeradorPecas() {
       numero_cnj: numeroCNJ,
       tipo_peca: tipoPeca,
       modulos_ids_curados: selectedIds,
-      modulos_manuais_ids: manuaisIds.length > 0 ? manuaisIds : undefined,
-      modulos_preview_ids: previewIds,
+      modulos_manuais_ids: manuaisIds.length > 0 ? manuaisIds : [],
+      modulos_preview_ids: curadoriaPreviewIds,
+      modulos_excluidos_ids: excludedIds.length > 0 ? excludedIds : [],
       resumo_consolidado: curadoriaResumo || undefined,
       dados_extracao: Object.keys(curadoriaDados).length > 0 ? curadoriaDados : undefined,
       decision_traces: Object.keys(curadoriaTraces).length > 0 ? curadoriaTraces : undefined,
@@ -511,7 +537,7 @@ export function useGeradorPecas() {
       // Erro ja tratado pelo onError do hook
     })
   }, [
-    curadoriaSelected, curadoriaModulos, numeroCNJ, tipoPeca, observacao,
+    curadoriaSelected, curadoriaManualIds, curadoriaPreviewIds, numeroCNJ, tipoPeca, observacao,
     curadoriaResumo, curadoriaDados, curadoriaTraces, curadoriaVariaveis,
     curadoriaParecer, toast, startSSE, invalidateGeradorHistorico,
   ])
@@ -558,14 +584,15 @@ export function useGeradorPecas() {
     setShowParecerDialog(false)
     setParecerFile(null)
     parecerUserChoiceRef.current = 'continue_without'
-    if (parecerTriggerModeRef.current === 'semi_automatico') {
+    if (parecerTriggerModeRef.current === 'automatico') {
+      // Regra de negócio: sem parecer no modo automático → migra para semi-automático
+      parecerForcedToSemiAutoRef.current = true
+      toast({ title: 'Modo Semi-Automatico', description: 'Sem parecer NATJus, a geracao sera feita no modo semi-automatico para selecao manual dos modulos.' })
       iniciarCuradoria()
-    } else if (inputMode === 'cnj') {
-      iniciarGeracaoAutomatica()
     } else {
-      iniciarGeracaoPdf()
+      iniciarCuradoria()
     }
-  }, [inputMode, iniciarGeracaoAutomatica, iniciarGeracaoPdf, iniciarCuradoria])
+  }, [iniciarCuradoria, toast])
 
   // ==========================================================================
   // Editor - Chat
@@ -790,6 +817,10 @@ export function useGeradorPecas() {
     setProgressMessage('')
     setCuradoriaModulos([])
     setCuradoriaSelected(new Set())
+    setCuradoriaManualIds(new Set())
+    setCuradoriaPreviewIds([])
+    setCuradoriaAvailableModulos([])
+    setCuradoriaSearchResults([])
     parecerUploadIdRef.current = null
     setParecerUploadId(null)
     parecerUserChoiceRef.current = null
@@ -816,6 +847,71 @@ export function useGeradorPecas() {
       return next
     })
   }, [])
+
+  /** Add a module manually (from available list or search results) */
+  const addManualModulo = useCallback((modulo: ModuloPreview) => {
+    setCuradoriaModulos((prev) => {
+      if (prev.some((m) => m.id === modulo.id)) return prev
+      return [...prev, modulo]
+    })
+    setCuradoriaSelected((prev) => new Set(prev).add(modulo.id))
+    setCuradoriaManualIds((prev) => new Set(prev).add(modulo.id))
+    // Clear from search results
+    setCuradoriaSearchResults((prev) => prev.filter((m) => m.id !== modulo.id))
+  }, [])
+
+  /** Remove a module from selection (and from list if manual) */
+  const removeModulo = useCallback((id: number) => {
+    setCuradoriaSelected((prev) => {
+      const next = new Set(prev)
+      next.delete(id)
+      return next
+    })
+    setCuradoriaManualIds((prev) => {
+      if (!prev.has(id)) return prev
+      const next = new Set(prev)
+      next.delete(id)
+      return next
+    })
+    // If it was manually added, also remove from the modules list
+    setCuradoriaModulos((prev) => {
+      if (!curadoriaPreviewIds.includes(id)) {
+        return prev.filter((m) => m.id !== id)
+      }
+      return prev
+    })
+  }, [curadoriaPreviewIds])
+
+  /** Search for additional modules via backend */
+  const searchModulos = useCallback(async (query: string) => {
+    if (!query.trim()) {
+      setCuradoriaSearchResults([])
+      return
+    }
+    setIsSearching(true)
+    try {
+      const selectedIds = Array.from(curadoriaSelected)
+      const result = await geradorApi.post<BuscaModulosResponse>('/curadoria/buscar', {
+        query,
+        tipo_peca: tipoPeca || undefined,
+        modulos_excluir: selectedIds,
+        limit: 15,
+        metodo: 'hibrido',
+      })
+      const mapped: ModuloPreview[] = (result.argumentos || []).map((a) => ({
+        id: a.id,
+        titulo: a.titulo,
+        categoria: a.categoria,
+        conteudo: a.conteudo,
+        tag: 'busca',
+      }))
+      setCuradoriaSearchResults(mapped)
+    } catch {
+      setCuradoriaSearchResults([])
+    } finally {
+      setIsSearching(false)
+    }
+  }, [curadoriaSelected, tipoPeca])
 
   // ==========================================================================
   // Derivados
@@ -876,6 +972,12 @@ export function useGeradorPecas() {
     // Curadoria
     curadoriaModulos,
     curadoriaSelected,
+    curadoriaManualIds,
+    curadoriaPreviewIds,
+    curadoriaAvailableModulos,
+    isLoadingAvailable,
+    curadoriaSearchResults,
+    isSearching,
     isCuradoriaLoading,
 
     // Chat
@@ -934,6 +1036,9 @@ export function useGeradorPecas() {
     voltarParaInicio,
     fecharResultDialog,
     toggleModulo,
+    addManualModulo,
+    removeModulo,
+    searchModulos,
   }
 }
 

@@ -131,6 +131,31 @@ export interface ModuloPreview {
   tag: string
 }
 
+/** Módulo disponível para adição manual (do endpoint /admin/api/prompts-modulos) */
+export interface ModuloDisponivel {
+  id: number
+  nome: string
+  titulo: string
+  tipo: string
+  categoria: string | null
+  subcategoria: string | null
+  condicao_ativacao: string | null
+  conteudo: string
+  modo_ativacao: string | null
+  ativo: boolean
+  ordem: number
+  group_id: number | null
+}
+
+/** Resposta do endpoint /curadoria/buscar */
+export interface BuscaModulosResponse {
+  success: boolean
+  query: string
+  metodo: string
+  total: number
+  argumentos: ModuloCuradoBackend[]
+}
+
 /** Módulo como retornado pelo backend (ModuloCurado.to_dict()) */
 export interface ModuloCuradoBackend {
   id: number
