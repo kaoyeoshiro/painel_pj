@@ -90,7 +90,7 @@ export function CuradoriaPreview({
       {/* Side-by-side columns */}
       <div className="flex min-h-0 flex-1 gap-6">
         {/* Left: Selected Modules (70%) */}
-        <div className="w-[70%] min-w-0">
+        <div className="w-[60%] min-w-0">
           <SelectedModulesPanel
             curadoriaModulos={curadoriaModulos}
             curadoriaSelected={curadoriaSelected}
@@ -101,7 +101,7 @@ export function CuradoriaPreview({
         </div>
 
         {/* Right: Available Modules (30%) */}
-        <div className="w-[30%] min-w-0">
+        <div className="w-[40%] min-w-0">
           <AvailableModulesPanel
             curadoriaAvailableModulos={curadoriaAvailableModulos}
             isLoadingAvailable={isLoadingAvailable}

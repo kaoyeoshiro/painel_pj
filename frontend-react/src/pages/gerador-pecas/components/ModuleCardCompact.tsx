@@ -5,8 +5,8 @@
  * with full content, activation rule, etc.
  *
  * Two variants:
- *   - "selected": green border, "Selecionado" badge, remove icon on hover
- *   - "available": gray border, "+ Adicionar" button
+ *   - "selected": green border, tag badge, "Selecionado" badge, remove icon on hover
+ *   - "available": no tag badge, compact "+" icon button, 2-line title
  */
 
 import React, { useState } from 'react'
@@ -100,24 +100,26 @@ export const ModuleCardCompact = React.memo(function ModuleCardCompact({
           background: 'white',
         }}
       >
-        {/* Left: Title + Tag */}
+        {/* Left: Title + Tag (tag hidden for available variant) */}
         <div className="flex min-w-0 flex-1 items-center gap-2">
           <span
-            className="truncate text-[13px] font-semibold"
+            className={`text-[13px] font-semibold ${isSelected ? 'truncate' : 'line-clamp-2'}`}
             style={{ color: C.text900 }}
           >
             {modulo.titulo}
           </span>
-          <span
-            className="whitespace-nowrap rounded-md border px-2 py-0.5 text-[10px] font-semibold"
-            style={{
-              backgroundColor: tagStyle.bg,
-              color: tagStyle.text,
-              borderColor: tagStyle.border,
-            }}
-          >
-            {tagLabel}
-          </span>
+          {isSelected && (
+            <span
+              className="whitespace-nowrap rounded-md border px-2 py-0.5 text-[10px] font-semibold"
+              style={{
+                backgroundColor: tagStyle.bg,
+                color: tagStyle.text,
+                borderColor: tagStyle.border,
+              }}
+            >
+              {tagLabel}
+            </span>
+          )}
         </div>
 
         {/* Right: Action */}
@@ -142,11 +144,12 @@ export const ModuleCardCompact = React.memo(function ModuleCardCompact({
           ) : (
             <button
               onClick={(e) => { stop(e); onAdd?.() }}
-              className="flex h-7 items-center gap-1 rounded-lg px-2.5 text-xs font-medium text-white transition-colors hover:opacity-90"
+              className="flex h-7 w-7 items-center justify-center rounded-full text-white transition-all hover:scale-110 hover:opacity-90"
               style={{ background: C.navy700 }}
+              title="Adicionar módulo"
+              aria-label="Adicionar módulo"
             >
-              <Plus className="h-3 w-3" />
-              Adicionar
+              <Plus className="h-3.5 w-3.5" />
             </button>
           )}
         </div>

@@ -35,7 +35,7 @@ const convertDisponivel = (m: ModuloDisponivel): ModuloPreview => ({
   titulo: m.titulo,
   categoria: m.categoria || 'Outros',
   conteudo: m.conteudo,
-  tag: 'manual',
+  tag: m.tag || 'busca',
 })
 
 // ============================================================================

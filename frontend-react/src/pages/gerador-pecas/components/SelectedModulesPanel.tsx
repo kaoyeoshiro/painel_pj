@@ -89,7 +89,7 @@ export function SelectedModulesPanel({
           Array.from(selectedGroups.entries()).map(([categoria, modulos]) => {
             const isCollapsed = collapsedSections.has(categoria)
             return (
-              <div key={categoria} className="mb-4">
+              <div key={categoria} className="mb-3">
                 {/* Category header */}
                 <button
                   onClick={() => toggleSection(categoria)}
@@ -116,7 +116,7 @@ export function SelectedModulesPanel({
 
                 {/* Module cards */}
                 {!isCollapsed && (
-                  <div className="space-y-1.5">
+                  <div className="space-y-1">
                     {modulos.map((modulo) => {
                       const isManual = curadoriaManualIds.has(modulo.id)
                       return (
