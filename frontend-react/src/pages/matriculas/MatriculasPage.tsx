@@ -20,7 +20,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
 import { useToast } from '@/components/ui/toast'
 import {
@@ -1048,6 +1048,9 @@ export default function MatriculasPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Analise em Andamento</DialogTitle>
+            <DialogDescription className="sr-only">
+              Progresso do processamento do documento
+            </DialogDescription>
           </DialogHeader>
           <div className="flex flex-col items-center text-center">
             <Loader2 className="mb-6 h-20 w-20 animate-spin" style={{ color: C.navy500 }} />
@@ -1071,6 +1074,9 @@ export default function MatriculasPage() {
               <Layers className="h-5 w-5" />
               Analise em Lote
             </DialogTitle>
+            <DialogDescription className="sr-only">
+              Instrucoes sobre como usar a analise em lote de matriculas
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div className="flex items-start gap-3">

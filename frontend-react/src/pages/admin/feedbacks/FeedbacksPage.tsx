@@ -312,8 +312,8 @@ export function FeedbacksPage() {
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div className="bg-white rounded-2xl shadow-sm p-6 border" style={{ borderColor: C.gray200 }}>
             <h3 className="text-3 font-semibold mb-4" style={{ color: C.text900 }}>Distribuição de Avaliações</h3>
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
+            <div className="h-64 min-h-[256px]">
+              <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
                 <PieChart>
                   <Pie data={pieData} dataKey="value" innerRadius={55} outerRadius={85} paddingAngle={2}>
                     {pieData.map((entry, index) => (
@@ -334,8 +334,8 @@ export function FeedbacksPage() {
 
           <div className="bg-white rounded-2xl shadow-sm p-6 border" style={{ borderColor: C.gray200 }}>
             <h3 className="text-3 font-semibold mb-4" style={{ color: C.text900 }}>Feedbacks do Período</h3>
-            <div className="h-64">
-              <ResponsiveContainer width="100%" height="100%">
+            <div className="h-64 min-h-[256px]">
+              <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
                 <LineChart data={lineData}>
                   <CartesianGrid stroke={C.gray200} strokeDasharray="3 3" />
                   <XAxis dataKey="data" stroke={C.gray500} tick={{ fontSize: 12 }} />

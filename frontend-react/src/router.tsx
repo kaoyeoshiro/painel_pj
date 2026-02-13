@@ -9,48 +9,66 @@
  * Apenas LoginPage e carregada eagerly (primeira pagina visivel).
  */
 
-import { lazy } from 'react'
+import { lazy, type ComponentType } from 'react'
 import { createRouter, createRootRoute, createRoute, redirect, Outlet } from '@tanstack/react-router'
 import { AppLayout } from '@/components/layout/AppLayout'
 import { AuthGuard } from '@/components/layout/AuthGuard'
 import { LoginPage } from '@/pages/login/LoginPage'
 
 // ---------------------------------------------------------------------------
+// lazyWithRetry — tenta importar o chunk novamente apos falha (ex: deploy novo)
+// Resolve "Failed to fetch dynamically imported module" intermitente.
+// ---------------------------------------------------------------------------
+
+function lazyWithRetry<T extends ComponentType<unknown>>(
+  importFn: () => Promise<{ default: T }>,
+): React.LazyExoticComponent<T> {
+  return lazy(() =>
+    importFn().catch(() => {
+      // Aguarda 1.5s e tenta uma segunda vez (novo deploy pode ter invalidado o chunk)
+      return new Promise<{ default: T }>(resolve =>
+        setTimeout(resolve, 1500),
+      ).then(() => importFn())
+    }),
+  )
+}
+
+// ---------------------------------------------------------------------------
 // Lazy imports — cada pagina vira um chunk separado no build
 // ---------------------------------------------------------------------------
 
 // Sistemas
-const DashboardPageV2 = lazy(() => import('@/pages/dashboard/DashboardPageV2').then(m => ({ default: m.DashboardPageV2 })))
-const GeradorPecasPage = lazy(() => import('@/pages/gerador-pecas/GeradorPecasPage').then(m => ({ default: m.GeradorPecasPage })))
-const ExtratorAutosPage = lazy(() => import('@/pages/extrator-autos/ExtratorAutosPage').then(m => ({ default: m.ExtratorAutosPage })))
-const ClassificadorPage = lazy(() => import('@/pages/classificador/ClassificadorPage').then(m => ({ default: m.ClassificadorPage })))
-const PedidoCalculoPage = lazy(() => import('@/pages/pedido-calculo/PedidoCalculoPage').then(m => ({ default: m.PedidoCalculoPage })))
-const PrestacaoContasPage = lazy(() => import('@/pages/prestacao-contas/PrestacaoContasPage').then(m => ({ default: m.PrestacaoContasPage })))
-const RelatorioCumprimentoPage = lazy(() => import('@/pages/relatorio-cumprimento/RelatorioCumprimentoPage').then(m => ({ default: m.RelatorioCumprimentoPage })))
-const CumprimentoBetaPage = lazy(() => import('@/pages/cumprimento-beta/CumprimentoBetaPage').then(m => ({ default: m.CumprimentoBetaPage })))
-const AssistenciaPage = lazy(() => import('@/pages/assistencia/AssistenciaPage').then(m => ({ default: m.AssistenciaPage })))
-const MatriculasPage = lazy(() => import('@/pages/matriculas/MatriculasPage'))
-const BertTrainingPage = lazy(() => import('@/pages/bert-training/BertTrainingPage').then(m => ({ default: m.BertTrainingPage })))
-const ChangePasswordPage = lazy(() => import('@/pages/change-password/ChangePasswordPage').then(m => ({ default: m.ChangePasswordPage })))
-const DesignSystemPage = lazy(() => import('@/pages/dev/DesignSystemPage').then(m => ({ default: m.DesignSystemPage })))
+const DashboardPageV2 = lazyWithRetry(() => import('@/pages/dashboard/DashboardPageV2').then(m => ({ default: m.DashboardPageV2 as ComponentType<unknown> })))
+const GeradorPecasPage = lazyWithRetry(() => import('@/pages/gerador-pecas/GeradorPecasPage').then(m => ({ default: m.GeradorPecasPage as ComponentType<unknown> })))
+const ExtratorAutosPage = lazyWithRetry(() => import('@/pages/extrator-autos/ExtratorAutosPage').then(m => ({ default: m.ExtratorAutosPage as ComponentType<unknown> })))
+const ClassificadorPage = lazyWithRetry(() => import('@/pages/classificador/ClassificadorPage').then(m => ({ default: m.ClassificadorPage as ComponentType<unknown> })))
+const PedidoCalculoPage = lazyWithRetry(() => import('@/pages/pedido-calculo/PedidoCalculoPage').then(m => ({ default: m.PedidoCalculoPage as ComponentType<unknown> })))
+const PrestacaoContasPage = lazyWithRetry(() => import('@/pages/prestacao-contas/PrestacaoContasPage').then(m => ({ default: m.PrestacaoContasPage as ComponentType<unknown> })))
+const RelatorioCumprimentoPage = lazyWithRetry(() => import('@/pages/relatorio-cumprimento/RelatorioCumprimentoPage').then(m => ({ default: m.RelatorioCumprimentoPage as ComponentType<unknown> })))
+const CumprimentoBetaPage = lazyWithRetry(() => import('@/pages/cumprimento-beta/CumprimentoBetaPage').then(m => ({ default: m.CumprimentoBetaPage as ComponentType<unknown> })))
+const AssistenciaPage = lazyWithRetry(() => import('@/pages/assistencia/AssistenciaPage').then(m => ({ default: m.AssistenciaPage as ComponentType<unknown> })))
+const MatriculasPage = lazyWithRetry(() => import('@/pages/matriculas/MatriculasPage').then(m => ({ default: m.default as ComponentType<unknown> })))
+const BertTrainingPage = lazyWithRetry(() => import('@/pages/bert-training/BertTrainingPage').then(m => ({ default: m.BertTrainingPage as ComponentType<unknown> })))
+const ChangePasswordPage = lazyWithRetry(() => import('@/pages/change-password/ChangePasswordPage').then(m => ({ default: m.ChangePasswordPage as ComponentType<unknown> })))
+const DesignSystemPage = lazyWithRetry(() => import('@/pages/dev/DesignSystemPage').then(m => ({ default: m.DesignSystemPage as ComponentType<unknown> })))
 
 // Admin
-const UsersPage = lazy(() => import('@/pages/admin/users/UsersPage').then(m => ({ default: m.UsersPage })))
-const PromptsPage = lazy(() => import('@/pages/admin/prompts/PromptsPage').then(m => ({ default: m.PromptsPage })))
-const PromptsModulosPage = lazy(() => import('@/pages/admin/prompts-modulos/PromptsModulosPage').then(m => ({ default: m.PromptsModulosPage })))
-const FeedbacksPage = lazy(() => import('@/pages/admin/feedbacks/FeedbacksPage').then(m => ({ default: m.FeedbacksPage })))
-const PerformancePage = lazy(() => import('@/pages/admin/performance/PerformancePage').then(m => ({ default: m.PerformancePage })))
-const VariaveisPage = lazy(() => import('@/pages/admin/variaveis/VariaveisPage').then(m => ({ default: m.VariaveisPage })))
-const CategoriasJsonPage = lazy(() => import('@/pages/admin/categorias-json/CategoriasJsonPage').then(m => ({ default: m.CategoriasJsonPage })))
-const HistoricoGeradorPage = lazy(() => import('@/pages/admin/historico-gerador/HistoricoGeradorPage').then(m => ({ default: m.HistoricoGeradorPage })))
-const HistoricoPedidoCalculoPage = lazy(() => import('@/pages/admin/historico-pedido-calculo/HistoricoPedidoCalculoPage').then(m => ({ default: m.HistoricoPedidoCalculoPage })))
-const HistoricoPrestacaoContasPage = lazy(() => import('@/pages/admin/historico-prestacao-contas/HistoricoPrestacaoContasPage').then(m => ({ default: m.HistoricoPrestacaoContasPage })))
-const ModulosTipoPecaPage = lazy(() => import('@/pages/admin/modulos-tipo-peca/ModulosTipoPecaPage').then(m => ({ default: m.ModulosTipoPecaPage })))
-const ConfigPecasPage = lazy(() => import('@/pages/admin/config-pecas/ConfigPecasPage').then(m => ({ default: m.ConfigPecasPage })))
-const TesteAtivacaoPage = lazy(() => import('@/pages/admin/teste-ativacao/TesteAtivacaoPage').then(m => ({ default: m.TesteAtivacaoPage })))
-const TesteCategoriasPage = lazy(() => import('@/pages/admin/teste-categorias/TesteCategoriasPage').then(m => ({ default: m.TesteCategoriasPage })))
-const TjmsDocsPage = lazy(() => import('@/pages/admin/tjms-docs/TjmsDocsPage').then(m => ({ default: m.TjmsDocsPage })))
-const RestaurarSlugsPage = lazy(() => import('@/pages/admin/restaurar-slugs/RestaurarSlugsPage').then(m => ({ default: m.RestaurarSlugsPage })))
+const UsersPage = lazyWithRetry(() => import('@/pages/admin/users/UsersPage').then(m => ({ default: m.UsersPage as ComponentType<unknown> })))
+const PromptsPage = lazyWithRetry(() => import('@/pages/admin/prompts/PromptsPage').then(m => ({ default: m.PromptsPage as ComponentType<unknown> })))
+const PromptsModulosPage = lazyWithRetry(() => import('@/pages/admin/prompts-modulos/PromptsModulosPage').then(m => ({ default: m.PromptsModulosPage as ComponentType<unknown> })))
+const FeedbacksPage = lazyWithRetry(() => import('@/pages/admin/feedbacks/FeedbacksPage').then(m => ({ default: m.FeedbacksPage as ComponentType<unknown> })))
+const PerformancePage = lazyWithRetry(() => import('@/pages/admin/performance/PerformancePage').then(m => ({ default: m.PerformancePage as ComponentType<unknown> })))
+const VariaveisPage = lazyWithRetry(() => import('@/pages/admin/variaveis/VariaveisPage').then(m => ({ default: m.VariaveisPage as ComponentType<unknown> })))
+const CategoriasJsonPage = lazyWithRetry(() => import('@/pages/admin/categorias-json/CategoriasJsonPage').then(m => ({ default: m.CategoriasJsonPage as ComponentType<unknown> })))
+const HistoricoGeradorPage = lazyWithRetry(() => import('@/pages/admin/historico-gerador/HistoricoGeradorPage').then(m => ({ default: m.HistoricoGeradorPage as ComponentType<unknown> })))
+const HistoricoPedidoCalculoPage = lazyWithRetry(() => import('@/pages/admin/historico-pedido-calculo/HistoricoPedidoCalculoPage').then(m => ({ default: m.HistoricoPedidoCalculoPage as ComponentType<unknown> })))
+const HistoricoPrestacaoContasPage = lazyWithRetry(() => import('@/pages/admin/historico-prestacao-contas/HistoricoPrestacaoContasPage').then(m => ({ default: m.HistoricoPrestacaoContasPage as ComponentType<unknown> })))
+const ModulosTipoPecaPage = lazyWithRetry(() => import('@/pages/admin/modulos-tipo-peca/ModulosTipoPecaPage').then(m => ({ default: m.ModulosTipoPecaPage as ComponentType<unknown> })))
+const ConfigPecasPage = lazyWithRetry(() => import('@/pages/admin/config-pecas/ConfigPecasPage').then(m => ({ default: m.ConfigPecasPage as ComponentType<unknown> })))
+const TesteAtivacaoPage = lazyWithRetry(() => import('@/pages/admin/teste-ativacao/TesteAtivacaoPage').then(m => ({ default: m.TesteAtivacaoPage as ComponentType<unknown> })))
+const TesteCategoriasPage = lazyWithRetry(() => import('@/pages/admin/teste-categorias/TesteCategoriasPage').then(m => ({ default: m.TesteCategoriasPage as ComponentType<unknown> })))
+const TjmsDocsPage = lazyWithRetry(() => import('@/pages/admin/tjms-docs/TjmsDocsPage').then(m => ({ default: m.TjmsDocsPage as ComponentType<unknown> })))
+const RestaurarSlugsPage = lazyWithRetry(() => import('@/pages/admin/restaurar-slugs/RestaurarSlugsPage').then(m => ({ default: m.RestaurarSlugsPage as ComponentType<unknown> })))
 
 // ---------------------------------------------------------------------------
 // Root route - renderiza apenas Outlet
@@ -188,10 +206,13 @@ const adminPromptsRoute = createRoute({
   component: PromptsPage,
 })
 
+// Alias: /admin/prompts-config redireciona para /admin/prompts (rota canonica)
 const adminPromptsConfigAliasRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: '/admin/prompts-config',
-  component: PromptsPage,
+  beforeLoad: () => {
+    throw redirect({ to: '/admin/prompts' })
+  },
 })
 
 const adminPromptsModulosRoute = createRoute({

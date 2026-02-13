@@ -5,7 +5,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import { Checkbox } from '@/components/ui/checkbox'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useToast } from '@/hooks/use-toast'
 import { adminApi } from '@/lib/api'
 import {
@@ -907,6 +907,9 @@ export function TesteCategoriasPage() {
         <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Comparacao de Modelos — {processoSelecionado}</DialogTitle>
+            <DialogDescription className="sr-only">
+              Resultados da comparacao entre modelos de classificacao
+            </DialogDescription>
           </DialogHeader>
           {loadingComparacao ? (
             <div className="flex items-center justify-center py-12">

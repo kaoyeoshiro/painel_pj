@@ -12,9 +12,13 @@ const MODELS_DISPLAY: { key: string; label: string; colorClass: string; borderCl
 
 export function AIModelsCards() {
   const [models, setModels] = useState<AIModelsMap | null>(null)
+  const [loaded, setLoaded] = useState(false)
 
   useEffect(() => {
-    fetchAIModels().then(setModels).catch(() => setModels(null))
+    fetchAIModels()
+      .then(setModels)
+      .catch(() => setModels(null))
+      .finally(() => setLoaded(true))
   }, [])
 
   return (
@@ -31,7 +35,8 @@ export function AIModelsCards() {
             <div>
               <p className="text-sm font-medium" style={{ color: C.text700 }}>{m.label}</p>
               <p className={`text-xs font-mono ${m.colorClass}`}>
-                {models ? (models[m.key]?.modelo ?? 'Não configurado') : 'Carregando...'}
+                {/* Exibe estado correto: carregando, nao configurado ou modelo */}
+                {!loaded ? 'Carregando...' : models ? (models[m.key]?.modelo ?? 'Não configurado') : 'Erro ao carregar'}
               </p>
             </div>
           </div>

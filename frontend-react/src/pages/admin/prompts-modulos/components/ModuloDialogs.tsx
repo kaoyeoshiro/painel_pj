@@ -47,6 +47,9 @@ export function ModuloFormDialog({
           <DialogTitle>
             {moduloEditando ? 'Editar Módulo' : 'Novo Módulo'}
           </DialogTitle>
+          <DialogDescription>
+            {moduloEditando ? `Editando: ${moduloEditando.titulo}` : 'Preencha os campos para criar um novo módulo de prompt'}
+          </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4">
@@ -297,10 +300,10 @@ export function DeleteDialog({ open, onOpenChange, moduloEditando, onExcluir }: 
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>Confirmar Exclusão</DialogTitle>
+          <DialogDescription>
+            Tem certeza que deseja excluir o módulo &quot;{moduloEditando?.titulo}&quot;?
+          </DialogDescription>
         </DialogHeader>
-        <p className="mb-6">
-          Tem certeza que deseja excluir o módulo &quot;{moduloEditando?.titulo}&quot;?
-        </p>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>
             Cancelar

@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Textarea } from '@/components/ui/textarea'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -804,6 +804,7 @@ export function PedidoCalculoPage() {
             </div>
             <DialogHeader className="flex-1 space-y-0 p-0">
               <DialogTitle style={{ color: 'rgba(255,255,255,0.95)', fontSize: 16 }}>Gerando Pedido de Calculo</DialogTitle>
+              <DialogDescription className="sr-only">Progresso da geracao do pedido de calculo</DialogDescription>
             </DialogHeader>
           </div>
 
@@ -830,6 +831,11 @@ export function PedidoCalculoPage() {
       {/* Modal de Editor */}
       <Dialog open={showEditor} onOpenChange={fecharEditor}>
         <DialogContent className="flex h-[90vh] max-w-7xl flex-col gap-0 p-0">
+          {/* Acessibilidade: titulo e descricao ocultos para Radix Dialog */}
+          <DialogHeader className="sr-only">
+            <DialogTitle>Pedido de Calculo</DialogTitle>
+            <DialogDescription>Editor do pedido de calculo com chat assistente</DialogDescription>
+          </DialogHeader>
           {/* Header do Editor — Navy */}
           <div className="flex items-center justify-between rounded-t-lg px-6 py-4" style={{ background: C.navy950 }}>
             <div className="flex items-center gap-3">
@@ -995,9 +1001,9 @@ export function PedidoCalculoPage() {
             </div>
             <DialogHeader className="flex-1 space-y-0 p-0">
               <DialogTitle style={{ color: 'rgba(255,255,255,0.95)', fontSize: 16 }}>Documentos Analisados</DialogTitle>
-              <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13 }}>
+              <DialogDescription style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13 }}>
                 {documentosBaixados.length} documento(s) - Processo {numeroCNJ}
-              </p>
+              </DialogDescription>
             </DialogHeader>
           </div>
 
@@ -1067,7 +1073,7 @@ export function PedidoCalculoPage() {
             </div>
             <DialogHeader className="flex-1 space-y-0 p-0">
               <DialogTitle style={{ color: 'rgba(255,255,255,0.95)', fontSize: 16 }}>Como foi a experiencia?</DialogTitle>
-              <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13 }}>Seu feedback nos ajuda a melhorar o sistema</p>
+              <DialogDescription style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13 }}>Seu feedback nos ajuda a melhorar o sistema</DialogDescription>
             </DialogHeader>
           </div>
 

@@ -92,15 +92,18 @@ export function usePromptsModulos() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- Carrega apenas na montagem
   }, [])
 
-  // Carregar modulos e dados dependentes quando grupo selecionado muda
+  // Carregar modulos e dados dependentes quando grupo selecionado muda.
+  // Aguarda selecao de grupo para evitar chamada desnecessaria sem group_id.
   useEffect(() => {
-    carregarModulos()
     if (grupoSelecionado !== null) {
+      carregarModulos()
       carregarFilterSubgrupos(grupoSelecionado)
       carregarSubcategorias(grupoSelecionado)
     } else {
+      setModulos([])
       setFilterSubgrupos([])
       setSubcategorias([])
+      setLoading(false)
     }
     // Resetar filtros dependentes do grupo
     setSubgrupoFiltro(null)

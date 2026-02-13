@@ -37,7 +37,7 @@ export function DownloadOptionsSection({ h }: DownloadOptionsSectionProps) {
             <Label className="font-medium" style={{ fontSize: 14, color: C.text700 }}>
               Formato de Saida
             </Label>
-            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4" role="radiogroup" aria-label="Formato de saida">
               {([
                 { value: 'pdf_txt', label: 'PDF + TXT' },
                 { value: 'pdf', label: 'Somente PDF' },
@@ -47,6 +47,8 @@ export function DownloadOptionsSection({ h }: DownloadOptionsSectionProps) {
                 <button
                   key={fmt.value}
                   type="button"
+                  role="radio"
+                  aria-checked={h.downloadOpcoes.formato === fmt.value}
                   onClick={() => h.setDownloadOpcoes((prev) => ({ ...prev, formato: fmt.value }))}
                   className="rounded-lg border px-3 py-2 text-sm transition-colors"
                   style={{

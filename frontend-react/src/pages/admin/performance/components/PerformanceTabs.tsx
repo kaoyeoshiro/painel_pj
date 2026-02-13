@@ -68,8 +68,8 @@ export function TabSistema({ vm }: { vm: UsePerformanceReturn }) {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="bg-white rounded-2xl shadow-md p-4 border" style={{ borderColor: C.gray200 }}>
           <h3 className="text-lg font-semibold mb-4" style={{ color: C.text900 }}>Distribuicao de Gargalos</h3>
-          <div className="h-[220px]">
-            <ResponsiveContainer width="100%" height="100%">
+          <div className="h-[220px] min-h-[220px]">
+            <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
               <PieChart>
                 <Pie data={vm.pieData} dataKey="value" nameKey="name" innerRadius={50} outerRadius={80}>
                   {vm.pieData.map((row, idx) => (
@@ -180,8 +180,8 @@ export function TabGemini({ vm }: { vm: UsePerformanceReturn }) {
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         <div className="bg-white rounded-2xl shadow-md p-4 border" style={{ borderColor: C.gray200 }}>
           <h3 className="text-lg font-semibold mb-4" style={{ color: C.text900 }}>Chamadas por Sistema</h3>
-          <div className="h-[240px]">
-            <ResponsiveContainer width="100%" height="100%">
+          <div className="h-[240px] min-h-[240px]">
+            <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
               <BarChart data={vm.geminiBySystemData}>
                 <CartesianGrid strokeDasharray="3 3" stroke={C.gray200} />
                 <XAxis dataKey="name" tick={{ fontSize: 11 }} />
@@ -197,8 +197,8 @@ export function TabGemini({ vm }: { vm: UsePerformanceReturn }) {
 
         <div className="bg-white rounded-2xl shadow-md p-4 border" style={{ borderColor: C.gray200 }}>
           <h3 className="text-lg font-semibold mb-4" style={{ color: C.text900 }}>Chamadas por Modelo</h3>
-          <div className="h-[240px]">
-            <ResponsiveContainer width="100%" height="100%">
+          <div className="h-[240px] min-h-[240px]">
+            <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
               <PieChart>
                 <Pie data={vm.geminiByModelData} dataKey="value" nameKey="name" innerRadius={50} outerRadius={80}>
                   {vm.geminiByModelData.map((_, i) => <Cell key={i} fill={BAR_COLORS[i % BAR_COLORS.length]} />)}

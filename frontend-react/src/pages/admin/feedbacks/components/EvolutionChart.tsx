@@ -161,8 +161,8 @@ export function EvolutionChart({ data, loading, onSemanasChange }: EvolutionChar
           Nenhum dado de evolução disponível no período
         </div>
       ) : (
-        <div className="h-80">
-          <ResponsiveContainer width="100%" height="100%">
+        <div className="h-80 min-h-[320px]">
+          <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
             <LineChart data={chartData}>
               <CartesianGrid stroke={C.gray200} strokeDasharray="3 3" />
               <XAxis

@@ -28,7 +28,7 @@ import {
   Zap,
 } from 'lucide-react'
 import type { LucideIcon } from 'lucide-react'
-import { Sheet, SheetContent } from '@/components/ui/sheet'
+import { Sheet, SheetContent, SheetTitle, SheetDescription } from '@/components/ui/sheet'
 import {
   Tooltip,
   TooltipContent,
@@ -198,9 +198,12 @@ export function Sidebar() {
         <SidebarContent collapsed={sidebarCollapsed} />
       </aside>
 
-      {/* Mobile: sidebar em Sheet */}
+      {/* Mobile: sidebar em Sheet (navegacao em telas < lg) */}
       <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
         <SheetContent side="left" className="w-64 p-0">
+          {/* Titulo e descricao acessiveis (ocultos visualmente, requeridos pelo Radix Dialog) */}
+          <SheetTitle className="sr-only">Menu de navegação</SheetTitle>
+          <SheetDescription className="sr-only">Navegação principal do Portal PGE</SheetDescription>
           <div className="flex flex-col h-full">
             <div className="p-4 border-b border-gray-200">
               <img src="/logo/logo-pge.png" alt="PGE-MS" className="h-10 w-auto" />

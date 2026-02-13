@@ -204,20 +204,29 @@ export function FormSection({ h }: FormSectionProps) {
                 <Select
                   value={h.tipoPeca || (h.tiposPecaData?.permite_auto ? '__auto__' : '')}
                   onValueChange={(v) => h.setTipoPeca(v === '__auto__' ? '' : v)}
-                  disabled={h.isFormDisabled}
+                  disabled={h.isFormDisabled || (!h.tiposPecaData?.tipos?.length && !h.tiposPecaData?.permite_auto)}
                 >
                   <SelectTrigger className="mt-2 h-11 rounded-xl border-slate-200 bg-slate-50/50 focus:border-slate-400 focus:ring-slate-400/20" id="tipo-peca">
-                    <SelectValue placeholder="Selecione o tipo de peca" />
+                    <SelectValue placeholder={
+                      !h.tiposPecaData?.tipos?.length && !h.tiposPecaData?.permite_auto
+                        ? 'Nenhum tipo de peca configurado'
+                        : 'Selecione o tipo de peca'
+                    } />
                   </SelectTrigger>
                   <SelectContent>
                     {h.tiposPecaData?.permite_auto && (
                       <SelectItem value="__auto__">Deteccao automatica (IA decide)</SelectItem>
                     )}
-                    {h.tiposPecaData?.tipos.map((tipo) => (
+                    {h.tiposPecaData?.tipos?.map((tipo) => (
                       <SelectItem key={tipo.valor} value={tipo.valor}>
                         {tipo.label}
                       </SelectItem>
                     ))}
+                    {!h.tiposPecaData?.tipos?.length && !h.tiposPecaData?.permite_auto && (
+                      <div className="px-3 py-2 text-sm text-slate-400">
+                        Nenhum tipo de peca disponivel. Configure prompts modulares no admin.
+                      </div>
+                    )}
                   </SelectContent>
                 </Select>
               )}

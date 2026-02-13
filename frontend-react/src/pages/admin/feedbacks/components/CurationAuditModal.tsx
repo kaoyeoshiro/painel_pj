@@ -4,6 +4,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
@@ -82,7 +83,9 @@ export function CurationAuditModal({ open, onClose, geracaoId }: CurationAuditMo
       <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Auditoria de Curadoria</DialogTitle>
-          {data && <p className="text-sm text-muted-foreground">Geração #{data.geracao_id}</p>}
+          <DialogDescription>
+            {data ? `Detalhes da geração #${data.geracao_id}` : 'Carregando dados de auditoria'}
+          </DialogDescription>
         </DialogHeader>
 
         {loading && (

@@ -48,6 +48,21 @@ export function ChangePasswordPage() {
     setError('')
     setSuccess('')
 
+    // Validacao de campos vazios antes de qualquer processamento
+    if (!currentPassword.trim() || !newPassword.trim() || !confirmPassword.trim()) {
+      const missing: string[] = []
+      if (!currentPassword.trim()) missing.push('Senha Atual')
+      if (!newPassword.trim()) missing.push('Nova Senha')
+      if (!confirmPassword.trim()) missing.push('Confirmar Nova Senha')
+      setError(`Preencha todos os campos: ${missing.join(', ')}`)
+      toast({
+        title: 'Campos obrigatorios',
+        description: `Preencha: ${missing.join(', ')}`,
+        variant: 'destructive',
+      })
+      return
+    }
+
     if (newPassword !== confirmPassword) {
       setError('As senhas não coincidem')
       return
@@ -158,6 +173,7 @@ export function ChangePasswordPage() {
                 <input
                   type="password"
                   id="current-password"
+                  autoComplete="current-password"
                   value={currentPassword}
                   onChange={(e) => setCurrentPassword(e.target.value)}
                   placeholder="Digite sua senha atual"
@@ -183,6 +199,7 @@ export function ChangePasswordPage() {
                 <input
                   type={showNewPassword ? 'text' : 'password'}
                   id="new-password"
+                  autoComplete="new-password"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
                   placeholder="Digite a nova senha"
@@ -264,6 +281,7 @@ export function ChangePasswordPage() {
                 <input
                   type="password"
                   id="confirm-password"
+                  autoComplete="new-password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
                   placeholder="Confirme a nova senha"

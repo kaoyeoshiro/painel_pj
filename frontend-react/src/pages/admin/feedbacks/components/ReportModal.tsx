@@ -4,6 +4,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
@@ -196,7 +197,9 @@ export function ReportModal({ open, onClose, consultaId, sistema, onOpenCuration
         {/* Header */}
         <DialogHeader className="p-4 border-b bg-gradient-to-r from-blue-600 to-blue-700 rounded-t-lg text-white">
           <DialogTitle className="text-white">Relatório — {sistemaLabel}</DialogTitle>
-          <p className="text-sm text-blue-100">{report?.identificador ?? report?.cnj ?? ''}</p>
+          <DialogDescription className="text-blue-100">
+            {report?.identificador ?? report?.cnj ?? 'Carregando relatório'}
+          </DialogDescription>
         </DialogHeader>
 
         {/* Meta info */}

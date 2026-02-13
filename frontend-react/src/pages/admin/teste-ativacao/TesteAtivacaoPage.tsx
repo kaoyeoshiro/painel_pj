@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { useToast } from '@/hooks/use-toast'
 import { useMarkdown } from '@/hooks/useMarkdown'
 import {
@@ -694,6 +694,9 @@ export function TesteAtivacaoPage() {
               <FolderOpen className="h-5 w-5" style={{ color: C.navy600 }} />
               Cenarios Pre-definidos
             </DialogTitle>
+            <DialogDescription className="sr-only">
+              Selecione um cenario pre-definido para teste de ativacao
+            </DialogDescription>
           </DialogHeader>
           {loadingPredefinidos ? (
             <div className="flex items-center justify-center py-12">
@@ -753,6 +756,9 @@ export function TesteAtivacaoPage() {
                 Relatorio IA — {relatorioModuloTitulo}
               </DialogTitle>
             </div>
+            <DialogDescription className="sr-only">
+              Relatorio gerado por IA sobre o modulo selecionado
+            </DialogDescription>
           </DialogHeader>
           {loadingRelatorio ? (
             <div className="flex flex-col items-center justify-center py-12">

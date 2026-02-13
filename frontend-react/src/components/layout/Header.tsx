@@ -43,8 +43,10 @@ export const Header = memo(function Header() {
             size="icon"
             className="lg:hidden text-white/70 hover:text-white hover:bg-white/10"
             onClick={toggleSidebar}
+            aria-label="Abrir menu de navegação"
           >
             <Menu className="h-5 w-5" />
+            <span className="sr-only">Menu</span>
           </Button>
 
           <div className="flex items-center gap-1">

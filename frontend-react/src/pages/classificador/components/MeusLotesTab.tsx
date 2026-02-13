@@ -67,8 +67,17 @@ export function MeusLotesTab({ onSwitchTab }: MeusLotesTabProps) {
 
   const { data: execucoesEmAndamento, refetch: refetchEmAndamento } = useQuery<Execucao[]>({
     queryKey: queryKeys.classificador.execucoesEmAndamento(),
-    queryFn: () => classificadorApi.get<Execucao[]>('/execucoes-em-andamento'),
+    queryFn: async () => {
+      try {
+        return await classificadorApi.get<Execucao[]>('/execucoes-em-andamento')
+      } catch {
+        // Endpoint pode retornar 404 em ambientes sem esta rota configurada.
+        // Retorna array vazio para nao exibir erro ao usuario.
+        return []
+      }
+    },
     refetchInterval: 10000,
+    retry: false,
   })
 
   // Cleanup EventSource on unmount

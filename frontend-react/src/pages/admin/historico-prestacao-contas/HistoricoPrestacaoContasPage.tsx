@@ -1,7 +1,7 @@
 import { useState, useEffect, useMemo, useRef } from 'react'
 import { createApiClient } from '@/lib/api'
 import { DataTable, type ColumnDef } from '@/components/shared/DataTable'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Badge } from '@/components/ui/badge'
@@ -359,6 +359,9 @@ export function HistoricoPrestacaoContasPage() {
             <DialogTitle>
               Detalhes da Geracao #{selectedGeracao?.id}
             </DialogTitle>
+            <DialogDescription className="sr-only">
+              Detalhes da geracao de prestacao de contas
+            </DialogDescription>
           </DialogHeader>
 
           {loadingDetalhes ? (
@@ -588,6 +591,9 @@ export function HistoricoPrestacaoContasPage() {
                       Copiar
                     </Button>
                   </DialogTitle>
+                  <DialogDescription className="sr-only">
+                    Conteudo expandido para visualizacao em tela cheia
+                  </DialogDescription>
                 </DialogHeader>
                 <ScrollArea className="flex-1">
                   <pre className="text-sm bg-muted p-4 rounded whitespace-pre-wrap">
@@ -603,6 +609,9 @@ export function HistoricoPrestacaoContasPage() {
             <DialogContent>
               <DialogHeader>
                 <DialogTitle>Enviar Documentos Faltantes</DialogTitle>
+                <DialogDescription className="sr-only">
+                  Formulario para envio de documentos faltantes da prestacao de contas
+                </DialogDescription>
               </DialogHeader>
 
               {/* Badges dos documentos faltantes */}

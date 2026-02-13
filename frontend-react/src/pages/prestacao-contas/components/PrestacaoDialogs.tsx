@@ -1,6 +1,6 @@
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { C } from '@/lib/designTokens'
 import { FileText, RotateCw } from 'lucide-react'
 import type { UsePrestacaoContasReturn } from '../hooks/usePrestacaoContas'
@@ -19,6 +19,9 @@ export function ConfirmacaoDialog({ vm }: ConfirmacaoDialogProps) {
       <DialogContent>
         <DialogHeader>
           <DialogTitle style={{ color: C.text900 }}>Processo ja analisado</DialogTitle>
+          <DialogDescription className="sr-only">
+            Opcoes para processo com analise existente
+          </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 pt-2">
           <p className="text-sm" style={{ color: C.text500 }}>

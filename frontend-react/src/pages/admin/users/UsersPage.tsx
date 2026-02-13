@@ -7,7 +7,7 @@ import { Users as UsersIcon, UserPlus, Users } from 'lucide-react'
 import { DataTable } from '@/components/shared/DataTable'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -154,14 +154,15 @@ export function UsersPage() {
     }
   }
 
-  /** Carrega grupos de conteudo disponiveis da API */
+  /** Carrega grupos de conteudo disponiveis da API (endpoint opcional) */
   const loadContentGroups = async () => {
     try {
       const data = await usersApi.get<ContentGroup[]>('/content-groups')
       setContentGroups(data)
-    } catch (error) {
-      // Falha silenciosa — grupos de conteudo sao opcionais
-      console.warn('Nao foi possivel carregar grupos de conteudo:', error)
+    } catch {
+      // Falha silenciosa — grupos de conteudo sao opcionais.
+      // Endpoint pode nao existir ainda (422/404); nao polui console.
+      setContentGroups([])
     }
   }
 
@@ -591,6 +592,9 @@ export function UsersPage() {
             <DialogTitle>
               {editingUser ? 'Editar Usuario' : 'Novo Usuario'}
             </DialogTitle>
+            <DialogDescription>
+              {editingUser ? `Editando dados de ${editingUser.username}` : 'Preencha os campos para criar um novo usuario'}
+            </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">
@@ -760,11 +764,11 @@ export function UsersPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Confirmar Desativacao</DialogTitle>
+            <DialogDescription>
+              Tem certeza que deseja desativar o usuario {deletingUser?.username}?
+              O usuario ficara inativo mas permanecera no sistema.
+            </DialogDescription>
           </DialogHeader>
-          <p>
-            Tem certeza que deseja desativar o usuario <strong>{deletingUser?.username}</strong>?
-            O usuario ficara inativo mas permanecera no sistema.
-          </p>
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowDeleteDialog(false)}>
               Cancelar
@@ -781,9 +785,10 @@ export function UsersPage() {
         <DialogContent>
           <DialogHeader>
             <DialogTitle>Nova Senha</DialogTitle>
+            <DialogDescription>A senha foi resetada com sucesso</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
-            <p>A senha foi resetada com sucesso. A nova senha e:</p>
+            <p>A nova senha e:</p>
             <div className="p-4 bg-muted rounded-md font-mono text-lg">
               {newPassword}
             </div>

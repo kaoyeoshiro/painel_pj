@@ -2,7 +2,7 @@
 // CRUD completo: listar, criar, editar, deletar, toggle
 
 import { useState, useEffect, useCallback } from 'react'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -371,6 +371,9 @@ export function PieceTypeRulesSection({
             <DialogTitle>
               {editandoRegra ? 'Editar Regra por Tipo de Peça' : 'Nova Regra por Tipo de Peça'}
             </DialogTitle>
+            <DialogDescription>
+              {editandoRegra ? 'Edite as condicoes da regra' : 'Defina condicoes especificas para um tipo de peca'}
+            </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4">

@@ -1,7 +1,7 @@
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 import { C } from '@/lib/designTokens'
 import { Loader2 } from 'lucide-react'
 import type { UsePerformanceReturn } from '../hooks/usePerformance'
@@ -20,6 +20,9 @@ export function RouteMapDialog({ vm }: RouteMapDialogProps) {
       <DialogContent className="sm:max-w-[500px]">
         <DialogHeader>
           <DialogTitle>{vm.editingMap ? 'Editar Mapeamento' : 'Novo Mapeamento Rota → Sistema'}</DialogTitle>
+          <DialogDescription>
+            {vm.editingMap ? 'Edite os campos do mapeamento' : 'Defina o padrao de rota e o sistema associado'}
+          </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-2">
           <div>

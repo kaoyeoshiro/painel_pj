@@ -3,6 +3,7 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
@@ -20,7 +21,7 @@ export function CommentModal({ open, onClose, usuario, comentario }: CommentModa
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>Comentário do Feedback</DialogTitle>
-          <p className="text-sm text-muted-foreground">{usuario}</p>
+          <DialogDescription>{usuario}</DialogDescription>
         </DialogHeader>
         <div className="max-h-[60vh] overflow-y-auto py-2">
           <p className="text-gray-700 whitespace-pre-wrap">{comentario}</p>

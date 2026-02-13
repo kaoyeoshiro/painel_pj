@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { createApiClient } from '@/lib/api'
 import { DataTable } from '@/components/shared/DataTable'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -228,6 +228,9 @@ export function HistoricoGeradorPage() {
                 <DialogTitle>
                   Detalhes da Geracao - {selectedGeracao.numero_cnj_formatado || selectedGeracao.numero_cnj}
                 </DialogTitle>
+                <DialogDescription className="sr-only">
+                  Detalhes da geracao de peca juridica
+                </DialogDescription>
               </DialogHeader>
 
               {/* Badge curadoria e botão download */}
