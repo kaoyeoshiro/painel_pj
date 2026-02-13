@@ -8,7 +8,7 @@ import { memo } from 'react'
 import { useAuthStore } from '@/stores/auth-store'
 import { useUiStore } from '@/stores/ui-store'
 import { useNavigate } from '@tanstack/react-router'
-import { Menu, KeyRound, LogOut } from 'lucide-react'
+import { Menu, Home, KeyRound, LogOut } from 'lucide-react'
 import logo from '@/assets/logo-pge-branco.png'
 import { Button } from '@/components/ui/button'
 import {
@@ -53,6 +53,17 @@ export const Header = memo(function Header() {
             className="text-white hover:bg-white/10 rounded-full lg:hidden"
           >
             <Menu className="h-6 w-6" />
+          </Button>
+
+          {/* HOME — volta ao dashboard */}
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={() => navigate({ to: '/dashboard' })}
+            className="text-white hover:bg-white/10 rounded-full hidden lg:flex"
+            title="Ir para o Dashboard"
+          >
+            <Home className="h-5 w-5" />
           </Button>
 
           {/* LOGO */}
