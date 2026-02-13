@@ -57,6 +57,9 @@ class TestClassificadorServicePrompts:
         from sistemas.classificador_documentos.services import ClassificadorService
         from sistemas.classificador_documentos.models import PromptClassificacao
 
+        # Simula que não existe prompt com mesmo nome
+        mock_db.query.return_value.filter.return_value.first.return_value = None
+
         service = ClassificadorService(mock_db)
 
         prompt = service.criar_prompt(

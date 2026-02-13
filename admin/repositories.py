@@ -608,7 +608,7 @@ class RegraDeterministicaTipoPecaRepository(
         return (
             self.query()
             .filter(RegraDeterministicaTipoPeca.modulo_id == modulo_id)
-            .order_by(RegraDeterministicaTipoPeca.prioridade.desc())
+            .order_by(RegraDeterministicaTipoPeca.id)
             .all()
         )
 

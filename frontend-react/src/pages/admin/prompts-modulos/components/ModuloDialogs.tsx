@@ -1,3 +1,4 @@
+import { useCallback, useEffect, useRef } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -40,9 +41,25 @@ export function ModuloFormDialog({
   formSubgrupos,
   onSalvar,
 }: ModuloFormDialogProps) {
+  const conteudoRef = useRef<HTMLTextAreaElement>(null)
+
+  const autoResize = useCallback(() => {
+    const el = conteudoRef.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = `${el.scrollHeight}px`
+  }, [])
+
+  useEffect(() => {
+    if (open) {
+      // Aguarda o DOM renderizar o textarea antes de redimensionar
+      requestAnimationFrame(autoResize)
+    }
+  }, [open, formData.conteudo, autoResize])
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="w-[calc(100vw-2rem)] max-w-pge max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>
             {moduloEditando ? 'Editar Módulo' : 'Novo Módulo'}
@@ -79,10 +96,14 @@ export function ModuloFormDialog({
           <div>
             <Label htmlFor="conteudo">Conteúdo</Label>
             <Textarea
+              ref={conteudoRef}
               id="conteudo"
               value={formData.conteudo}
-              onChange={(e) => setFormData({ ...formData, conteudo: e.target.value })}
-              className="font-mono min-h-[300px]"
+              onChange={(e) => {
+                setFormData({ ...formData, conteudo: e.target.value })
+                autoResize()
+              }}
+              className="font-mono min-h-[400px] overflow-hidden resize-none"
             />
           </div>
 

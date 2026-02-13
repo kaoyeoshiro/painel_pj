@@ -248,6 +248,7 @@ class TestExportacaoEndpoints:
             with patch.object(ClassificadorService, 'obter_projeto') as mock_proj:
                 mock_projeto = Mock(spec=ProjetoClassificacao)
                 mock_projeto.usuario_id = 1
+                mock_projeto.nome = "Projeto Teste"
                 mock_proj.return_value = mock_projeto
 
                 with patch.object(ClassificadorService, 'listar_resultados') as mock_list:
@@ -262,7 +263,8 @@ class TestExportacaoEndpoints:
                             db=mock_db
                         )
 
-                        assert result == []
+                        assert result.status_code == 200
+                        assert "application/json" in result.media_type
 
 
 class TestClassificacaoAvulsaEndpoint:
@@ -291,6 +293,17 @@ class TestClassificacaoAvulsaEndpoint:
         mock_file.filename = "documento.pdf"
         mock_file.read = AsyncMock(return_value=b"fake pdf content")
 
+        # Mock do Request para SlowAPI
+        from starlette.requests import Request
+        from starlette.datastructures import Headers
+        mock_request = Mock(spec=Request)
+        mock_request.client = Mock()
+        mock_request.client.host = "127.0.0.1"
+        mock_request.headers = Headers({})
+        mock_request.scope = {"type": "http", "path": "/test"}
+        mock_request.url = Mock()
+        mock_request.url.path = "/test"
+
         with pytest.raises(HTTPException) as exc_info:
             await classificar_documento_avulso(
                 arquivo=mock_file,
@@ -301,7 +314,8 @@ class TestClassificacaoAvulsaEndpoint:
                 posicao_chunk="fim",
                 tamanho_chunk=512,
                 current_user=mock_auth,
-                db=mock_db
+                db=mock_db,
+                request=mock_request
             )
 
         assert exc_info.value.status_code == 400
