@@ -858,17 +858,17 @@ async def criar_modulo(
             PromptModulo.nome == modulo_data.nome
         ).first()
     else:
+        # Verifica constraint unique do banco: (tipo, nome, group_id)
         existente = modulo_repo.query().filter(
             PromptModulo.tipo == modulo_data.tipo,
-            PromptModulo.categoria == modulo_data.categoria,
-            PromptModulo.subcategoria == modulo_data.subcategoria,
-            PromptModulo.nome == modulo_data.nome
+            PromptModulo.nome == modulo_data.nome,
+            PromptModulo.group_id == modulo_data.group_id
         ).first()
 
     if existente:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Já existe um módulo com este nome" if modulo_data.tipo == "peca" else "Já existe um módulo com esta combinação tipo/categoria/subcategoria/nome"
+            detail="Já existe um módulo com este nome" if modulo_data.tipo == "peca" else "Já existe um módulo com este nome neste grupo"
         )
 
     group_id = modulo_data.group_id

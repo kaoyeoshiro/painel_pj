@@ -9,7 +9,7 @@ Contem todos os modelos de request/response usados pelos endpoints de prompts.
 from datetime import datetime
 from typing import List, Optional
 
-from pydantic import BaseModel
+from pydantic import BaseModel, field_validator
 
 
 # ==========================================
@@ -25,6 +25,13 @@ class PromptModuloBase(BaseModel):
     subgroup_id: Optional[int] = None
     nome: str
     titulo: str
+
+    @field_validator("nome")
+    @classmethod
+    def nome_nao_vazio(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError("Nome do módulo não pode ser vazio")
+        return v.strip()
     condicao_ativacao: Optional[str] = None  # Situação em que o prompt deve ser ativado (para Agente 2)
     conteudo: str  # Conteúdo do prompt (para Agente 3)
     # Modo de ativação: 'llm' (padrão) ou 'deterministic'

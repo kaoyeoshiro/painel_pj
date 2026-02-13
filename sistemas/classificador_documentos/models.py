@@ -200,8 +200,15 @@ class ExecucaoClassificacao(Base):
             return False
         if not self.ultimo_heartbeat:
             return False
-        from datetime import timedelta
-        return (get_utc_now() - self.ultimo_heartbeat) > timedelta(minutes=5)
+        from datetime import timedelta, timezone
+        agora = get_utc_now()
+        heartbeat = self.ultimo_heartbeat
+        # Normaliza para comparação segura (naive vs aware)
+        if heartbeat.tzinfo is None:
+            heartbeat = heartbeat.replace(tzinfo=timezone.utc)
+        if agora.tzinfo is None:
+            agora = agora.replace(tzinfo=timezone.utc)
+        return (agora - heartbeat) > timedelta(minutes=5)
 
     @property
     def pode_retomar(self) -> bool:

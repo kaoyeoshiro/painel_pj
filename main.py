@@ -359,9 +359,19 @@ async def validation_exception_handler(request: Request, exc: RequestValidationE
         )
     else:
         # Em desenvolvimento, mostra detalhes
+        # Converte objetos não-serializáveis (ex: ValueError) para string
+        errors = []
+        for err in exc.errors():
+            clean_err = {**err}
+            if "ctx" in clean_err:
+                clean_err["ctx"] = {
+                    k: str(v) if not isinstance(v, (str, int, float, bool, type(None))) else v
+                    for k, v in clean_err["ctx"].items()
+                }
+            errors.append(clean_err)
         return JSONResponse(
             status_code=422,
-            content={"detail": exc.errors(), "request_id": request_id}
+            content={"detail": errors, "request_id": request_id}
         )
 
 # Arquivos de logo
