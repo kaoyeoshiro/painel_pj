@@ -410,14 +410,14 @@ export function useGeradorPecas() {
       setAgentStatuses({ 1: 'concluido', 2: 'concluido', 3: 'aguardando' })
       setPageState('curadoria_preview')
     } catch (error) {
-      const err = error as Error
-      if (err.message.includes('PARECER_NATJUS_MISSING') || err.message.includes('Parecer NATJus')) {
+      const errMsg = error instanceof Error ? error.message : String(error)
+      if (errMsg.includes('PARECER_NATJUS_MISSING') || errMsg.includes('Parecer NATJus')) {
         setShowParecerDialog(true)
         setPageState('idle')
       } else {
-        setErrorMessage(err.message)
+        setErrorMessage(errMsg)
         setPageState('erro')
-        toast({ title: 'Erro', description: err.message, variant: 'destructive' })
+        toast({ title: 'Erro', description: errMsg, variant: 'destructive' })
       }
     } finally {
       setIsCuradoriaLoading(false)

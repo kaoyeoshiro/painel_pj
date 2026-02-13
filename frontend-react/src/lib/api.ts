@@ -166,7 +166,9 @@ export async function apiRequest<T>(
 
     const message = Array.isArray(detail)
       ? detail.map((d: { msg?: string }) => d.msg || String(d)).join('; ')
-      : detail || `Erro ${response.status}`
+      : typeof detail === 'object' && detail !== null
+        ? (detail.message || detail.error_code || detail.title || JSON.stringify(detail))
+        : detail || `Erro ${response.status}`
     throw new ApiError(response.status, message)
   }
 
