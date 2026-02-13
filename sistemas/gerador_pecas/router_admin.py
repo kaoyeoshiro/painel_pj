@@ -204,11 +204,11 @@ async def obter_curadoria_geracao(
     # Obtém metadados de curadoria
     metadata = _safe_get_attr(geracao, 'curadoria_metadata') or {}
 
-    # IDs dos módulos
-    modulos_curados_ids = metadata.get('modulos_curados_ids', [])
-    modulos_manuais_ids = metadata.get('modulos_manuais_ids', [])
-    modulos_excluidos_ids = metadata.get('modulos_excluidos_ids', [])
-    modulos_preview_ids = metadata.get('modulos_preview_ids', [])
+    # IDs dos módulos (use `or []` because dict.get default only applies to missing keys, not None values)
+    modulos_curados_ids = metadata.get('modulos_curados_ids') or []
+    modulos_manuais_ids = metadata.get('modulos_manuais_ids') or []
+    modulos_excluidos_ids = metadata.get('modulos_excluidos_ids') or []
+    modulos_preview_ids = metadata.get('modulos_preview_ids') or []
 
     # Busca dados completos dos módulos no banco (incluindo conteúdo)
     todos_ids = set(modulos_curados_ids + modulos_manuais_ids + modulos_excluidos_ids + modulos_preview_ids)

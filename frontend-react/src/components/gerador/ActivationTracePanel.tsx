@@ -624,7 +624,7 @@ function ModuleDetailsDialog({ module, onClose, onCopyRule }: ModuleDetailsDialo
               )}
 
               <div className="space-y-2">
-                {module.conditions.map(cond => (
+                {(module.conditions ?? []).map(cond => (
                   <ConditionRow key={cond.check_id} condition={cond} />
                 ))}
               </div>

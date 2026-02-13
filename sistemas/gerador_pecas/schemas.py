@@ -107,11 +107,11 @@ class CurationGenerateRequest(BaseModel):
     numero_cnj: str
     tipo_peca: str
     modulos_ids_curados: List[int]  # IDs dos modulos selecionados pelo usuario
-    modulos_manuais_ids: Optional[List[int]] = None  # IDs dos modulos adicionados manualmente
-    modulos_preview_ids: Optional[List[int]] = None  # IDs originais do preview (Agente 2)
-    modulos_excluidos_ids: Optional[List[int]] = None  # IDs dos modulos excluidos pelo usuario
+    modulos_manuais_ids: List[int] = []  # IDs dos modulos adicionados manualmente
+    modulos_preview_ids: List[int] = []  # IDs originais do preview (Agente 2)
+    modulos_excluidos_ids: List[int] = []  # IDs dos modulos excluidos pelo usuario
     modulos_ordem: Optional[Dict[str, List[int]]] = None  # Ordem de modulos por secao
-    categorias_ordem: Optional[List[str]] = None  # Ordem das categorias/secoes
+    categorias_ordem: List[str] = []  # Ordem das categorias/secoes
     preview_timestamp: Optional[str] = None  # Timestamp de quando o preview foi gerado
     observacao_usuario: Optional[str] = None
     group_id: Optional[int] = None

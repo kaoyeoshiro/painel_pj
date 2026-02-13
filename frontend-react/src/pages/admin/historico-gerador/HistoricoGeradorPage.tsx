@@ -635,7 +635,7 @@ function CuradoriaTab({ data }: { data: CuradoriaData }) {
           <Card>
             <CardContent className="pt-4 pb-3">
               <ol className="space-y-1.5 text-sm" style={{ color: C.text700 }}>
-                {data.explicacao_processo.etapas.map((etapa, i) => (
+                {(data.explicacao_processo?.etapas ?? []).map((etapa, i) => (
                   <li key={i}>{etapa}</li>
                 ))}
               </ol>
@@ -658,7 +658,7 @@ function CuradoriaTab({ data }: { data: CuradoriaData }) {
           <Card>
             <CardContent className="pt-4 pb-3">
               <dl className="space-y-2 text-sm">
-                {Object.entries(data.glossario).map(([termo, definicao]) => (
+                {Object.entries(data.glossario ?? {}).map(([termo, definicao]) => (
                   <div key={termo}>
                     <dt className="font-mono text-xs font-semibold" style={{ color: C.navy700 }}>{termo}</dt>
                     <dd style={{ color: C.text500 }}>{definicao}</dd>

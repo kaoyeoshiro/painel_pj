@@ -131,11 +131,41 @@ export interface ModuloPreview {
   tag: string
 }
 
+/** Módulo como retornado pelo backend (ModuloCurado.to_dict()) */
+export interface ModuloCuradoBackend {
+  id: number
+  nome: string
+  titulo: string
+  categoria: string
+  subcategoria: string | null
+  condicao_ativacao: string | null
+  conteudo: string
+  ordem: number
+  origem_ativacao: string
+  validado: boolean
+  selecionado: boolean
+  score_busca: number | null
+  metodo_busca: string | null
+}
+
+/** Resposta real do endpoint /curadoria/preview */
 export interface CuradoriaPreviewResponse {
-  modulos: ModuloPreview[]
-  total: number
-  resumo_consolidado?: string
-  dados_extracao?: Record<string, unknown>
+  success: boolean
+  modo_ativacao: string
+  curadoria: {
+    numero_processo: string
+    tipo_peca: string
+    modulos_por_secao: Record<string, ModuloCuradoBackend[]>
+    resumo_consolidado: string | null
+    dados_processo: Record<string, unknown> | null
+    dados_extracao: Record<string, unknown> | null
+    estatisticas: {
+      total_modulos: number
+      modulos_det: number
+      modulos_llm: number
+      modulos_manual: number
+    }
+  }
   decision_traces?: Record<string, unknown>
   variaveis_snapshot?: Record<string, unknown>
   parecer_context?: Record<string, unknown>

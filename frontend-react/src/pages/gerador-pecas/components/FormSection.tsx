@@ -250,7 +250,7 @@ export function FormSection({ h }: FormSectionProps) {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="__all__">Todos os grupos</SelectItem>
-                    {h.gruposData.grupos.map((g) => (
+                    {h.gruposData?.grupos?.map((g) => (
                       <SelectItem key={g.id} value={String(g.id)}>{g.nome}</SelectItem>
                     ))}
                   </SelectContent>
@@ -344,7 +344,7 @@ export function FormSection({ h }: FormSectionProps) {
             </button>
           </div>
           <div className="space-y-1.5">
-            {h.historico.slice(0, 4).map((item) => (
+            {(h.historico ?? []).slice(0, 4).map((item) => (
               <div
                 key={item.id}
                 onClick={() => h.carregarDoHistorico(item.id)}

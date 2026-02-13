@@ -27,6 +27,7 @@ import type {
   SSEEvent,
   ModuloPreview,
   CuradoriaPreviewResponse,
+  ModuloCuradoBackend,
   EditorChatMessage,
   PageState,
   AgentStatus,
@@ -387,10 +388,22 @@ export function useGeradorPecas() {
         group_id: selectedGroupId || undefined,
       })
 
-      setCuradoriaModulos(result.modulos)
-      setCuradoriaSelected(new Set(result.modulos.map((m) => m.id)))
-      setCuradoriaResumo(result.resumo_consolidado || '')
-      setCuradoriaDados(result.dados_extracao || {})
+      // Flatten modulos_por_secao dict into a flat ModuloPreview[]
+      const modulosPorSecao = result.curadoria?.modulos_por_secao ?? {}
+      const modulos: ModuloPreview[] = Object.values(modulosPorSecao)
+        .flat()
+        .map((m: ModuloCuradoBackend) => ({
+          id: m.id,
+          titulo: m.titulo,
+          categoria: m.categoria,
+          conteudo: m.conteudo,
+          tag: m.origem_ativacao ?? '',
+        }))
+
+      setCuradoriaModulos(modulos)
+      setCuradoriaSelected(new Set(modulos.map((m) => m.id)))
+      setCuradoriaResumo(result.curadoria?.resumo_consolidado || '')
+      setCuradoriaDados(result.curadoria?.dados_extracao || {})
       setCuradoriaTraces(result.decision_traces || {})
       setCuradoriaVariaveis(result.variaveis_snapshot || {})
       setCuradoriaParecer(result.parecer_context || {})

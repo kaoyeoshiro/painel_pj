@@ -316,7 +316,7 @@ export function VersionHistoryDialog({
           <DialogDescription className="sr-only">Lista de versoes anteriores da peca</DialogDescription>
         </DialogHeader>
         <ScrollArea className="max-h-[60vh]">
-          {versionList.length === 0 ? (
+          {!versionList || versionList.length === 0 ? (
             <div className="py-12 text-center">
               <History className="mx-auto h-8 w-8 text-slate-300" />
               <p className="mt-3 text-sm text-slate-400">Nenhuma versao anterior</p>
