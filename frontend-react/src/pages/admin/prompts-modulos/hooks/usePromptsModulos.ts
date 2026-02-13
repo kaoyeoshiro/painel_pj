@@ -77,6 +77,11 @@ export function usePromptsModulos() {
     ordem: 0,
     ativo: true,
     modo_ativacao: 'llm',
+    regra_deterministica: null,
+    regra_texto_original: null,
+    regra_deterministica_secundaria: null,
+    regra_secundaria_texto_original: null,
+    fallback_habilitado: false,
   })
 
   // ========== Effects ==========
@@ -203,6 +208,11 @@ export function usePromptsModulos() {
       ordem: 0,
       ativo: true,
       modo_ativacao: 'llm',
+      regra_deterministica: null,
+      regra_texto_original: null,
+      regra_deterministica_secundaria: null,
+      regra_secundaria_texto_original: null,
+      fallback_habilitado: false,
     })
     setDialogAberto(true)
   }
@@ -221,6 +231,11 @@ export function usePromptsModulos() {
       ordem: modulo.ordem,
       ativo: modulo.ativo,
       modo_ativacao: modulo.modo_ativacao,
+      regra_deterministica: modulo.regra_deterministica || null,
+      regra_texto_original: modulo.regra_texto_original || null,
+      regra_deterministica_secundaria: modulo.regra_deterministica_secundaria || null,
+      regra_secundaria_texto_original: modulo.regra_secundaria_texto_original || null,
+      fallback_habilitado: modulo.fallback_habilitado || false,
     })
     setDialogAberto(true)
   }
@@ -238,6 +253,17 @@ export function usePromptsModulos() {
           .split(',')
           .map((t) => t.trim())
           .filter((t) => t.length > 0),
+        // Campos de regra: enviar null se modo LLM (limpa regras ao trocar modo)
+        regra_deterministica:
+          formData.modo_ativacao === 'deterministic' ? formData.regra_deterministica : undefined,
+        regra_texto_original:
+          formData.modo_ativacao === 'deterministic' ? formData.regra_texto_original : undefined,
+        regra_deterministica_secundaria:
+          formData.modo_ativacao === 'deterministic' ? formData.regra_deterministica_secundaria : undefined,
+        regra_secundaria_texto_original:
+          formData.modo_ativacao === 'deterministic' ? formData.regra_secundaria_texto_original : undefined,
+        fallback_habilitado:
+          formData.modo_ativacao === 'deterministic' ? formData.fallback_habilitado : false,
       }
 
       if (moduloEditando) {

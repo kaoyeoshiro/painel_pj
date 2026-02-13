@@ -17,6 +17,12 @@ export interface PromptModulo {
   ativo: boolean
   modo_ativacao: 'llm' | 'deterministic'
   effective_activation_mode?: string
+  // Campos de regra deterministica
+  regra_deterministica?: Record<string, unknown> | null
+  regra_texto_original?: string | null
+  regra_deterministica_secundaria?: Record<string, unknown> | null
+  regra_secundaria_texto_original?: string | null
+  fallback_habilitado?: boolean | null
   versao: number
   created_at: string
   updated_at: string
@@ -75,4 +81,10 @@ export interface ModuloFormData {
   ordem: number
   ativo: boolean
   modo_ativacao: 'llm' | 'deterministic'
+  // Campos de regra deterministica
+  regra_deterministica: Record<string, unknown> | null
+  regra_texto_original: string | null
+  regra_deterministica_secundaria: Record<string, unknown> | null
+  regra_secundaria_texto_original: string | null
+  fallback_habilitado: boolean
 }
