@@ -25,6 +25,7 @@ from admin.schemas import (
     PromptCreate, PromptUpdate, PromptResponse, PromptListResponse,
     ConfiguracaoIACreate, ConfiguracaoIAUpdate, ConfiguracaoIAResponse,
     ConfigUpsertRequest,
+    ConfigBatchUpsertRequest,
 )
 from admin.repositories import (
     get_prompt_config_repo,
@@ -265,15 +266,19 @@ async def update_config_ia(
 
 @router.post("/config-ia/upsert")
 async def upsert_config_ia(
-    data: ConfigUpsertRequest,
+    data: ConfigBatchUpsertRequest,
     current_user: User = Depends(require_admin),
     config_repo: ConfiguracaoIARepository = Depends(get_config_repo),
 ):
-    """Cria ou atualiza uma configuração de IA"""
-    config_repo.upsert_config(data.sistema, data.chave, data.valor)
+    """Cria ou atualiza configurações de IA (aceita lote via campo 'configs')"""
+    for item in data.configs:
+        config_repo.upsert_config(item.sistema, item.chave, item.valor)
     config_repo.commit()
 
-    return {"success": True, "sistema": data.sistema, "chave": data.chave}
+    return {
+        "success": True,
+        "updated": len(data.configs),
+    }
 
 
 # ============================================

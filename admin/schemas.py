@@ -82,3 +82,8 @@ class ConfigUpsertRequest(BaseModel):
     sistema: str
     chave: str
     valor: str
+
+
+class ConfigBatchUpsertRequest(BaseModel):
+    """Request para criar ou atualizar multiplas configuracoes de IA em lote."""
+    configs: list[ConfigUpsertRequest]

@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 
 from services.gemini_service import gemini_service
 from .models_extraction import ExtractionVariable
+from .services_mode_resolution import _get_config_sistemas_acessorios
 
 logger = logging.getLogger(__name__)
 
