@@ -182,79 +182,85 @@ export function ModuloFormDialog({
             </select>
           </div>
 
-          {/* Modo de ativacao */}
-          <div>
-            <Label htmlFor="modo_ativacao">Modo de Ativação</Label>
-            <div className="flex gap-2 mt-1">
-              <button
-                type="button"
-                className="flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors border"
-                style={{
-                  background: formData.modo_ativacao === 'llm' ? C.navy950 : 'transparent',
-                  color: formData.modo_ativacao === 'llm' ? 'white' : C.text500,
-                  borderColor: formData.modo_ativacao === 'llm' ? C.navy950 : C.gray300,
-                }}
-                onClick={() =>
-                  setFormData({ ...formData, modo_ativacao: 'llm' })
-                }
-              >
-                LLM (Inteligência Artificial)
-              </button>
-              <button
-                type="button"
-                className="flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors border"
-                style={{
-                  background: formData.modo_ativacao === 'deterministic' ? C.navy950 : 'transparent',
-                  color: formData.modo_ativacao === 'deterministic' ? 'white' : C.text500,
-                  borderColor: formData.modo_ativacao === 'deterministic' ? C.navy950 : C.gray300,
-                }}
-                onClick={() =>
-                  setFormData({ ...formData, modo_ativacao: 'deterministic' })
-                }
-              >
-                Regra Determinística
-              </button>
-            </div>
-          </div>
-
-          {/* Editor de regras deterministicas */}
-          {formData.modo_ativacao === 'deterministic' && (
+          {/* Modo de ativacao — apenas para tipo 'conteudo' (teses/argumentos).
+              Base (Prompt do Sistema) ativa automaticamente por grupo.
+              Peca (Estrutura/Template) ativa via selecao manual do usuario. */}
+          {formData.tipo === 'conteudo' && (
             <>
-              <RuleEditorPanel
-                regraPrimaria={formData.regra_deterministica as RuleNode | null}
-                regraTextoOriginal={formData.regra_texto_original}
-                onRegraPrimariaChange={(regra) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    regra_deterministica: regra as Record<string, unknown> | null,
-                  }))
-                }
-                onRegraTextoOriginalChange={(texto) =>
-                  setFormData((prev) => ({ ...prev, regra_texto_original: texto }))
-                }
-                regraSecundaria={formData.regra_deterministica_secundaria as RuleNode | null}
-                regraSecundariaTexto={formData.regra_secundaria_texto_original}
-                fallbackHabilitado={formData.fallback_habilitado}
-                onRegraSecundariaChange={(regra) =>
-                  setFormData((prev) => ({
-                    ...prev,
-                    regra_deterministica_secundaria: regra as Record<string, unknown> | null,
-                  }))
-                }
-                onRegraSecundariaTextoChange={(texto) =>
-                  setFormData((prev) => ({ ...prev, regra_secundaria_texto_original: texto }))
-                }
-                onFallbackHabilitadoChange={(habilitado) =>
-                  setFormData((prev) => ({ ...prev, fallback_habilitado: habilitado }))
-                }
-              />
+              <div>
+                <Label htmlFor="modo_ativacao">Modo de Ativação</Label>
+                <div className="flex gap-2 mt-1">
+                  <button
+                    type="button"
+                    className="flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors border"
+                    style={{
+                      background: formData.modo_ativacao === 'llm' ? C.navy950 : 'transparent',
+                      color: formData.modo_ativacao === 'llm' ? 'white' : C.text500,
+                      borderColor: formData.modo_ativacao === 'llm' ? C.navy950 : C.gray300,
+                    }}
+                    onClick={() =>
+                      setFormData({ ...formData, modo_ativacao: 'llm' })
+                    }
+                  >
+                    LLM (Inteligência Artificial)
+                  </button>
+                  <button
+                    type="button"
+                    className="flex-1 py-2 px-3 rounded-md text-sm font-medium transition-colors border"
+                    style={{
+                      background: formData.modo_ativacao === 'deterministic' ? C.navy950 : 'transparent',
+                      color: formData.modo_ativacao === 'deterministic' ? 'white' : C.text500,
+                      borderColor: formData.modo_ativacao === 'deterministic' ? C.navy950 : C.gray300,
+                    }}
+                    onClick={() =>
+                      setFormData({ ...formData, modo_ativacao: 'deterministic' })
+                    }
+                  >
+                    Regra Determinística
+                  </button>
+                </div>
+              </div>
 
-              {/* Regras por tipo de peca (apenas em edicao) */}
-              {moduloEditando && (
-                <PieceTypeRulesSection
-                  moduloId={moduloEditando.id}
-                  regraPrimariaGlobal={formData.regra_deterministica as RuleNode | null}
-                />
+              {/* Editor de regras deterministicas */}
+              {formData.modo_ativacao === 'deterministic' && (
+                <>
+                  <RuleEditorPanel
+                    regraPrimaria={formData.regra_deterministica as RuleNode | null}
+                    regraTextoOriginal={formData.regra_texto_original}
+                    onRegraPrimariaChange={(regra) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        regra_deterministica: regra as Record<string, unknown> | null,
+                      }))
+                    }
+                    onRegraTextoOriginalChange={(texto) =>
+                      setFormData((prev) => ({ ...prev, regra_texto_original: texto }))
+                    }
+                    regraSecundaria={formData.regra_deterministica_secundaria as RuleNode | null}
+                    regraSecundariaTexto={formData.regra_secundaria_texto_original}
+                    fallbackHabilitado={formData.fallback_habilitado}
+                    onRegraSecundariaChange={(regra) =>
+                      setFormData((prev) => ({
+                        ...prev,
+                        regra_deterministica_secundaria: regra as Record<string, unknown> | null,
+                      }))
+                    }
+                    onRegraSecundariaTextoChange={(texto) =>
+                      setFormData((prev) => ({ ...prev, regra_secundaria_texto_original: texto }))
+                    }
+                    onFallbackHabilitadoChange={(habilitado) =>
+                      setFormData((prev) => ({ ...prev, fallback_habilitado: habilitado }))
+                    }
+                  />
+
+                  {/* Regras por tipo de peca (apenas em edicao) */}
+                  {moduloEditando && (
+                    <PieceTypeRulesSection
+                      moduloId={moduloEditando.id}
+                      regraPrimariaGlobal={formData.regra_deterministica as RuleNode | null}
+                    />
+                  )}
+                </>
               )}
             </>
           )}

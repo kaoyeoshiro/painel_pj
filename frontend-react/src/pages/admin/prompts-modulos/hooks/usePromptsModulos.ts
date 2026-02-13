@@ -250,23 +250,26 @@ export function usePromptsModulos() {
 
   async function salvarModulo() {
     try {
+      // Base (Prompt do Sistema) e Peca (Estrutura/Template) nao possuem modo de ativacao:
+      // - Base ativa automaticamente por grupo
+      // - Peca ativa via selecao manual do usuario no /gerador-pecas
+      const tipoSemModoAtivacao = formData.tipo === 'base' || formData.tipo === 'peca'
+      const incluirRegras = !tipoSemModoAtivacao && formData.modo_ativacao === 'deterministic'
+
       const payload = {
         ...formData,
         tags: formData.tags
           .split(',')
           .map((t) => t.trim())
           .filter((t) => t.length > 0),
-        // Campos de regra: enviar null se modo LLM (limpa regras ao trocar modo)
-        regra_deterministica:
-          formData.modo_ativacao === 'deterministic' ? formData.regra_deterministica : undefined,
-        regra_texto_original:
-          formData.modo_ativacao === 'deterministic' ? formData.regra_texto_original : undefined,
-        regra_deterministica_secundaria:
-          formData.modo_ativacao === 'deterministic' ? formData.regra_deterministica_secundaria : undefined,
-        regra_secundaria_texto_original:
-          formData.modo_ativacao === 'deterministic' ? formData.regra_secundaria_texto_original : undefined,
-        fallback_habilitado:
-          formData.modo_ativacao === 'deterministic' ? formData.fallback_habilitado : false,
+        // Nao enviar modo_ativacao para tipos que nao o utilizam
+        modo_ativacao: tipoSemModoAtivacao ? undefined : formData.modo_ativacao,
+        // Campos de regra: enviar apenas quando modo deterministic em tipo conteudo
+        regra_deterministica: incluirRegras ? formData.regra_deterministica : undefined,
+        regra_texto_original: incluirRegras ? formData.regra_texto_original : undefined,
+        regra_deterministica_secundaria: incluirRegras ? formData.regra_deterministica_secundaria : undefined,
+        regra_secundaria_texto_original: incluirRegras ? formData.regra_secundaria_texto_original : undefined,
+        fallback_habilitado: incluirRegras ? formData.fallback_habilitado : false,
       }
 
       if (moduloEditando) {
