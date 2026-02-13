@@ -14,6 +14,7 @@ import {
   Plus, Pencil, Trash2, Power, AlertTriangle, Info, Wand2,
 } from 'lucide-react'
 import { RuleConditionItem } from './RuleConditionItem'
+import { RulePreviewModal } from './RulePreviewModal'
 import { humanizeRule, countConditions } from './humanize'
 import { TIPO_PECA_LABELS } from './constants'
 import type {
@@ -49,6 +50,12 @@ export function PieceTypeRulesSection({
   const [textoIA, setTextoIA] = useState('')
   const [gerandoIA, setGerandoIA] = useState(false)
 
+  // Preview modal state
+  const [previewOpen, setPreviewOpen] = useState(false)
+  const [candidateRule, setCandidateRule] = useState<RuleNode | null>(null)
+  const [candidateTexto, setCandidateTexto] = useState<string | null>(null)
+  const [candidateError, setCandidateError] = useState<string | null>(null)
+
   // Carregar regras
   const carregarRegras = useCallback(async () => {
     if (!moduloId) return
@@ -70,9 +77,11 @@ export function PieceTypeRulesSection({
   // Carregar variaveis
   const carregarVariaveis = useCallback(async () => {
     try {
-      const extVars = await adminApi.get<{
-        slug: string; label: string; tipo: string; opcoes: string[] | null
-      }[]>('/admin/api/extraction/variaveis?apenas_ativos=true&limit=500')
+      const extRaw = await adminApi.get<unknown>(
+        '/admin/api/extraction/variaveis?apenas_ativos=true&limit=500'
+      )
+      const extVars: { slug: string; label: string; tipo: string; opcoes: string[] | null }[] =
+        Array.isArray(extRaw) ? extRaw : []
 
       setVariaveis(extVars.map((v) => ({
         slug: v.slug,
@@ -189,31 +198,52 @@ export function PieceTypeRulesSection({
     }
   }
 
-  // Gerar regra via IA para tipo de peca
+  // Gerar regra via IA para tipo de peca — abre modal de preview
   async function gerarRegra() {
     if (!textoIA.trim()) return
+
+    setCandidateRule(null)
+    setCandidateError(null)
+    setCandidateTexto(textoIA.trim())
+    setPreviewOpen(true)
     setGerandoIA(true)
+
     try {
       const resp = await adminApi.post<GerarRegraResponse>(
         '/admin/api/extraction/regras-deterministicas/gerar',
         { condicao_texto: textoIA.trim(), contexto: `Tipo de peça: ${formTipoPeca}` }
       )
       if (resp.success && resp.regra) {
-        setFormRegra(resp.regra)
-        setFormTexto(textoIA.trim())
-        toast({ title: 'Regra gerada' })
+        setCandidateRule(resp.regra)
       } else {
-        toast({ title: 'Erro na geração', description: resp.erro || '', variant: 'destructive' })
+        setCandidateError(resp.erro || 'Erro na geração')
       }
     } catch (error) {
-      toast({
-        title: 'Erro ao gerar',
-        description: error instanceof Error ? error.message : 'Erro desconhecido',
-        variant: 'destructive',
-      })
+      setCandidateError(error instanceof Error ? error.message : 'Erro desconhecido')
     } finally {
       setGerandoIA(false)
     }
+  }
+
+  function handleApprovePreview() {
+    if (candidateRule) {
+      setFormRegra(candidateRule)
+      setFormTexto(candidateTexto || '')
+      toast({ title: 'Regra aprovada e aplicada' })
+    }
+    setPreviewOpen(false)
+    setCandidateRule(null)
+    setCandidateError(null)
+  }
+
+  function handleRejectPreview() {
+    setPreviewOpen(false)
+    setCandidateRule(null)
+    setCandidateError(null)
+  }
+
+  function handleRetryPreview() {
+    gerarRegra()
   }
 
   // Funcoes inline para o builder dentro do dialog
@@ -517,6 +547,20 @@ export function PieceTypeRulesSection({
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Modal de aprovacao de regra IA */}
+      <RulePreviewModal
+        open={previewOpen}
+        onOpenChange={(open) => { if (!open) handleRejectPreview() }}
+        candidateRule={candidateRule}
+        candidateTexto={candidateTexto}
+        isLoading={gerandoIA}
+        error={candidateError}
+        variaveis={variaveis}
+        onApprove={handleApprovePreview}
+        onReject={handleRejectPreview}
+        onRetry={handleRetryPreview}
+      />
     </div>
   )
 }

@@ -4,6 +4,7 @@
 import { useState, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { C } from '@/lib/designTokens'
@@ -14,6 +15,7 @@ import {
   AlertTriangle, CheckCircle, Eye, Code, Info,
 } from 'lucide-react'
 import { RuleConditionItem } from './RuleConditionItem'
+import { RulePreviewModal } from './RulePreviewModal'
 import { humanizeRule, countConditions, extractVariables } from './humanize'
 import type {
   RuleNode, RuleCondition, RuleGroup, RuleVariable,
@@ -450,9 +452,21 @@ export function RuleEditorPanel({
   const [textoNatural, setTextoNatural] = useState(regraTextoOriginal || '')
   const [gerando, setGerando] = useState(false)
 
+  // Preview modal state (primaria)
+  const [previewOpen, setPreviewOpen] = useState(false)
+  const [candidateRule, setCandidateRule] = useState<RuleNode | null>(null)
+  const [candidateTexto, setCandidateTexto] = useState<string | null>(null)
+  const [candidateError, setCandidateError] = useState<string | null>(null)
+
   // AI Generation state (secundaria)
   const [textoNaturalSec, setTextoNaturalSec] = useState(regraSecundariaTexto || '')
   const [gerandoSec, setGerandoSec] = useState(false)
+
+  // Preview modal state (secundaria)
+  const [previewSecOpen, setPreviewSecOpen] = useState(false)
+  const [candidateRuleSec, setCandidateRuleSec] = useState<RuleNode | null>(null)
+  const [candidateTextoSec, setCandidateTextoSec] = useState<string | null>(null)
+  const [candidateErrorSec, setCandidateErrorSec] = useState<string | null>(null)
 
   // Fallback section visibility
   const [fallbackExpanded, setFallbackExpanded] = useState(fallbackHabilitado)
@@ -466,25 +480,30 @@ export function RuleEditorPanel({
     setLoadingVars(true)
     try {
       // Carregar variaveis de extracao
-      const extVars = await adminApi.get<{
-        slug: string
-        label: string
-        tipo: string
-        opcoes: string[] | null
-      }[]>('/admin/api/extraction/variaveis?apenas_ativos=true&limit=500')
+      const extRaw = await adminApi.get<unknown>(
+        '/admin/api/extraction/variaveis?apenas_ativos=true&limit=500'
+      )
+      const extVars = Array.isArray(extRaw) ? extRaw : []
 
       // Carregar variaveis de processo
       let procVars: { slug: string; label: string; tipo: string }[] = []
       try {
-        procVars = await adminApi.get<{ slug: string; label: string; tipo: string }[]>(
+        const procRaw = await adminApi.get<unknown>(
           '/admin/api/extraction/variaveis/processo'
         )
+        // Endpoint retorna { variaveis: [...] } — extrair o array
+        if (Array.isArray(procRaw)) {
+          procVars = procRaw
+        } else if (procRaw && typeof procRaw === 'object' && 'variaveis' in procRaw) {
+          const arr = (procRaw as { variaveis: unknown }).variaveis
+          procVars = Array.isArray(arr) ? arr : []
+        }
       } catch {
         // Endpoint pode nao existir, ignora
       }
 
       const allVars: RuleVariable[] = [
-        ...extVars.map((v) => ({
+        ...extVars.map((v: { slug: string; label: string; tipo: string; opcoes?: string[] | null }) => ({
           slug: v.slug,
           label: v.label,
           tipo: v.tipo as RuleVariable['tipo'],
@@ -515,71 +534,110 @@ export function RuleEditorPanel({
     carregarVariaveis()
   }, [carregarVariaveis])
 
-  // Gerar regra via IA (primaria)
+  // Gerar regra via IA (primaria) — abre modal de preview
   async function gerarRegraIA() {
     if (!textoNatural.trim()) {
       toast({ title: 'Digite uma condição', variant: 'destructive' })
       return
     }
+
+    // Abrir modal em estado de loading
+    setCandidateRule(null)
+    setCandidateError(null)
+    setCandidateTexto(textoNatural.trim())
+    setPreviewOpen(true)
     setGerando(true)
+
     try {
       const resp = await adminApi.post<GerarRegraResponse>(
         '/admin/api/extraction/regras-deterministicas/gerar',
         { condicao_texto: textoNatural.trim() }
       )
       if (resp.success && resp.regra) {
-        onRegraPrimariaChange(resp.regra)
-        onRegraTextoOriginalChange(textoNatural.trim())
-        toast({ title: 'Regra gerada com sucesso' })
+        setCandidateRule(resp.regra)
       } else {
         const msg = resp.erro === 'variaveis_insuficientes'
           ? `Variáveis necessárias não encontradas. ${resp.sugestoes_variaveis?.map((s) => s.slug).join(', ') || ''}`
           : resp.erro || 'Erro na geração'
-        toast({ title: 'Não foi possível gerar', description: msg, variant: 'destructive' })
+        setCandidateError(msg)
       }
     } catch (error) {
-      toast({
-        title: 'Erro ao gerar regra',
-        description: error instanceof Error ? error.message : 'Erro desconhecido',
-        variant: 'destructive',
-      })
+      setCandidateError(error instanceof Error ? error.message : 'Erro desconhecido')
     } finally {
       setGerando(false)
     }
   }
 
-  // Gerar regra via IA (secundaria)
+  function handleApprovePrimary() {
+    if (candidateRule) {
+      onRegraPrimariaChange(candidateRule)
+      onRegraTextoOriginalChange(candidateTexto)
+      toast({ title: 'Regra aprovada e aplicada' })
+    }
+    setPreviewOpen(false)
+    setCandidateRule(null)
+    setCandidateError(null)
+  }
+
+  function handleRejectPrimary() {
+    setPreviewOpen(false)
+    setCandidateRule(null)
+    setCandidateError(null)
+  }
+
+  function handleRetryPrimary() {
+    gerarRegraIA()
+  }
+
+  // Gerar regra via IA (secundaria) — abre modal de preview
   async function gerarRegraSecundariaIA() {
     if (!textoNaturalSec.trim()) {
       toast({ title: 'Digite uma condição para o fallback', variant: 'destructive' })
       return
     }
+
+    setCandidateRuleSec(null)
+    setCandidateErrorSec(null)
+    setCandidateTextoSec(textoNaturalSec.trim())
+    setPreviewSecOpen(true)
     setGerandoSec(true)
+
     try {
       const resp = await adminApi.post<GerarRegraResponse>(
         '/admin/api/extraction/regras-deterministicas/gerar',
         { condicao_texto: textoNaturalSec.trim() }
       )
       if (resp.success && resp.regra) {
-        onRegraSecundariaChange(resp.regra)
-        onRegraSecundariaTextoChange(textoNaturalSec.trim())
-        toast({ title: 'Regra secundária gerada com sucesso' })
+        setCandidateRuleSec(resp.regra)
       } else {
-        toast({
-          title: 'Não foi possível gerar',
-          description: resp.erro || 'Erro na geração',
-          variant: 'destructive',
-        })
+        setCandidateErrorSec(resp.erro || 'Erro na geração')
       }
     } catch (error) {
-      toast({
-        title: 'Erro ao gerar regra secundária',
-        description: error instanceof Error ? error.message : 'Erro desconhecido',
-        variant: 'destructive',
-      })
+      setCandidateErrorSec(error instanceof Error ? error.message : 'Erro desconhecido')
     } finally {
       setGerandoSec(false)
     }
+  }
+
+  function handleApproveSecondary() {
+    if (candidateRuleSec) {
+      onRegraSecundariaChange(candidateRuleSec)
+      onRegraSecundariaTextoChange(candidateTextoSec)
+      toast({ title: 'Regra secundária aprovada e aplicada' })
+    }
+    setPreviewSecOpen(false)
+    setCandidateRuleSec(null)
+    setCandidateErrorSec(null)
+  }
+
+  function handleRejectSecondary() {
+    setPreviewSecOpen(false)
+    setCandidateRuleSec(null)
+    setCandidateErrorSec(null)
+  }
+
+  function handleRetrySecondary() {
+    gerarRegraSecundariaIA()
   }
 
   // Validar regra
@@ -643,14 +701,15 @@ export function RuleEditorPanel({
         <Label className="text-xs font-medium" style={{ color: C.text700 }}>
           Gerar regra a partir de linguagem natural
         </Label>
-        <div className="flex gap-2">
-          <Input
+        <div className="flex gap-2 items-start">
+          <Textarea
             value={textoNatural}
             onChange={(e) => setTextoNatural(e.target.value)}
             placeholder='Ex: "O medicamento não está na lista RENAME" ou "O autor é idoso e o valor supera 210 SM"'
-            className="flex-1 text-sm"
+            className="flex-1 text-sm resize-none overflow-y-auto"
+            rows={3}
             onKeyDown={(e) => {
-              if (e.key === 'Enter' && !gerando) gerarRegraIA()
+              if (e.key === 'Enter' && e.ctrlKey && !gerando) gerarRegraIA()
             }}
           />
           <Button
@@ -794,6 +853,34 @@ export function RuleEditorPanel({
           </div>
         )}
       </div>
+
+      {/* Modal de aprovacao — Regra Primaria */}
+      <RulePreviewModal
+        open={previewOpen}
+        onOpenChange={(open) => { if (!open) handleRejectPrimary() }}
+        candidateRule={candidateRule}
+        candidateTexto={candidateTexto}
+        isLoading={gerando}
+        error={candidateError}
+        variaveis={variaveis}
+        onApprove={handleApprovePrimary}
+        onReject={handleRejectPrimary}
+        onRetry={handleRetryPrimary}
+      />
+
+      {/* Modal de aprovacao — Regra Secundaria */}
+      <RulePreviewModal
+        open={previewSecOpen}
+        onOpenChange={(open) => { if (!open) handleRejectSecondary() }}
+        candidateRule={candidateRuleSec}
+        candidateTexto={candidateTextoSec}
+        isLoading={gerandoSec}
+        error={candidateErrorSec}
+        variaveis={variaveis}
+        onApprove={handleApproveSecondary}
+        onReject={handleRejectSecondary}
+        onRetry={handleRetrySecondary}
+      />
     </div>
   )
 }
