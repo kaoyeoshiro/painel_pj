@@ -25,10 +25,18 @@ function lazyWithRetry<T extends ComponentType<unknown>>(
 ): React.LazyExoticComponent<T> {
   return lazy(() =>
     importFn().catch(() => {
-      // Aguarda 1.5s e tenta uma segunda vez (novo deploy pode ter invalidado o chunk)
-      return new Promise<{ default: T }>(resolve =>
-        setTimeout(resolve, 1500),
-      ).then(() => importFn())
+      // Chunk antigo nao existe mais (novo deploy alterou os hashes).
+      // Forca reload para buscar o HTML atualizado com os novos chunks.
+      // Usa sessionStorage flag para evitar loop infinito de reloads.
+      const key = 'chunk-reload'
+      const hasReloaded = sessionStorage.getItem(key)
+      if (!hasReloaded) {
+        sessionStorage.setItem(key, '1')
+        window.location.reload()
+      }
+      // Se ja recarregou e ainda falha, limpa flag e propaga o erro
+      sessionStorage.removeItem(key)
+      return importFn()
     }),
   )
 }
