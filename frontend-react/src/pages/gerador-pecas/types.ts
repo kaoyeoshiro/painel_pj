@@ -27,13 +27,18 @@ export function formatCNJ(value: string): string {
 }
 
 /** Data ISO -> dd/mm/aaaa */
-export function formatDate(iso: string): string {
-  return new Date(iso).toLocaleDateString('pt-BR')
+export function formatDate(iso: string | null | undefined): string {
+  if (!iso) return '\u2014'
+  const d = new Date(iso)
+  if (isNaN(d.getTime())) return '\u2014'
+  return d.toLocaleDateString('pt-BR')
 }
 
 /** Data ISO -> dd/mm/aaaa HH:MM */
-export function formatDateTime(iso: string): string {
+export function formatDateTime(iso: string | null | undefined): string {
+  if (!iso) return '\u2014'
   const d = new Date(iso)
+  if (isNaN(d.getTime())) return '\u2014'
   return `${d.toLocaleDateString('pt-BR')} ${d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })}`
 }
 

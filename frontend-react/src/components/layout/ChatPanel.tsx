@@ -1,7 +1,5 @@
-import { useRef, useEffect } from 'react'
+import { useRef, useEffect, useCallback } from 'react'
 import { Bot, Send, Sparkles } from 'lucide-react'
-import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { C } from '@/lib/designTokens'
 
@@ -37,6 +35,7 @@ export function ChatPanel({
   subtitle = 'Peca alteracoes no documento',
 }: ChatPanelProps) {
   const scrollRef = useRef<HTMLDivElement>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -44,6 +43,13 @@ export function ChatPanel({
       if (viewport) viewport.scrollTop = viewport.scrollHeight
     }
   }, [messages, isSending])
+
+  const autoResize = useCallback(() => {
+    const el = textareaRef.current
+    if (!el) return
+    el.style.height = 'auto'
+    el.style.height = Math.min(el.scrollHeight, 140) + 'px'
+  }, [])
 
   return (
     <div className="flex w-96 flex-col bg-white">
@@ -148,32 +154,40 @@ export function ChatPanel({
 
       {/* Input */}
       <div className="border-t p-4" style={{ background: C.gray50, borderColor: C.gray200 }}>
-        <div className="flex gap-2">
-          <Input
+        <div className="relative">
+          <textarea
+            ref={textareaRef}
             value={inputValue}
             onChange={(e) => onInputChange(e.target.value)}
-            onKeyPress={(e) => {
+            onKeyDown={(e) => {
               if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault()
                 onSend()
               }
             }}
+            onInput={autoResize}
             placeholder={placeholder}
             disabled={isSending}
-            className="flex-1"
+            rows={2}
+            className="w-full resize-none rounded-xl border bg-white py-3 pl-4 pr-12 text-sm leading-relaxed placeholder:text-slate-400 transition-all focus:outline-none focus:ring-2"
+            style={{
+              borderColor: C.gray200,
+              color: C.text700,
+              // @ts-expect-error CSS custom focus ring
+              '--tw-ring-color': 'rgba(37, 61, 82, 0.10)',
+            }}
           />
-          <Button
+          <button
             onClick={onSend}
-            disabled={isSending}
-            size="icon"
-            className="text-white"
-            style={{ background: C.navy950 }}
+            disabled={isSending || !inputValue.trim()}
+            className="absolute bottom-2.5 right-2.5 rounded-lg p-2 text-white transition-all duration-200 disabled:cursor-not-allowed disabled:bg-slate-100 disabled:text-slate-300"
+            style={inputValue.trim() ? { background: C.navy950 } : undefined}
           >
             <Send className="h-4 w-4" />
-          </Button>
+          </button>
         </div>
         <p className="mt-2 text-center text-xs" style={{ color: C.text400 }}>
-          Enter para enviar
+          Enter para enviar &middot; Shift+Enter para nova linha
         </p>
       </div>
     </div>

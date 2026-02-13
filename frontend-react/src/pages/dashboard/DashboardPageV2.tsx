@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Link } from '@tanstack/react-router'
-import { useAuthStore } from '@/stores/auth-store'
+import { useAuthStore, ROUTE_SISTEMA_MAP } from '@/stores/auth-store'
 import { C } from '@/lib/designTokens'
 import { systemCards, adminCards } from './constants'
 import { ChevronRight, ChevronDown, Settings } from 'lucide-react'
@@ -175,9 +175,16 @@ function AdminItem({ card }: { card: AdminCardConfig }) {
 
 export function DashboardPageV2() {
   const user = useAuthStore(s => s.user)
+  const podeAcessarSistema = useAuthStore(s => s.podeAcessarSistema)
   const [adminOpen, setAdminOpen] = useState(true)
   const firstName =
     user?.full_name?.split(' ')[0] ?? user?.username ?? 'Usuario'
+
+  const visibleCards = systemCards.filter(card => {
+    if (card.adminOnly && !user?.is_admin) return false
+    const slug = ROUTE_SISTEMA_MAP[card.to]
+    return !slug || podeAcessarSistema(slug)
+  })
 
   return (
     <div className="mx-auto max-w-pge px-4 py-8 sm:px-6 lg:px-10">
@@ -206,7 +213,7 @@ export function DashboardPageV2() {
           className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4"
           style={{ gap: 20, alignItems: 'stretch' }}
         >
-          {systemCards.map((card, i) => (
+          {visibleCards.map((card, i) => (
             <div
               key={card.to}
               className="fade-up flex"

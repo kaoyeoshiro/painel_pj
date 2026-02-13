@@ -72,6 +72,10 @@ export function useExtratorAutos() {
   const [jobId, setJobId] = useState<string | null>(null)
   const logsEndRef = useRef<HTMLDivElement>(null)
 
+  // -- Download Modal --
+  const [downloadModalOpen, setDownloadModalOpen] = useState(false)
+  const [formatoSaidaFinal, setFormatoSaidaFinal] = useState<'zip' | 'pdf_direto'>('zip')
+
   // -- Historico --
   const [historicoAberto, setHistoricoAberto] = useState(false)
 
@@ -88,7 +92,17 @@ export function useExtratorAutos() {
     refetch: refetchHistorico,
   } = useQuery<HistoricoDownload[]>({
     queryKey: queryKeys.extrator.historico(),
-    queryFn: () => extratorApi.get<HistoricoDownload[]>('/historico'),
+    queryFn: () => extratorApi.get<{ itens: Array<Record<string, unknown>> }>('/historico').then(r =>
+      r.itens.map((item): HistoricoDownload => ({
+        id: item.id as number,
+        numero_cnj: item.numero_cnj as string,
+        modo: (item.modo_selecao as string) || '',
+        formato: (item.modo_saida as string) || '',
+        total_docs: (item.total_docs_baixados as number) || 0,
+        status: (item.status as string) || '',
+        criado_em: (item.criado_em as string) || '',
+      })),
+    ),
     enabled: historicoAberto,
   })
 
@@ -119,9 +133,24 @@ export function useExtratorAutos() {
     setPageState('consultando')
     setErroMensagem('')
     try {
-      const info = await extratorApi.post<ProcessoInfo>('/consultar', { numero_cnj: cnj })
+      const raw = await extratorApi.post<{
+        processo: { numero: string; numero_formatado: string; classe_processual: string; comarca: string; vara: string }
+        documentos: unknown[]
+        total_documentos: number
+        erro: string | null
+      }>('/consultar', { numero_cnj: cnj })
+      if (raw.erro) throw new Error(raw.erro)
+      const info: ProcessoInfo = {
+        numero_cnj: raw.processo.numero,
+        numero_formatado: raw.processo.numero_formatado,
+        classe_processual: raw.processo.classe_processual ?? '',
+        comarca: raw.processo.comarca ?? '',
+        vara: raw.processo.vara ?? '',
+        assunto: '',
+        total_documentos: raw.total_documentos,
+      }
       setProcessoInfo(info)
-      const cats = await extratorApi.get<CategoriaDocumento[]>('/categorias')
+      const cats = await extratorApi.get<{ categorias: CategoriaDocumento[] }>('/categorias').then(r => r.categorias)
       setCategorias(cats)
       setCategoriasSelec(new Set())
       setCodigosManuais([])
@@ -148,9 +177,34 @@ export function useExtratorAutos() {
     setPageState('consultando')
     setErroMensagem('')
     try {
-      const resultado = await extratorApi.post<LoteResultados>('/consultar-lote', { numeros_cnj: linhas })
+      const raw = await extratorApi.post<{
+        total_consultados: number
+        total_sucesso: number
+        total_erros: number
+        resultados: Array<{
+          processo: { numero: string; numero_formatado: string; classe_processual: string; comarca: string; vara: string }
+          documentos: unknown[]
+          total_documentos: number
+          numero_cnj: string
+        }>
+        erros: Array<{ numero_cnj: string; erro: string }>
+      }>('/consultar-lote', { numeros_cnj: linhas })
+      const resultado: LoteResultados = {
+        total_processos: raw.total_consultados,
+        consultados: raw.total_sucesso,
+        com_erro: raw.total_erros,
+        resultados: raw.resultados.map((r) => ({
+          numero_cnj: r.numero_cnj || r.processo?.numero || '',
+          numero_formatado: r.processo?.numero_formatado || '',
+          classe_processual: r.processo?.classe_processual || '',
+          comarca: r.processo?.comarca || '',
+          vara: r.processo?.vara || '',
+          assunto: '',
+          total_documentos: r.total_documentos,
+        })),
+      }
       setLoteResultados(resultado)
-      const cats = await extratorApi.get<CategoriaDocumento[]>('/categorias')
+      const cats = await extratorApi.get<{ categorias: CategoriaDocumento[] }>('/categorias').then(r => r.categorias)
       setCategorias(cats)
       setCategoriasSelec(new Set())
       setCodigosManuais([])
@@ -219,12 +273,13 @@ export function useExtratorAutos() {
     }
     setPageState('consultando')
     try {
-      const preview = await extratorApi.post<PreviewDocumento[]>('/preview', {
+      const result = await extratorApi.post<{ documentos: PreviewDocumento[] }>('/preview', {
         numero_cnj: processoInfo?.numero_cnj,
-        codigos,
-        metodo: modoSelecao,
+        codigos_resolvidos: codigos,
+        categorias_ids: [...categoriasSelec],
+        modo_selecao: modoSelecao,
       })
-      setPreviewDocs(preview)
+      setPreviewDocs(result.documentos)
       setPageState('preview')
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Erro ao gerar preview'
@@ -232,7 +287,7 @@ export function useExtratorAutos() {
       setPageState('erro')
       toast({ title: 'Erro', description: msg, variant: 'destructive' })
     }
-  }, [codigosSelecionados, processoInfo, modoSelecao, toast])
+  }, [codigosSelecionados, processoInfo, modoSelecao, categoriasSelec, toast])
 
   /** Toggle selecao de documento no preview */
   const toggleDocPreview = useCallback((docId: string) => {
@@ -318,17 +373,26 @@ export function useExtratorAutos() {
     if (modoLote && loteResultados) {
       url = '/extrator-autos/api/baixar-lote'
       body = {
-        processos: loteResultados.resultados.map((p) => p.numero_cnj),
-        formato: downloadOpcoes.formato,
-        opcoes: downloadOpcoes,
+        numeros_cnj: loteResultados.resultados.map((p) => p.numero_cnj),
+        modo_saida: downloadOpcoes.formato,
+        mesclar_pdfs: downloadOpcoes.mesclar_pdfs,
+        salvar_xml_completo: downloadOpcoes.salvar_xml,
+        categorias_ids: [...categoriasSelec],
+        codigos_manuais_add: codigosManuais,
+        modo_selecao: modoSelecao,
       }
     } else {
-      url = '/extrator-autos/api/baixar'
+      url = '/extrator-autos/api/baixar-stream'
       body = {
         numero_cnj: processoInfo?.numero_cnj,
-        documentos_ids: docsSelecionados.map((d) => d.id),
-        formato: downloadOpcoes.formato,
-        opcoes: downloadOpcoes,
+        documento_ids: docsSelecionados.map((d) => d.id),
+        modo_saida: downloadOpcoes.formato,
+        mesclar_pdfs: downloadOpcoes.mesclar_pdfs,
+        salvar_xml_completo: downloadOpcoes.salvar_xml,
+        categorias_selecionadas: [...categoriasSelec],
+        codigos_manuais_add: codigosManuais,
+        modo_selecao: modoSelecao,
+        formato_saida_final: formatoSaidaFinal,
       }
     }
 
@@ -336,7 +400,7 @@ export function useExtratorAutos() {
     await startDownloadSSE(url, body).catch(() => {
       // Erro ja tratado pelo onError do useStreamingFetch
     })
-  }, [previewDocs, modoLote, loteResultados, processoInfo, downloadOpcoes, toast, startDownloadSSE])
+  }, [previewDocs, modoLote, loteResultados, processoInfo, downloadOpcoes, categoriasSelec, codigosManuais, modoSelecao, formatoSaidaFinal, toast, startDownloadSSE])
 
   /** Baixar ZIP concluido */
   const baixarZip = useCallback(async () => {
@@ -346,7 +410,8 @@ export function useExtratorAutos() {
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = url
-      link.download = `extrator_${jobId}.zip`
+      const ext = formatoSaidaFinal === 'pdf_direto' ? 'pdf' : 'zip'
+      link.download = `extrator_${jobId}.${ext}`
       document.body.appendChild(link)
       link.click()
       document.body.removeChild(link)
@@ -358,7 +423,7 @@ export function useExtratorAutos() {
         variant: 'destructive',
       })
     }
-  }, [jobId, toast])
+  }, [jobId, formatoSaidaFinal, toast])
 
   /** Nova consulta (reset) */
   const novaConsulta = useCallback(() => {
@@ -376,6 +441,8 @@ export function useExtratorAutos() {
     setDownloadLogs([])
     setJobId(null)
     setErroMensagem('')
+    setDownloadModalOpen(false)
+    setFormatoSaidaFinal('zip')
   }, [])
 
   /** Handler Enter no input CNJ */
@@ -429,6 +496,10 @@ export function useExtratorAutos() {
     bertStatus,
     historico,
     isLoadingHistorico,
+    downloadModalOpen,
+    setDownloadModalOpen,
+    formatoSaidaFinal,
+    setFormatoSaidaFinal,
 
     // Acoes
     contarProcessosLote,

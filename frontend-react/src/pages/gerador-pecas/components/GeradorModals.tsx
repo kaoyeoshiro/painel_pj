@@ -13,7 +13,6 @@ import {
   Send,
   RotateCcw,
   History,
-  Sparkles,
   AlertTriangle,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -38,8 +37,6 @@ interface ProgressModalProps {
   onCancel: () => void
   agentStatuses: Record<number, AgentStatus>
   progressMessage: string
-  streamingContent: string
-  minutaHtml: string
 }
 
 export function ProgressModal({
@@ -47,8 +44,6 @@ export function ProgressModal({
   onCancel,
   agentStatuses,
   progressMessage,
-  streamingContent,
-  minutaHtml,
 }: ProgressModalProps) {
   return (
     <Dialog open={open} onOpenChange={(o) => { if (!o) onCancel() }}>
@@ -124,22 +119,6 @@ export function ProgressModal({
               )
             })}
           </div>
-
-          {/* Streaming preview */}
-          {streamingContent && (
-            <div className="mt-4 rounded-xl border border-slate-100 bg-slate-50/80 p-4">
-              <div className="mb-2 flex items-center gap-2">
-                <Sparkles className="h-3 w-3 text-slate-400" />
-                <span className="text-[11px] font-medium text-slate-500">Preview em tempo real</span>
-              </div>
-              <div className="max-h-40 overflow-y-auto">
-                <div
-                  className="prose prose-sm max-w-none"
-                  dangerouslySetInnerHTML={{ __html: minutaHtml }}
-                />
-              </div>
-            </div>
-          )}
 
           <Separator className="my-4" />
 

@@ -152,7 +152,7 @@ export function TestarModeloTab({
                   <SelectContent>
                     {models.map((m) => (
                       <SelectItem key={m.id} value={String(m.id)}>
-                        {m.nome} (Acc: {formatarPct(m.accuracy)})
+                        {m.name} (Acc: {m.final_accuracy != null ? formatarPct(m.final_accuracy) : 'N/A'})
                       </SelectItem>
                     ))}
                   </SelectContent>

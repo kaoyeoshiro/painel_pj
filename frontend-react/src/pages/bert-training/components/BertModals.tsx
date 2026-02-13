@@ -671,74 +671,34 @@ export function ChunksModal({
                 <div className="flex items-center gap-4 rounded-lg border p-3" style={{ background: C.gray50, borderColor: C.gray200 }}>
                   <StatusBadge status={job.status} />
                   <div className="text-sm">
-                    <span className="font-medium">{job.dataset_nome}</span>
+                    <span className="font-medium">{job.name}</span>
                     <span className="ml-2 text-muted-foreground">
-                      {job.total_epocas} epocas | {job.modelo_base.split('/').pop()}
+                      {job.base_model?.split('/').pop()}
                     </span>
                   </div>
                 </div>
 
                 {/* Metricas resumidas */}
-                {job.metricas && (
-                  <div className="grid grid-cols-4 gap-2">
-                    <ChunkMetricCell label="Accuracy" value={formatarPct(job.metricas.accuracy)} color={C.statusSuccess} />
-                    <ChunkMetricCell label="F1" value={formatarPct(job.metricas.f1_score)} color={C.statusInfo} />
-                    <ChunkMetricCell label="Precision" value={formatarPct(job.metricas.precision)} color={C.navy700} />
-                    <ChunkMetricCell label="Recall" value={formatarPct(job.metricas.recall)} color={C.orange600} />
+                {(job.final_accuracy != null || job.final_macro_f1 != null) && (
+                  <div className="grid grid-cols-2 gap-2">
+                    {job.final_accuracy != null && (
+                      <ChunkMetricCell label="Accuracy" value={formatarPct(job.final_accuracy)} color={C.statusSuccess} />
+                    )}
+                    {job.final_macro_f1 != null && (
+                      <ChunkMetricCell label="F1" value={formatarPct(job.final_macro_f1)} color={C.statusInfo} />
+                    )}
                   </div>
                 )}
 
-                {/* Historico de loss por epoca (como chunks) */}
-                {job.metricas?.historico_loss && (
-                  <div>
-                    <h4 className="mb-2 text-sm font-medium" style={{ color: C.text900 }}>Progresso por Epoca</h4>
-                    <div className="space-y-2">
-                      {job.metricas.historico_loss.map((loss, idx) => (
-                        <div
-                          key={idx}
-                          className="flex items-center gap-4 rounded-lg border p-3 transition-colors"
-                          style={{ borderColor: C.gray200 }}
-                          onMouseEnter={(e) => { e.currentTarget.style.background = C.gray50 }}
-                          onMouseLeave={(e) => { e.currentTarget.style.background = 'transparent' }}
-                          data-testid={`chunk-epoca-${idx + 1}`}
-                        >
-                          <Badge variant="outline" className="shrink-0">
-                            Epoca {idx + 1}
-                          </Badge>
-                          <div className="flex-1 grid grid-cols-2 gap-4 text-sm">
-                            <div className="flex justify-between">
-                              <span className="text-muted-foreground">Loss:</span>
-                              <span className="font-mono text-red-600">{loss.toFixed(4)}</span>
-                            </div>
-                            <div className="flex justify-between">
-                              <span className="text-muted-foreground">Accuracy:</span>
-                              <span className="font-mono text-green-600">
-                                {job.metricas?.historico_accuracy[idx]
-                                  ? formatarPct(job.metricas.historico_accuracy[idx])
-                                  : 'N/A'}
-                              </span>
-                            </div>
-                          </div>
-                          {/* Comparacao visual de melhoria */}
-                          {idx > 0 && (
-                            <div className="shrink-0">
-                              {loss < job.metricas!.historico_loss[idx - 1] ? (
-                                <Badge variant="success" className="text-xs">Melhorou</Badge>
-                              ) : (
-                                <Badge variant="warning" className="text-xs">Piorou</Badge>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
+                {/* Info adicional */}
+                <div className="text-sm text-muted-foreground">
+                  <p>Detalhes completos de metricas por epoca disponiveis na aba Monitorar.</p>
+                </div>
 
                 {/* Datas */}
                 <div className="flex items-center justify-between text-xs text-muted-foreground">
                   <span>Criado: {formatarData(job.created_at)}</span>
-                  <span>Atualizado: {formatarData(job.updated_at)}</span>
+                  {job.completed_at && <span>Concluido: {formatarData(job.completed_at)}</span>}
                 </div>
               </div>
             )

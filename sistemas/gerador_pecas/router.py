@@ -514,12 +514,13 @@ def _anexar_upload_parecer_ao_resumo(
     resumo_consolidado: str,
     upload_metadata: Dict[str, Any],
     texto_parecer: str,
-    markdown_estruturado: Optional[str] = None,
+    json_normalizado: Optional[Dict[str, Any]] = None,
 ) -> str:
-    conteudo = (markdown_estruturado or "").strip()
-    origem_extracao = "json_modelo_categoria"
-
-    if not conteudo:
+    if json_normalizado:
+        # Formato padrao: JSON de variaveis estruturadas (mesmo padrao do resto do pipeline)
+        conteudo = f"```json\n{json.dumps(json_normalizado, ensure_ascii=False, indent=2)}\n```"
+        origem_extracao = "json_modelo_categoria"
+    else:
         # GUARDRAIL: Quando JSON estruturado não está disponível, NÃO enviar texto
         # integral do NATJus. Limitar a snippet mínimo para referência.
         texto_limpo = (texto_parecer or "").strip()
@@ -1045,7 +1046,7 @@ async def processar_processo_stream(
                         resumo_para_geracao,
                         parecer_upload_metadata,
                         parecer_upload_texto,
-                        markdown_estruturado=parecer_upload_extracao.get("markdown"),
+                        json_normalizado=parecer_upload_extracao.get("json_normalizado"),
                     )
 
                 documentos_agente1 = []
@@ -2556,10 +2557,13 @@ async def restaurar_versao_endpoint(
         if not geracao:
             raise HTTPException(status_code=404, detail="Geração não encontrada")
 
-        nova_versao = restaurar_versao(repo.db, geracao_id, versao_id)
+        nova_versao, status = restaurar_versao(repo.db, geracao_id, versao_id)
 
-        if not nova_versao:
-            raise HTTPException(status_code=404, detail="Versão não encontrada ou erro ao restaurar")
+        if status == "not_found":
+            raise HTTPException(status_code=404, detail="Versão não encontrada")
+
+        if status == "same_content":
+            raise HTTPException(status_code=409, detail="Voce ja esta nesta versao. O conteudo atual e identico ao da versao selecionada.")
 
         return {
             "success": True,
@@ -2568,7 +2572,8 @@ async def restaurar_versao_endpoint(
                 "id": nova_versao.id,
                 "numero_versao": nova_versao.numero_versao
             },
-            "conteudo": nova_versao.conteudo
+            "conteudo": nova_versao.conteudo,
+            "minuta_markdown": nova_versao.conteudo,
         }
     except HTTPException:
         raise
@@ -3016,7 +3021,7 @@ async def curation_preview(
                 resultado_agente1.resumo_consolidado,
                 parecer_upload_metadata,
                 parecer_upload_texto,
-                markdown_estruturado=parecer_upload_extracao.get("markdown"),
+                json_normalizado=parecer_upload_extracao.get("json_normalizado"),
             )
 
         documentos_agente1 = []

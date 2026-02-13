@@ -2,10 +2,11 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
-import { RotateCcw } from 'lucide-react'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { RotateCcw, HelpCircle } from 'lucide-react'
 import { C } from '@/lib/designTokens'
 import type { AgentConfig, SourceType } from '../types'
-import { THINKING_LEVELS, MODELOS_IA, INHERIT_VALUE } from '../constants'
+import { THINKING_LEVELS, MODELOS_IA, INHERIT_VALUE, MODEL_THINKING_SUPPORT, getSupportedLevels } from '../constants'
 import { SourceBadge } from './SourceBadge'
 
 interface AgentConfigCardProps {
@@ -61,6 +62,12 @@ export function AgentConfigCard({
     if (!resolved) return 'Não definido'
     return resolved
   }
+
+  // Determinar modelo atual para validação de thinking levels
+  const currentModel = edits.modelo !== undefined && edits.modelo !== ''
+    ? edits.modelo
+    : config.modelo || ''
+  const supportedLevels = getSupportedLevels(currentModel)
 
   return (
     <div
@@ -157,20 +164,70 @@ export function AgentConfigCard({
               {FIELD_LABELS.thinking_level}
             </Label>
             <SourceBadge source={edits.thinking_level !== undefined ? 'agent' : getSource('thinking_level')} />
+            <Popover>
+              <PopoverTrigger asChild>
+                <button className="inline-flex items-center" title="Ver compatibilidade de modelos">
+                  <HelpCircle className="h-3.5 w-3.5 text-gray-400 hover:text-gray-600" />
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-80 p-3 text-xs">
+                <div className="space-y-2">
+                  <p className="font-semibold text-gray-700">Compatibilidade de Thinking Levels</p>
+                  <table className="w-full text-xs border-collapse">
+                    <thead>
+                      <tr className="border-b">
+                        <th className="text-left py-1 px-2 font-medium">Modelo</th>
+                        <th className="text-left py-1 px-2 font-medium">Níveis Suportados</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {Object.entries(MODEL_THINKING_SUPPORT).map(([model, levels]) => (
+                        <tr key={model} className="border-b">
+                          <td className="py-1 px-2">{model}</td>
+                          <td className="py-1 px-2 text-gray-600">{levels.join(', ')}</td>
+                        </tr>
+                      ))}
+                      <tr>
+                        <td className="py-1 px-2 text-gray-500" colSpan={2}>
+                          Gemini 2.5 Flash Lite: usa thinkingBudget (não thinkingLevel)
+                        </td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              </PopoverContent>
+            </Popover>
           </div>
-          <Select
-            value={edits.thinking_level !== undefined ? (edits.thinking_level || INHERIT_VALUE) : undefined}
-            onValueChange={(v) => onFieldChange('thinking_level', v === INHERIT_VALUE ? '' : v)}
-          >
-            <SelectTrigger className="h-8 text-xs">
-              <SelectValue placeholder={getPlaceholder('thinking_level')} />
-            </SelectTrigger>
-            <SelectContent>
-              {THINKING_LEVELS.map(t => (
-                <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          {supportedLevels.length === 0 && currentModel ? (
+            <>
+              <div className="flex h-8 w-full items-center rounded-md border px-3 text-xs opacity-50 cursor-not-allowed bg-muted">
+                <span className="text-muted-foreground">N/A</span>
+              </div>
+              <p className="text-xs text-amber-600 mt-1">
+                Modelo atual não suporta thinking levels
+              </p>
+            </>
+          ) : (
+            <Select
+              value={edits.thinking_level !== undefined ? (edits.thinking_level || INHERIT_VALUE) : undefined}
+              onValueChange={(v) => onFieldChange('thinking_level', v === INHERIT_VALUE ? '' : v)}
+            >
+              <SelectTrigger className="h-8 text-xs">
+                <SelectValue placeholder={getPlaceholder('thinking_level')} />
+              </SelectTrigger>
+              <SelectContent>
+                {THINKING_LEVELS.map(t => {
+                  const isInheritOrNone = t.value === INHERIT_VALUE || t.value === 'none'
+                  const isSupported = isInheritOrNone || supportedLevels.includes(t.value)
+                  return (
+                    <SelectItem key={t.value} value={t.value} disabled={!isSupported}>
+                      {t.label}
+                    </SelectItem>
+                  )
+                })}
+              </SelectContent>
+            </Select>
+          )}
         </div>
       </div>
     </div>

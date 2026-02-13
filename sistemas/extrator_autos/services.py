@@ -314,8 +314,16 @@ class ExtratorAutosService:
         Returns:
             Dict com chaves: processo, documentos, total_documentos, erro.
         """
-        tipo = TipoConsulta.COMPLETA if buscar_instancias else TipoConsulta.METADATA_ONLY
-        options = ConsultaOptions(tipo=tipo)
+        # Extrator de Autos SEMPRE precisa dos documentos.
+        # buscar_instancias controla apenas se movimentos são incluídos.
+        if buscar_instancias:
+            options = ConsultaOptions(tipo=TipoConsulta.COMPLETA)
+        else:
+            options = ConsultaOptions(
+                tipo=TipoConsulta.COMPLETA,
+                incluir_movimentos=False,
+                incluir_documentos=True,
+            )
 
         try:
             processo = await self.tjms_client.consultar_processo(numero_cnj, options)
@@ -620,11 +628,18 @@ class ExtratorAutosService:
             numero_cnj, documento_ids, download_opts
         )
 
+        sucesso = sum(1 for d in docs_baixados.values() if d.sucesso)
+        logger.info("TJ-MS: %d/%d documentos baixados com sucesso", sucesso, total)
+
         # Classificacao BERT pos-download (se houver categorias BERT)
+        total_antes_bert = len(docs_baixados)
         if resolucoes_especiais:
             docs_baixados = await self._aplicar_bert_pos_download(
                 docs_baixados, resolucoes_especiais, callback
             )
+            filtrados = total_antes_bert - len(docs_baixados)
+            if filtrados > 0:
+                logger.info("BERT: %d filtrados de %d", filtrados, total_antes_bert)
 
         await self._report_progress(callback, 40, "Processando documentos...")
 
@@ -637,6 +652,9 @@ class ExtratorAutosService:
         arquivos = await self._processar_documentos_para_zip(
             numero_cnj, docs_baixados, modo_saida, callback
         )
+
+        if not arquivos:
+            logger.warning("Nenhum documento valido para empacotar no ZIP")
 
         await self._report_progress(callback, 85, "Empacotando resultado...")
 
@@ -1484,6 +1502,7 @@ class ExtratorAutosService:
                     f"Processando documento {indice}/{total}"
                 )
 
+        logger.info("ZIP: %d arquivo(s) gerados para processo %s", len(arquivos), numero_cnj)
         return arquivos
 
     async def _mesclar_pdfs_baixados(

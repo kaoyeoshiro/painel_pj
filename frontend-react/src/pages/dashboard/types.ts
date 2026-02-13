@@ -8,6 +8,8 @@ export interface SystemCardConfig {
   description: string
   /** Classe Tailwind da cor do card (ex: "primary", "purple", "amber") */
   color: string
+  /** Se true, card visivel apenas para admin */
+  adminOnly?: boolean
 }
 
 /** Configuração de um card admin no dashboard */

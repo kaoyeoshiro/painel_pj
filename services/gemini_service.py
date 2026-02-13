@@ -491,91 +491,142 @@ class GeminiService:
 
         total_content = ""
         total_tokens = 0
+        last_error = None
 
-        try:
-            t_connect = time.perf_counter()
+        for attempt in range(MAX_RETRIES):
+            try:
+                t_connect = time.perf_counter()
 
-            # Usa httpx para streaming
-            client = await get_http_client()
+                # Usa httpx para streaming
+                client = await get_http_client()
 
-            async with client.stream("POST", url, json=payload, timeout=TIMEOUT_TOTAL) as response:
-                metrics.time_connect_ms = (time.perf_counter() - t_connect) * 1000
+                async with client.stream("POST", url, json=payload, timeout=TIMEOUT_TOTAL) as response:
+                    metrics.time_connect_ms = (time.perf_counter() - t_connect) * 1000
 
-                if response.status_code != 200:
-                    error_text = await response.aread()
-                    metrics.success = False
-                    metrics.error = f"HTTP {response.status_code}: {error_text.decode()[:200]}"
-                    metrics.time_total_ms = (time.perf_counter() - t_start) * 1000
-                    metrics.log()
-                    logger.error(f"[Gemini Stream] Erro: {metrics.error}")
-                    return
+                    if response.status_code != 200:
+                        error_text = await response.aread()
+                        error_msg = error_text.decode()[:200]
 
-                # Processa eventos SSE
-                buffer = ""
-                async for raw_chunk in response.aiter_bytes():
-                    buffer += raw_chunk.decode("utf-8")
+                        # Retry em status codes temporários (503, 429, 500, 502, 504)
+                        if response.status_code in RETRYABLE_STATUS_CODES:
+                            last_error = f"HTTP {response.status_code}: {error_msg}"
+                            metrics.retry_count = attempt + 1
 
-                    # Processa linhas completas
-                    while "\n" in buffer:
-                        line, buffer = buffer.split("\n", 1)
-                        line = line.strip()
+                            if attempt < MAX_RETRIES - 1:
+                                # Para 429, respeita Retry-After se presente
+                                retry_after = response.headers.get("Retry-After")
+                                if retry_after and response.status_code == 429:
+                                    try:
+                                        delay = min(float(retry_after), RETRY_MAX_DELAY)
+                                    except ValueError:
+                                        delay = min(RETRY_BASE_DELAY * (2 ** attempt), RETRY_MAX_DELAY)
+                                else:
+                                    delay = min(RETRY_BASE_DELAY * (2 ** attempt), RETRY_MAX_DELAY)
 
-                        if not line:
-                            continue
-
-                        # Formato SSE: "data: {...json...}"
-                        if line.startswith("data: "):
-                            json_str = line[6:]  # Remove "data: "
-
-                            try:
-                                data = __import__("json").loads(json_str)
-
-                                # Extrai texto do chunk
-                                candidates = data.get("candidates", [])
-                                if candidates:
-                                    content_obj = candidates[0].get("content", {})
-                                    parts = content_obj.get("parts", [])
-                                    for part in parts:
-                                        text = part.get("text", "")
-                                        if text:
-                                            # TTFT - primeiro chunk
-                                            if not first_chunk_received:
-                                                first_chunk_received = True
-                                                metrics.time_ttft_ms = (time.perf_counter() - t_start) * 1000
-                                                logger.info(
-                                                    f"[Gemini Stream] TTFT: {metrics.time_ttft_ms:.0f}ms "
-                                                    f"model={model}"
-                                                )
-
-                                            total_content += text
-                                            yield text
-
-                                # Extrai tokens se disponível
-                                usage = data.get("usageMetadata", {})
-                                if usage:
-                                    total_tokens = usage.get("totalTokenCount", total_tokens)
-
-                            except __import__("json").JSONDecodeError:
-                                # Linha não é JSON válido, ignora
+                                logger.warning(
+                                    f"[Gemini Stream] HTTP {response.status_code} - "
+                                    f"Retry {attempt + 1}/{MAX_RETRIES} após {delay:.1f}s"
+                                )
+                                await asyncio.sleep(delay)
                                 continue
 
-            # Finaliza métricas
-            metrics.success = True
-            metrics.response_tokens = total_tokens or len(total_content) // 4
-            metrics.time_generation_ms = (time.perf_counter() - t_start) * 1000 - metrics.time_ttft_ms
-            metrics.time_total_ms = (time.perf_counter() - t_start) * 1000
-            metrics.log()
+                        # Status code não retentável ou tentativas esgotadas
+                        metrics.success = False
+                        metrics.error = f"HTTP {response.status_code}: {error_msg}"
+                        metrics.time_total_ms = (time.perf_counter() - t_start) * 1000
+                        metrics.log()
+                        logger.error(f"[Gemini Stream] Erro: {metrics.error}")
+                        return
 
-            # Log assíncrono
-            asyncio.create_task(self._log_to_db(metrics, ctx, temperature=temperature, thinking_level=thinking_level))
+                    # Processa eventos SSE
+                    buffer = ""
+                    async for raw_chunk in response.aiter_bytes():
+                        buffer += raw_chunk.decode("utf-8")
 
-        except Exception as e:
-            metrics.success = False
-            metrics.error = str(e)
-            metrics.time_total_ms = (time.perf_counter() - t_start) * 1000
-            metrics.log()
-            logger.error(f"[Gemini Stream] Erro: {e}")
-            asyncio.create_task(self._log_to_db(metrics, ctx, temperature=temperature, thinking_level=thinking_level))
+                        # Processa linhas completas
+                        while "\n" in buffer:
+                            line, buffer = buffer.split("\n", 1)
+                            line = line.strip()
+
+                            if not line:
+                                continue
+
+                            # Formato SSE: "data: {...json...}"
+                            if line.startswith("data: "):
+                                json_str = line[6:]  # Remove "data: "
+
+                                try:
+                                    data = __import__("json").loads(json_str)
+
+                                    # Extrai texto do chunk
+                                    candidates = data.get("candidates", [])
+                                    if candidates:
+                                        content_obj = candidates[0].get("content", {})
+                                        parts = content_obj.get("parts", [])
+                                        for part in parts:
+                                            text = part.get("text", "")
+                                            if text:
+                                                # TTFT - primeiro chunk
+                                                if not first_chunk_received:
+                                                    first_chunk_received = True
+                                                    metrics.time_ttft_ms = (time.perf_counter() - t_start) * 1000
+                                                    logger.info(
+                                                        f"[Gemini Stream] TTFT: {metrics.time_ttft_ms:.0f}ms "
+                                                        f"model={model}"
+                                                    )
+
+                                                total_content += text
+                                                yield text
+
+                                    # Extrai tokens se disponível
+                                    usage = data.get("usageMetadata", {})
+                                    if usage:
+                                        total_tokens = usage.get("totalTokenCount", total_tokens)
+
+                                except __import__("json").JSONDecodeError:
+                                    # Linha não é JSON válido, ignora
+                                    continue
+
+                # Streaming concluído com sucesso - finaliza métricas
+                metrics.success = True
+                metrics.response_tokens = total_tokens or len(total_content) // 4
+                metrics.time_generation_ms = (time.perf_counter() - t_start) * 1000 - metrics.time_ttft_ms
+                metrics.time_total_ms = (time.perf_counter() - t_start) * 1000
+                metrics.log()
+
+                # Log assíncrono
+                asyncio.create_task(self._log_to_db(metrics, ctx, temperature=temperature, thinking_level=thinking_level))
+                return  # Sucesso, sai do loop
+
+            except RETRY_ERRORS as e:
+                last_error = e
+                metrics.retry_count = attempt + 1
+
+                if attempt < MAX_RETRIES - 1:
+                    delay = min(RETRY_BASE_DELAY * (2 ** attempt), RETRY_MAX_DELAY)
+                    logger.warning(
+                        f"[Gemini Stream] {type(e).__name__} - "
+                        f"Retry {attempt + 1}/{MAX_RETRIES} após {delay:.1f}s"
+                    )
+                    await asyncio.sleep(delay)
+                    continue
+
+                # Tentativas esgotadas
+                metrics.success = False
+                metrics.error = str(e)
+                metrics.time_total_ms = (time.perf_counter() - t_start) * 1000
+                metrics.log()
+                logger.error(f"[Gemini Stream] Erro após {MAX_RETRIES} tentativas: {e}")
+                asyncio.create_task(self._log_to_db(metrics, ctx, temperature=temperature, thinking_level=thinking_level))
+
+            except Exception as e:
+                metrics.success = False
+                metrics.error = str(e)
+                metrics.time_total_ms = (time.perf_counter() - t_start) * 1000
+                metrics.log()
+                logger.error(f"[Gemini Stream] Erro: {e}")
+                asyncio.create_task(self._log_to_db(metrics, ctx, temperature=temperature, thinking_level=thinking_level))
+                return  # Erro não retentável, sai imediatamente
 
     async def generate_with_sla(
         self,

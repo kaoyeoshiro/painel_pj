@@ -71,6 +71,7 @@ export function useGeradorPecas() {
   // --- Streaming content ---
   const [streamingContent, setStreamingContent] = useState('')
   const streamingContentRef = useRef('')
+  const [isStreamingContent, setIsStreamingContent] = useState(false)
 
   // Ref para despachar eventos SSE para o handler correto (auto, PDF, curadoria)
   const sseEventHandlerRef = useRef<((event: SSEEvent) => void) | null>(null)
@@ -109,8 +110,8 @@ export function useGeradorPecas() {
   const [showParecerDialog, setShowParecerDialog] = useState(false)
   const [parecerFile, setParecerFile] = useState<File | null>(null)
   const [isUploadingParecer, setIsUploadingParecer] = useState(false)
-  const parecerResolveRef = useRef<((choice: 'uploaded' | 'continue_without') => void) | null>(null)
   const [parecerUploadId, setParecerUploadId] = useState<string | null>(null)
+  const parecerUploadIdRef = useRef<string | null>(null)
   const parecerUserChoiceRef = useRef<string | null>(null)
 
   // --- Sidebar ---
@@ -154,9 +155,9 @@ export function useGeradorPecas() {
     }
   }, [versoesData])
 
-  // Rendered markdown
+  // Rendered markdown — uses streaming content while tokens are arriving
   const { html: minutaHtml } = useMarkdown(
-    pageState === 'streaming' ? streamingContent : minutaMarkdown
+    isStreamingContent ? streamingContent : minutaMarkdown
   )
 
   // Auto-scroll chat
@@ -213,7 +214,6 @@ export function useGeradorPecas() {
     streamingContentRef.current = ''
     setProgressMessage('Conectando...')
     setAgentStatuses({ 1: 'aguardando', 2: 'aguardando', 3: 'aguardando' })
-    setParecerUploadId(null)
 
     // Define handler de eventos SSE para modo automatico
     sseEventHandlerRef.current = (event) => {
@@ -226,10 +226,16 @@ export function useGeradorPecas() {
           setAgentStatuses((prev) => ({ ...prev, [event.agente]: event.status }))
           setProgressMessage(event.mensagem)
           break
-        case 'geracao_chunk':
+        case 'geracao_chunk': {
+          const isFirst = streamingContentRef.current === ''
           streamingContentRef.current += event.content
           setStreamingContent(streamingContentRef.current)
+          if (isFirst) {
+            setIsStreamingContent(true)
+            setPageState('resultado')
+          }
           break
+        }
         case 'parecer_natjus_ausente':
           setShowParecerDialog(true)
           setPageState('idle')
@@ -238,12 +244,14 @@ export function useGeradorPecas() {
           setGeracaoId(event.geracao_id)
           setMinutaMarkdown(event.minuta_markdown || streamingContentRef.current)
           setTipoPecaResultado(event.tipo_peca)
+          setIsStreamingContent(false)
           setPageState('resultado')
           invalidateGeradorHistorico()
           toast({ title: 'Sucesso', description: 'Peca juridica gerada com sucesso!' })
           break
         case 'erro':
           setErrorMessage(event.mensagem)
+          setIsStreamingContent(false)
           setPageState('erro')
           toast({ title: 'Erro', description: event.mensagem, variant: 'destructive' })
           break
@@ -255,14 +263,15 @@ export function useGeradorPecas() {
       tipo_peca: tipoPeca || undefined,
       observacao_usuario: observacao || undefined,
       group_id: selectedGroupId || undefined,
-      parecer_upload_id: parecerUploadId || undefined,
+      parecer_upload_id: parecerUploadIdRef.current || undefined,
       parecer_user_choice_when_missing: parecerUserChoiceRef.current || undefined,
     }).then(() => {
+      setIsStreamingContent(false)
       setPageState((prev) => prev === 'streaming' ? 'idle' : prev)
     }).catch(() => {
       // Erro ja tratado pelo onError do hook
     })
-  }, [numeroCNJ, tipoPeca, observacao, selectedGroupId, parecerUploadId, toast, startSSE, invalidateGeradorHistorico])
+  }, [numeroCNJ, tipoPeca, observacao, selectedGroupId, toast, startSSE, invalidateGeradorHistorico])
 
   // ==========================================================================
   // Processar - Modo PDF Upload
@@ -279,14 +288,13 @@ export function useGeradorPecas() {
     streamingContentRef.current = ''
     setProgressMessage('Enviando PDFs...')
     setAgentStatuses({ 1: 'aguardando', 2: 'aguardando', 3: 'aguardando' })
-    setParecerUploadId(null)
 
     const formData = new FormData()
     pdfFiles.forEach(file => formData.append('arquivos', file))
     if (tipoPeca) formData.append('tipo_peca', tipoPeca)
     if (observacao) formData.append('observacao_usuario', observacao)
     if (selectedGroupId) formData.append('group_id', String(selectedGroupId))
-    if (parecerUploadId) formData.append('parecer_upload_id', parecerUploadId)
+    if (parecerUploadIdRef.current) formData.append('parecer_upload_id', parecerUploadIdRef.current)
     if (parecerUserChoiceRef.current) formData.append('parecer_user_choice_when_missing', parecerUserChoiceRef.current)
 
     // Define handler de eventos SSE para modo PDF
@@ -300,10 +308,16 @@ export function useGeradorPecas() {
           setAgentStatuses((prev) => ({ ...prev, [event.agente]: event.status }))
           setProgressMessage(event.mensagem)
           break
-        case 'geracao_chunk':
+        case 'geracao_chunk': {
+          const isFirst = streamingContentRef.current === ''
           streamingContentRef.current += event.content
           setStreamingContent(streamingContentRef.current)
+          if (isFirst) {
+            setIsStreamingContent(true)
+            setPageState('resultado')
+          }
           break
+        }
         case 'parecer_natjus_ausente':
           setShowParecerDialog(true)
           setPageState('idle')
@@ -312,12 +326,14 @@ export function useGeradorPecas() {
           setGeracaoId(event.geracao_id)
           setMinutaMarkdown(event.minuta_markdown || streamingContentRef.current)
           setTipoPecaResultado(event.tipo_peca)
+          setIsStreamingContent(false)
           setPageState('resultado')
           invalidateGeradorHistorico()
           toast({ title: 'Sucesso', description: 'Peca juridica gerada com sucesso!' })
           break
         case 'erro':
           setErrorMessage(event.mensagem)
+          setIsStreamingContent(false)
           setPageState('erro')
           toast({ title: 'Erro', description: event.mensagem, variant: 'destructive' })
           break
@@ -326,12 +342,13 @@ export function useGeradorPecas() {
 
     await startSSEFormData('/gerador-pecas/api/processar-pdfs-stream', formData)
       .then(() => {
+        setIsStreamingContent(false)
         setPageState((prev) => prev === 'streaming' ? 'idle' : prev)
       })
       .catch(() => {
         // Erro ja tratado pelo onError do hook
       })
-  }, [pdfFiles, tipoPeca, observacao, selectedGroupId, parecerUploadId, toast, startSSEFormData, invalidateGeradorHistorico])
+  }, [pdfFiles, tipoPeca, observacao, selectedGroupId, toast, startSSEFormData, invalidateGeradorHistorico])
 
   // ==========================================================================
   // Processar - Modo Semi-Automatico (Curadoria)
@@ -356,7 +373,7 @@ export function useGeradorPecas() {
       const result = await geradorApi.post<CuradoriaPreviewResponse>('/curadoria/preview', {
         numero_cnj: numeroCNJ,
         tipo_peca: tipoPeca,
-        parecer_upload_id: parecerUploadId || undefined,
+        parecer_upload_id: parecerUploadIdRef.current || undefined,
         group_id: selectedGroupId || undefined,
       })
 
@@ -382,7 +399,7 @@ export function useGeradorPecas() {
     } finally {
       setIsCuradoriaLoading(false)
     }
-  }, [numeroCNJ, tipoPeca, parecerUploadId, selectedGroupId, toast])
+  }, [numeroCNJ, tipoPeca, selectedGroupId, toast])
 
   // ==========================================================================
   // Curadoria - Gerar com selecionados
@@ -415,21 +432,29 @@ export function useGeradorPecas() {
           setAgentStatuses((prev) => ({ ...prev, [event.agente]: event.status }))
           setProgressMessage(event.mensagem)
           break
-        case 'geracao_chunk':
+        case 'geracao_chunk': {
+          const isFirst = streamingContentRef.current === ''
           streamingContentRef.current += event.content
           setStreamingContent(streamingContentRef.current)
+          if (isFirst) {
+            setIsStreamingContent(true)
+            setPageState('resultado')
+          }
           break
+        }
         case 'sucesso':
           setGeracaoId(event.geracao_id)
           setMinutaMarkdown(event.minuta_markdown || streamingContentRef.current)
           setTipoPecaResultado(event.tipo_peca)
           setAgentStatuses({ 1: 'concluido', 2: 'concluido', 3: 'concluido' })
+          setIsStreamingContent(false)
           setPageState('resultado')
           invalidateGeradorHistorico()
           toast({ title: 'Sucesso', description: 'Peca gerada com sucesso!' })
           break
         case 'erro':
           setErrorMessage(event.mensagem)
+          setIsStreamingContent(false)
           setPageState('erro')
           toast({ title: 'Erro', description: event.mensagem, variant: 'destructive' })
           break
@@ -473,18 +498,24 @@ export function useGeradorPecas() {
     uploadParecerMutation.mutate(formData, {
       onSuccess: (result) => {
         setParecerUploadId(result.upload_id)
+        parecerUploadIdRef.current = result.upload_id
         setShowParecerDialog(false)
         setParecerFile(null)
-        toast({ title: 'Sucesso', description: 'Parecer NATJus anexado com sucesso' })
-        parecerResolveRef.current?.('uploaded')
+        toast({ title: 'Sucesso', description: 'Parecer NATJus anexado. Retomando geração...' })
         setIsUploadingParecer(false)
+        // Auto-resume: retoma a geração no ponto onde parou
+        if (inputMode === 'cnj') {
+          iniciarGeracaoAutomatica()
+        } else {
+          iniciarGeracaoPdf()
+        }
       },
       onError: (error) => {
         toast({ title: 'Erro', description: (error as Error).message, variant: 'destructive' })
         setIsUploadingParecer(false)
       },
     })
-  }, [parecerFile, numeroCNJ, tipoPeca, toast, uploadParecerMutation])
+  }, [parecerFile, numeroCNJ, tipoPeca, toast, uploadParecerMutation, inputMode, iniciarGeracaoAutomatica, iniciarGeracaoPdf])
 
   const handleContinuarSemParecer = useCallback(() => {
     if (!window.confirm('Confirmar continuidade sem parecer NATJus? A ausencia sera registrada em auditoria.')) return
@@ -516,7 +547,7 @@ export function useGeradorPecas() {
       let updatedContent = ''
       const token = getToken()
 
-      await fetchSSEStream<{ content?: string }>({
+      await fetchSSEStream<{ text?: string }>({
         url: '/gerador-pecas/api/editar-minuta-stream',
         body: JSON.stringify({
           minuta_atual: minutaMarkdown,
@@ -529,25 +560,34 @@ export function useGeradorPecas() {
           ...(token ? { Authorization: `Bearer ${token}` } : {}),
         },
         onEvent: (data) => {
-          if (data.content) {
-            updatedContent += data.content
+          if (data.text) {
+            updatedContent += data.text
           }
         },
       })
 
       if (updatedContent) {
-        setMinutaMarkdown(updatedContent)
-        setChatMessages([...novoHistorico, { role: 'assistant', content: 'Pronto! Atualizei a minuta conforme solicitado.' }])
+        const trimmed = updatedContent.trimStart()
 
-        if (geracaoId) {
-          try {
-            await geradorApi.put(`/historico/${geracaoId}`, {
-              minuta_markdown: updatedContent,
-              historico_chat: [...novoHistorico, { role: 'assistant', content: 'Minuta atualizada.' }],
-              descricao_alteracao: mensagem,
-            })
-          } catch {
-            // silently ignore auto-save errors
+        if (trimmed.startsWith('[PERGUNTA]')) {
+          // Resposta é uma pergunta de esclarecimento — exibe SOMENTE no chat
+          const questionText = trimmed.replace(/^\[PERGUNTA\]\s*/, '').trim()
+          setChatMessages([...novoHistorico, { role: 'assistant', content: questionText }])
+        } else {
+          // Resposta é a minuta editada — aplica no documento
+          setMinutaMarkdown(updatedContent)
+          setChatMessages([...novoHistorico, { role: 'assistant', content: 'Pronto! Atualizei a minuta conforme solicitado.' }])
+
+          if (geracaoId) {
+            try {
+              await geradorApi.put(`/historico/${geracaoId}`, {
+                minuta_markdown: updatedContent,
+                historico_chat: [...novoHistorico, { role: 'assistant', content: 'Minuta atualizada.' }],
+                descricao_alteracao: mensagem,
+              })
+            } catch {
+              // silently ignore auto-save errors
+            }
           }
         }
       } else {
@@ -703,6 +743,7 @@ export function useGeradorPecas() {
     setPageState('idle')
     setStreamingContent('')
     streamingContentRef.current = ''
+    setIsStreamingContent(false)
     setErrorMessage('')
     setMinutaMarkdown('')
     setGeracaoId(null)
@@ -711,8 +752,16 @@ export function useGeradorPecas() {
     setProgressMessage('')
     setCuradoriaModulos([])
     setCuradoriaSelected(new Set())
+    parecerUploadIdRef.current = null
+    setParecerUploadId(null)
     parecerUserChoiceRef.current = null
   }, [abortSSE])
+
+  /** Fecha o dialog de resultado e limpa o campo de número do processo */
+  const fecharResultDialog = useCallback(() => {
+    voltarParaInicio()
+    setNumeroCNJ('')
+  }, [voltarParaInicio])
 
   // ==========================================================================
   // Toggle curadoria module selection
@@ -736,6 +785,7 @@ export function useGeradorPecas() {
 
   const isFormDisabled = pageState !== 'idle'
   const isStreaming = pageState === 'streaming' || pageState === 'curadoria_gerando'
+  const showResultDialog = pageState === 'resultado' || pageState === 'editando'
 
   // ==========================================================================
   // Return
@@ -747,6 +797,7 @@ export function useGeradorPecas() {
     errorMessage,
     isFormDisabled,
     isStreaming,
+    showResultDialog,
 
     // Form
     inputMode,
@@ -776,6 +827,7 @@ export function useGeradorPecas() {
     // Streaming
     streamingContent,
     minutaHtml,
+    isStreamingContent,
 
     // Resultado
     geracaoId,
@@ -842,6 +894,7 @@ export function useGeradorPecas() {
     abrirHistoricoVersoes,
     restaurarVersao,
     voltarParaInicio,
+    fecharResultDialog,
     toggleModulo,
   }
 }

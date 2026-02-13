@@ -53,32 +53,26 @@ export const INHERIT_VALUE = '__inherit__'
 /** Opções de thinking_level para Select */
 export const THINKING_LEVELS = [
   { value: INHERIT_VALUE, label: 'Herdar' },
-  { value: 'none', label: 'Nenhum' },
-  { value: 'low', label: 'Baixo' },
-  { value: 'medium', label: 'Médio' },
-  { value: 'high', label: 'Alto' },
+  { value: 'none', label: 'Nenhum (none)' },
+  { value: 'minimal', label: 'Mínimo (minimal)' },
+  { value: 'low', label: 'Baixo (low)' },
+  { value: 'medium', label: 'Médio (medium)' },
+  { value: 'high', label: 'Alto (high)' },
 ]
 
 /** Modelos de IA disponíveis para Select */
 export const MODELOS_IA = [
   { value: INHERIT_VALUE, label: 'Herdar' },
-  { value: 'gemini-3-flash-preview', label: 'Gemini 3 Flash Preview' },
-  { value: 'gemini-2.5-flash-preview-05-20', label: 'Gemini 2.5 Flash Preview' },
-  { value: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash' },
-  { value: 'gemini-1.5-pro', label: 'Gemini 1.5 Pro' },
-  { value: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash' },
+  { value: 'gemini-3-flash-preview', label: 'Gemini 3 Flash Preview (padrão)' },
+  { value: 'gemini-3-pro-preview', label: 'Gemini 3 Pro Preview' },
+  { value: 'gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash Lite' },
 ]
 
 /** Modelos de IA para selects diretos (sem opção "Herdar") */
 export const MODELOS_IA_DIRETO = [
-  { value: 'gemini-3-flash-preview', label: 'Gemini 3 Flash Preview (rápido)' },
-  { value: 'gemini-2.5-pro', label: 'Gemini 2.5 Pro (preciso)' },
+  { value: 'gemini-3-flash-preview', label: 'Gemini 3 Flash Preview (padrão)' },
   { value: 'gemini-3-pro-preview', label: 'Gemini 3 Pro Preview (avançado)' },
-  { value: 'gemini-2.5-flash-preview-05-20', label: 'Gemini 2.5 Flash Preview' },
-  { value: 'gemini-2.0-flash', label: 'Gemini 2.0 Flash' },
-  { value: 'gemini-2.0-flash-lite', label: 'Gemini 2.0 Flash Lite (mais rápido)' },
-  { value: 'gemini-1.5-pro', label: 'Gemini 1.5 Pro' },
-  { value: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash' },
+  { value: 'gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash Lite (econômico)' },
 ]
 
 /** Opções de thinking_level sem "Herdar" (para configurações diretas) */
@@ -104,6 +98,41 @@ const AGENT_KEY_PATTERNS = [
   /^max_tokens$/,
   /^thinking_level$/,
 ]
+
+/** Mapa de suporte de thinking levels por modelo (apenas modelos compatíveis com thinkingLevel) */
+export const MODEL_THINKING_SUPPORT: Record<string, string[]> = {
+  'gemini-3-flash': ['minimal', 'low', 'medium', 'high'],
+  'gemini-3-pro': ['low', 'high'],
+}
+// gemini-2.5-flash-lite usa thinkingBudget (inteiro), não thinkingLevel — dropdown não se aplica
+
+/** Mapa de normalização de valores legados PT-BR para API EN */
+export const NORMALIZE_THINKING_LEVEL: Record<string, string> = {
+  'baixo': 'low',
+  'médio': 'medium',
+  'medio': 'medium',
+  'alto': 'high',
+  'nenhum': 'none',
+  'mínimo': 'minimal',
+  'minimo': 'minimal',
+}
+
+/**
+ * Retorna os níveis de thinking suportados por um modelo.
+ * Faz matching por substring (ex: 'gemini-3-flash-preview' → 'gemini-3-flash').
+ * Retorna array vazio se o modelo não suportar thinking levels.
+ */
+export function getSupportedLevels(modelValue: string): string[] {
+  if (!modelValue) return []
+
+  for (const [key, levels] of Object.entries(MODEL_THINKING_SUPPORT)) {
+    if (modelValue.includes(key)) {
+      return levels
+    }
+  }
+
+  return []
+}
 
 /** Verifica se uma chave é de configuração de agente */
 export function isAgentKey(key: string): boolean {

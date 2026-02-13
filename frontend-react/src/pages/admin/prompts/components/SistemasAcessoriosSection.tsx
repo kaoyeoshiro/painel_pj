@@ -2,9 +2,10 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
 import { C } from '@/lib/designTokens'
-import { Info, Lightbulb, Plus } from 'lucide-react'
-import { MODELOS_IA_DIRETO, THINKING_LEVELS_DIRETO } from '../constants'
+import { Info, Lightbulb, Plus, HelpCircle } from 'lucide-react'
+import { MODELOS_IA_DIRETO, THINKING_LEVELS_DIRETO, MODEL_THINKING_SUPPORT, getSupportedLevels } from '../constants'
 
 /** Chaves de configuracao do sistema "sistemas_acessorios" */
 interface SistemasAcessoriosValues {
@@ -44,6 +45,8 @@ export function SistemasAcessoriosSection({ values, onChange, onSave, isSaving }
     values[key] ?? DEFAULTS[key]
 
   const thinkingLevel = get('gerador_regras_thinking_level')
+  const currentModel = get('gerador_regras_modelo')
+  const supportedLevels = getSupportedLevels(currentModel)
 
   return (
     <div className="space-y-6">
@@ -90,25 +93,74 @@ export function SistemasAcessoriosSection({ values, onChange, onSave, isSaving }
           <div className="space-y-1.5">
             <Label className="text-sm font-medium flex items-center gap-1.5">
               <span className="text-indigo-600">◑</span> Nivel de Raciocinio
+              <Popover>
+                <PopoverTrigger asChild>
+                  <button className="inline-flex items-center" title="Ver compatibilidade de modelos">
+                    <HelpCircle className="h-3.5 w-3.5 text-gray-400 hover:text-gray-600" />
+                  </button>
+                </PopoverTrigger>
+                <PopoverContent className="w-80 p-3 text-xs">
+                  <div className="space-y-2">
+                    <p className="font-semibold text-gray-700">Compatibilidade de Thinking Levels</p>
+                    <table className="w-full text-xs border-collapse">
+                      <thead>
+                        <tr className="border-b">
+                          <th className="text-left py-1 px-2 font-medium">Modelo</th>
+                          <th className="text-left py-1 px-2 font-medium">Níveis Suportados</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {Object.entries(MODEL_THINKING_SUPPORT).map(([model, levels]) => (
+                          <tr key={model} className="border-b">
+                            <td className="py-1 px-2">{model}</td>
+                            <td className="py-1 px-2 text-gray-600">{levels.join(', ')}</td>
+                          </tr>
+                        ))}
+                        <tr>
+                          <td className="py-1 px-2 text-gray-500" colSpan={2}>
+                            Gemini 2.5 Flash Lite: usa thinkingBudget (não thinkingLevel)
+                          </td>
+                        </tr>
+                      </tbody>
+                    </table>
+                  </div>
+                </PopoverContent>
+              </Popover>
             </Label>
-            <Select
-              value={get('gerador_regras_thinking_level')}
-              onValueChange={(v) => onChange('gerador_regras_thinking_level', v)}
-            >
-              <SelectTrigger className="bg-white">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {THINKING_LEVELS_DIRETO.map(opt => (
-                  <SelectItem key={opt.value} value={opt.value}>
-                    {opt.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            <p className="text-xs" style={{ color: C.text400 }}>
-              LOW recomendado: tarefa mecanica e logica
-            </p>
+            {supportedLevels.length === 0 && currentModel ? (
+              <>
+                <div className="flex h-9 w-full items-center rounded-md border px-3 text-sm opacity-50 cursor-not-allowed bg-muted">
+                  <span className="text-muted-foreground">N/A</span>
+                </div>
+                <p className="text-xs text-amber-600">
+                  Modelo atual não suporta thinking levels
+                </p>
+              </>
+            ) : (
+              <>
+                <Select
+                  value={get('gerador_regras_thinking_level')}
+                  onValueChange={(v) => onChange('gerador_regras_thinking_level', v)}
+                >
+                  <SelectTrigger className="bg-white">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {THINKING_LEVELS_DIRETO.map(opt => {
+                      const isSupported = supportedLevels.includes(opt.value)
+                      return (
+                        <SelectItem key={opt.value} value={opt.value} disabled={!isSupported}>
+                          {opt.label}
+                        </SelectItem>
+                      )
+                    })}
+                  </SelectContent>
+                </Select>
+                <p className="text-xs" style={{ color: C.text400 }}>
+                  LOW recomendado: tarefa mecanica e logica
+                </p>
+              </>
+            )}
           </div>
 
           {/* Temperatura */}

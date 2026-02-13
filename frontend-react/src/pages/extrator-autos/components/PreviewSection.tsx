@@ -6,6 +6,7 @@
  */
 
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import {
   Table,
   TableBody,
@@ -78,59 +79,73 @@ export function PreviewSection({ h }: PreviewSectionProps) {
         </p>
 
         <div className="mt-4 overflow-hidden rounded-lg border" style={{ borderColor: C.gray200 }}>
-          <Table>
-            <TableHeader>
-              <TableRow style={{ background: C.navy100 }}>
-                <TableHead className="w-[50px]" style={{ color: C.text700 }}>
-                  <input
-                    type="checkbox"
-                    checked={h.previewDocs.length > 0 && h.previewDocs.every((d) => d.selecionado)}
-                    onChange={h.toggleTodosPreview}
-                    className="h-4 w-4 rounded"
-                    style={{ borderColor: C.gray300 }}
-                  />
-                </TableHead>
-                <TableHead style={{ color: C.text700 }}>Codigo</TableHead>
-                <TableHead style={{ color: C.text700 }}>Tipo</TableHead>
-                <TableHead style={{ color: C.text700 }}>Descricao</TableHead>
-                <TableHead style={{ color: C.text700 }}>Data</TableHead>
-                <TableHead style={{ color: C.text700 }}>Resolucao</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {h.previewDocs.map((doc) => (
-                <TableRow key={doc.id} className="hover:bg-gray-50">
-                  <TableCell>
+          {/* Sticky header + scrollable body — max 55vh para não empurrar as opções de download */}
+          <div style={{ maxHeight: '55vh', overflowY: 'auto' }}>
+            <Table>
+              <TableHeader>
+                <TableRow style={{ background: C.navy100, position: 'sticky', top: 0, zIndex: 1 }}>
+                  <TableHead className="w-[50px]" style={{ color: C.text700, background: C.navy100 }}>
                     <input
                       type="checkbox"
-                      checked={doc.selecionado}
-                      onChange={() => h.toggleDocPreview(doc.id)}
+                      checked={h.previewDocs.length > 0 && h.previewDocs.every((d) => d.selecionado)}
+                      onChange={h.toggleTodosPreview}
                       className="h-4 w-4 rounded"
                       style={{ borderColor: C.gray300 }}
                     />
-                  </TableCell>
-                  <TableCell className="font-mono" style={{ fontSize: 12, color: C.text700 }}>
-                    {doc.tipo_codigo}
-                  </TableCell>
-                  <TableCell style={{ fontSize: 14, color: C.text700 }}>{doc.tipo_descricao}</TableCell>
-                  <TableCell className="max-w-[200px] truncate" style={{ fontSize: 14, color: C.text700 }}>
-                    {doc.descricao}
-                  </TableCell>
-                  <TableCell style={{ fontSize: 12, color: C.text500 }}>
-                    {formatarData(doc.data_juntada)}
-                  </TableCell>
-                  <TableCell><ResolucaoBadge doc={doc} /></TableCell>
+                  </TableHead>
+                  <TableHead style={{ color: C.text700, background: C.navy100 }}>Codigo</TableHead>
+                  <TableHead style={{ color: C.text700, background: C.navy100 }}>Tipo</TableHead>
+                  <TableHead style={{ color: C.text700, background: C.navy100 }}>Descricao</TableHead>
+                  <TableHead style={{ color: C.text700, background: C.navy100 }}>Data</TableHead>
+                  <TableHead style={{ color: C.text700, background: C.navy100 }}>Resolucao</TableHead>
                 </TableRow>
-              ))}
-              {h.previewDocs.length === 0 && (
-                <TableRow>
-                  <TableCell colSpan={6} className="py-8 text-center" style={{ color: C.text400 }}>
-                    Nenhum documento encontrado
-                  </TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
+              </TableHeader>
+              <TableBody>
+                {h.previewDocs.map((doc) => (
+                  <TableRow key={doc.id} className="hover:bg-gray-50">
+                    <TableCell>
+                      <input
+                        type="checkbox"
+                        checked={doc.selecionado}
+                        onChange={() => h.toggleDocPreview(doc.id)}
+                        className="h-4 w-4 rounded"
+                        style={{ borderColor: C.gray300 }}
+                      />
+                    </TableCell>
+                    <TableCell className="font-mono" style={{ fontSize: 12, color: C.text700 }}>
+                      {doc.tipo_codigo}
+                    </TableCell>
+                    <TableCell style={{ fontSize: 14, color: C.text700 }}>{doc.tipo_descricao}</TableCell>
+                    <TableCell className="max-w-[200px] truncate" style={{ fontSize: 14, color: C.text700 }}>
+                      {doc.descricao}
+                    </TableCell>
+                    <TableCell style={{ fontSize: 12, color: C.text500 }}>
+                      {formatarData(doc.data_juntada)}
+                    </TableCell>
+                    <TableCell><ResolucaoBadge doc={doc} /></TableCell>
+                  </TableRow>
+                ))}
+                {h.previewDocs.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={6} className="py-8 text-center" style={{ color: C.text400 }}>
+                      Nenhum documento encontrado
+                    </TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </div>
+
+        {/* Botao de download */}
+        <div className="mt-6 flex justify-end">
+          <Button
+            onClick={() => h.setDownloadModalOpen(true)}
+            disabled={contadores.selecionados === 0}
+            style={{ background: C.navy950, color: 'white' }}
+          >
+            Baixar Documentos
+          </Button>
         </div>
       </div>
     </div>

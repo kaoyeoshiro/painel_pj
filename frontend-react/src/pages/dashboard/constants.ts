@@ -16,6 +16,7 @@ import {
   Server,
   Receipt,
   FileCheck,
+  FolderSearch,
   Map,
 } from 'lucide-react'
 import type { SystemCardConfig, AdminCardConfig } from './types'
@@ -65,11 +66,20 @@ export const systemCards: SystemCardConfig[] = [
     color: 'emerald',
   },
   {
+    to: '/extrator-autos',
+    icon: FolderSearch,
+    title: 'Extrator de Autos',
+    description: 'Download e classificação de documentos processuais via TJ-MS.',
+    color: 'sky',
+    adminOnly: true,
+  },
+  {
     to: '/classificador',
     icon: Tags,
     title: 'Classificador de Documentos',
     description: 'Classificação automática de documentos jurídicos com IA.',
     color: 'indigo',
+    adminOnly: true,
   },
   {
     to: '/bert-training',
@@ -77,6 +87,7 @@ export const systemCards: SystemCardConfig[] = [
     title: 'BERT Training',
     description: 'Treinamento de classificadores de texto com modelos BERT.',
     color: 'rose',
+    adminOnly: true,
   },
 ]
 

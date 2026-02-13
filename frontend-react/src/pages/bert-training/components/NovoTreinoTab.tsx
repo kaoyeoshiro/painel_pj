@@ -152,11 +152,9 @@ export function NovoTreinoTab({
                       <SelectValue placeholder="Selecione um dataset..." />
                     </SelectTrigger>
                     <SelectContent>
-                      {datasets
-                        .filter((d) => d.status === 'ready')
-                        .map((d) => (
+                      {datasets.map((d) => (
                           <SelectItem key={d.id} value={String(d.id)}>
-                            {d.nome} ({d.total_exemplos} exemplos)
+                            {d.filename} ({d.total_rows} exemplos)
                           </SelectItem>
                         ))}
                     </SelectContent>
@@ -169,10 +167,10 @@ export function NovoTreinoTab({
                   if (!ds) return null
                   return (
                     <div className="rounded-lg border p-3 text-sm" style={{ background: C.gray50, borderColor: C.gray200 }}>
-                      <p><strong>Nome:</strong> {ds.nome}</p>
-                      {ds.descricao && <p><strong>Descricao:</strong> {ds.descricao}</p>}
-                      <p><strong>Exemplos:</strong> {ds.total_exemplos}</p>
-                      <p><strong>Categorias:</strong> {ds.categorias.join(', ')}</p>
+                      <p><strong>Arquivo:</strong> {ds.filename}</p>
+                      <p><strong>Exemplos:</strong> {ds.total_rows}</p>
+                      {ds.total_labels != null && <p><strong>Labels:</strong> {ds.total_labels}</p>}
+                      <p><strong>Tipo:</strong> {ds.task_type}</p>
                     </div>
                   )
                 })()}

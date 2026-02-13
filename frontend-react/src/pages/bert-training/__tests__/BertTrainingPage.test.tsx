@@ -53,73 +53,73 @@ vi.mock('recharts', () => ({
 // Import API mockada para configurar retornos
 import { bertApi } from '@/lib/api'
 
-// Dados de mock
+// Dados de mock (espelham schemas do backend: DatasetListItem, RunListItem, etc.)
 const mockDatasets = [
   {
     id: 1,
-    nome: 'Dataset Teste',
-    descricao: 'Dataset para testes unitarios',
-    total_exemplos: 500,
-    categorias: ['Saude', 'Educacao', 'Meio Ambiente'],
-    created_at: '2026-01-15T10:00:00Z',
-    status: 'ready' as const,
+    filename: 'dataset_teste.csv',
+    sha256_hash: 'abc123',
+    task_type: 'text_classification',
+    total_rows: 500,
+    total_labels: 3,
+    uploaded_at: '2026-01-15T10:00:00Z',
   },
   {
     id: 2,
-    nome: 'Dataset Grande',
-    total_exemplos: 2000,
-    categorias: ['Tributario', 'Previdenciario'],
-    created_at: '2026-01-20T14:00:00Z',
-    status: 'ready' as const,
+    filename: 'dataset_grande.csv',
+    sha256_hash: 'def456',
+    task_type: 'text_classification',
+    total_rows: 2000,
+    total_labels: 2,
+    uploaded_at: '2026-01-20T14:00:00Z',
   },
 ]
 
 const mockJobs = [
   {
     id: 1,
-    dataset_id: 1,
-    dataset_nome: 'Dataset Teste',
-    modelo_base: 'neuralmind/bert-base-portuguese-cased',
+    name: 'Treino Saude v1',
+    task_type: 'text_classification',
+    base_model: 'neuralmind/bert-base-portuguese-cased',
     status: 'completed' as const,
-    progresso: 100,
-    epoca_atual: 5,
-    total_epocas: 5,
-    metricas: {
-      accuracy: 0.92,
-      f1_score: 0.89,
-      precision: 0.91,
-      recall: 0.87,
-      loss: 0.15,
-      historico_loss: [0.8, 0.5, 0.3, 0.2, 0.15],
-      historico_accuracy: [0.6, 0.75, 0.82, 0.88, 0.92],
-    },
+    final_accuracy: 0.92,
+    final_macro_f1: 0.89,
     created_at: '2026-01-20T10:00:00Z',
-    updated_at: '2026-01-20T12:00:00Z',
+    completed_at: '2026-01-20T12:00:00Z',
   },
   {
     id: 2,
-    dataset_id: 1,
-    dataset_nome: 'Dataset Teste',
-    modelo_base: 'neuralmind/bert-base-portuguese-cased',
+    name: 'Treino Saude v2',
+    task_type: 'text_classification',
+    base_model: 'neuralmind/bert-base-portuguese-cased',
     status: 'running' as const,
-    progresso: 40,
-    epoca_atual: 2,
-    total_epocas: 5,
+    final_accuracy: null,
+    final_macro_f1: null,
     created_at: '2026-01-21T08:00:00Z',
-    updated_at: '2026-01-21T09:00:00Z',
+    completed_at: null,
   },
 ]
 
 const mockModels = [
   {
     id: 1,
-    nome: 'Modelo Saude v1',
-    dataset_nome: 'Dataset Teste',
-    accuracy: 0.92,
+    name: 'Modelo Saude v1',
+    description: null,
+    base_model: 'neuralmind/bert-base-portuguese-cased',
+    final_accuracy: 0.92,
     f1_score: 0.89,
-    created_at: '2026-01-20T12:00:00Z',
+    completed_at: '2026-01-20T12:00:00Z',
+    dataset_name: 'dataset_teste.csv',
+    total_labels: 3,
+    labels: ['Saude', 'Educacao', 'Meio Ambiente'],
   },
 ]
+
+// Mock do status dos workers
+const mockWorkersStatus = {
+  training_worker: { running: false, status: 'stopped', pid: null, has_token: false },
+  inference_server: { running: false, status: 'stopped', pid: null, url: 'http://localhost:8001' },
+}
 
 describe('BertTrainingPage', () => {
   beforeEach(() => {
@@ -155,7 +155,8 @@ describe('BertTrainingPage', () => {
   it('deve mostrar tabela de jobs na aba Monitorar', async () => {
     vi.mocked(bertApi.get).mockImplementation((path: string) => {
       if (path === '/datasets') return Promise.resolve(mockDatasets)
-      if (path === '/training/jobs') return Promise.resolve(mockJobs)
+      if (path === '/workers/status') return Promise.resolve(mockWorkersStatus)
+      if (path === '/runs') return Promise.resolve(mockJobs)
       return Promise.resolve([])
     })
 
@@ -170,16 +171,17 @@ describe('BertTrainingPage', () => {
       expect(screen.getByText('Jobs de Treinamento')).toBeInTheDocument()
     })
 
-    // Verifica que chamou a API de jobs
+    // Verifica que chamou a API de runs
     await waitFor(() => {
-      expect(bertApi.get).toHaveBeenCalledWith('/training/jobs')
+      expect(bertApi.get).toHaveBeenCalledWith('/runs')
     })
   })
 
   it('deve mostrar interface de teste de modelo na aba Testar', async () => {
     vi.mocked(bertApi.get).mockImplementation((path: string) => {
       if (path === '/datasets') return Promise.resolve(mockDatasets)
-      if (path === '/inference/models') return Promise.resolve(mockModels)
+      if (path === '/workers/status') return Promise.resolve(mockWorkersStatus)
+      if (path === '/models/completed') return Promise.resolve(mockModels)
       return Promise.resolve([])
     })
 
@@ -197,7 +199,7 @@ describe('BertTrainingPage', () => {
 
     // Verifica que chamou a API de modelos
     await waitFor(() => {
-      expect(bertApi.get).toHaveBeenCalledWith('/inference/models')
+      expect(bertApi.get).toHaveBeenCalledWith('/models/completed')
     })
   })
 
@@ -252,7 +254,8 @@ describe('BertTrainingPage', () => {
   it('deve exibir mensagem quando nao ha jobs', async () => {
     vi.mocked(bertApi.get).mockImplementation((path: string) => {
       if (path === '/datasets') return Promise.resolve(mockDatasets)
-      if (path === '/training/jobs') return Promise.resolve([])
+      if (path === '/workers/status') return Promise.resolve(mockWorkersStatus)
+      if (path === '/runs') return Promise.resolve([])
       return Promise.resolve([])
     })
 

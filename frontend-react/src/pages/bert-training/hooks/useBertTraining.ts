@@ -13,6 +13,7 @@ import type {
   Dataset,
   TrainingJob,
   TrainingMetrics,
+  EpochMetric,
   ModelInfo,
   PredictionResult,
   ComparisonResult,
@@ -21,6 +22,7 @@ import type {
 import type {
   GpuInfo,
   WorkerStatus,
+  WorkersFullStatus,
   DatasetValidation,
   PdfClassificationResult,
   LogEntry,
@@ -33,6 +35,57 @@ import {
   DEFAULT_CONFIG,
   TRAINING_PRESETS,
 } from '../types'
+
+// ============================================================================
+// Adaptadores backend → frontend
+// ============================================================================
+
+/** Converte lista de MetricResponse do backend em TrainingMetrics agregado */
+function adaptMetricsToAggregate(metrics: EpochMetric[]): TrainingMetrics | null {
+  if (!metrics || metrics.length === 0) return null
+  const last = metrics[metrics.length - 1]
+  return {
+    accuracy: last.val_accuracy ?? 0,
+    f1_score: last.val_macro_f1 ?? 0,
+    precision: 0,
+    recall: 0,
+    loss: last.train_loss ?? 0,
+    val_accuracy: last.val_accuracy ?? undefined,
+    val_loss: last.val_loss ?? undefined,
+    historico_loss: metrics.map((m) => m.train_loss ?? 0),
+    historico_accuracy: metrics.map((m) => m.val_accuracy ?? 0),
+    historico_val_loss: metrics.map((m) => m.val_loss ?? undefined) as number[],
+    historico_val_accuracy: metrics.map((m) => m.val_accuracy ?? undefined) as number[],
+  }
+}
+
+/** Converte WorkersFullStatus em GpuInfo (quando health do inference server tem GPU info) */
+function adaptGpuFromWorkerStatus(data: WorkersFullStatus): GpuInfo | null {
+  const health = data.inference_server?.health as Record<string, string> | undefined
+  if (!health) return null
+  return {
+    gpu_name: health.gpu_name ?? 'N/A',
+    gpu_memory_total: health.gpu_memory_total ?? 'N/A',
+    gpu_memory_used: health.gpu_memory_used ?? 'N/A',
+    gpu_memory_free: health.gpu_memory_free ?? 'N/A',
+    gpu_utilization: health.gpu_utilization ?? 'N/A',
+    cuda_version: health.cuda_version ?? 'N/A',
+    driver_version: health.driver_version ?? 'N/A',
+  }
+}
+
+/** Converte WorkersFullStatus em WorkerStatus para a UI */
+function adaptWorkerStatus(data: WorkersFullStatus): WorkerStatus {
+  const tw = data.training_worker ?? { running: false, status: 'stopped' }
+  const inf = data.inference_server ?? { running: false, status: 'stopped', url: 'N/A' }
+  return {
+    connected: tw.running || inf.running,
+    url: inf.url ?? 'N/A',
+    latency_ms: 0,
+    version: 'N/A',
+    uptime: 'N/A',
+  }
+}
 
 // ============================================================================
 // Hook principal
@@ -142,11 +195,11 @@ export function useBertTraining() {
     }
   }, [toast])
 
-  /** Carrega lista de jobs de treinamento */
+  /** Carrega lista de runs de treinamento */
   const fetchJobs = useCallback(async () => {
     setLoadingJobs(true)
     try {
-      const data = await bertApi.get<TrainingJob[]>('/training/jobs')
+      const data = await bertApi.get<TrainingJob[]>('/runs')
       setJobs(data)
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Erro ao carregar jobs'
@@ -160,7 +213,7 @@ export function useBertTraining() {
   const fetchModels = useCallback(async () => {
     setLoadingModels(true)
     try {
-      const data = await bertApi.get<ModelInfo[]>('/inference/models')
+      const data = await bertApi.get<ModelInfo[]>('/models/completed')
       setModels(data)
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Erro ao carregar modelos'
@@ -170,13 +223,14 @@ export function useBertTraining() {
     }
   }, [toast])
 
-  /** Carrega metricas detalhadas de um job */
+  /** Carrega metricas detalhadas de um run (backend retorna lista por epoca) */
   const fetchJobMetrics = useCallback(
     async (jobId: number) => {
       setLoadingMetrics(true)
       try {
-        const data = await bertApi.get<TrainingMetrics>(`/training/jobs/${jobId}/metrics`)
-        setJobMetrics(data)
+        const data = await bertApi.get<EpochMetric[]>(`/runs/${jobId}/metrics`)
+        const aggregated = adaptMetricsToAggregate(data)
+        setJobMetrics(aggregated)
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'Erro ao carregar metricas'
         toast({ title: 'Erro', description: msg, variant: 'destructive' })
@@ -187,26 +241,27 @@ export function useBertTraining() {
     [toast]
   )
 
-  /** Carrega informacoes de GPU do worker */
+  /** Carrega informacoes de GPU via status dos workers */
   const fetchGpuInfo = useCallback(async () => {
     setLoadingGpuInfo(true)
     try {
-      const data = await bertApi.get<GpuInfo>('/worker/gpu-info')
-      setGpuInfo(data)
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Erro ao carregar info de GPU'
-      toast({ title: 'Erro', description: msg, variant: 'destructive' })
+      const data = await bertApi.get<WorkersFullStatus>('/workers/status')
+      const gpu = adaptGpuFromWorkerStatus(data)
+      setGpuInfo(gpu)
+    } catch {
+      // GPU info nao disponivel — nao exibe erro, apenas mostra estado vazio
+      setGpuInfo(null)
     } finally {
       setLoadingGpuInfo(false)
     }
-  }, [toast])
+  }, [])
 
   /** Busca status de conexao do worker */
   const fetchWorkerStatus = useCallback(async () => {
     setLoadingWorkerStatus(true)
     try {
-      const data = await bertApi.get<WorkerStatus>('/worker/status')
-      setWorkerStatus(data)
+      const data = await bertApi.get<WorkersFullStatus>('/workers/status')
+      setWorkerStatus(adaptWorkerStatus(data))
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Erro ao verificar conexao'
       setWorkerStatus({
@@ -265,7 +320,7 @@ export function useBertTraining() {
     if (hasRunningJobs) {
       pollingRef.current = setInterval(async () => {
         try {
-          const data = await bertApi.get<TrainingJob[]>('/training/jobs')
+          const data = await bertApi.get<TrainingJob[]>('/runs')
           setJobs(data)
 
           // Atualiza job selecionado se estiver em execucao
@@ -361,9 +416,17 @@ export function useBertTraining() {
 
     setStartingTraining(true)
     try {
-      await bertApi.post('/training/start', {
+      // Mapeia preset do frontend para o nome esperado pelo backend
+      const presetMap: Record<string, string> = {
+        padrao: 'equilibrado',
+        rapido: 'rapido',
+        completo: 'preciso',
+      }
+      await bertApi.post('/runs/simple', {
+        name: `Treino ${new Date().toLocaleString('pt-BR')}`,
         dataset_id: Number(selectedDataset),
-        ...config,
+        preset_name: presetMap[activePreset] ?? 'equilibrado',
+        base_model: config.modelo_base,
       })
       toast({ title: 'Treinamento iniciado', description: 'O job foi enfileirado com sucesso' })
       setActiveTab('monitorar')
@@ -374,14 +437,14 @@ export function useBertTraining() {
     } finally {
       setStartingTraining(false)
     }
-  }, [selectedDataset, config, toast, fetchJobs])
+  }, [selectedDataset, config, activePreset, toast, fetchJobs])
 
   /** Para um job em execucao */
   const pararJob = useCallback(
     async (jobId: number) => {
       setStoppingJobId(jobId)
       try {
-        await bertApi.post(`/training/jobs/${jobId}/stop`)
+        await bertApi.post(`/runs/${jobId}/cancel`)
         toast({ title: 'Solicitacao enviada', description: 'O job sera parado em breve' })
         fetchJobs()
       } catch (err) {
@@ -394,11 +457,11 @@ export function useBertTraining() {
     [toast, fetchJobs]
   )
 
-  /** Seleciona um job para ver detalhes */
+  /** Seleciona um run para ver detalhes */
   const selecionarJob = useCallback(
     (job: TrainingJob) => {
       setSelectedJob(job)
-      setJobMetrics(job.metricas ?? null)
+      setJobMetrics(null)
       setRealtimeLogs([])
       if (job.status === 'running' || job.status === 'completed') {
         fetchJobMetrics(job.id)
@@ -514,7 +577,7 @@ export function useBertTraining() {
     setLoadingComparison(true)
     setComparison(null)
     try {
-      const result = await bertApi.post<ComparisonResult>('/compare/bert-vs-llm', {
+      const result = await bertApi.post<ComparisonResult>('/comparar-cnj', {
         texto: compareText.trim(),
       })
       setComparison(result)

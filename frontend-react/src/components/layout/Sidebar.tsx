@@ -1,5 +1,5 @@
 import { Link, useRouterState } from '@tanstack/react-router'
-import { useAuthStore } from '@/stores/auth-store'
+import { useAuthStore, ROUTE_SISTEMA_MAP } from '@/stores/auth-store'
 import { useUiStore } from '@/stores/ui-store'
 import { cn } from '@/lib/utils'
 import {
@@ -47,15 +47,15 @@ interface NavItem {
 const systemItems: NavItem[] = [
   { to: '/dashboard', icon: LayoutDashboard, label: 'Dashboard' },
   { to: '/gerador-pecas', icon: FileText, label: 'Gerador de Peças' },
-  { to: '/extrator-autos', icon: FolderSearch, label: 'Extrator de Autos' },
-  { to: '/classificador', icon: Tags, label: 'Classificador' },
+  { to: '/extrator-autos', icon: FolderSearch, label: 'Extrator de Autos', adminOnly: true },
+  { to: '/classificador', icon: Tags, label: 'Classificador', adminOnly: true },
   { to: '/pedido-calculo', icon: Calculator, label: 'Pedido de Cálculo' },
   { to: '/prestacao-contas', icon: ClipboardList, label: 'Prestação de Contas' },
   { to: '/relatorio-cumprimento', icon: FileCheck, label: 'Relatório de Cumprimento' },
   { to: '/cumprimento-beta', icon: FlaskConical, label: 'Cumprimento Beta' },
   { to: '/assistencia', icon: Scale, label: 'Assistência Judiciária' },
   { to: '/matriculas', icon: Map, label: 'Matrículas Confrontantes' },
-  { to: '/bert-training', icon: Brain, label: 'BERT Training' },
+  { to: '/bert-training', icon: Brain, label: 'BERT Training', adminOnly: true },
 ]
 
 // Links administrativos
@@ -116,6 +116,13 @@ function NavLink({ item, collapsed }: { item: NavItem; collapsed: boolean }) {
 
 function SidebarContent({ collapsed = false }: { collapsed?: boolean }) {
   const user = useAuthStore(s => s.user)
+  const podeAcessarSistema = useAuthStore(s => s.podeAcessarSistema)
+
+  const visibleSystems = systemItems.filter(item => {
+    if (item.adminOnly && !user?.is_admin) return false
+    const slug = ROUTE_SISTEMA_MAP[item.to]
+    return !slug || podeAcessarSistema(slug)
+  })
 
   return (
     <nav className="flex-1 overflow-y-auto py-4">
@@ -127,7 +134,7 @@ function SidebarContent({ collapsed = false }: { collapsed?: boolean }) {
           </h2>
         )}
         <ul className="space-y-0.5">
-          {systemItems.map((item) => (
+          {visibleSystems.map((item) => (
             <li key={item.to}>
               <NavLink item={item} collapsed={collapsed} />
             </li>

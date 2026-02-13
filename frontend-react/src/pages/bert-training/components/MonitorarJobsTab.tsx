@@ -172,19 +172,12 @@ export function MonitorarJobsTab({
                       <StatusBadge status={job.status} />
                     </div>
                     <p className="mt-1 truncate text-xs text-muted-foreground">
-                      {job.dataset_nome}
+                      {job.name}
                     </p>
                     {job.status === 'running' && (
                       <div className="mt-2">
                         <div className="mb-1 flex justify-between text-xs text-muted-foreground">
-                          <span>Epoca {job.epoca_atual}/{job.total_epocas}</span>
-                          <span>{job.progresso}%</span>
-                        </div>
-                        <div className="h-1.5 w-full rounded-full" style={{ background: C.gray200 }}>
-                          <div
-                            className="h-1.5 rounded-full transition-all"
-                            style={{ width: `${job.progresso}%`, background: C.navy700 }}
-                          />
+                          <span>{job.base_model?.split('/').pop()}</span>
                         </div>
                       </div>
                     )}
@@ -220,7 +213,7 @@ export function MonitorarJobsTab({
             </CardTitle>
             <CardDescription>
               {selectedJob
-                ? `Dataset: ${selectedJob.dataset_nome} | Modelo: ${selectedJob.modelo_base}`
+                ? `${selectedJob.name} | Modelo: ${selectedJob.base_model}`
                 : 'Selecione um job para ver os detalhes'}
             </CardDescription>
           </CardHeader>
@@ -258,10 +251,10 @@ export function MonitorarJobsTab({
                 </div>
 
                 {/* Erro, se houver */}
-                {selectedJob.erro && (
+                {selectedJob.status === 'failed' && (
                   <Alert variant="destructive">
                     <AlertCircle className="h-4 w-4" />
-                    <AlertDescription>{selectedJob.erro}</AlertDescription>
+                    <AlertDescription>O treinamento falhou</AlertDescription>
                   </Alert>
                 )}
 

@@ -28,6 +28,7 @@ dumps/
 # Uploads (opcional - pode querer versionar estrutura vazia)
 sistemas/matriculas_confrontantes/uploads/*
 !sistemas/matriculas_confrontantes/uploads/.gitkeep
+sistemas/gerador_pecas/uploads_parecer_natjus/
 
 # Build
 dist/

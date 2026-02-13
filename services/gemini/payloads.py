@@ -5,7 +5,10 @@ Construção de payloads para chamadas à API Gemini.
 Extraído de gemini_service.py para melhor organização.
 """
 
+import logging
 from typing import Any, Dict, List
+
+logger = logging.getLogger(__name__)
 
 
 def build_payload(
@@ -38,6 +41,7 @@ def build_payload(
     # - Gemini 3 Flash: suporta "minimal", "low", "medium", "high"
     # - Gemini 3 Pro: suporta apenas "low", "high"
     # - Gemini 2.x: não suporta thinkingConfig
+    # - thinking_level=None ou "none": não envia thinkingConfig (usa padrão do modelo)
     if thinking_level and model:
         model_lower = model.lower()
         if "gemini-3" in model_lower:
@@ -52,6 +56,7 @@ def build_payload(
                 generation_config["thinkingConfig"] = {
                     "thinkingLevel": thinking_level
                 }
+                logger.debug(f"[Payload] thinkingConfig added: thinkingLevel={thinking_level} for model={model}")
             # Se nível inválido para o modelo, simplesmente ignora (usa default)
 
     payload = {
@@ -120,6 +125,7 @@ def build_payload_with_images(
     # - Gemini 3 Flash: suporta "minimal", "low", "medium", "high"
     # - Gemini 3 Pro: suporta apenas "low", "high"
     # - Gemini 2.x: não suporta thinkingConfig
+    # - thinking_level=None ou "none": não envia thinkingConfig (usa padrão do modelo)
     if thinking_level and model:
         model_lower = model.lower()
         if "gemini-3" in model_lower:
@@ -134,6 +140,7 @@ def build_payload_with_images(
                 generation_config["thinkingConfig"] = {
                     "thinkingLevel": thinking_level
                 }
+                logger.debug(f"[Payload] thinkingConfig added: thinkingLevel={thinking_level} for model={model}")
             # Se nível inválido para o modelo, simplesmente ignora (usa default)
 
     payload = {

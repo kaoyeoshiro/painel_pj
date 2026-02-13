@@ -15,9 +15,11 @@ Autor: LAB/PGE-MS
 """
 
 import asyncio
+import io
 import json
 import logging
 import uuid
+import zipfile
 from datetime import datetime, timedelta
 from typing import Dict, List, Optional
 
@@ -296,6 +298,13 @@ async def baixar_stream(
     """
     from .services import ExtratorAutosService
 
+    # Valida que documento_ids nao esta vazio
+    if not req.documento_ids:
+        raise HTTPException(
+            status_code=422,
+            detail="documento_ids nao pode estar vazio. Selecione ao menos 1 documento.",
+        )
+
     job_id = str(uuid.uuid4())
     logger.info(
         "[SSE] Download stream job=%s, %d doc(s) do processo %s por usuario %s",
@@ -332,12 +341,28 @@ async def baixar_stream(
                 yield _sse_event("erro", mensagem="Nenhum documento foi baixado")
                 return
 
-            # Armazena ZIP para download posterior
+            # Processa formato de saida final
+            content_type = "application/zip"
+            file_bytes = zip_bytes
+            nome_arquivo = f"extrator_{req.numero_cnj}.zip"
+
+            if req.formato_saida_final == "pdf_direto":
+                pdf_bytes = _extrair_pdf_unico(zip_bytes)
+                if pdf_bytes:
+                    file_bytes = pdf_bytes
+                    content_type = "application/pdf"
+                    nome_arquivo = f"extrator_{req.numero_cnj}.pdf"
+                    logger.info("[SSE] Extraido PDF direto do ZIP (%d bytes)", len(pdf_bytes))
+                else:
+                    logger.warning("[SSE] pdf_direto solicitado mas nenhum PDF encontrado no ZIP")
+
+            # Armazena ZIP ou PDF para download posterior
             _limpar_jobs_expirados()
             _download_jobs[job_id] = {
-                "zip_bytes": zip_bytes,
+                "zip_bytes": file_bytes,
                 "created_at": get_utc_now(),
-                "nome": f"extrator_{req.numero_cnj}.zip",
+                "nome": nome_arquivo,
+                "content_type": content_type,
             }
 
             # Registra no historico
@@ -586,9 +611,9 @@ async def download_job(
     current_user: User = Depends(get_current_active_user),
 ):
     """
-    Faz download de um ZIP gerado previamente via /baixar-stream ou /baixar-lote.
+    Faz download de um arquivo gerado previamente via /baixar-stream ou /baixar-lote.
 
-    O ZIP e armazenado em memoria por 10 minutos apos a conclusao.
+    O arquivo e armazenado em memoria por JOB_EXPIRATION_MINUTES minutos apos a conclusao.
     """
     _limpar_jobs_expirados()
 
@@ -599,15 +624,16 @@ async def download_job(
             detail="Download nao encontrado ou expirado. Tente gerar novamente.",
         )
 
-    zip_bytes = job["zip_bytes"]
+    file_bytes = job["zip_bytes"]
     nome = job["nome"]
+    content_type = job.get("content_type", "application/zip")
 
     # Remove o job apos o download para liberar memoria
     del _download_jobs[job_id]
 
     return Response(
-        content=zip_bytes,
-        media_type="application/zip",
+        content=file_bytes,
+        media_type=content_type,
         headers={
             "Content-Disposition": f'attachment; filename="{nome}"',
         },
@@ -851,6 +877,29 @@ def _sse_event(tipo: str, **kwargs) -> str:
     """Formata um evento SSE como string data: {json}."""
     payload = {"tipo": tipo, **kwargs}
     return f"data: {json.dumps(payload, ensure_ascii=False)}\n\n"
+
+
+def _extrair_pdf_unico(zip_bytes: bytes) -> Optional[bytes]:
+    """
+    Extrai o primeiro arquivo .pdf encontrado dentro de um ZIP em memoria.
+
+    Args:
+        zip_bytes: Bytes do arquivo ZIP.
+
+    Returns:
+        Bytes do PDF extraido, ou None se nenhum PDF for encontrado.
+    """
+    try:
+        with zipfile.ZipFile(io.BytesIO(zip_bytes), "r") as zf:
+            for nome in zf.namelist():
+                if nome.lower().endswith(".pdf"):
+                    logger.info("Extraindo PDF unico: %s", nome)
+                    return zf.read(nome)
+        logger.warning("Nenhum arquivo .pdf encontrado no ZIP")
+        return None
+    except Exception as e:
+        logger.error("Erro ao extrair PDF unico do ZIP: %s", e)
+        return None
 
 
 def _registrar_extracao(

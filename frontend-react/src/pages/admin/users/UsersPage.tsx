@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react'
-import { usersApi } from '@/lib/api'
+import { usersApi, adminApi } from '@/lib/api'
 import { BreadcrumbBar } from '@/components/layout/BreadcrumbBar'
 import { ContentArea } from '@/components/layout/ContentArea'
 import { C } from '@/lib/designTokens'
@@ -29,7 +29,8 @@ interface User {
   is_active: boolean
   created_at: string
   sistemas_permitidos: string[] | null
-  content_group_ids?: number[] | null
+  allowed_group_ids?: number[] | null
+  default_group_id?: number | null
   pode_curar?: boolean
   pode_exportar?: boolean
   pode_ver_debug?: boolean
@@ -44,7 +45,8 @@ interface UserCreate {
   role: 'user' | 'admin'
   password?: string
   sistemas_permitidos?: string[] | null
-  content_group_ids?: number[] | null
+  allowed_group_ids?: number[]
+  default_group_id?: number | null
   pode_curar?: boolean
   pode_exportar?: boolean
   pode_ver_debug?: boolean
@@ -58,18 +60,20 @@ interface UserUpdate {
   role?: 'user' | 'admin'
   is_active?: boolean
   sistemas_permitidos?: string[] | null
-  content_group_ids?: number[] | null
+  allowed_group_ids?: number[]
+  default_group_id?: number | null
   pode_curar?: boolean
   pode_exportar?: boolean
   pode_ver_debug?: boolean
   pode_gerenciar_prompts?: boolean
 }
 
-/** Grupo de conteudo retornado pela API */
-interface ContentGroup {
+interface PromptGroup {
   id: number
   nome: string
-  descricao: string
+  slug: string
+  ativo: boolean
+  ordem: number
 }
 
 /** Opcoes de agrupamento da tabela */
@@ -109,8 +113,8 @@ export function UsersPage() {
   // Secoes colapsadas (armazena nomes dos grupos fechados)
   const [collapsedGroups, setCollapsedGroups] = useState<Set<string>>(new Set())
 
-  // Grupos de conteudo vindos da API
-  const [contentGroups, setContentGroups] = useState<ContentGroup[]>([])
+  // Grupos de prompt vindos da API
+  const [promptGroups, setPromptGroups] = useState<PromptGroup[]>([])
 
   // Formulario de criacao/edicao
   const [formData, setFormData] = useState<UserCreate>({
@@ -121,7 +125,8 @@ export function UsersPage() {
     role: 'user',
     password: '',
     sistemas_permitidos: [],
-    content_group_ids: [],
+    allowed_group_ids: [],
+    default_group_id: null,
     pode_curar: false,
     pode_exportar: false,
     pode_ver_debug: false,
@@ -134,7 +139,7 @@ export function UsersPage() {
   // Carregar usuarios
   useEffect(() => {
     loadUsers()
-    loadContentGroups()
+    loadPromptGroups()
     // eslint-disable-next-line react-hooks/exhaustive-deps -- Carrega apenas na montagem
   }, [])
 
@@ -154,15 +159,12 @@ export function UsersPage() {
     }
   }
 
-  /** Carrega grupos de conteudo disponiveis da API (endpoint opcional) */
-  const loadContentGroups = async () => {
+  const loadPromptGroups = async () => {
     try {
-      const data = await usersApi.get<ContentGroup[]>('/content-groups')
-      setContentGroups(data)
+      const data = await adminApi.get<PromptGroup[]>('/admin/api/prompts-modulos/grupos')
+      setPromptGroups(data)
     } catch {
-      // Falha silenciosa — grupos de conteudo sao opcionais.
-      // Endpoint pode nao existir ainda (422/404); nao polui console.
-      setContentGroups([])
+      setPromptGroups([])
     }
   }
 
@@ -177,7 +179,8 @@ export function UsersPage() {
       role: 'user',
       password: '',
       sistemas_permitidos: [],
-      content_group_ids: [],
+      allowed_group_ids: [],
+      default_group_id: null,
       pode_curar: false,
       pode_exportar: false,
       pode_ver_debug: false,
@@ -197,7 +200,8 @@ export function UsersPage() {
       setor: user.setor || '',
       role: user.role,
       sistemas_permitidos: user.sistemas_permitidos || [],
-      content_group_ids: user.content_group_ids || [],
+      allowed_group_ids: user.allowed_group_ids || [],
+      default_group_id: user.default_group_id ?? null,
       pode_curar: user.pode_curar ?? false,
       pode_exportar: user.pode_exportar ?? false,
       pode_ver_debug: user.pode_ver_debug ?? false,
@@ -245,7 +249,8 @@ export function UsersPage() {
           role: formData.role,
           is_active: formIsActive,
           sistemas_permitidos: formData.sistemas_permitidos,
-          content_group_ids: formData.content_group_ids,
+          allowed_group_ids: (formData.sistemas_permitidos || []).includes('gerador_pecas') ? formData.allowed_group_ids : undefined,
+          default_group_id: (formData.sistemas_permitidos || []).includes('gerador_pecas') ? formData.default_group_id : undefined,
           pode_curar: formData.pode_curar,
           pode_exportar: formData.pode_exportar,
           pode_ver_debug: formData.pode_ver_debug,
@@ -263,6 +268,8 @@ export function UsersPage() {
           email: formData.email?.trim() || undefined,
           setor: formData.setor?.trim() || undefined,
           password: formData.password?.trim() || undefined,
+          allowed_group_ids: (formData.sistemas_permitidos || []).includes('gerador_pecas') ? formData.allowed_group_ids : undefined,
+          default_group_id: (formData.sistemas_permitidos || []).includes('gerador_pecas') ? formData.default_group_id : undefined,
         }
         await usersApi.post('', createData)
         toast({
@@ -350,13 +357,24 @@ export function UsersPage() {
     setFormData({ ...formData, sistemas_permitidos: updated })
   }
 
-  /** Toggle grupo de conteudo selecionado no formulario */
-  const toggleContentGroup = (groupId: number) => {
-    const current = formData.content_group_ids || []
-    const updated = current.includes(groupId)
-      ? current.filter((id) => id !== groupId)
-      : [...current, groupId]
-    setFormData({ ...formData, content_group_ids: updated })
+  const toggleGroupId = (groupId: number) => {
+    const current = formData.allowed_group_ids || []
+    let updated: number[]
+    if (current.includes(groupId)) {
+      updated = current.filter((id) => id !== groupId)
+    } else {
+      updated = [...current, groupId]
+    }
+    // Auto-set default_group_id
+    let defaultId = formData.default_group_id
+    if (updated.length === 1) {
+      defaultId = updated[0]
+    } else if (updated.length === 0) {
+      defaultId = null
+    } else if (defaultId !== null && !updated.includes(defaultId)) {
+      defaultId = updated[0]
+    }
+    setFormData({ ...formData, allowed_group_ids: updated, default_group_id: defaultId })
   }
 
   /** Toggle permissao especial no formulario */
@@ -706,30 +724,54 @@ export function UsersPage() {
               </div>
             </div>
 
-            {/* Secao: Grupos de Conteudo */}
-            {contentGroups.length > 0 && (
-              <div className="space-y-2" data-testid="content-groups-section">
-                <Label>Grupos de Conteudo</Label>
+            {/* Secao: Grupos do Gerador de Pecas (condicional) */}
+            {(formData.sistemas_permitidos || []).includes('gerador_pecas') && promptGroups.length > 0 && (
+              <div className="space-y-3" data-testid="groups-section">
+                <Label>Grupos do Gerador de Pecas</Label>
+                <p className="text-xs text-muted-foreground">
+                  Selecione os grupos de pecas que este usuario pode acessar.
+                </p>
                 <div className="space-y-2 rounded-md border p-3">
-                  {contentGroups.map((group) => (
-                    <div key={group.id} className="flex items-center space-x-2" data-testid={`content-group-${group.id}`}>
+                  {promptGroups.map((group) => (
+                    <div key={group.id} className="flex items-center space-x-2" data-testid={`group-${group.id}`}>
                       <Checkbox
-                        id={`content-group-${group.id}`}
-                        checked={(formData.content_group_ids || []).includes(group.id)}
-                        onCheckedChange={() => toggleContentGroup(group.id)}
-                        data-testid={`content-group-checkbox-${group.id}`}
+                        id={`group-${group.id}`}
+                        checked={(formData.allowed_group_ids || []).includes(group.id)}
+                        onCheckedChange={() => toggleGroupId(group.id)}
+                        data-testid={`group-checkbox-${group.id}`}
                       />
-                      <div className="flex flex-col">
-                        <Label htmlFor={`content-group-${group.id}`} className="font-normal cursor-pointer">
-                          {group.nome}
-                        </Label>
-                        {group.descricao && (
-                          <span className="text-xs text-muted-foreground">{group.descricao}</span>
-                        )}
-                      </div>
+                      <Label htmlFor={`group-${group.id}`} className="font-normal cursor-pointer">
+                        {group.nome}
+                      </Label>
                     </div>
                   ))}
                 </div>
+                {/* Seletor de grupo padrao — quando 2+ grupos selecionados */}
+                {(formData.allowed_group_ids || []).length >= 2 && (
+                  <div className="space-y-2">
+                    <Label htmlFor="default-group">Grupo Padrao</Label>
+                    <Select
+                      value={formData.default_group_id != null ? String(formData.default_group_id) : ''}
+                      onValueChange={(v) => setFormData({ ...formData, default_group_id: Number(v) })}
+                    >
+                      <SelectTrigger id="default-group">
+                        <SelectValue placeholder="Selecione o grupo padrao..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {promptGroups
+                          .filter((g) => (formData.allowed_group_ids || []).includes(g.id))
+                          .map((g) => (
+                            <SelectItem key={g.id} value={String(g.id)}>
+                              {g.nome}
+                            </SelectItem>
+                          ))}
+                      </SelectContent>
+                    </Select>
+                    <p className="text-xs text-muted-foreground">
+                      O grupo padrao e selecionado automaticamente ao abrir o Gerador de Pecas.
+                    </p>
+                  </div>
+                )}
               </div>
             )}
 

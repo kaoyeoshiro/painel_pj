@@ -13,7 +13,20 @@ import type { TrainingConfig, TrainingJob } from '@/types/bert-training'
 // Tipos auxiliares de UI
 // ============================================================================
 
-/** Informacoes de GPU do worker */
+/** Status de um processo BERT (worker ou inference) */
+export interface ProcessStatus {
+  running: boolean
+  status: 'running' | 'starting' | 'stopped'
+  pid: number | null
+}
+
+/** Status completo dos workers (espelha GET /workers/status) */
+export interface WorkersFullStatus {
+  training_worker: ProcessStatus & { has_token: boolean }
+  inference_server: ProcessStatus & { url: string; health?: Record<string, unknown> }
+}
+
+/** Informacoes de GPU — extraido do health do inference server (quando disponivel) */
 export interface GpuInfo {
   gpu_name: string
   gpu_memory_total: string
@@ -24,7 +37,7 @@ export interface GpuInfo {
   driver_version: string
 }
 
-/** Status de conexao com o worker */
+/** Status de conexao com o worker (derivado de WorkersFullStatus para a UI) */
 export interface WorkerStatus {
   connected: boolean
   url: string

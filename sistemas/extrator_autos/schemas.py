@@ -95,7 +95,7 @@ class DocumentoPreviewResponse(BaseModel):
 class BaixarDocumentosRequest(BaseModel):
     """Request para iniciar download de documentos."""
     numero_cnj: str
-    documento_ids: List[str] = Field(..., min_length=1)
+    documento_ids: List[str]
     modo_saida: str = Field("pdf_txt", pattern="^(pdf|pdf_txt|txt|xml_only)$")
     mesclar_pdfs: bool = False
     salvar_xml_completo: bool = False
@@ -104,6 +104,7 @@ class BaixarDocumentosRequest(BaseModel):
     codigos_manuais_remove: List[int] = Field(default_factory=list)
     modo_selecao: str = "manual"
     resolucoes_especiais: List[Dict[str, Any]] = Field(default_factory=list)
+    formato_saida_final: str = Field("zip", pattern="^(zip|pdf_direto)$")
 
     @field_validator("numero_cnj")
     @classmethod
@@ -117,6 +118,22 @@ class BaixarDocumentosRequest(BaseModel):
             self.salvar_xml_completo = True
         if self.modo_saida in ("txt", "xml_only"):
             self.mesclar_pdfs = False
+        return self
+
+    @model_validator(mode="after")
+    def validar_pdf_direto(self) -> "BaixarDocumentosRequest":
+        """pdf_direto requer exatamente 1 doc e modo_saida em (pdf, pdf_txt)."""
+        if self.formato_saida_final == "pdf_direto":
+            if len(self.documento_ids) != 1:
+                raise ValueError(
+                    "formato_saida_final='pdf_direto' requer exatamente 1 documento. "
+                    f"Recebeu {len(self.documento_ids)} documento(s)."
+                )
+            if self.modo_saida not in ("pdf", "pdf_txt"):
+                raise ValueError(
+                    f"formato_saida_final='pdf_direto' requer modo_saida em ('pdf', 'pdf_txt'). "
+                    f"Recebeu modo_saida='{self.modo_saida}'."
+                )
         return self
 
 

@@ -1,33 +1,47 @@
 // Tipos TypeScript para o sistema de Treinamento BERT
+//
+// Estes tipos espelham os schemas Pydantic do backend:
+// - DatasetListItem, RunListItem, MetricResponse, etc.
+// Adaptadores em useBertTraining.ts convertem as respostas da API.
 
-/** Dataset disponivel para treinamento */
+/** Dataset disponivel para treinamento (espelha DatasetListItem do backend) */
 export interface Dataset {
   id: number
-  nome: string
-  descricao?: string
-  total_exemplos: number
-  categorias: string[]
-  created_at: string
-  status: 'ready' | 'processing' | 'error'
+  filename: string
+  sha256_hash: string
+  task_type: string
+  total_rows: number
+  total_labels: number | null
+  uploaded_at: string
 }
 
-/** Job de treinamento BERT */
+/** Run de treinamento BERT (espelha RunListItem do backend) */
 export interface TrainingJob {
   id: number
-  dataset_id: number
-  dataset_nome: string
-  modelo_base: string
+  name: string
+  task_type: string
+  base_model: string
   status: 'queued' | 'running' | 'completed' | 'failed' | 'stopping' | 'stopped'
-  progresso: number
-  epoca_atual: number
-  total_epocas: number
-  metricas?: TrainingMetrics
+  final_accuracy: number | null
+  final_macro_f1: number | null
   created_at: string
-  updated_at: string
-  erro?: string
+  completed_at: string | null
 }
 
-/** Metricas de treinamento com historico para graficos */
+/** Metrica individual por epoca (espelha MetricResponse do backend) */
+export interface EpochMetric {
+  id: number
+  run_id: number
+  epoch: number
+  train_loss: number | null
+  val_loss: number | null
+  val_accuracy: number | null
+  val_macro_f1: number | null
+  val_weighted_f1: number | null
+  recorded_at: string
+}
+
+/** Metricas agregadas para graficos (derivado de EpochMetric[]) */
 export interface TrainingMetrics {
   accuracy: number
   f1_score: number
@@ -44,14 +58,18 @@ export interface TrainingMetrics {
   labels?: string[]
 }
 
-/** Modelo treinado disponivel para inferencia */
+/** Modelo treinado disponivel para inferencia (espelha /models/completed) */
 export interface ModelInfo {
   id: number
-  nome: string
-  dataset_nome: string
-  accuracy: number
-  f1_score: number
-  created_at: string
+  name: string
+  description: string | null
+  base_model: string
+  final_accuracy: number | null
+  f1_score: number | null
+  completed_at: string | null
+  dataset_name: string | null
+  total_labels: number | null
+  labels: string[]
 }
 
 /** Resultado de predicao individual */

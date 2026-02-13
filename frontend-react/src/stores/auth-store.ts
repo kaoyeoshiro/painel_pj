@@ -16,6 +16,17 @@ interface User {
   full_name: string
   role: string
   is_admin: boolean
+  sistemas_permitidos: string[] | null
+}
+
+/** Mapa rota frontend → slug do sistema no backend */
+export const ROUTE_SISTEMA_MAP: Record<string, string> = {
+  '/gerador-pecas': 'gerador_pecas',
+  '/assistencia': 'assistencia_judiciaria',
+  '/matriculas': 'matriculas',
+  '/pedido-calculo': 'pedido_calculo',
+  '/prestacao-contas': 'prestacao_contas',
+  '/relatorio-cumprimento': 'relatorio_cumprimento',
 }
 
 interface AuthState {
@@ -27,6 +38,9 @@ interface AuthState {
   // Derivados (compat) — sempre em sincronia com `status`
   isAuthenticated: boolean
   isLoading: boolean
+
+  // Derivados
+  podeAcessarSistema: (slug: string) => boolean
 
   // Acoes
   login: (username: string, password: string) => Promise<void>
@@ -58,6 +72,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   user: null,
   error: null,
   ...deriveFromStatus('unknown'),
+
+  podeAcessarSistema: (slug: string) => {
+    const user = get().user
+    if (!user) return false
+    if (user.is_admin) return true
+    if (!user.sistemas_permitidos || user.sistemas_permitidos.length === 0) return true
+    return user.sistemas_permitidos.includes(slug)
+  },
 
   /** Faz login com username e senha */
   login: async (username: string, password: string) => {
@@ -104,13 +126,17 @@ export const useAuthStore = create<AuthState>((set, get) => ({
   /** Carrega dados do usuario a partir do token */
   loadUser: async () => {
     try {
-      const data = await apiRequest<{ id: number; username: string; full_name: string; role: string }>('/auth/me', { method: 'GET' })
+      const data = await apiRequest<{ id: number; username: string; full_name: string; role: string; sistemas_permitidos?: string[] | null }>('/auth/me', { method: 'GET' })
 
       // Validacao runtime — garante shape esperado da resposta de usuario
       assertSchema(data, UserMeSchema, 'GET /auth/me')
 
       set({
-        user: { ...data, is_admin: data.role === 'admin' },
+        user: {
+          ...data,
+          is_admin: data.role === 'admin',
+          sistemas_permitidos: data.sistemas_permitidos ?? null,
+        },
         status: 'authenticated',
         error: null,
         ...deriveFromStatus('authenticated'),
