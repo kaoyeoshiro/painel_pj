@@ -259,11 +259,17 @@ def load_parecer_natjus_config(db, use_cache: bool = True) -> ParecerNatjusConfi
 
 
 def group_requires_parecer(group_slug: str | None, config: ParecerNatjusConfig) -> bool:
-    """Verifica se o grupo exige parecer NATJus."""
+    """Verifica se o grupo exige parecer NATJus.
+
+    Quando required_group_slugs está vazio (sem config no banco),
+    retorna True para manter compatibilidade retroativa — todos os
+    grupos exigem parecer (comportamento anterior).
+    Quando há slugs configurados, apenas os listados exigem.
+    """
     if not config.required_group_slugs:
-        return False
+        return True
     if not group_slug:
-        return False
+        return True
     return group_slug.strip().lower() in config.required_group_slugs
 
 
