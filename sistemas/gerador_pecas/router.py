@@ -25,7 +25,7 @@ from sqlalchemy.orm import Session
 from auth.dependencies import get_current_active_user, get_current_user_from_token_or_query
 from auth.models import User
 from database.connection import get_db
-from utils.timezone import to_iso_utc
+from utils.timezone import to_iso_utc, get_utc_now, now_local
 from services.text_normalizer import text_normalizer
 from services.performance_tracker import (
     create_tracker, get_tracker, mark, record_chunk, PerformanceTracker
@@ -224,7 +224,7 @@ async def _salvar_upload_parecer_natjus(
         "user_id": int(user_id),
         "filename": nome_arquivo,
         "size_bytes": len(conteudo),
-        "created_at": datetime.utcnow().isoformat(),
+        "created_at": get_utc_now().isoformat(),
     }
 
     with open(meta_path, "w", encoding="utf-8") as f:
@@ -1216,8 +1216,8 @@ async def processar_processo_stream(
                         "descricao": "Parecer NATJus anexado pelo usuario",
                         "descricao_ia": "Parecer NATJus (upload manual)",
                         "tipo_documento": "UPLOAD_PARECER_NATJUS",
-                        "data_juntada": to_iso_utc(datetime.utcnow()),
-                        "data_formatada": datetime.utcnow().strftime("%d/%m/%Y %H:%M"),
+                        "data_juntada": to_iso_utc(get_utc_now()),
+                        "data_formatada": now_local().strftime("%d/%m/%Y %H:%M"),
                         "processo_origem": False,
                         "source": "user_upload",
                         "upload_id": parecer_upload_metadata.get("upload_id"),
@@ -1944,7 +1944,7 @@ def _montar_resumo_pdfs_classificados(
 
     partes.append("# RESUMO CONSOLIDADO DOS DOCUMENTOS")
     partes.append(f"**Origem**: Arquivos PDF anexados (com classificação por categoria)")
-    partes.append(f"**Data da Análise**: {datetime.now().strftime('%d/%m/%Y %H:%M')}")
+    partes.append(f"**Data da Análise**: {now_local().strftime('%d/%m/%Y %H:%M')}")
     partes.append(f"**Total de Documentos**: {len(documentos)}")
     partes.append(f"**Tipo de Peça**: {selecao.tipo_peca}")
     partes.append(f"**Seleção**: {selecao.razao_geral}")
@@ -1993,7 +1993,7 @@ def _montar_resumo_pdfs(documentos: List[Dict]) -> str:
     
     partes.append("# RESUMO CONSOLIDADO DOS DOCUMENTOS")
     partes.append(f"**Origem**: Arquivos PDF anexados")
-    partes.append(f"**Data da Análise**: {datetime.now().strftime('%d/%m/%Y %H:%M')}")
+    partes.append(f"**Data da Análise**: {now_local().strftime('%d/%m/%Y %H:%M')}")
     partes.append(f"**Total de Documentos**: {len(documentos)}")
     partes.append("\n---\n")
     partes.append("## DOCUMENTOS ANALISADOS\n")

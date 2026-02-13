@@ -17,6 +17,7 @@ import logging
 import os
 import aiohttp
 from datetime import datetime, timedelta
+from utils.timezone import get_utc_now
 from typing import Optional, AsyncGenerator, Dict, Any, List
 
 from sqlalchemy.orm import Session
@@ -122,7 +123,7 @@ def definir_aguardando_documentos(
     geracao.status = "aguardando_documentos"
     geracao.documentos_faltantes = documentos_faltantes
     geracao.mensagem_erro_usuario = mensagem_usuario
-    geracao.estado_expira_em = datetime.utcnow() + timedelta(hours=ESTADO_EXPIRACAO_HORAS)
+    geracao.estado_expira_em = get_utc_now() + timedelta(hours=ESTADO_EXPIRACAO_HORAS)
 
     # Salva documentos já baixados para não perder
     if documentos_ja_baixados:
@@ -147,7 +148,7 @@ def definir_aguardando_nota_fiscal(
     geracao.status = "aguardando_nota_fiscal"
     geracao.documentos_faltantes = ["notas_fiscais"]
     geracao.mensagem_erro_usuario = mensagem_usuario
-    geracao.estado_expira_em = datetime.utcnow() + timedelta(hours=ESTADO_EXPIRACAO_HORAS)
+    geracao.estado_expira_em = get_utc_now() + timedelta(hours=ESTADO_EXPIRACAO_HORAS)
 
     # Salva documentos já baixados para não perder
     if documentos_ja_baixados:
@@ -165,7 +166,7 @@ def verificar_estado_expirado(geracao: GeracaoAnalise) -> bool:
     """
     if not geracao.estado_expira_em:
         return True
-    return datetime.utcnow() > geracao.estado_expira_em
+    return get_utc_now() > geracao.estado_expira_em
 
 
 def converter_pdf_para_imagens(pdf_bytes: bytes, max_paginas: int = 10) -> List[str]:

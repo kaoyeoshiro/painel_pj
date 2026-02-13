@@ -19,6 +19,7 @@ Autor: LAB/PGE-MS
 
 import traceback
 from datetime import datetime
+from utils.timezone import get_utc_now
 from typing import AsyncGenerator, Optional
 
 from sqlalchemy.orm import Session
@@ -929,7 +930,7 @@ class PedidoCalculoStreamService:
                 geracao_existente.conteudo_gerado = markdown
                 geracao_existente.modelo_usado = self.service.modelo
                 geracao_existente.tempo_processamento = tempo_processamento
-                geracao_existente.criado_em = datetime.utcnow()  # Atualiza timestamp
+                geracao_existente.criado_em = get_utc_now()  # Atualiza timestamp
 
                 self.db.commit()
                 geracao_id = geracao_existente.id

@@ -100,9 +100,9 @@ class ExtractionQuestion(Base):
 
     # Auditoria
     criado_por = Column(Integer, ForeignKey("users.id"), nullable=True)
-    criado_em = Column(DateTime, default=get_utc_now)
+    criado_em = Column(DateTime(timezone=True), default=get_utc_now)
     atualizado_por = Column(Integer, ForeignKey("users.id"), nullable=True)
-    atualizado_em = Column(DateTime, default=get_utc_now, onupdate=get_utc_now)
+    atualizado_em = Column(DateTime(timezone=True), default=get_utc_now, onupdate=get_utc_now)
 
     # Nota: Removido relationship para evitar problemas de importação circular
     # Use join manual se precisar acessar a categoria
@@ -177,7 +177,7 @@ class ExtractionModel(Base):
 
     # Auditoria
     criado_por = Column(Integer, ForeignKey("users.id"), nullable=True)
-    criado_em = Column(DateTime, default=get_utc_now)
+    criado_em = Column(DateTime(timezone=True), default=get_utc_now)
 
     # Nota: Removido relationship para evitar problemas de importação circular
 
@@ -258,8 +258,8 @@ class ExtractionVariable(Base):
     ativo = Column(Boolean, default=True, index=True)
 
     # Auditoria
-    criado_em = Column(DateTime, default=get_utc_now)
-    atualizado_em = Column(DateTime, default=get_utc_now, onupdate=get_utc_now)
+    criado_em = Column(DateTime(timezone=True), default=get_utc_now)
+    atualizado_em = Column(DateTime(timezone=True), default=get_utc_now, onupdate=get_utc_now)
 
     # Relacionamentos (removido CategoriaResumoJSON para evitar problemas de importação circular)
     source_question = relationship("ExtractionQuestion", backref="variavel_gerada")
@@ -315,7 +315,7 @@ class PromptVariableUsage(Base):
     )
 
     # Auditoria
-    criado_em = Column(DateTime, default=get_utc_now)
+    criado_em = Column(DateTime(timezone=True), default=get_utc_now)
 
     # Relacionamentos
     prompt = relationship("PromptModulo", backref="variable_usages")
@@ -371,7 +371,7 @@ class PromptActivationLog(Base):
     numero_processo = Column(String(30), nullable=True, index=True)
 
     # Timestamp
-    timestamp = Column(DateTime, default=get_utc_now, index=True)
+    timestamp = Column(DateTime(timezone=True), default=get_utc_now, index=True)
 
     # Relacionamentos
     prompt = relationship("PromptModulo", backref="activation_logs")

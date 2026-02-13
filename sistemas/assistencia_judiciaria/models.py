@@ -21,8 +21,8 @@ class ConsultaProcesso(Base):
     relatorio = Column(Text, nullable=True)
     modelo_usado = Column(String(100), nullable=True)
     usuario_id = Column(Integer, ForeignKey("users.id"), nullable=True)
-    consultado_em = Column(DateTime, default=get_utc_now)
-    atualizado_em = Column(DateTime, default=get_utc_now, onupdate=get_utc_now)
+    consultado_em = Column(DateTime(timezone=True), default=get_utc_now)
+    atualizado_em = Column(DateTime(timezone=True), default=get_utc_now, onupdate=get_utc_now)
     
     # Relacionamento com feedback
     feedback = relationship("FeedbackAnalise", back_populates="consulta", uselist=False)
@@ -48,8 +48,8 @@ class FeedbackAnalise(Base):
     # Campos específicos do relatório que estavam errados (opcional)
     campos_incorretos = Column(JSON, nullable=True)
     
-    criado_em = Column(DateTime, default=get_utc_now)
-    
+    criado_em = Column(DateTime(timezone=True), default=get_utc_now)
+
     # Relacionamentos
     consulta = relationship("ConsultaProcesso", back_populates="feedback")
 

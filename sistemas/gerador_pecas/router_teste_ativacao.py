@@ -24,6 +24,7 @@ from sqlalchemy import func
 from database.connection import get_db
 from auth.models import User
 from auth.dependencies import get_current_active_user
+from utils.timezone import get_utc_now
 
 from sistemas.gerador_pecas.models_teste_ativacao import CenarioTesteAtivacao
 from sistemas.gerador_pecas.models_resumo_json import CategoriaResumoJSON
@@ -545,7 +546,7 @@ async def simular_ativacao(
         configuracao={
             "tipo_peca": request.tipo_peca,
             "categorias_ids": request.categorias_ids,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": get_utc_now().isoformat()
         }
     )
 

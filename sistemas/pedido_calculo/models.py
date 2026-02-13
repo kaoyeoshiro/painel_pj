@@ -64,8 +64,8 @@ class GeracaoPedidoCalculo(Base):
     usuario_id = Column(Integer, ForeignKey("users.id"), nullable=True)
 
     # Timestamps
-    criado_em = Column(DateTime, default=get_utc_now)
-    atualizado_em = Column(DateTime, default=get_utc_now, onupdate=get_utc_now)
+    criado_em = Column(DateTime(timezone=True), default=get_utc_now)
+    atualizado_em = Column(DateTime(timezone=True), default=get_utc_now, onupdate=get_utc_now)
 
     # Relacionamentos
     feedback = relationship("FeedbackPedidoCalculo", back_populates="geracao", uselist=False)
@@ -107,7 +107,7 @@ class LogChamadaIA(Base):
     erro = Column(Text, nullable=True)
 
     # Timestamp
-    criado_em = Column(DateTime, default=get_utc_now)
+    criado_em = Column(DateTime(timezone=True), default=get_utc_now)
 
     # Relacionamento
     geracao = relationship("GeracaoPedidoCalculo", back_populates="logs_ia")
@@ -136,8 +136,8 @@ class FeedbackPedidoCalculo(Base):
     # Campos específicos que tiveram problemas (opcional)
     campos_incorretos = Column(JSON, nullable=True)
     
-    criado_em = Column(DateTime, default=get_utc_now)
-    
+    criado_em = Column(DateTime(timezone=True), default=get_utc_now)
+
     # Relacionamentos
     geracao = relationship("GeracaoPedidoCalculo", back_populates="feedback")
 

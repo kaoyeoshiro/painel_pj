@@ -24,7 +24,7 @@ class GeminiApiLog(Base):
     __tablename__ = "gemini_api_logs"
 
     id = Column(Integer, primary_key=True, index=True)
-    created_at = Column(DateTime, default=get_utc_now, index=True)
+    created_at = Column(DateTime(timezone=True), default=get_utc_now, index=True)
 
     # Identificação do contexto (sem FK para evitar dependência circular)
     user_id = Column(Integer, nullable=True, index=True)

@@ -13,6 +13,7 @@ Funções principais:
 import asyncio
 import logging
 from datetime import datetime, timedelta
+from utils.timezone import get_utc_now
 from typing import Dict, Any, List, Optional
 from sqlalchemy.orm import Session
 from sqlalchemy import func, desc, and_, case
@@ -211,7 +212,7 @@ def get_gemini_summary(db: Session, hours: int = 24) -> Dict[str, Any]:
     Returns:
         Dicionário com estatísticas
     """
-    start_date = datetime.utcnow() - timedelta(hours=hours)
+    start_date = get_utc_now() - timedelta(hours=hours)
 
     # Total de logs no período
     total_logs = db.query(func.count(GeminiApiLog.id)).filter(
@@ -378,7 +379,7 @@ def cleanup_old_gemini_logs(db: Session, days: int = 30) -> int:
     Returns:
         Número de logs removidos
     """
-    cutoff_date = datetime.utcnow() - timedelta(days=days)
+    cutoff_date = get_utc_now() - timedelta(days=days)
 
     deleted = db.query(GeminiApiLog).filter(
         GeminiApiLog.created_at < cutoff_date

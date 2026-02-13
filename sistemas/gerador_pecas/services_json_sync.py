@@ -23,6 +23,7 @@ from .models_extraction import (
     ExtractionQuestion, ExtractionVariable, PromptVariableUsage
 )
 from .models_resumo_json import CategoriaResumoJSON
+from utils.timezone import get_utc_now
 
 logger = logging.getLogger(__name__)
 
@@ -525,7 +526,7 @@ class JsonSyncService:
 
                     if houve_mudanca:
                         pergunta.atualizado_por = user_id
-                        pergunta.atualizado_em = datetime.utcnow()
+                        pergunta.atualizado_em = get_utc_now()
                         perguntas_atualizadas += 1
 
                 if slug in variaveis_por_slug:
@@ -551,7 +552,7 @@ class JsonSyncService:
                         var_mudou = True
 
                     if var_mudou:
-                        variavel.atualizado_em = datetime.utcnow()
+                        variavel.atualizado_em = get_utc_now()
                         variaveis_atualizadas += 1
                         houve_mudanca = True
 
@@ -576,7 +577,7 @@ class JsonSyncService:
                 if uso_prompts > 0:
                     pergunta.ativo = False
                     pergunta.atualizado_por = user_id
-                    pergunta.atualizado_em = datetime.utcnow()
+                    pergunta.atualizado_em = get_utc_now()
                 else:
                     self.db.delete(pergunta)
                 perguntas_removidas += 1
@@ -585,10 +586,10 @@ class JsonSyncService:
                 variavel = variaveis_por_slug[slug]
                 if outras_categorias > 0:
                     variavel.categoria_id = None
-                    variavel.atualizado_em = datetime.utcnow()
+                    variavel.atualizado_em = get_utc_now()
                 elif uso_prompts > 0:
                     variavel.ativo = False
-                    variavel.atualizado_em = datetime.utcnow()
+                    variavel.atualizado_em = get_utc_now()
                 else:
                     self.db.query(ExtractionQuestion).filter(
                         ExtractionQuestion.depends_on_variable == slug
@@ -614,7 +615,7 @@ class JsonSyncService:
 
         # 8. ATUALIZA O JSON DA CATEGORIA
         categoria.formato_json = json_content
-        categoria.atualizado_em = datetime.utcnow()
+        categoria.atualizado_em = get_utc_now()
 
         # 9. COMMIT DA TRANSACAO
         try:

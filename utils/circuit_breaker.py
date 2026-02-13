@@ -50,6 +50,7 @@ import time
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
+from utils.timezone import get_utc_now
 from functools import wraps
 from threading import Lock
 from typing import Any, Callable, Coroutine, Dict, Optional, Tuple, Type, TypeVar
@@ -359,7 +360,7 @@ class CircuitBreaker:
         self._state_changes.append({
             "from": old_state.value,
             "to": new_state.value,
-            "timestamp": datetime.utcnow().isoformat()
+            "timestamp": get_utc_now().isoformat()
         })
 
         # Mantém histórico limitado

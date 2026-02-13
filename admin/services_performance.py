@@ -23,7 +23,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import and_, desc
 
 from database.connection import SessionLocal
-from utils.timezone import to_iso_utc
+from utils.timezone import to_iso_utc, get_utc_now
 
 logger = logging.getLogger(__name__)
 
@@ -44,7 +44,7 @@ def _is_cache_valid() -> bool:
     """Verifica se o cache ainda é válido."""
     if _cache["last_check"] is None:
         return False
-    elapsed = (datetime.utcnow() - _cache["last_check"]).total_seconds()
+    elapsed = (get_utc_now() - _cache["last_check"]).total_seconds()
     return elapsed < _cache["ttl_seconds"]
 
 
@@ -52,7 +52,7 @@ def _update_cache(enabled: bool, admin_id: Optional[int]):
     """Atualiza o cache."""
     _cache["enabled"] = enabled
     _cache["admin_id"] = admin_id
-    _cache["last_check"] = datetime.utcnow()
+    _cache["last_check"] = get_utc_now()
 
 
 def invalidate_cache():
@@ -254,7 +254,7 @@ def _log_to_file(log_entry):
         log_dir.mkdir(parents=True, exist_ok=True)
 
         # Arquivo por dia
-        today = datetime.utcnow().strftime("%Y-%m-%d")
+        today = get_utc_now().strftime("%Y-%m-%d")
         log_file = log_dir / f"perf_{today}.log"
 
         # Formato compacto
@@ -449,7 +449,7 @@ def get_performance_summary(
     from admin.models_performance import PerformanceLog
     from sqlalchemy import func
 
-    since = datetime.utcnow() - timedelta(hours=hours)
+    since = get_utc_now() - timedelta(hours=hours)
 
     # Total de logs
     total = db.query(func.count(PerformanceLog.id)).filter(
@@ -518,7 +518,7 @@ def cleanup_old_logs(db: Session, days: int = 7) -> int:
     """
     from admin.models_performance import PerformanceLog
 
-    cutoff = datetime.utcnow() - timedelta(days=days)
+    cutoff = get_utc_now() - timedelta(days=days)
 
     deleted = db.query(PerformanceLog).filter(
         PerformanceLog.created_at < cutoff

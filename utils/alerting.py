@@ -42,6 +42,7 @@ import os
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from enum import Enum
+from utils.timezone import get_utc_now
 from typing import Any, Callable, Dict, List, Optional
 
 import httpx
@@ -217,17 +218,17 @@ class AlertManager:
         if alert_id in self._cooldown_cache:
             last_sent = self._cooldown_cache[alert_id]
             cooldown = timedelta(minutes=self.config.cooldown_minutes)
-            if datetime.utcnow() - last_sent < cooldown:
+            if get_utc_now() - last_sent < cooldown:
                 logger.debug(f"Alerta '{alert_id}' em cooldown, ignorando")
                 return True
         return False
 
     def _update_cooldown(self, alert_id: str) -> None:
         """Atualiza timestamp de cooldown."""
-        self._cooldown_cache[alert_id] = datetime.utcnow()
+        self._cooldown_cache[alert_id] = get_utc_now()
 
         # Limpa cache antigo
-        cutoff = datetime.utcnow() - timedelta(hours=1)
+        cutoff = get_utc_now() - timedelta(hours=1)
         self._cooldown_cache = {
             k: v for k, v in self._cooldown_cache.items()
             if v > cutoff

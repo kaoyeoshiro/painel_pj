@@ -72,7 +72,7 @@ class BertDataset(Base):
 
     # Auditoria
     uploaded_by = Column(Integer, ForeignKey("users.id"), nullable=False)
-    uploaded_at = Column(DateTime, default=get_utc_now, nullable=False)
+    uploaded_at = Column(DateTime(timezone=True), default=get_utc_now, nullable=False)
 
     # Relacionamentos
     user = relationship("User", backref="bert_datasets")
@@ -134,9 +134,9 @@ class BertRun(Base):
 
     # Timestamps
     created_by = Column(Integer, ForeignKey("users.id"), nullable=False)
-    created_at = Column(DateTime, default=get_utc_now, nullable=False)
-    started_at = Column(DateTime, nullable=True)
-    completed_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime(timezone=True), default=get_utc_now, nullable=False)
+    started_at = Column(DateTime(timezone=True), nullable=True)
+    completed_at = Column(DateTime(timezone=True), nullable=True)
 
     # Relacionamentos
     dataset = relationship("BertDataset", back_populates="runs")
@@ -168,7 +168,7 @@ class BertJob(Base):
 
     # Worker que pegou o job
     worker_id = Column(Integer, ForeignKey("bert_workers.id"), nullable=True)
-    claimed_at = Column(DateTime, nullable=True)
+    claimed_at = Column(DateTime(timezone=True), nullable=True)
 
     # Progresso
     current_epoch = Column(Integer, nullable=True)
@@ -176,9 +176,9 @@ class BertJob(Base):
     progress_percent = Column(Float, default=0.0)
 
     # Timestamps
-    created_at = Column(DateTime, default=get_utc_now, nullable=False)
-    started_at = Column(DateTime, nullable=True)
-    completed_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime(timezone=True), default=get_utc_now, nullable=False)
+    started_at = Column(DateTime(timezone=True), nullable=True)
+    completed_at = Column(DateTime(timezone=True), nullable=True)
 
     # Retry
     retry_count = Column(Integer, default=0)
@@ -234,7 +234,7 @@ class BertMetric(Base):
     confusion_matrix = Column(JSON, nullable=True)
 
     # Timestamp
-    recorded_at = Column(DateTime, default=get_utc_now, nullable=False)
+    recorded_at = Column(DateTime(timezone=True), default=get_utc_now, nullable=False)
 
     # Relacionamentos
     run = relationship("BertRun", back_populates="metrics")
@@ -267,7 +267,7 @@ class BertLog(Base):
     batch = Column(Integer, nullable=True)
 
     # Timestamp
-    timestamp = Column(DateTime, default=get_utc_now, nullable=False)
+    timestamp = Column(DateTime(timezone=True), default=get_utc_now, nullable=False)
 
     # Relacionamentos
     run = relationship("BertRun", back_populates="logs")
@@ -301,7 +301,7 @@ class BertTestHistory(Base):
 
     # Usuario
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    created_at = Column(DateTime, default=get_utc_now, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=get_utc_now, nullable=False)
 
     # Relacionamentos
     run = relationship("BertRun", backref="test_history")
@@ -336,7 +336,7 @@ class BertWorker(Base):
 
     # Status
     is_active = Column(Boolean, default=True)
-    last_heartbeat = Column(DateTime, nullable=True)
+    last_heartbeat = Column(DateTime(timezone=True), nullable=True)
     current_job_id = Column(Integer, nullable=True)
 
     # Stats
@@ -344,7 +344,7 @@ class BertWorker(Base):
     total_training_hours = Column(Float, default=0.0)
 
     # Timestamps
-    created_at = Column(DateTime, default=get_utc_now, nullable=False)
+    created_at = Column(DateTime(timezone=True), default=get_utc_now, nullable=False)
 
     # Relacionamentos
     jobs = relationship("BertJob", back_populates="worker")

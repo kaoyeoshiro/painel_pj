@@ -20,7 +20,7 @@ from app.repositories.sqlalchemy.session_ops import session_query
 from werkzeug.utils import secure_filename
 
 from database.connection import get_db
-from utils.timezone import to_iso_utc, now_utc
+from utils.timezone import to_iso_utc, now_utc, now_local, get_utc_now
 from auth.dependencies import get_current_active_user, get_current_user_from_token_or_query
 from auth.models import User
 # SECURITY: Rate Limiting para endpoints de IA
@@ -96,7 +96,7 @@ UPLOAD_FOLDER.mkdir(parents=True, exist_ok=True)
 def add_log(db: Session, message: str, status: str = "info"):
     """Adiciona um log ao banco de dados"""
     log = LogSistema(
-        time=datetime.now().strftime("%H:%M:%S"),
+        time=now_local().strftime("%H:%M:%S"),
         status=status,
         message=message,
         sistema="matriculas"
@@ -137,7 +137,7 @@ async def list_files(
                 path=str(filepath),
                 type=get_file_type(arquivo.file_name),
                 size=get_file_size(filepath),
-                date=arquivo.criado_em.strftime("%Y-%m-%d") if arquivo.criado_em else datetime.now().strftime("%Y-%m-%d"),
+                date=arquivo.criado_em.strftime("%Y-%m-%d") if arquivo.criado_em else now_local().strftime("%Y-%m-%d"),
                 analyzed=analise is not None
             ))
         else:
@@ -303,7 +303,7 @@ async def upload_file(
             path=str(filepath),
             type=get_file_type(original_name),
             size=get_file_size(filepath),
-            date=datetime.now().strftime("%Y-%m-%d"),
+            date=now_local().strftime("%Y-%m-%d"),
             analyzed=False
         )
     )
@@ -390,7 +390,7 @@ async def list_analyses(
             id=analise.file_id,
             matricula=analise.matricula_principal or "N/A",
             lote=analise.lote or "N/A",
-            dataOperacao=analise.analisado_em.strftime("%d/%m/%Y") if analise.analisado_em else datetime.now().strftime("%d/%m/%Y"),
+            dataOperacao=analise.analisado_em.strftime("%d/%m/%Y") if analise.analisado_em else now_local().strftime("%d/%m/%Y"),
             tipo="Matrícula",
             proprietario=analise.proprietario or "N/A",
             estado="Analisado" if arquivo_existe else "Arquivo Indisponível",
@@ -738,8 +738,8 @@ INSTRUÇÕES ESPECIAIS PARA ANÁLISE EM LOTE:
             analise.matricula_principal = matricula_principal
             analise.confianca = parsed.get("confidence", 0)
             analise.num_confrontantes = len(lotes)
-            analise.analisado_em = datetime.utcnow()
-        
+            analise.analisado_em = get_utc_now()
+
         db.commit()
         logger.info(f"Análise em lote concluída para grupo {grupo_id}")
         
@@ -848,7 +848,7 @@ def run_analysis_task(file_id: str, file_path: str, model: str, api_key: str, us
         analise.lote = lote_principal
         analise.proprietario = proprietario_str
         analise.num_confrontantes = len(lotes)
-        analise.analisado_em = datetime.utcnow()
+        analise.analisado_em = get_utc_now()
         analise.file_path = None  # Limpa o caminho do arquivo se existia
         
         db.commit()
@@ -951,7 +951,7 @@ async def create_registro(
     """Cria um novo registro"""
     registro = Registro(
         matricula=registro_data.matricula,
-        data_operacao=registro_data.dataOperacao or datetime.now().strftime("%d/%m/%Y"),
+        data_operacao=registro_data.dataOperacao or now_local().strftime("%d/%m/%Y"),
         tipo=registro_data.tipo,
         proprietario=registro_data.proprietario,
         estado=registro_data.estado,

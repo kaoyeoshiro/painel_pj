@@ -28,6 +28,7 @@ from auth.dependencies import get_current_active_user
 from sistemas.gerador_pecas.models_resumo_json import CategoriaResumoJSON
 from sistemas.gerador_pecas.models_teste_categorias import TesteDocumento, TesteObservacao
 from services.text_normalizer import text_normalizer
+from utils.timezone import get_utc_now, now_local
 
 # PDF manipulation
 try:
@@ -52,7 +53,7 @@ _PDF_CACHE_TTL_MINUTES = 30
 
 def _limpar_cache_expirado():
     """Remove PDFs expirados do cache"""
-    agora = datetime.utcnow()
+    agora = get_utc_now()
     expirados = [k for k, v in _pdf_cache.items() if v['expires_at'] < agora]
     for k in expirados:
         del _pdf_cache[k]
@@ -66,7 +67,7 @@ def armazenar_pdf_cache(pdf_base64: str, processo: str) -> str:
     _pdf_cache[token] = {
         'pdf_base64': pdf_base64,
         'processo': processo,
-        'expires_at': datetime.utcnow() + timedelta(minutes=_PDF_CACHE_TTL_MINUTES)
+        'expires_at': get_utc_now() + timedelta(minutes=_PDF_CACHE_TTL_MINUTES)
     }
     return token
 
@@ -79,7 +80,7 @@ def obter_pdf_cache(token: str) -> Optional[bytes]:
         return None
 
     entry = _pdf_cache[token]
-    if entry['expires_at'] < datetime.utcnow():
+    if entry['expires_at'] < get_utc_now():
         del _pdf_cache[token]
         return None
 
@@ -246,7 +247,7 @@ def normalizar_processo(numero: str) -> tuple[bool, str, str]:
 
     # Valida ano (dígitos 9-13) - deve estar entre 1900 e ano atual + 1
     ano = int(digitos[9:13])
-    ano_atual = datetime.now().year
+    ano_atual = now_local().year
     if not (1900 <= ano <= ano_atual + 1):
         return False, "", f"Ano do processo inválido: {ano}"
 
@@ -1281,7 +1282,7 @@ async def salvar_documento(
         TesteDocumento.processo == request.processo
     ).first()
 
-    agora = datetime.utcnow()
+    agora = get_utc_now()
 
     if doc:
         # Atualiza existente
@@ -1344,7 +1345,7 @@ async def salvar_documentos_lote(
             TesteDocumento.processo == req.processo
         ).first()
 
-        agora = datetime.utcnow()
+        agora = get_utc_now()
 
         if doc:
             doc.status = req.status

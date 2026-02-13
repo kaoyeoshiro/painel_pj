@@ -28,6 +28,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 
 from services.gemini_service import gemini_service, get_thinking_level
+from utils.timezone import get_utc_now
 from .models_extraction import (
     ExtractionQuestion, ExtractionModel, ExtractionVariable,
     ExtractionQuestionType
@@ -1033,7 +1034,7 @@ INSTRUÇÕES OBRIGATÓRIAS:
                 existente.is_conditional = is_conditional
                 existente.depends_on_variable = depends_on
                 existente.dependency_config = dependency_config
-                existente.atualizado_em = datetime.utcnow()
+                existente.atualizado_em = get_utc_now()
 
                 variaveis_criadas.append({
                     "id": existente.id,
@@ -1094,7 +1095,7 @@ INSTRUÇÕES OBRIGATÓRIAS:
                     slug_base = v.get("slug_base")
                     if slug_base and pergunta.nome_variavel_sugerido != slug_base:
                         pergunta.nome_variavel_sugerido = slug_base
-                        pergunta.atualizado_em = datetime.utcnow()
+                        pergunta.atualizado_em = get_utc_now()
                         logger.info(f"Pergunta {pergunta_id}: nome_variavel_sugerido atualizado para '{slug_base}'")
 
                     # Atualiza tipo_sugerido se estava vazio ou como ia_decide
@@ -1168,7 +1169,7 @@ INSTRUÇÕES OBRIGATÓRIAS:
                 # Atualiza a pergunta se encontrou o slug correto
                 if slug_com_namespace and slug_com_namespace != dep_original:
                     pergunta.depends_on_variable = slug_com_namespace
-                    pergunta.atualizado_em = datetime.utcnow()
+                    pergunta.atualizado_em = get_utc_now()
                     perguntas_atualizadas += 1
                     logger.info(f"Pergunta {pergunta.id}: depends_on atualizado de '{dep_original}' para '{slug_com_namespace}'")
 

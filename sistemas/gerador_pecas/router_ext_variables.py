@@ -24,6 +24,7 @@ from sqlalchemy import func
 from database.connection import get_db
 from auth.dependencies import get_current_active_user
 from auth.models import User
+from utils.timezone import get_utc_now
 
 from .models_extraction import (
     ExtractionQuestion, ExtractionVariable,
@@ -615,7 +616,7 @@ async def atualizar_variavel(
     for field, value in update_data.items():
         setattr(variavel, field, value)
 
-    variavel.atualizado_em = datetime.utcnow()
+    variavel.atualizado_em = get_utc_now()
 
     # Se tipo ou descrição mudou, atualiza o JSON da categoria
     categoria = None
@@ -753,7 +754,7 @@ async def excluir_variavel(
                 if slug in json_data:
                     del json_data[slug]
                     categoria.formato_json = json.dumps(json_data, ensure_ascii=False, indent=2)
-                    categoria.atualizado_em = datetime.utcnow()
+                    categoria.atualizado_em = get_utc_now()
                     limpezas_realizadas["json_atualizado"] = True
                     logger.info(f"Variável '{slug}' removida do JSON da categoria {categoria.nome}")
             except json.JSONDecodeError:
@@ -780,7 +781,7 @@ async def excluir_variavel(
         v.depends_on_variable = None
         v.is_conditional = False
         v.dependency_config = None
-        v.atualizado_em = datetime.utcnow()
+        v.atualizado_em = get_utc_now()
 
     limpezas_realizadas["dependencias_variaveis_removidas"] = len(variaveis_dependentes)
 
@@ -794,7 +795,7 @@ async def excluir_variavel(
         p.dependency_operator = None
         p.dependency_value = None
         p.dependency_inferred = False
-        p.atualizado_em = datetime.utcnow()
+        p.atualizado_em = get_utc_now()
 
     limpezas_realizadas["dependencias_perguntas_removidas"] = len(perguntas_dependentes)
 
@@ -860,7 +861,7 @@ async def reativar_variavel(
         raise HTTPException(status_code=404, detail="Variável não encontrada")
 
     variavel.ativo = True
-    variavel.atualizado_em = datetime.utcnow()
+    variavel.atualizado_em = get_utc_now()
 
     db.commit()
 
@@ -1044,7 +1045,7 @@ async def excluir_variavel_permanente(
         v.depends_on_variable = None
         v.dependency_operator = None
         v.dependency_value = None
-        v.atualizado_em = datetime.utcnow()
+        v.atualizado_em = get_utc_now()
 
     # Remove dependências de perguntas que dependem desta
     perguntas_dependentes = session_query(db, ExtractionQuestion).filter(
@@ -1056,7 +1057,7 @@ async def excluir_variavel_permanente(
         p.dependency_operator = None
         p.dependency_value = None
         p.dependency_inferred = False
-        p.atualizado_em = datetime.utcnow()
+        p.atualizado_em = get_utc_now()
 
     slug = variavel.slug
     db.delete(variavel)

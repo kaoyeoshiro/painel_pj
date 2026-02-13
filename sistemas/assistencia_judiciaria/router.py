@@ -20,7 +20,7 @@ from database.connection import get_db
 # SECURITY: Rate Limiting para endpoints de IA
 from utils.rate_limit import limiter, LIMITS, get_user_identifier
 from utils.quota_manager import check_ai_quota
-from utils.timezone import to_iso_utc
+from utils.timezone import to_iso_utc, get_utc_now
 from sistemas.assistencia_judiciaria.core.logic import full_flow, full_flow_async, DEFAULT_MODEL
 from app.adapters.gemini_adapter import GeminiAdapter
 from sistemas.assistencia_judiciaria.core.document import markdown_to_docx, docx_to_pdf
@@ -269,7 +269,7 @@ async def consultar_processo(
         consulta.dados_json = dados
         consulta.relatorio = relatorio
         consulta.modelo_usado = modelo_real
-        consulta.atualizado_em = datetime.utcnow()
+        consulta.atualizado_em = get_utc_now()
         
         db.commit()
         db.refresh(consulta)

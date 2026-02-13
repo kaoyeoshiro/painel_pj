@@ -39,7 +39,7 @@ class GeracaoAnalise(Base):
 
     # Petição de prestação de contas
     peticao_prestacao_id = Column(String(50), nullable=True)
-    peticao_prestacao_data = Column(DateTime, nullable=True)
+    peticao_prestacao_data = Column(DateTime(timezone=True), nullable=True)
     peticao_prestacao_texto = Column(Text, nullable=True)
 
     # Documentos anexos (notas fiscais, comprovantes)
@@ -94,10 +94,10 @@ class GeracaoAnalise(Base):
     mensagem_erro_usuario = Column(Text, nullable=True)  # Mensagem amigável sobre o que falta
 
     # Expiração do estado salvo (24h após criação)
-    estado_expira_em = Column(DateTime, nullable=True)  # Se None ou expirado, recomeça do zero
+    estado_expira_em = Column(DateTime(timezone=True), nullable=True)  # Se None ou expirado, recomeca do zero
 
-    criado_em = Column(DateTime, default=get_utc_now)
-    atualizado_em = Column(DateTime, default=get_utc_now, onupdate=get_utc_now)
+    criado_em = Column(DateTime(timezone=True), default=get_utc_now)
+    atualizado_em = Column(DateTime(timezone=True), default=get_utc_now, onupdate=get_utc_now)
 
     # Relacionamentos
     logs_ia = relationship("LogChamadaIAPrestacao", back_populates="geracao", cascade="all, delete-orphan")
@@ -129,7 +129,7 @@ class LogChamadaIAPrestacao(Base):
     sucesso = Column(Boolean, default=True)
     erro = Column(Text, nullable=True)
 
-    criado_em = Column(DateTime, default=get_utc_now)
+    criado_em = Column(DateTime(timezone=True), default=get_utc_now)
 
     # Relacionamento
     geracao = relationship("GeracaoAnalise", back_populates="logs_ia")
@@ -152,7 +152,7 @@ class FeedbackPrestacao(Base):
     valores_corretos = Column(Boolean, nullable=True)
     medicamento_correto = Column(Boolean, nullable=True)
 
-    criado_em = Column(DateTime, default=get_utc_now)
+    criado_em = Column(DateTime(timezone=True), default=get_utc_now)
 
     # Relacionamento
     geracao = relationship("GeracaoAnalise", back_populates="feedbacks")

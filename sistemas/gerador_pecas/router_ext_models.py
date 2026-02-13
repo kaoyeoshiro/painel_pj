@@ -24,6 +24,7 @@ from sqlalchemy import func
 from database.connection import get_db
 from auth.dependencies import get_current_active_user
 from auth.models import User
+from utils.timezone import get_utc_now
 
 from .models_extraction import (
     ExtractionQuestion, ExtractionModel, ExtractionVariable,
@@ -411,7 +412,7 @@ async def sincronizar_perguntas_com_json(
             pergunta = perguntas_inativas_por_slug[slug]
             pergunta.ativo = True
             pergunta.atualizado_por = current_user.id
-            pergunta.atualizado_em = datetime.utcnow()
+            pergunta.atualizado_em = get_utc_now()
             perguntas_reativadas += 1
             detalhes.append({
                 "acao": "pergunta_reativada",
@@ -448,7 +449,7 @@ async def sincronizar_perguntas_com_json(
             variavel = variaveis_por_slug[slug]
             if not variavel.ativo:
                 variavel.ativo = True
-                variavel.atualizado_em = datetime.utcnow()
+                variavel.atualizado_em = get_utc_now()
                 variaveis_reativadas += 1
                 detalhes.append({
                     "acao": "variavel_reativada",

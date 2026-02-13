@@ -22,6 +22,7 @@ from database.connection import get_db
 from auth.dependencies import get_current_active_user
 from auth.models import User
 from admin.perf_context import perf_ctx
+from utils.timezone import get_utc_now
 
 from .models_extraction import (
     ExtractionQuestion, ExtractionVariable,
@@ -706,7 +707,7 @@ async def atualizar_pergunta(
         setattr(pergunta, field, value)
 
     pergunta.atualizado_por = current_user.id
-    pergunta.atualizado_em = datetime.utcnow()
+    pergunta.atualizado_em = get_utc_now()
 
     # Nota: categoria já foi buscada acima para normalizar o slug
 
@@ -839,7 +840,7 @@ async def atualizar_ordem_perguntas_lote(
         )
 
     # Atualiza ordem de todas as perguntas
-    now = datetime.utcnow()
+    now = get_utc_now()
     atualizadas = 0
 
     for item in data.perguntas:
@@ -909,7 +910,7 @@ async def agrupar_perguntas_por_dependencias(
     resultado, ciclos = _agrupar_por_dependencias_algoritmo(perguntas)
 
     # Atualiza ordem no banco
-    now = datetime.utcnow()
+    now = get_utc_now()
     atualizadas = 0
     nova_ordem = []
 
@@ -1003,7 +1004,7 @@ async def excluir_pergunta(
                 if slug in json_data:
                     del json_data[slug]
                     categoria.formato_json = json.dumps(json_data, ensure_ascii=False, indent=2)
-                    categoria.atualizado_em = datetime.utcnow()
+                    categoria.atualizado_em = get_utc_now()
                     limpezas_realizadas["json_atualizado"] = True
                     logger.info(f"Variável '{slug}' removida do JSON da categoria {categoria.nome}")
             except json.JSONDecodeError:
@@ -1031,7 +1032,7 @@ async def excluir_pergunta(
             p.dependency_operator = None
             p.dependency_value = None
             p.dependency_inferred = False
-            p.atualizado_em = datetime.utcnow()
+            p.atualizado_em = get_utc_now()
 
         limpezas_realizadas["dependencias_perguntas_removidas"] = len(perguntas_dependentes)
         if perguntas_dependentes:
@@ -1046,7 +1047,7 @@ async def excluir_pergunta(
             v.depends_on_variable = None
             v.is_conditional = False
             v.dependency_config = None
-            v.atualizado_em = datetime.utcnow()
+            v.atualizado_em = get_utc_now()
 
         limpezas_realizadas["dependencias_variaveis_removidas"] = len(variaveis_dependentes)
         if variaveis_dependentes:

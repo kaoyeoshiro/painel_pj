@@ -16,6 +16,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import or_
 
 from .models_extraction import ExtractionQuestion, ExtractionVariable
+from utils.timezone import get_utc_now
 
 logger = logging.getLogger(__name__)
 
@@ -226,7 +227,7 @@ def ensure_variable_for_question(
             variavel_existente.depends_on_variable = None
             variavel_existente.dependency_config = None
 
-        variavel_existente.atualizado_em = datetime.utcnow()
+        variavel_existente.atualizado_em = get_utc_now()
 
         logger.info(f"Variável preservada: {variavel_existente.slug} (pergunta_id={pergunta.id})")
         return variavel_existente
@@ -263,7 +264,7 @@ def ensure_variable_for_question(
             variavel_mesmo_slug.tipo = tipo_variavel
             variavel_mesmo_slug.descricao = pergunta.descricao or variavel_mesmo_slug.descricao
             variavel_mesmo_slug.opcoes = pergunta.opcoes_sugeridas or variavel_mesmo_slug.opcoes
-            variavel_mesmo_slug.atualizado_em = datetime.utcnow()
+            variavel_mesmo_slug.atualizado_em = get_utc_now()
 
             # Atualiza dependências
             if pergunta.depends_on_variable:
@@ -297,7 +298,7 @@ def ensure_variable_for_question(
             variavel_mesmo_slug.tipo = tipo_variavel
             variavel_mesmo_slug.descricao = pergunta.descricao or variavel_mesmo_slug.descricao
             variavel_mesmo_slug.opcoes = pergunta.opcoes_sugeridas or variavel_mesmo_slug.opcoes
-            variavel_mesmo_slug.atualizado_em = datetime.utcnow()
+            variavel_mesmo_slug.atualizado_em = get_utc_now()
 
             # Atualiza nome_variavel_sugerido da pergunta com slug COMPLETO
             pergunta.nome_variavel_sugerido = slug_final

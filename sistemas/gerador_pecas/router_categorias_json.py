@@ -22,6 +22,7 @@ from auth.models import User
 from auth.dependencies import get_current_active_user
 from sistemas.gerador_pecas.models_resumo_json import CategoriaResumoJSON, CategoriaResumoJSONHistorico
 from admin.perf_context import perf_ctx
+from utils.timezone import get_utc_now
 
 router = APIRouter(prefix="/categorias-resumo-json", tags=["Categorias Resumo JSON"])
 
@@ -440,11 +441,11 @@ async def atualizar_categoria(
     
     # Se marcou como gerado por IA, salva timestamp
     if categoria_data.json_gerado_por_ia:
-        categoria.json_gerado_em = datetime.utcnow()
+        categoria.json_gerado_em = get_utc_now()
         categoria.json_gerado_por = current_user.id
 
     categoria.atualizado_por = current_user.id
-    categoria.atualizado_em = datetime.utcnow()
+    categoria.atualizado_em = get_utc_now()
 
     # ==========================================================================
     # DETECCAO E PROPAGACAO AUTOMATICA DE RENOMEACAO DE SLUGS
@@ -545,7 +546,7 @@ async def atualizar_categoria(
                 for variavel in variaveis_categoria:
                     if variavel.slug not in slugs_no_json:
                         variavel.ativo = False
-                        variavel.atualizado_em = datetime.utcnow()
+                        variavel.atualizado_em = get_utc_now()
                         logger.info(f"Variavel orfa desativada: slug={variavel.slug}")
 
                         if variavel.source_question_id:
@@ -555,7 +556,7 @@ async def atualizar_categoria(
                             if pergunta and pergunta.ativo:
                                 pergunta.ativo = False
                                 pergunta.atualizado_por = current_user.id
-                                pergunta.atualizado_em = datetime.utcnow()
+                                pergunta.atualizado_em = get_utc_now()
 
                 # Atualiza tipo/descricao de variaveis existentes
                 for slug, campo_info in schema_novo.items():
@@ -571,11 +572,11 @@ async def atualizar_categoria(
 
                             if tipo_json and variavel.tipo != tipo_json:
                                 variavel.tipo = tipo_json
-                                variavel.atualizado_em = datetime.utcnow()
+                                variavel.atualizado_em = get_utc_now()
 
                             if descricao_json and variavel.descricao != descricao_json:
                                 variavel.descricao = descricao_json
-                                variavel.atualizado_em = datetime.utcnow()
+                                variavel.atualizado_em = get_utc_now()
 
         except Exception as e:
             logger.warning(f"Erro ao processar mudancas de slug: {e}")

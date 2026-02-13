@@ -20,6 +20,7 @@ from app.repositories.sqlalchemy.session_ops import session_query
 from database.connection import get_db
 from auth.dependencies import get_current_active_user
 from auth.models import User
+from utils.timezone import get_utc_now
 
 from .models_extraction import (
     ExtractionQuestion, ExtractionVariable,
@@ -328,7 +329,7 @@ async def definir_dependencia_pergunta(
     pergunta.dependency_value = data.dependency_value
     pergunta.dependency_inferred = False  # Definido manualmente
     pergunta.atualizado_por = current_user.id
-    pergunta.atualizado_em = datetime.utcnow()
+    pergunta.atualizado_em = get_utc_now()
 
     db.commit()
     db.refresh(pergunta)
@@ -369,7 +370,7 @@ async def remover_dependencia_pergunta(
     pergunta.dependency_config = None
     pergunta.dependency_inferred = False
     pergunta.atualizado_por = current_user.id
-    pergunta.atualizado_em = datetime.utcnow()
+    pergunta.atualizado_em = get_utc_now()
 
     db.commit()
 
@@ -596,7 +597,7 @@ async def sincronizar_tipos_perguntas(
 
             if alteracoes:
                 pergunta.atualizado_por = current_user.id
-                pergunta.atualizado_em = datetime.utcnow()
+                pergunta.atualizado_em = get_utc_now()
                 perguntas_atualizadas += 1
                 detalhes.append({
                     "pergunta_id": pergunta_id,

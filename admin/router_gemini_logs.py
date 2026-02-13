@@ -14,6 +14,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from typing import Optional
 from datetime import datetime, timedelta
+from utils.timezone import get_utc_now
 
 from database.connection import get_db
 from auth.dependencies import require_admin
@@ -64,7 +65,7 @@ async def list_logs(
     - user_id: ID do usuário
     - hours: Período em horas (padrão: 24h)
     """
-    start_date = datetime.utcnow() - timedelta(hours=hours)
+    start_date = get_utc_now() - timedelta(hours=hours)
 
     logs = get_gemini_logs(
         db=db,
@@ -290,7 +291,7 @@ async def get_thinking_level_status(
     """
     from services.ia_params_resolver import AGENTES_POR_SISTEMA, get_ia_params
 
-    start_date = datetime.utcnow() - timedelta(hours=hours)
+    start_date = get_utc_now() - timedelta(hours=hours)
 
     # Obtém sistemas para análise
     if sistema:

@@ -14,6 +14,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import and_
 import logging
 
+from utils.timezone import get_utc_now
 from sistemas.bert_training.models import BertJob, BertRun, BertWorker, JobStatus
 from sistemas.bert_training import services
 
@@ -52,7 +53,7 @@ def check_no_progress_jobs(db: Session) -> List[Dict[str, Any]]:
     Returns:
         Lista de jobs problematicos com informacoes
     """
-    cutoff_time = datetime.utcnow() - timedelta(
+    cutoff_time = get_utc_now() - timedelta(
         minutes=WatchdogConfig.NO_PROGRESS_TIMEOUT_MINUTES
     )
 
@@ -101,7 +102,7 @@ def check_dead_workers(db: Session) -> List[Dict[str, Any]]:
     Returns:
         Lista de workers problematicos
     """
-    cutoff_time = datetime.utcnow() - timedelta(
+    cutoff_time = get_utc_now() - timedelta(
         minutes=WatchdogConfig.WORKER_HEARTBEAT_TIMEOUT_MINUTES
     )
 
@@ -133,7 +134,7 @@ def check_stuck_epochs(db: Session) -> List[Dict[str, Any]]:
     """
     Detecta jobs travados na mesma epoch por muito tempo.
     """
-    cutoff_time = datetime.utcnow() - timedelta(
+    cutoff_time = get_utc_now() - timedelta(
         minutes=WatchdogConfig.STUCK_EPOCH_TIMEOUT_MINUTES
     )
 
@@ -170,7 +171,7 @@ def check_timeout_jobs(db: Session) -> List[Dict[str, Any]]:
     """
     Detecta jobs que excederam tempo maximo.
     """
-    cutoff_time = datetime.utcnow() - timedelta(
+    cutoff_time = get_utc_now() - timedelta(
         hours=WatchdogConfig.JOB_MAX_DURATION_HOURS
     )
 
@@ -208,7 +209,7 @@ def handle_stuck_job(db: Session, job_id: int, reason: str) -> Dict[str, Any]:
     # Marca job atual como failed
     job.status = JobStatus.FAILED
     job.error_message = f"[Watchdog] {reason}"
-    job.completed_at = datetime.utcnow()
+    job.completed_at = get_utc_now()
 
     # Libera worker se associado
     if job.worker_id:
@@ -243,7 +244,7 @@ def handle_stuck_job(db: Session, job_id: int, reason: str) -> Dict[str, Any]:
         # Run falhou definitivamente
         run.status = "failed"
         run.error_message = f"[Watchdog] {reason}. Maximo de retries excedido."
-        run.completed_at = datetime.utcnow()
+        run.completed_at = get_utc_now()
 
         result["run_failed"] = True
         logger.error(f"Job {job_id} falhou definitivamente apos {job.retry_count} retries")
@@ -294,7 +295,7 @@ def run_watchdog_check(db: Session) -> Dict[str, Any]:
     Deve ser chamada periodicamente (ex: a cada 5 minutos).
     """
     results = {
-        "timestamp": datetime.utcnow().isoformat(),
+        "timestamp": get_utc_now().isoformat(),
         "problems_detected": [],
         "actions_taken": []
     }
@@ -342,7 +343,7 @@ def get_system_health(db: Session) -> Dict[str, Any]:
 
     Util para dashboards de monitoramento.
     """
-    now = datetime.utcnow()
+    now = get_utc_now()
     heartbeat_threshold = now - timedelta(minutes=WatchdogConfig.WORKER_HEARTBEAT_TIMEOUT_MINUTES)
 
     # Contagens

@@ -26,8 +26,8 @@ class PromptConfig(Base):
     
     # Metadados
     is_active = Column(Boolean, default=True)
-    created_at = Column(DateTime, default=get_utc_now)
-    updated_at = Column(DateTime, default=get_utc_now, onupdate=get_utc_now)
+    created_at = Column(DateTime(timezone=True), default=get_utc_now)
+    updated_at = Column(DateTime(timezone=True), default=get_utc_now, onupdate=get_utc_now)
     updated_by = Column(String(50), nullable=True)  # Username de quem atualizou
     
     def __repr__(self):
@@ -49,8 +49,8 @@ class ConfiguracaoIA(Base):
     descricao = Column(String(500), nullable=True)
     
     # Metadados
-    created_at = Column(DateTime, default=get_utc_now)
-    updated_at = Column(DateTime, default=get_utc_now, onupdate=get_utc_now)
-    
+    created_at = Column(DateTime(timezone=True), default=get_utc_now)
+    updated_at = Column(DateTime(timezone=True), default=get_utc_now, onupdate=get_utc_now)
+
     def __repr__(self):
         return f"<ConfiguracaoIA(sistema='{self.sistema}', chave='{self.chave}')>"

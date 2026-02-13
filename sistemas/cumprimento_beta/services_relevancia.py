@@ -10,6 +10,7 @@ import json
 import logging
 from typing import List, Optional, Tuple
 from datetime import datetime
+from utils.timezone import get_utc_now
 from sqlalchemy.orm import Session
 
 from admin.models import ConfiguracaoIA
@@ -219,7 +220,7 @@ class RelevanciaService:
                 irrelevantes += 1
                 sessao.documentos_irrelevantes += 1
 
-            doc.avaliado_em = datetime.utcnow()
+            doc.avaliado_em = get_utc_now()
 
             # Commit parcial a cada 5 documentos
             if (idx + 1) % 5 == 0:

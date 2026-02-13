@@ -58,8 +58,8 @@ class ExtracaoAutos(Base):
 
     # Auditoria
     usuario_id = Column(Integer, ForeignKey("users.id"), nullable=True)
-    criado_em = Column(DateTime, default=get_utc_now)
-    concluido_em = Column(DateTime, nullable=True)
+    criado_em = Column(DateTime(timezone=True), default=get_utc_now)
+    concluido_em = Column(DateTime(timezone=True), nullable=True)
 
     def __repr__(self):
         return f"<ExtracaoAutos(id={self.id}, cnj='{self.numero_cnj}', status='{self.status}')>"

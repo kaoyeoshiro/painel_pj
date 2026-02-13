@@ -14,6 +14,7 @@ import logging
 import time
 from typing import List, Optional, Dict, Any, Tuple
 from datetime import datetime
+from utils.timezone import get_utc_now
 from dataclasses import dataclass
 from sqlalchemy.orm import Session
 
@@ -387,7 +388,7 @@ class ProcessamentoUnificadoService:
                 continue
 
             doc.modelo_avaliacao = self._modelo
-            doc.avaliado_em = datetime.utcnow()
+            doc.avaliado_em = get_utc_now()
 
             if resultado.erro:
                 erros += 1

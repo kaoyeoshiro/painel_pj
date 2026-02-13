@@ -29,8 +29,8 @@ class RouteSystemMap(Base):
     system_name = Column(String(100), nullable=False)
     match_type = Column(String(20), nullable=False, default='prefix')  # exact, prefix, regex
     priority = Column(Integer, nullable=False, default=0)  # maior = mais prioritario
-    created_at = Column(DateTime, default=get_utc_now)
-    updated_at = Column(DateTime, default=get_utc_now, onupdate=get_utc_now)
+    created_at = Column(DateTime(timezone=True), default=get_utc_now)
+    updated_at = Column(DateTime(timezone=True), default=get_utc_now, onupdate=get_utc_now)
 
     def matches(self, route: str) -> bool:
         """Verifica se a rota casa com este mapeamento."""
@@ -70,7 +70,7 @@ class AdminSettings(Base):
     id = Column(Integer, primary_key=True, index=True)
     key = Column(String(100), unique=True, nullable=False, index=True)
     value = Column(Text, nullable=True)
-    updated_at = Column(DateTime, default=get_utc_now, onupdate=get_utc_now)
+    updated_at = Column(DateTime(timezone=True), default=get_utc_now, onupdate=get_utc_now)
     updated_by = Column(Integer, ForeignKey("users.id"), nullable=True)
 
 
@@ -83,7 +83,7 @@ class PerformanceLog(Base):
     __tablename__ = "performance_logs"
 
     id = Column(Integer, primary_key=True, index=True)
-    created_at = Column(DateTime, default=get_utc_now, index=True)
+    created_at = Column(DateTime(timezone=True), default=get_utc_now, index=True)
 
     # Identificacao
     request_id = Column(String(36), nullable=True, index=True)  # UUID da request

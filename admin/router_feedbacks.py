@@ -13,7 +13,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from typing import Optional
 from datetime import datetime, timedelta
 
-from utils.timezone import to_iso_utc
+from utils.timezone import to_iso_utc, get_utc_now
 from auth.dependencies import require_admin
 from auth.models import User
 
@@ -199,8 +199,8 @@ async def dashboard_feedbacks(
             data_limite_recentes = data_inicio
             data_fim_recentes = data_fim
         else:
-            data_limite_recentes = datetime.utcnow() - timedelta(days=30)
-            data_fim_recentes = datetime.utcnow()
+            data_limite_recentes = get_utc_now() - timedelta(days=30)
+            data_fim_recentes = get_utc_now()
 
         feedbacks_recentes_aj = []
         feedbacks_recentes_mat = []
@@ -384,7 +384,7 @@ async def dashboard_feedbacks(
         # Calcula taxa de acerto por semana para cada sistema
         # IMPORTANTE: Usa período independente (últimas N semanas) para garantir visualização útil
         # Define período para evolução: últimas N semanas (independente do filtro de mês/ano)
-        data_fim_evolucao = datetime.utcnow()
+        data_fim_evolucao = get_utc_now()
         data_inicio_evolucao = data_fim_evolucao - timedelta(weeks=semanas_evolucao)
 
         # Gera lista de todas as semanas no período para garantir continuidade

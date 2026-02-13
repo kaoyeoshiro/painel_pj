@@ -61,9 +61,9 @@ class CategoriaDocumento(Base):
     resolver_config = Column(JSON, nullable=True)
     
     # Auditoria
-    criado_em = Column(DateTime, default=get_utc_now)
-    atualizado_em = Column(DateTime, default=get_utc_now, onupdate=get_utc_now)
-    
+    criado_em = Column(DateTime(timezone=True), default=get_utc_now)
+    atualizado_em = Column(DateTime(timezone=True), default=get_utc_now, onupdate=get_utc_now)
+
     # Relacionamentos
     tipos_peca = relationship(
         "TipoPeca",
@@ -112,9 +112,9 @@ class TipoPeca(Base):
     configuracoes = Column(JSON, nullable=True)
     
     # Auditoria
-    criado_em = Column(DateTime, default=get_utc_now)
-    atualizado_em = Column(DateTime, default=get_utc_now, onupdate=get_utc_now)
-    
+    criado_em = Column(DateTime(timezone=True), default=get_utc_now)
+    atualizado_em = Column(DateTime(timezone=True), default=get_utc_now, onupdate=get_utc_now)
+
     # Relacionamentos
     categorias_documento = relationship(
         "CategoriaDocumento",

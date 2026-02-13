@@ -17,6 +17,7 @@ Endpoints:
 from fastapi import APIRouter, Depends, Query, HTTPException, Request
 from typing import Optional, List
 from datetime import datetime, timedelta
+from utils.timezone import get_utc_now
 
 from auth.dependencies import require_admin, get_optional_user
 from auth.models import User
@@ -111,7 +112,7 @@ async def list_logs(
     - system: Nome do sistema (baseado no mapeamento rota->sistema)
     - hours: Periodo em horas
     """
-    start_date = datetime.utcnow() - timedelta(hours=hours)
+    start_date = get_utc_now() - timedelta(hours=hours)
 
     # Carrega mapeamentos de rota->sistema
     mappings = repo.listar_mapeamentos_simples()
@@ -168,7 +169,7 @@ async def get_summary(
     - Top 3 lentas por tipo de gargalo
     - Erros recentes
     """
-    start_date = datetime.utcnow() - timedelta(hours=hours)
+    start_date = get_utc_now() - timedelta(hours=hours)
 
     # Total de logs
     total_logs = repo.contar_logs(start_date)
@@ -247,7 +248,7 @@ async def cleanup_logs(
     Padrao: mantem ultimos 7 dias e maximo 10.000 logs.
     """
     deleted = 0
-    cutoff_date = datetime.utcnow() - timedelta(days=days)
+    cutoff_date = get_utc_now() - timedelta(days=days)
 
     # Limpeza por idade
     deleted += repo.remover_logs_antigos(cutoff_date)
@@ -402,7 +403,7 @@ async def get_top_routes(
 
     Util para identificar rotas que precisam de mapeamento.
     """
-    start_date = datetime.utcnow() - timedelta(hours=hours)
+    start_date = get_utc_now() - timedelta(hours=hours)
 
     # Carrega mapeamentos existentes
     mappings = repo.listar_mapeamentos_simples()
@@ -471,7 +472,7 @@ async def receive_frontend_metrics(
     try:
         # Cria log de performance especial para métricas do frontend
         log = PerformanceLog(
-            request_id=f"fe-{datetime.utcnow().strftime('%H%M%S%f')[:10]}",
+            request_id=f"fe-{get_utc_now().strftime('%H%M%S%f')[:10]}",
             admin_user_id=current_user.id,
             admin_username=current_user.username,
             route=metrics.route,

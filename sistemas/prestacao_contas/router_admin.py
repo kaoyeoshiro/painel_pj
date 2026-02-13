@@ -19,6 +19,7 @@ from sqlalchemy.orm import Session
 from app.repositories.sqlalchemy.session_ops import session_query
 from pydantic import BaseModel
 from datetime import datetime
+from utils.timezone import get_utc_now
 import base64
 
 from auth.dependencies import get_current_active_user
@@ -108,7 +109,7 @@ def _calcular_estado_expirado(geracao: GeracaoAnalise) -> bool:
     """Verifica se o estado salvo expirou."""
     if not geracao.estado_expira_em:
         return True
-    return datetime.utcnow() > geracao.estado_expira_em
+    return get_utc_now() > geracao.estado_expira_em
 
 
 def _pode_anexar_documentos(geracao: GeracaoAnalise) -> bool:

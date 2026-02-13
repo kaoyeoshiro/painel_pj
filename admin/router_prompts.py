@@ -7,6 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session, joinedload
 from typing import List, Optional, Any, Dict
 from datetime import datetime
+from utils.timezone import get_utc_now
 
 from admin.schemas_prompts import (
     CategoriaOrdemBase,
@@ -1092,7 +1093,7 @@ async def atualizar_modulo(
 
     modulo.versao += 1
     modulo.atualizado_por = current_user.id
-    modulo.atualizado_em = datetime.utcnow()
+    modulo.atualizado_em = get_utc_now()
 
     modulo_repo.commit()
     modulo_repo.refresh(modulo)
@@ -1326,7 +1327,7 @@ async def restaurar_versao(
     modulo.tags = historico.tags
     modulo.versao += 1
     modulo.atualizado_por = current_user.id
-    modulo.atualizado_em = datetime.utcnow()
+    modulo.atualizado_em = get_utc_now()
 
     modulo_repo.commit()
 
@@ -1743,7 +1744,7 @@ async def importar_modulos(
                     existente.subgroup_id = subgrupo.id if subgrupo else None
                     existente.versao += 1
                     existente.atualizado_por = current_user.id
-                    existente.atualizado_em = datetime.utcnow()
+                    existente.atualizado_em = get_utc_now()
                     existente.ativo = True
 
                     modulo_para_associar = existente
@@ -2190,7 +2191,7 @@ async def atualizar_regra_tipo_peca(
     regra.regra_texto_original = dados.regra_texto_original
     regra.ativo = dados.ativo
     regra.atualizado_por = current_user.id
-    regra.atualizado_em = datetime.utcnow()
+    regra.atualizado_em = get_utc_now()
 
     # Se mudou o tipo de peça, verifica se já existe outro
     if dados.tipo_peca != regra.tipo_peca:
@@ -2273,7 +2274,7 @@ async def toggle_regra_tipo_peca(
 
     regra.ativo = not regra.ativo
     regra.atualizado_por = current_user.id
-    regra.atualizado_em = datetime.utcnow()
+    regra.atualizado_em = get_utc_now()
 
     regra_repo.commit()
 

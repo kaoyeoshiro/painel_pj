@@ -73,9 +73,9 @@ class GeracaoPeca(Base):
     usuario_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     
     # Timestamps
-    criado_em = Column(DateTime, default=get_utc_now)
-    atualizado_em = Column(DateTime, default=get_utc_now, onupdate=get_utc_now)
-    
+    criado_em = Column(DateTime(timezone=True), default=get_utc_now)
+    atualizado_em = Column(DateTime(timezone=True), default=get_utc_now, onupdate=get_utc_now)
+
     # Relacionamento com feedback
     feedback = relationship("FeedbackPeca", back_populates="geracao", uselist=False)
 
@@ -110,7 +110,7 @@ class VersaoPeca(Base):
     diff_anterior = Column(JSON, nullable=True)
 
     # Timestamps
-    criado_em = Column(DateTime, default=get_utc_now)
+    criado_em = Column(DateTime(timezone=True), default=get_utc_now)
 
     # Relacionamentos
     geracao = relationship("GeracaoPeca", back_populates="versoes")
@@ -139,8 +139,8 @@ class FeedbackPeca(Base):
     # Campos específicos que tiveram problemas (opcional)
     campos_incorretos = Column(JSON, nullable=True)
     
-    criado_em = Column(DateTime, default=get_utc_now)
-    
+    criado_em = Column(DateTime(timezone=True), default=get_utc_now)
+
     # Relacionamentos
     geracao = relationship("GeracaoPeca", back_populates="feedback")
 
