@@ -37,11 +37,12 @@ describe('ConfigPecasPage', () => {
     expect(screen.getByRole('tab', { name: /categorias de documentos/i })).toBeInTheDocument()
   })
 
-  it('deve renderizar as tabs de categorias e tipos', () => {
+  it('deve renderizar as tabs de categorias, tipos e parecer', () => {
     render(<ConfigPecasPage />)
 
     expect(screen.getByRole('tab', { name: /categorias de documentos/i })).toBeInTheDocument()
     expect(screen.getByRole('tab', { name: /tipos de peça/i })).toBeInTheDocument()
+    expect(screen.getByRole('tab', { name: /parecer natjus/i })).toBeInTheDocument()
   })
 
   it('deve renderizar botão Nova Categoria', () => {

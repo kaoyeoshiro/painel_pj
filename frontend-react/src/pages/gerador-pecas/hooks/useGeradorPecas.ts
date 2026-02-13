@@ -440,7 +440,8 @@ export function useGeradorPecas() {
       }
     } catch (error) {
       const errMsg = error instanceof Error ? error.message : String(error)
-      if (errMsg.includes('PARECER_NATJUS_MISSING') || errMsg.includes('Parecer NATJus')) {
+      const errLower = errMsg.toLowerCase()
+      if (errLower.includes('parecer_natjus_missing') || errLower.includes('parecer natjus')) {
         parecerTriggerModeRef.current = 'semi_automatico'
         setShowParecerDialog(true)
         setPageState('idle')

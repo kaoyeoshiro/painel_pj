@@ -15,7 +15,7 @@ import { BreadcrumbBar } from '@/components/layout/BreadcrumbBar'
 import { AdminSubNav } from '@/components/layout'
 import { ContentArea } from '@/components/layout/ContentArea'
 import { C } from '@/lib/designTokens'
-import { Settings as SettingsIcon, ChevronDown, ChevronRight, Pencil, Trash2 } from 'lucide-react'
+import { Settings as SettingsIcon, ChevronDown, ChevronRight, Pencil, Trash2, Loader2 } from 'lucide-react'
 
 // Interfaces
 interface CategoriaDocumento {
@@ -105,9 +105,23 @@ const DOCUMENT_TYPE_TREE: DocumentTreeNode[] = [
   },
 ]
 
+// Interfaces para parecer config
+interface GrupoDisponivel {
+  id: number
+  nome: string
+  slug: string
+}
+
+interface ParecerConfig {
+  parecer_required_for_piece_types: string[]
+  parecer_document_codes: number[]
+  parecer_required_group_slugs: string[]
+}
+
 // Clientes API
 const configApi = createApiClient('/api/gerador-pecas/config')
 const adminConfigApi = createApiClient('/admin/api/config-pecas')
+const geradorApi = createApiClient('/gerador-pecas/api')
 
 /**
  * Coleta recursivamente todos os códigos-folha de um nó da árvore.
@@ -366,6 +380,16 @@ export function ConfigPecasPage() {
   const [loadingCarregarIniciais, setLoadingCarregarIniciais] = useState(false)
   const [loadingSincronizar, setLoadingSincronizar] = useState(false)
 
+  // Estado para aba Parecer NATJus
+  const [gruposDisponiveis, setGruposDisponiveis] = useState<GrupoDisponivel[]>([])
+  const [parecerConfig, setParecerConfig] = useState<ParecerConfig>({
+    parecer_required_for_piece_types: [],
+    parecer_document_codes: [],
+    parecer_required_group_slugs: [],
+  })
+  const [loadingParecer, setLoadingParecer] = useState(true)
+  const [savingParecer, setSavingParecer] = useState(false)
+
   // Formulario de categoria
   const [formCategoria, setFormCategoria] = useState({
     nome: '',
@@ -401,6 +425,12 @@ export function ConfigPecasPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps -- Carrega apenas na montagem
   }, [])
 
+  // Carregar config de parecer e grupos disponiveis
+  useEffect(() => {
+    carregarParecerConfig()
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- Carrega apenas na montagem
+  }, [])
+
   const carregarCategorias = async () => {
     try {
       setLoadingCategorias(true)
@@ -431,6 +461,61 @@ export function ConfigPecasPage() {
     } finally {
       setLoadingTipos(false)
     }
+  }
+
+  const carregarParecerConfig = async () => {
+    try {
+      setLoadingParecer(true)
+      const [configData, gruposData] = await Promise.all([
+        configApi.get<ParecerConfig>('/admin?format=json'),
+        geradorApi.get<{ grupos: GrupoDisponivel[] }>('/grupos-disponiveis'),
+      ])
+      setParecerConfig({
+        parecer_required_for_piece_types: configData.parecer_required_for_piece_types || [],
+        parecer_document_codes: configData.parecer_document_codes || [],
+        parecer_required_group_slugs: configData.parecer_required_group_slugs || [],
+      })
+      setGruposDisponiveis(gruposData.grupos || [])
+    } catch {
+      toast({
+        title: 'Erro ao carregar configuracao de parecer',
+        description: 'Nao foi possivel carregar as configuracoes de parecer NATJus',
+        variant: 'destructive',
+      })
+    } finally {
+      setLoadingParecer(false)
+    }
+  }
+
+  const salvarParecerConfig = async () => {
+    try {
+      setSavingParecer(true)
+      await configApi.put('/admin', parecerConfig)
+      toast({
+        title: 'Configuracao salva',
+        description: 'As configuracoes de parecer NATJus foram atualizadas com sucesso',
+      })
+    } catch {
+      toast({
+        title: 'Erro ao salvar',
+        description: 'Nao foi possivel salvar as configuracoes de parecer NATJus',
+        variant: 'destructive',
+      })
+    } finally {
+      setSavingParecer(false)
+    }
+  }
+
+  const toggleGroupSlug = (slug: string, checked: boolean) => {
+    setParecerConfig((prev) => {
+      const current = new Set(prev.parecer_required_group_slugs)
+      if (checked) {
+        current.add(slug)
+      } else {
+        current.delete(slug)
+      }
+      return { ...prev, parecer_required_group_slugs: Array.from(current).sort() }
+    })
   }
 
   /**
@@ -697,6 +782,7 @@ export function ConfigPecasPage() {
         <TabsList>
           <TabsTrigger value="categorias">Categorias de Documentos</TabsTrigger>
           <TabsTrigger value="tipos">Tipos de Peça</TabsTrigger>
+          <TabsTrigger value="parecer">Parecer NATJus</TabsTrigger>
         </TabsList>
 
         <TabsContent value="categorias" className="space-y-4">
@@ -840,6 +926,98 @@ export function ConfigPecasPage() {
               ))}
             </div>
           )}
+        </TabsContent>
+
+        <TabsContent value="parecer" className="space-y-4">
+          <div className="flex justify-between items-center">
+            <h2 className="text-xl font-semibold" style={{ color: C.text900 }}>Parecer NATJus</h2>
+          </div>
+
+          {loadingParecer ? (
+            <div className="text-center py-8" style={{ color: C.text500 }}>Carregando configuracoes...</div>
+          ) : (
+            <div className="grid gap-6 lg:grid-cols-2">
+              {/* Card: Grupos que exigem parecer */}
+              <Card className="rounded-2xl" style={{ borderColor: C.gray200 }}>
+                <CardHeader className="p-4 pb-2">
+                  <CardTitle className="text-sm" style={{ color: C.text900 }}>Grupos que exigem Parecer NATJus</CardTitle>
+                  <CardDescription style={{ color: C.text400 }}>
+                    Selecione quais grupos devem exigir parecer NATJus para gerar pecas
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-3 p-4 pt-2">
+                  {gruposDisponiveis.length === 0 ? (
+                    <p className="text-sm italic" style={{ color: C.text400 }}>Nenhum grupo disponivel</p>
+                  ) : (
+                    gruposDisponiveis.map((grupo) => (
+                      <div key={grupo.id} className="flex items-center space-x-2">
+                        <Checkbox
+                          id={`grupo-parecer-${grupo.slug}`}
+                          checked={parecerConfig.parecer_required_group_slugs.includes(grupo.slug)}
+                          onCheckedChange={(checked) => toggleGroupSlug(grupo.slug, checked as boolean)}
+                          data-testid={`checkbox-grupo-${grupo.slug}`}
+                        />
+                        <Label htmlFor={`grupo-parecer-${grupo.slug}`} className="text-sm cursor-pointer">
+                          {grupo.nome}
+                          <span className="text-xs font-mono ml-1" style={{ color: C.text400 }}>({grupo.slug})</span>
+                        </Label>
+                      </div>
+                    ))
+                  )}
+                </CardContent>
+              </Card>
+
+              {/* Card: Tipos de peca que exigem parecer */}
+              <Card className="rounded-2xl" style={{ borderColor: C.gray200 }}>
+                <CardHeader className="p-4 pb-2">
+                  <CardTitle className="text-sm" style={{ color: C.text900 }}>Tipos de peca que exigem parecer</CardTitle>
+                  <CardDescription style={{ color: C.text400 }}>
+                    Tipos de peca configurados para exigir parecer NATJus
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-2 p-4 pt-2">
+                  {parecerConfig.parecer_required_for_piece_types.length === 0 ? (
+                    <p className="text-sm italic" style={{ color: C.text400 }}>Nenhum tipo de peca configurado</p>
+                  ) : (
+                    <div className="flex flex-wrap gap-1">
+                      {parecerConfig.parecer_required_for_piece_types.map((tipo) => (
+                        <Badge key={tipo} variant="outline" className="text-xs font-mono">
+                          {tipo}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+
+                  <div className="pt-3 border-t" style={{ borderColor: C.gray200 }}>
+                    <p className="text-xs font-medium mb-1" style={{ color: C.text500 }}>Codigos de documento validos</p>
+                    {parecerConfig.parecer_document_codes.length === 0 ? (
+                      <p className="text-xs italic" style={{ color: C.text400 }}>Nenhum codigo configurado</p>
+                    ) : (
+                      <div className="flex flex-wrap gap-1">
+                        {parecerConfig.parecer_document_codes.map((code) => (
+                          <Badge key={code} variant="outline" className="text-xs font-mono">
+                            {code}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          <div className="flex justify-end">
+            <Button
+              onClick={salvarParecerConfig}
+              disabled={savingParecer || loadingParecer}
+              style={{ background: C.navy950, color: 'white' }}
+              data-testid="btn-salvar-parecer"
+            >
+              {savingParecer && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {savingParecer ? 'Salvando...' : 'Salvar'}
+            </Button>
+          </div>
         </TabsContent>
       </Tabs>
 

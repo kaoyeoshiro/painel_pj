@@ -33,6 +33,7 @@ from sistemas.gerador_pecas.models_config_pecas import (
 )
 from sistemas.gerador_pecas.services_parecer_natjus import (
     CONFIG_KEY_DOCUMENT_CODES,
+    CONFIG_KEY_REQUIRED_GROUP_SLUGS,
     CONFIG_KEY_REQUIRED_PIECE_TYPES,
     load_parecer_natjus_config,
     normalize_piece_type,
@@ -492,6 +493,7 @@ async def pagina_admin_config_pecas(
         return {
             "parecer_required_for_piece_types": list(config.required_piece_types),
             "parecer_document_codes": list(config.document_codes),
+            "parecer_required_group_slugs": list(config.required_group_slugs),
         }
 
     # Redireciona para a página React SPA equivalente
@@ -556,6 +558,14 @@ async def atualizar_config_parecer_natjus_admin(
     piece_types = sorted(piece_types)
     document_codes = sorted(document_codes)
 
+    # Normaliza group slugs
+    group_slugs: List[str] = []
+    for slug in dados.parecer_required_group_slugs:
+        normalized = str(slug).strip().lower()
+        if normalized and normalized not in group_slugs:
+            group_slugs.append(normalized)
+    group_slugs = sorted(group_slugs)
+
     _upsert_config_ia(
         db,
         key=CONFIG_KEY_REQUIRED_PIECE_TYPES,
@@ -570,6 +580,13 @@ async def atualizar_config_parecer_natjus_admin(
         tipo_valor="json",
         descricao="Códigos de documentos válidos para identificar parecer NATJus."
     )
+    _upsert_config_ia(
+        db,
+        key=CONFIG_KEY_REQUIRED_GROUP_SLUGS,
+        value=json.dumps(group_slugs, ensure_ascii=False),
+        tipo_valor="json",
+        descricao="Slugs dos grupos que exigem parecer NATJus."
+    )
 
     db.commit()
     config_cache.invalidate_all()
@@ -578,6 +595,7 @@ async def atualizar_config_parecer_natjus_admin(
         "message": "Configuracao de parecer NATJus atualizada com sucesso.",
         "parecer_required_for_piece_types": piece_types,
         "parecer_document_codes": document_codes,
+        "parecer_required_group_slugs": group_slugs,
     }
 
 

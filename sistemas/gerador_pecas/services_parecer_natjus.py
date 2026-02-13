@@ -24,12 +24,14 @@ logger = logging.getLogger(__name__)
 
 CONFIG_KEY_REQUIRED_PIECE_TYPES = "parecer_required_for_piece_types"
 CONFIG_KEY_DOCUMENT_CODES = "parecer_document_codes"
+CONFIG_KEY_REQUIRED_GROUP_SLUGS = "parecer_required_group_slugs"
 
 
 @dataclass(frozen=True)
 class ParecerNatjusConfig:
     required_piece_types: tuple[str, ...]
     document_codes: tuple[int, ...]
+    required_group_slugs: tuple[str, ...] = ()
     required_piece_types_raw: Any = None
     document_codes_raw: Any = None
 
@@ -37,6 +39,7 @@ class ParecerNatjusConfig:
         return {
             "parecer_required_for_piece_types": list(self.required_piece_types),
             "parecer_document_codes": list(self.document_codes),
+            "parecer_required_group_slugs": list(self.required_group_slugs),
         }
 
 
@@ -199,6 +202,7 @@ def _load_fallback_from_tipo_peca_categorias(db) -> tuple[List[str], List[int]]:
 def load_parecer_natjus_config(db, use_cache: bool = True) -> ParecerNatjusConfig:
     required_raw = _load_raw_config_value(db, CONFIG_KEY_REQUIRED_PIECE_TYPES, use_cache=use_cache)
     codes_raw = _load_raw_config_value(db, CONFIG_KEY_DOCUMENT_CODES, use_cache=use_cache)
+    group_slugs_raw = _load_raw_config_value(db, CONFIG_KEY_REQUIRED_GROUP_SLUGS, use_cache=use_cache)
 
     required_piece_types = _parse_piece_types(required_raw)
     document_codes = _parse_document_codes(codes_raw)
@@ -238,15 +242,40 @@ def load_parecer_natjus_config(db, use_cache: bool = True) -> ParecerNatjusConfi
             required_piece_types = fallback_required
             document_codes = fallback_codes
 
+    # Parse group slugs (default: ["ps"])
+    group_slugs = [
+        s.strip().lower()
+        for s in _coerce_to_list(group_slugs_raw)
+        if isinstance(s, str) and s.strip()
+    ]
+
     return ParecerNatjusConfig(
         required_piece_types=tuple(required_piece_types),
         document_codes=tuple(document_codes),
+        required_group_slugs=tuple(group_slugs),
         required_piece_types_raw=required_raw,
         document_codes_raw=codes_raw,
     )
 
 
-def piece_requires_parecer(tipo_peca: str | None, config: ParecerNatjusConfig) -> bool:
+def group_requires_parecer(group_slug: str | None, config: ParecerNatjusConfig) -> bool:
+    """Verifica se o grupo exige parecer NATJus."""
+    if not config.required_group_slugs:
+        return False
+    if not group_slug:
+        return False
+    return group_slug.strip().lower() in config.required_group_slugs
+
+
+def piece_requires_parecer(
+    tipo_peca: str | None,
+    config: ParecerNatjusConfig,
+    group_slug: str | None = None,
+) -> bool:
+    # Se group_slug fornecido, verificar se o grupo exige parecer
+    if group_slug is not None and not group_requires_parecer(group_slug, config):
+        return False
+
     if not tipo_peca:
         return False
     required_piece_types = {
@@ -291,8 +320,9 @@ def evaluate_parecer_status(
     documentos: Sequence[Any] | None,
     config: ParecerNatjusConfig,
     has_user_upload: bool = False,
+    group_slug: str | None = None,
 ) -> Dict[str, Any]:
-    required = piece_requires_parecer(tipo_peca, config)
+    required = piece_requires_parecer(tipo_peca, config, group_slug=group_slug)
     matched_codes = find_matching_document_codes(documentos, config.document_codes)
 
     config_error = required and len(config.document_codes) == 0
@@ -319,6 +349,8 @@ def evaluate_parecer_status(
         "matched_document_codes": matched_codes,
         "parecer_document_codes": list(config.document_codes),
         "parecer_required_for_piece_types": list(config.required_piece_types),
+        "group_slug": group_slug,
+        "group_requires_parecer": group_requires_parecer(group_slug, config),
         "config_error": config_error,
         "config_error_message": config_error_message,
     }

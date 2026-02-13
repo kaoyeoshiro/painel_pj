@@ -181,6 +181,7 @@ class AssociacaoCategoriasRequest(BaseModel):
 class ParecerNatjusAdminConfigUpdateRequest(BaseModel):
     parecer_required_for_piece_types: List[str] = []
     parecer_document_codes: List[int] = []
+    parecer_required_group_slugs: List[str] = []
 
 
 # ============================================================================
