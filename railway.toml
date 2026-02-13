@@ -10,4 +10,4 @@ restartPolicyType = "on_failure"
 restartPolicyMaxRetries = 5
 
 [nixpacks]
-providers = ["python"]
+providers = ["python", "node"]
