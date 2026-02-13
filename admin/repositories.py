@@ -1031,21 +1031,31 @@ class FeedbackRepository:
         data_inicio: Optional[datetime] = None,
         data_fim: Optional[datetime] = None,
     ) -> list:
-        """Conta feedbacks por usuario para um modelo especifico."""
+        """Conta feedbacks por usuario para um modelo especifico.
+
+        Usa outerjoin para incluir feedbacks cujo usuario_id nao exista mais
+        na tabela users (ex: usuario deletado).  Esses registros sao agrupados
+        sob usuario_id com username/full_name NULL e tratados pelo chamador.
+        """
         query = self.db.query(
-            User.username,
-            User.full_name,
+            func.coalesce(User.username, literal_column("'usuario_removido'")).label('username'),
+            func.coalesce(User.full_name, literal_column("'Usuário removido'")).label('full_name'),
             func.count(modelo_feedback.id).label('total'),
             func.sum(case((modelo_feedback.avaliacao == 'correto', 1), else_=0)).label('corretos')
-        ).join(modelo_feedback, modelo_feedback.usuario_id == User.id)
+        ).select_from(modelo_feedback).outerjoin(User, modelo_feedback.usuario_id == User.id)
         if ids_excluir:
-            query = query.filter(~User.id.in_(ids_excluir))
+            query = query.filter(
+                (User.id.is_(None)) | (~User.id.in_(ids_excluir))
+            )
         if data_inicio and data_fim:
             query = query.filter(
                 modelo_feedback.criado_em >= data_inicio,
                 modelo_feedback.criado_em < data_fim
             )
-        return query.group_by(User.id, User.username, User.full_name).all()
+        return query.group_by(
+            func.coalesce(User.username, literal_column("'usuario_removido'")),
+            func.coalesce(User.full_name, literal_column("'Usuário removido'")),
+        ).all()
 
     def feedbacks_por_usuario_aj(self, ids_excluir, data_inicio=None, data_fim=None):
         """Feedbacks por usuario de assistencia judiciaria."""
@@ -1350,11 +1360,13 @@ class FeedbackRepository:
             User.full_name
         ).join(
             ConsultaProcesso, FeedbackAnalise.consulta_id == ConsultaProcesso.id
-        ).join(
+        ).outerjoin(
             User, FeedbackAnalise.usuario_id == User.id
         )
         if ids_excluir:
-            query = query.filter(~FeedbackAnalise.usuario_id.in_(ids_excluir))
+            query = query.filter(
+                (User.id.is_(None)) | (~FeedbackAnalise.usuario_id.in_(ids_excluir))
+            )
         if data_inicio and data_fim:
             query = query.filter(
                 FeedbackAnalise.criado_em >= data_inicio,
@@ -1384,11 +1396,13 @@ class FeedbackRepository:
             User.full_name
         ).join(
             Analise, FeedbackMatricula.analise_id == Analise.id
-        ).join(
+        ).outerjoin(
             User, FeedbackMatricula.usuario_id == User.id
         )
         if ids_excluir:
-            query = query.filter(~FeedbackMatricula.usuario_id.in_(ids_excluir))
+            query = query.filter(
+                (User.id.is_(None)) | (~FeedbackMatricula.usuario_id.in_(ids_excluir))
+            )
         if data_inicio and data_fim:
             query = query.filter(
                 FeedbackMatricula.criado_em >= data_inicio,
@@ -1419,11 +1433,13 @@ class FeedbackRepository:
             User.full_name
         ).join(
             GeracaoPeca, FeedbackPeca.geracao_id == GeracaoPeca.id
-        ).join(
+        ).outerjoin(
             User, FeedbackPeca.usuario_id == User.id
         )
         if ids_excluir:
-            query = query.filter(~FeedbackPeca.usuario_id.in_(ids_excluir))
+            query = query.filter(
+                (User.id.is_(None)) | (~FeedbackPeca.usuario_id.in_(ids_excluir))
+            )
         if data_inicio and data_fim:
             query = query.filter(
                 FeedbackPeca.criado_em >= data_inicio,
@@ -1453,11 +1469,13 @@ class FeedbackRepository:
             User.full_name
         ).join(
             GeracaoPedidoCalculo, FeedbackPedidoCalculo.geracao_id == GeracaoPedidoCalculo.id
-        ).join(
+        ).outerjoin(
             User, FeedbackPedidoCalculo.usuario_id == User.id
         )
         if ids_excluir:
-            query = query.filter(~FeedbackPedidoCalculo.usuario_id.in_(ids_excluir))
+            query = query.filter(
+                (User.id.is_(None)) | (~FeedbackPedidoCalculo.usuario_id.in_(ids_excluir))
+            )
         if data_inicio and data_fim:
             query = query.filter(
                 FeedbackPedidoCalculo.criado_em >= data_inicio,
@@ -1487,11 +1505,13 @@ class FeedbackRepository:
             User.full_name
         ).join(
             GeracaoAnalise, FeedbackPrestacao.geracao_id == GeracaoAnalise.id
-        ).join(
+        ).outerjoin(
             User, FeedbackPrestacao.usuario_id == User.id
         )
         if ids_excluir:
-            query = query.filter(~FeedbackPrestacao.usuario_id.in_(ids_excluir))
+            query = query.filter(
+                (User.id.is_(None)) | (~FeedbackPrestacao.usuario_id.in_(ids_excluir))
+            )
         if data_inicio and data_fim:
             query = query.filter(
                 FeedbackPrestacao.criado_em >= data_inicio,
@@ -1522,11 +1542,13 @@ class FeedbackRepository:
         ).join(
             GeracaoRelatorioCumprimento,
             FeedbackRelatorioCumprimento.geracao_id == GeracaoRelatorioCumprimento.id
-        ).join(
+        ).outerjoin(
             User, FeedbackRelatorioCumprimento.usuario_id == User.id
         )
         if ids_excluir:
-            query = query.filter(~FeedbackRelatorioCumprimento.usuario_id.in_(ids_excluir))
+            query = query.filter(
+                (User.id.is_(None)) | (~FeedbackRelatorioCumprimento.usuario_id.in_(ids_excluir))
+            )
         if data_inicio and data_fim:
             query = query.filter(
                 FeedbackRelatorioCumprimento.criado_em >= data_inicio,
@@ -1537,6 +1559,113 @@ class FeedbackRepository:
         if usuario_id:
             query = query.filter(FeedbackRelatorioCumprimento.usuario_id == usuario_id)
         return query.all()
+
+    # =============================================
+    # Dashboard: métricas de estrelas (nota)
+    # =============================================
+
+    def _avg_nota(
+        self,
+        modelo_feedback,
+        ids_excluir: list[int],
+        data_inicio: Optional[datetime] = None,
+        data_fim: Optional[datetime] = None,
+    ):
+        """Calcula AVG(nota) para um modelo de feedback."""
+        query = self.db.query(func.avg(modelo_feedback.nota)).filter(
+            modelo_feedback.nota.isnot(None)
+        )
+        if ids_excluir:
+            query = query.filter(~modelo_feedback.usuario_id.in_(ids_excluir))
+        if data_inicio and data_fim:
+            query = query.filter(
+                modelo_feedback.criado_em >= data_inicio,
+                modelo_feedback.criado_em < data_fim,
+            )
+        return query.scalar()
+
+    def _count_by_nota(
+        self,
+        modelo_feedback,
+        ids_excluir: list[int],
+        data_inicio: Optional[datetime] = None,
+        data_fim: Optional[datetime] = None,
+    ) -> list:
+        """Conta feedbacks agrupados por nota para um modelo de feedback."""
+        query = self.db.query(
+            modelo_feedback.nota, func.count(modelo_feedback.id).label("count")
+        ).filter(
+            modelo_feedback.nota.isnot(None)
+        )
+        if ids_excluir:
+            query = query.filter(~modelo_feedback.usuario_id.in_(ids_excluir))
+        if data_inicio and data_fim:
+            query = query.filter(
+                modelo_feedback.criado_em >= data_inicio,
+                modelo_feedback.criado_em < data_fim,
+            )
+        return query.group_by(modelo_feedback.nota).all()
+
+    def media_nota_global(
+        self,
+        ids_excluir: list[int],
+        data_inicio: Optional[datetime] = None,
+        data_fim: Optional[datetime] = None,
+    ) -> Optional[float]:
+        """AVG(nota) across all 6 feedback tables (weighted by count)."""
+        tabelas = [
+            FeedbackAnalise,
+            FeedbackMatricula,
+            FeedbackPeca,
+            FeedbackPedidoCalculo,
+            FeedbackPrestacao,
+            FeedbackRelatorioCumprimento,
+        ]
+        soma_total = 0.0
+        count_total = 0
+        for modelo in tabelas:
+            # Get SUM and COUNT for proper weighted average
+            query = self.db.query(
+                func.sum(modelo.nota),
+                func.count(modelo.id),
+            ).filter(modelo.nota.isnot(None))
+            if ids_excluir:
+                query = query.filter(~modelo.usuario_id.in_(ids_excluir))
+            if data_inicio and data_fim:
+                query = query.filter(
+                    modelo.criado_em >= data_inicio,
+                    modelo.criado_em < data_fim,
+                )
+            result = query.first()
+            if result and result[0] is not None:
+                soma_total += float(result[0])
+                count_total += result[1]
+        if count_total == 0:
+            return None
+        return soma_total / count_total
+
+    def distribuicao_nota_global(
+        self,
+        ids_excluir: list[int],
+        data_inicio: Optional[datetime] = None,
+        data_fim: Optional[datetime] = None,
+    ) -> dict[int, int]:
+        """COUNT GROUP BY nota across all 6 tables, returns {1: N, 2: N, 3: N, 4: N, 5: N}."""
+        tabelas = [
+            FeedbackAnalise,
+            FeedbackMatricula,
+            FeedbackPeca,
+            FeedbackPedidoCalculo,
+            FeedbackPrestacao,
+            FeedbackRelatorioCumprimento,
+        ]
+        distribuicao: dict[int, int] = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0}
+        for modelo in tabelas:
+            rows = self._count_by_nota(modelo, ids_excluir, data_inicio, data_fim)
+            for nota, count in rows:
+                if nota is not None and 1 <= nota <= 5:
+                    distribuicao[nota] += count
+        return distribuicao
 
     # =============================================
     # Listagem: buscar config modelo matriculas

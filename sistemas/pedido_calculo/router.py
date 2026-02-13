@@ -852,24 +852,26 @@ async def enviar_feedback(
         if not geracao:
             raise HTTPException(status_code=404, detail="Geração não encontrada")
 
+        # Upsert: atualiza se ja existe, cria se nao
         feedback_existente = feedback_repo.find_by_geracao(req.geracao_id)
 
         if feedback_existente:
-            raise HTTPException(
-                status_code=400,
-                detail="Feedback já foi enviado para esta geração"
+            feedback_existente.nota = req.nota
+            feedback_existente.avaliacao = req.avaliacao
+            feedback_existente.comentario = req.comentario
+            feedback_existente.campos_incorretos = req.campos_incorretos
+            feedback_repo.commit()
+        else:
+            feedback = FeedbackPedidoCalculo(
+                geracao_id=req.geracao_id,
+                usuario_id=current_user.id,
+                nota=req.nota,
+                avaliacao=req.avaliacao,
+                comentario=req.comentario,
+                campos_incorretos=req.campos_incorretos,
             )
-
-        feedback = FeedbackPedidoCalculo(
-            geracao_id=req.geracao_id,
-            usuario_id=current_user.id,
-            avaliacao=req.avaliacao,
-            nota=req.nota,
-            comentario=req.comentario,
-            campos_incorretos=req.campos_incorretos
-        )
-        feedback_repo.add(feedback)
-        feedback_repo.commit()
+            feedback_repo.add(feedback)
+            feedback_repo.commit()
 
         return {"success": True, "message": "Feedback registrado com sucesso"}
     except HTTPException:

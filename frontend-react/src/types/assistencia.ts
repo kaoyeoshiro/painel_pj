@@ -36,12 +36,11 @@ export interface ConsultaRequest {
   force?: boolean
 }
 
-/** Request para enviar feedback */
+/** Request para enviar feedback (star rating 1-5) */
 export interface FeedbackRequest {
   consulta_id: number
-  avaliacao: 'correto' | 'parcial' | 'incorreto' | 'erro_ia'
-  comentario?: string | null
-  campos_incorretos?: string[] | null
+  nota: number
+  comentario: string | null
 }
 
 /** Response de feedback */

@@ -59,6 +59,7 @@ export default defineConfig({
       '/auth': 'http://localhost:8000',
       '/users': 'http://localhost:8000',
       '/admin/api': 'http://localhost:8000',
+      '/admin/modelos-ia': 'http://localhost:8000',
       '/admin/config-ia': 'http://localhost:8000',
       '/api': 'http://localhost:8000',
       '/assistencia/api': 'http://localhost:8000',

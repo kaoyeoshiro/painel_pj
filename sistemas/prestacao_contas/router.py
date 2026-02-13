@@ -165,26 +165,41 @@ async def registrar_feedback(
     if not geracao:
         raise HTTPException(status_code=404, detail="Análise não encontrada")
 
-    # Cria feedback
-    feedback = FeedbackPrestacao(
-        geracao_id=request.geracao_id,
-        usuario_id=current_user.id,
-        avaliacao=request.avaliacao,
-        nota=request.nota,
-        comentario=request.comentario,
-        parecer_correto=request.parecer_correto,
-        valores_corretos=request.valores_corretos,
-        medicamento_correto=request.medicamento_correto,
-    )
+    # Upsert: atualiza se ja existe, cria se nao
+    feedback_existente = session_query(db, FeedbackPrestacao).filter(
+        FeedbackPrestacao.geracao_id == request.geracao_id,
+        FeedbackPrestacao.usuario_id == current_user.id,
+    ).first()
 
-    db.add(feedback)
-    db.commit()
-    db.refresh(feedback)
+    if feedback_existente:
+        feedback_existente.nota = request.nota
+        feedback_existente.avaliacao = request.avaliacao
+        feedback_existente.comentario = request.comentario
+        feedback_existente.parecer_correto = request.parecer_correto
+        feedback_existente.valores_corretos = request.valores_corretos
+        feedback_existente.medicamento_correto = request.medicamento_correto
+        db.commit()
+        db.refresh(feedback_existente)
+        feedback = feedback_existente
+    else:
+        feedback = FeedbackPrestacao(
+            geracao_id=request.geracao_id,
+            usuario_id=current_user.id,
+            nota=request.nota,
+            avaliacao=request.avaliacao,
+            comentario=request.comentario,
+            parecer_correto=request.parecer_correto,
+            valores_corretos=request.valores_corretos,
+            medicamento_correto=request.medicamento_correto,
+        )
+        db.add(feedback)
+        db.commit()
+        db.refresh(feedback)
 
     return FeedbackResponse(
         sucesso=True,
         mensagem="Feedback registrado com sucesso",
-        feedback_id=feedback.id
+        feedback_id=feedback.id,
     )
 
 

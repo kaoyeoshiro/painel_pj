@@ -85,11 +85,11 @@ Adapters traduzem entre interface do protocol e API do serviço:
 **Exemplo**:
 ```python
 # Protocol: max_tokens
-# GeminiService: max_output_tokens
+# GeminiService: max_tokens
 
 async def gerar_texto(self, max_tokens=None, **kwargs):
     return await self._service.generate(
-        max_output_tokens=max_tokens,  # tradução
+        max_tokens=max_tokens,
         **kwargs
     )
 ```

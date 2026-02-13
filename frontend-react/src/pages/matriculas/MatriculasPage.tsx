@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { useQuery } from '@tanstack/react-query'
 import { queryKeys } from '@/lib/query-client'
 import { useMarkdown } from '@/hooks/useMarkdown'
+import { useFeedbackGate } from '@/hooks/useFeedbackGate'
 import { matriculasApi } from '@/lib/api'
 import type {
   FileInfo,
@@ -12,17 +13,17 @@ import type {
   ConfigResponse,
   AnaliseLoteRequest,
   BatchStatusResponse,
-  FeedbackRequest,
 } from '@/types/matriculas'
 import { BreadcrumbBar } from '@/components/layout/BreadcrumbBar'
 import { C } from '@/lib/designTokens'
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Alert, AlertDescription } from '@/components/ui/alert'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Badge } from '@/components/ui/badge'
 import { useToast } from '@/components/ui/toast'
+import { FeedbackStarsCard } from '@/components/shared/FeedbackStarsCard'
+import { FeedbackGateModal } from '@/components/shared/FeedbackGateModal'
 import {
   FileText,
   FileSignature,
@@ -37,7 +38,6 @@ import {
   Trash2,
   FolderOpen,
   CheckCircle,
-  AlertCircle,
   Loader2,
   Info,
   HelpCircle,
@@ -78,6 +78,16 @@ export default function MatriculasPage() {
   const [showProcessingModal, setShowProcessingModal] = useState(false)
   const [showBatchHelp, setShowBatchHelp] = useState(false)
   const [pdfViewerUrl, setPdfViewerUrl] = useState<string | null>(null)
+  const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false)
+  const [isSubmittedFeedback, setIsSubmittedFeedback] = useState(false)
+
+  // Feedback gate — guards download/export/copy until rated
+  const {
+    gateOpen,
+    guardAction,
+    onFeedbackDone,
+    markAsRated,
+  } = useFeedbackGate(currentAnaliseId)
 
   const pollingIntervalRef = useRef<NodeJS.Timeout | null>(null)
   const batchPollingRef = useRef<NodeJS.Timeout | null>(null)
@@ -106,6 +116,11 @@ export default function MatriculasPage() {
       if (pollingTimeoutRef.current) clearTimeout(pollingTimeoutRef.current)
     }
   }, [])
+
+  // Reset feedback state when analysis changes
+  useEffect(() => {
+    setIsSubmittedFeedback(false)
+  }, [currentAnaliseId])
 
   // Revoga URL do PDF ao trocar
   useEffect(() => {
@@ -429,31 +444,51 @@ export default function MatriculasPage() {
     toast({ title: 'Sucesso', description: 'Dados exportados como JSON' })
   }
 
-  // Envia feedback
-  const handleFeedback = async (avaliacao: 'correto' | 'parcial' | 'incorreto' | 'erro_ia') => {
+  // Envia feedback (estrelas 1-5 + comentario)
+  const handleStarFeedback = async (data: { nota: number; comentario: string | null }) => {
     if (!currentAnaliseId) {
       toast({ title: 'Aviso', description: 'Nenhuma analise para avaliar', variant: 'destructive' })
       return
     }
 
-    let comentario: string | null = null
-    if (avaliacao === 'incorreto' || avaliacao === 'parcial') {
-      comentario = prompt('Descreva brevemente o que estava incorreto (opcional):')
-    }
-
+    setIsSubmittingFeedback(true)
     try {
-      const payload: FeedbackRequest = {
+      const result = await matriculasApi.post<{ success: boolean }>('/feedback', {
         analise_id: currentAnaliseId,
-        avaliacao,
-        comentario: comentario || undefined,
-      }
-
-      const result = await matriculasApi.post<{ success: boolean }>('/feedback', payload)
+        nota: data.nota,
+        comentario: data.comentario,
+      })
       if (result.success) {
+        setIsSubmittedFeedback(true)
+        markAsRated()
         toast({ title: 'Sucesso', description: 'Feedback registrado!' })
       }
     } catch {
       toast({ title: 'Erro', description: 'Erro ao enviar feedback', variant: 'destructive' })
+    } finally {
+      setIsSubmittingFeedback(false)
+    }
+  }
+
+  // Feedback handler for the gate modal
+  const handleGateFeedback = async (data: { nota: number; comentario: string | null }) => {
+    if (!currentAnaliseId) return
+
+    setIsSubmittingFeedback(true)
+    try {
+      const result = await matriculasApi.post<{ success: boolean }>('/feedback', {
+        analise_id: currentAnaliseId,
+        nota: data.nota,
+        comentario: data.comentario,
+      })
+      if (result.success) {
+        onFeedbackDone()
+        toast({ title: 'Sucesso', description: 'Feedback registrado!' })
+      }
+    } catch {
+      toast({ title: 'Erro', description: 'Erro ao enviar feedback', variant: 'destructive' })
+    } finally {
+      setIsSubmittingFeedback(false)
     }
   }
 
@@ -752,7 +787,7 @@ export default function MatriculasPage() {
               {reportText && (
                 <div className="flex gap-2">
                   <button
-                    onClick={handleDownloadDocx}
+                    onClick={() => guardAction(() => handleDownloadDocx())}
                     className="flex items-center gap-1 rounded px-3 py-1.5 text-xs transition-colors"
                     style={{ background: C.navy50, color: C.navy700 }}
                     onMouseEnter={(e) => { e.currentTarget.style.background = C.navy100 }}
@@ -762,7 +797,7 @@ export default function MatriculasPage() {
                     Word
                   </button>
                   <button
-                    onClick={() => window.print()}
+                    onClick={() => guardAction(() => window.print())}
                     className="flex items-center gap-1 rounded px-3 py-1.5 text-xs transition-colors"
                     style={{ background: C.errorBg, color: C.statusError }}
                     onMouseEnter={(e) => { e.currentTarget.style.background = C.errorBgStrong }}
@@ -772,7 +807,7 @@ export default function MatriculasPage() {
                     PDF
                   </button>
                   <button
-                    onClick={handleCopyReport}
+                    onClick={() => guardAction(() => handleCopyReport())}
                     className="flex items-center gap-1 rounded px-3 py-1.5 text-xs transition-colors"
                     style={{ background: C.gray50, color: C.text500 }}
                     onMouseEnter={(e) => { e.currentTarget.style.background = C.gray100 }}
@@ -782,7 +817,7 @@ export default function MatriculasPage() {
                     Copiar
                   </button>
                   <button
-                    onClick={handleExportJSON}
+                    onClick={() => guardAction(() => handleExportJSON())}
                     disabled={!documentDetails}
                     className="flex items-center gap-1 rounded px-3 py-1.5 text-xs transition-colors disabled:opacity-50"
                     style={{ background: C.navy50, color: C.navy700 }}
@@ -806,33 +841,13 @@ export default function MatriculasPage() {
                 <div>
                   <MarkdownContent text={reportText} />
 
-                  {/* Feedback */}
-                  <Card className="mt-6">
-                    <CardHeader>
-                      <CardTitle className="text-sm">Avalie a Analise da IA</CardTitle>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="mb-4 text-sm" style={{ color: C.text500 }}>Sua avaliacao nos ajuda a melhorar o sistema.</p>
-                      <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-                        <Button variant="outline" onClick={() => handleFeedback('correto')} className="flex-col py-3">
-                          <CheckCircle className="mb-1 h-5 w-5" style={{ color: C.statusSuccess }} />
-                          <span className="text-xs">Correta</span>
-                        </Button>
-                        <Button variant="outline" onClick={() => handleFeedback('parcial')} className="flex-col py-3">
-                          <AlertCircle className="mb-1 h-5 w-5" style={{ color: C.statusWarning }} />
-                          <span className="text-xs">Parcialmente</span>
-                        </Button>
-                        <Button variant="outline" onClick={() => handleFeedback('incorreto')} className="flex-col py-3">
-                          <AlertCircle className="mb-1 h-5 w-5" style={{ color: C.statusError }} />
-                          <span className="text-xs">Incorreta</span>
-                        </Button>
-                        <Button variant="outline" onClick={() => handleFeedback('erro_ia')} className="flex-col py-3">
-                          <AlertCircle className="mb-1 h-5 w-5" style={{ color: C.text500 }} />
-                          <span className="text-xs">Erro/Nao gerou</span>
-                        </Button>
-                      </div>
-                    </CardContent>
-                  </Card>
+                  {/* Feedback com estrelas */}
+                  <FeedbackStarsCard
+                    onSubmit={handleStarFeedback}
+                    isSubmitting={isSubmittingFeedback}
+                    isSubmitted={isSubmittedFeedback}
+                    className="mt-6"
+                  />
                 </div>
               ) : (
                 <div className="flex flex-col items-center justify-center py-12" style={{ color: C.text400 }}>
@@ -1138,6 +1153,15 @@ export default function MatriculasPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Modal de feedback gate — bloqueia download/export/copy ate avaliar */}
+      <FeedbackGateModal
+        open={gateOpen}
+        onOpenChange={() => {/* controlado pelo hook */}}
+        onFeedbackSubmit={handleGateFeedback}
+        isSubmitting={isSubmittingFeedback}
+        pendingActionLabel="executar esta acao"
+      />
     </>
   )
 }

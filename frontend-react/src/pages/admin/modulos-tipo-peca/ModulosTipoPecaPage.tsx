@@ -20,12 +20,13 @@ import { Layers } from 'lucide-react'
 
 interface PromptGroup {
   id: number
-  name: string
+  nome: string
 }
 
 interface TipoPeca {
   id: number
   titulo: string
+  nome: string
   categoria?: string
 }
 
@@ -152,20 +153,24 @@ export function ModulosTipoPecaPage() {
   }
 
   async function carregarModulosTipoPeca(tipoPeca: TipoPeca) {
-    const categoria = tipoPeca.categoria || ''
+    const slug = tipoPeca.nome
 
-    if (modulosPorTipo.has(categoria)) {
+    if (!slug) {
+      return // Sem identificador — não há como buscar módulos
+    }
+
+    if (modulosPorTipo.has(slug)) {
       return // Já carregado
     }
 
     try {
-      setCarregandoModulos(prev => new Set(prev).add(categoria))
+      setCarregandoModulos(prev => new Set(prev).add(slug))
 
       const data = await adminApi.get<ModulosPorTipoPeca>(
-        `/admin/api/prompts-modulos/modulos-por-tipo-peca/${categoria}?group_id=${grupoSelecionado}`
+        `/admin/api/prompts-modulos/modulos-por-tipo-peca/${encodeURIComponent(slug)}?group_id=${grupoSelecionado}`
       )
 
-      setModulosPorTipo(prev => new Map(prev).set(categoria, data.modulos))
+      setModulosPorTipo(prev => new Map(prev).set(slug, data.modulos))
     } catch (error) {
       toast({
         title: 'Erro ao carregar módulos',
@@ -175,22 +180,22 @@ export function ModulosTipoPecaPage() {
     } finally {
       setCarregandoModulos(prev => {
         const novo = new Set(prev)
-        novo.delete(categoria)
+        novo.delete(slug)
         return novo
       })
     }
   }
 
   function toggleTipoPeca(tipoPeca: TipoPeca) {
-    const categoria = tipoPeca.categoria || ''
+    const slug = tipoPeca.nome
     const novoSet = new Set(tiposExpandidos)
 
-    if (novoSet.has(categoria)) {
-      novoSet.delete(categoria)
+    if (novoSet.has(slug)) {
+      novoSet.delete(slug)
     } else {
-      novoSet.add(categoria)
+      novoSet.add(slug)
       // Carregar módulos se ainda não foram carregados
-      if (!modulosPorTipo.has(categoria)) {
+      if (!modulosPorTipo.has(slug)) {
         carregarModulosTipoPeca(tipoPeca)
       }
     }
@@ -258,16 +263,15 @@ export function ModulosTipoPecaPage() {
     try {
       setSalvando(true)
 
-      // Converter Map para array de objetos
-      const configuracoes = Array.from(alteracoes.entries()).map(([moduloId, ativo]) => ({
+      // Converter Map para formato esperado pelo backend
+      const modulos = Array.from(alteracoes.entries()).map(([moduloId, ativo]) => ({
         modulo_id: moduloId,
-        tipo_peca: tipoPecaCategoria,
-        ativo_tipo_peca: ativo
+        ativo
       }))
 
       await adminApi.post('/admin/api/prompts-modulos/configurar-modulos-tipo-peca', {
-        group_id: grupoSelecionado,
-        configuracoes
+        tipo_peca: tipoPecaCategoria,
+        modulos
       })
 
       toast({
@@ -283,15 +287,15 @@ export function ModulosTipoPecaPage() {
       })
 
       // Recarregar módulos para refletir mudanças
-      const modulos = modulosPorTipo.get(tipoPecaCategoria)
-      if (modulos) {
+      const modulosExistentes = modulosPorTipo.get(tipoPecaCategoria)
+      if (modulosExistentes) {
         setModulosPorTipo(prev => {
           const novoMap = new Map(prev)
           novoMap.delete(tipoPecaCategoria)
           return novoMap
         })
 
-        const tipoPeca = tiposPeca.find(t => (t.categoria || '') === tipoPecaCategoria)
+        const tipoPeca = tiposPeca.find(t => t.nome === tipoPecaCategoria)
         if (tipoPeca) {
           await carregarModulosTipoPeca(tipoPeca)
         }
@@ -326,31 +330,29 @@ export function ModulosTipoPecaPage() {
     try {
       setSalvando(true)
 
-      // Converter todas as alterações para array
-      const configuracoes: Array<{
-        modulo_id: number
-        tipo_peca: string
-        ativo_tipo_peca: boolean
-      }> = []
+      // Enviar uma request por tipo de peça (backend aceita um tipo por vez)
+      let totalModulos = 0
+      const promises: Promise<unknown>[] = []
 
       alteracoesPendentes.forEach((modulosMap, tipoPeca) => {
-        modulosMap.forEach((ativo, moduloId) => {
-          configuracoes.push({
-            modulo_id: moduloId,
+        const modulos = Array.from(modulosMap.entries()).map(([moduloId, ativo]) => ({
+          modulo_id: moduloId,
+          ativo
+        }))
+        totalModulos += modulos.length
+        promises.push(
+          adminApi.post('/admin/api/prompts-modulos/configurar-modulos-tipo-peca', {
             tipo_peca: tipoPeca,
-            ativo_tipo_peca: ativo
+            modulos
           })
-        })
+        )
       })
 
-      await adminApi.post('/admin/api/prompts-modulos/configurar-modulos-tipo-peca', {
-        group_id: grupoSelecionado,
-        configuracoes
-      })
+      await Promise.all(promises)
 
       toast({
         title: 'Sucesso',
-        description: `${configuracoes.length} configurações salvas com sucesso`,
+        description: `${totalModulos} configurações salvas com sucesso`,
       })
 
       // Limpar todas as alterações
@@ -409,7 +411,7 @@ export function ModulosTipoPecaPage() {
                 <SelectContent>
                   {grupos.map(grupo => (
                     <SelectItem key={grupo.id} value={grupo.id.toString()}>
-                      {grupo.name}
+                      {grupo.nome}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -478,18 +480,18 @@ export function ModulosTipoPecaPage() {
       ) : (
         <div className="space-y-4">
           {tiposPeca.map(tipoPeca => {
-            const categoria = tipoPeca.categoria || ''
-            const expandido = tiposExpandidos.has(categoria)
-            const modulos = modulosPorTipo.get(categoria) || []
-            const carregando = carregandoModulos.has(categoria)
+            const slug = tipoPeca.nome
+            const expandido = tiposExpandidos.has(slug)
+            const modulos = modulosPorTipo.get(slug) || []
+            const carregando = carregandoModulos.has(slug)
 
             // Encontrar resumo deste tipo
             const resumoTipo = resumo?.tipos_peca.find(
-              t => (t.tipo_peca || '') === categoria
+              t => t.tipo_peca === slug
             )
 
-            const temAlteracoes = alteracoesPendentes.has(categoria) &&
-                                 alteracoesPendentes.get(categoria)!.size > 0
+            const temAlteracoes = alteracoesPendentes.has(slug) &&
+                                 alteracoesPendentes.get(slug)!.size > 0
 
             return (
               <Card key={tipoPeca.id} className="overflow-hidden rounded-2xl" style={{ borderColor: C.gray200 }}>
@@ -522,7 +524,7 @@ export function ModulosTipoPecaPage() {
 
                   {temAlteracoes && (
                     <Badge variant="warning">
-                      {alteracoesPendentes.get(categoria)!.size} pendentes
+                      {alteracoesPendentes.get(slug)!.size} pendentes
                     </Badge>
                   )}
                 </div>
@@ -535,7 +537,7 @@ export function ModulosTipoPecaPage() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => ativarTodos(categoria)}
+                        onClick={() => ativarTodos(slug)}
                         disabled={carregando}
                       >
                         Ativar Todos
@@ -543,7 +545,7 @@ export function ModulosTipoPecaPage() {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => desativarTodos(categoria)}
+                        onClick={() => desativarTodos(slug)}
                         disabled={carregando}
                       >
                         Desativar Todos
@@ -553,7 +555,7 @@ export function ModulosTipoPecaPage() {
 
                       <Button
                         size="sm"
-                        onClick={() => salvarAlteracoesTipo(categoria)}
+                        onClick={() => salvarAlteracoesTipo(slug)}
                         disabled={salvando || !temAlteracoes}
                       >
                         {salvando ? 'Salvando...' : 'Salvar'}
@@ -580,8 +582,8 @@ export function ModulosTipoPecaPage() {
                             </h4>
                             <div className="space-y-2">
                               {mods.map(modulo => {
-                                const estadoAtual = getEstadoModulo(categoria, modulo)
-                                const foiAlterado = alteracoesPendentes.get(categoria)?.has(modulo.modulo_id)
+                                const estadoAtual = getEstadoModulo(slug, modulo)
+                                const foiAlterado = alteracoesPendentes.get(slug)?.has(modulo.modulo_id)
 
                                 return (
                                   <div
@@ -593,7 +595,7 @@ export function ModulosTipoPecaPage() {
                                     <input
                                       type="checkbox"
                                       checked={estadoAtual}
-                                      onChange={() => toggleModulo(categoria, modulo.modulo_id, modulo.ativo_tipo_peca)}
+                                      onChange={() => toggleModulo(slug, modulo.modulo_id, modulo.ativo_tipo_peca)}
                                       className="mt-1"
                                     />
                                     <div className="flex-1">

@@ -2,6 +2,9 @@ import { Button } from '@/components/ui/button'
 import { BreadcrumbBar } from '@/components/layout/BreadcrumbBar'
 import { ContentDialog } from '@/components/layout/ContentDialog'
 import { ContentArea } from '@/components/layout/ContentArea'
+import { FeedbackStarsCard } from '@/components/shared/FeedbackStarsCard'
+import { FeedbackGateModal } from '@/components/shared/FeedbackGateModal'
+import { useFeedbackGate } from '@/hooks/useFeedbackGate'
 import { Building2, Download, RotateCw } from 'lucide-react'
 
 import { usePrestacaoContas } from './hooks/usePrestacaoContas'
@@ -10,7 +13,6 @@ import {
   InfoCard,
   Progresso,
   DocumentContent,
-  FeedbackSection,
   Duvidas,
   DocumentosFaltantes,
   ErroSection,
@@ -26,6 +28,25 @@ import { ConfirmacaoDialog } from './components/PrestacaoDialogs'
 
 export function PrestacaoContasPage() {
   const vm = usePrestacaoContas()
+
+  const {
+    gateOpen,
+    guardAction,
+    onFeedbackDone,
+    markAsRated,
+  } = useFeedbackGate(vm.geracaoId)
+
+  /** Wraps the inline FeedbackStarsCard submit: calls API then marks as rated */
+  const handleInlineFeedback = async (data: { nota: number; comentario: string | null }) => {
+    await vm.handleFeedbackSubmit(data)
+    markAsRated()
+  }
+
+  /** Wraps the gate modal submit: calls API, marks as rated, then runs pending action */
+  const handleGateFeedback = async (data: { nota: number; comentario: string | null }) => {
+    await vm.handleFeedbackSubmit(data)
+    onFeedbackDone()
+  }
 
   return (
     <>
@@ -118,7 +139,7 @@ export function PrestacaoContasPage() {
           headerActions={
             <>
               <Button
-                onClick={vm.exportarDocx}
+                onClick={() => guardAction(() => void vm.exportarDocx())}
                 size="sm"
                 className="text-white/70 hover:text-white"
                 style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.15)' }}
@@ -144,17 +165,23 @@ export function PrestacaoContasPage() {
             />
           }
           feedbackSection={
-            <FeedbackSection
-              avaliacaoSelecionada={vm.avaliacaoSelecionada}
-              setAvaliacaoSelecionada={vm.setAvaliacaoSelecionada}
-              comentarioFeedback={vm.comentarioFeedback}
-              setComentarioFeedback={vm.setComentarioFeedback}
-              isEnviandoFeedback={vm.isEnviandoFeedback}
-              onEnviar={vm.enviarFeedback}
+            <FeedbackStarsCard
+              onSubmit={(data) => void handleInlineFeedback(data)}
+              isSubmitting={vm.isSubmittingFeedback}
+              isSubmitted={vm.isFeedbackSubmitted}
             />
           }
         />
       )}
+
+      {/* Gate modal — blocks download/export until user rates */}
+      <FeedbackGateModal
+        open={gateOpen}
+        onOpenChange={() => {/* controlled by useFeedbackGate */}}
+        onFeedbackSubmit={(data) => void handleGateFeedback(data)}
+        isSubmitting={vm.isSubmittingFeedback}
+        pendingActionLabel="download"
+      />
 
       <ConfirmacaoDialog vm={vm} />
     </>

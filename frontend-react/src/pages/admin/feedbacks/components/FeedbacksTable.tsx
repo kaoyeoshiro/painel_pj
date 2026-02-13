@@ -16,12 +16,12 @@ import {
 } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Eye, Expand, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Eye, Expand, ChevronLeft, ChevronRight, Star } from 'lucide-react'
 import { C } from '@/lib/designTokens'
 import { fetchFeedbackList } from '../api'
 import { AVALIACAO_OPTIONS, formatarData, formatarHora } from '../constants'
 import { SistemaBadge } from './SistemaBadge'
-import { AvaliacaoBadge } from './AvaliacaoBadge'
+import { AvaliacaoBadge, NotaBadge } from './AvaliacaoBadge'
 import { ModoBadge } from './ModoBadge'
 import type { FeedbackItem, FeedbackListResponse } from '../types'
 
@@ -105,6 +105,7 @@ export function FeedbacksTable({ sistema, mes, ano, onViewReport, onViewComment 
                 <TableHead className="text-center">Modelo IA</TableHead>
                 <TableHead className="text-center">Modo</TableHead>
                 <TableHead className="text-center">Avaliação</TableHead>
+                <TableHead className="text-center">Nota</TableHead>
                 <TableHead>Comentário</TableHead>
                 <TableHead>Data</TableHead>
                 <TableHead className="text-center">Relatório</TableHead>
@@ -113,7 +114,7 @@ export function FeedbacksTable({ sistema, mes, ano, onViewReport, onViewComment 
             <TableBody>
               {!data || data.feedbacks.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={9} className="text-center h-24 text-gray-400">
+                  <TableCell colSpan={10} className="text-center h-24 text-gray-400">
                     Nenhum feedback encontrado
                   </TableCell>
                 </TableRow>
@@ -141,6 +142,9 @@ export function FeedbacksTable({ sistema, mes, ano, onViewReport, onViewComment 
                       </TableCell>
                       <TableCell className="text-center">
                         <AvaliacaoBadge avaliacao={fb.avaliacao} />
+                      </TableCell>
+                      <TableCell className="text-center">
+                        <NotaBadge nota={fb.nota} />
                       </TableCell>
                       <TableCell className="max-w-[200px]">
                         {fb.comentario ? (

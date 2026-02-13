@@ -333,15 +333,16 @@ async def listar_tipos_peca(
 ):
     """
     Lista todos os tipos de peça disponíveis (módulos tipo='peca').
-    Tipos de peça são globais (não pertencem a grupos específicos).
-    O parâmetro group_id é ignorado pois tipos de peça são sempre globais.
+    Filtra por group_id quando fornecido para evitar duplicatas entre grupos.
     """
     query = modulo_repo.query().filter(
         PromptModulo.tipo == "peca",
         PromptModulo.ativo == True
     )
 
-    # Tipos de peça são globais - não filtra por grupo
+    if group_id:
+        query = query.filter(PromptModulo.group_id == group_id)
+
     modulos_peca = query.order_by(PromptModulo.ordem).all()
 
     return [
@@ -364,13 +365,16 @@ async def resumo_configuracao_tipos_peca(
     """
     Retorna um resumo da configuração de módulos por tipo de peça.
     Mostra quantos módulos estão ativos para cada tipo.
-    O group_id filtra apenas os módulos de conteúdo, não os tipos de peça.
+    Filtra tipos e conteúdos por group_id quando fornecido.
     """
-    # Busca tipos de peça (são globais, não filtra por grupo)
-    tipos_peca = modulo_repo.query().filter(
+    # Busca tipos de peça (filtra por grupo para evitar duplicatas)
+    query_tipos = modulo_repo.query().filter(
         PromptModulo.tipo == "peca",
         PromptModulo.ativo == True
-    ).all()
+    )
+    if group_id:
+        query_tipos = query_tipos.filter(PromptModulo.group_id == group_id)
+    tipos_peca = query_tipos.all()
 
     # Conta total de módulos de conteúdo
     query_conteudo = modulo_repo.query().filter(
@@ -384,12 +388,13 @@ async def resumo_configuracao_tipos_peca(
     # Query única para contar ativos/inativos por tipo_peca (evita N+1)
     contagens = modulo_repo.get_resumo_contagens_tipo_peca(group_id)
 
-    # Mapeia resultados
+    # Mapeia resultados — usa nome como chave (é o identificador em ModuloTipoPeca)
     contagens_map = {c.tipo_peca: {'ativos': int(c.ativos or 0), 'inativos': int(c.inativos or 0)} for c in contagens}
 
     resultado = []
     for tipo in tipos_peca:
-        contagem = contagens_map.get(tipo.categoria, {'ativos': 0, 'inativos': 0})
+        chave = tipo.nome  # nome é o identificador real (ex: "contestacao")
+        contagem = contagens_map.get(chave, {'ativos': 0, 'inativos': 0})
         ativos = contagem['ativos']
         inativos = contagem['inativos']
 
@@ -397,7 +402,7 @@ async def resumo_configuracao_tipos_peca(
         sem_config = total_modulos - ativos - inativos
 
         resultado.append({
-            "tipo_peca": tipo.categoria,
+            "tipo_peca": chave,
             "titulo": tipo.titulo,
             "modulos_ativos": ativos + sem_config,  # Inclui sem config como ativos
             "modulos_inativos": inativos,

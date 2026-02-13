@@ -5,18 +5,15 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Badge } from '@/components/ui/badge'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { Separator } from '@/components/ui/separator'
-import { Textarea } from '@/components/ui/textarea'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import { C, FONT_DOC } from '@/lib/designTokens'
 import { useMarkdown } from '@/hooks/useMarkdown'
 import {
   FileText,
-  Send,
   Loader2,
   AlertCircle,
   Download,
   FileDown,
-  Star,
   Clock,
   History,
   RotateCw,
@@ -27,7 +24,7 @@ import {
   Copy,
 } from 'lucide-react'
 
-import type { EtapaPipeline, AvaliacaoFeedback, HistoricoItem } from '@/types/relatorio-cumprimento'
+import type { EtapaPipeline, HistoricoItem } from '@/types/relatorio-cumprimento'
 import type { UseRelatorioCumprimentoReturn } from '../hooks/useRelatorioCumprimento'
 
 // ============================================================
@@ -687,13 +684,14 @@ function InfoProcesso({ vm }: { vm: UseRelatorioCumprimentoReturn }) {
 
 interface HeaderActionsProps {
   vm: UseRelatorioCumprimentoReturn
+  guardAction: (fn: () => void) => void
 }
 
-export function HeaderActions({ vm }: HeaderActionsProps) {
+export function HeaderActions({ vm, guardAction }: HeaderActionsProps) {
   return (
     <>
       <Button
-        onClick={vm.handleExportarDocx}
+        onClick={() => guardAction(() => vm.handleExportarDocx())}
         size="sm"
         className="gap-2 text-white/70 hover:bg-white/10 hover:text-white"
         style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.15)' }}
@@ -707,7 +705,7 @@ export function HeaderActions({ vm }: HeaderActionsProps) {
         DOCX
       </Button>
       <Button
-        onClick={vm.handleExportarPdf}
+        onClick={() => guardAction(() => vm.handleExportarPdf())}
         size="sm"
         className="gap-2 text-white/70 hover:bg-white/10 hover:text-white"
         style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.15)' }}
@@ -721,7 +719,7 @@ export function HeaderActions({ vm }: HeaderActionsProps) {
         PDF
       </Button>
       <Button
-        onClick={vm.handleCopiarRelatorio}
+        onClick={() => guardAction(() => vm.handleCopiarRelatorio())}
         size="sm"
         className="gap-2 text-white/70 hover:bg-white/10 hover:text-white"
         style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.15)' }}
@@ -733,144 +731,3 @@ export function HeaderActions({ vm }: HeaderActionsProps) {
   )
 }
 
-// ============================================================
-// FeedbackSection — secao de avaliacao no ContentDialog
-// ============================================================
-
-interface FeedbackSectionProps {
-  feedbackEnviado: boolean
-  feedbackAvaliacao: AvaliacaoFeedback | null
-  feedbackNota: number
-  feedbackComentario: string
-  enviandoFeedback: boolean
-  onAvaliacaoChange: (avaliacao: AvaliacaoFeedback) => void
-  onNotaChange: (nota: number) => void
-  onComentarioChange: (comentario: string) => void
-  onEnviar: () => void
-}
-
-export function FeedbackSection({
-  feedbackEnviado,
-  feedbackAvaliacao,
-  feedbackNota,
-  feedbackComentario,
-  enviandoFeedback,
-  onAvaliacaoChange,
-  onNotaChange,
-  onComentarioChange,
-  onEnviar,
-}: FeedbackSectionProps) {
-  return (
-    <div
-      className="rounded-xl border p-5"
-      style={{ background: 'white', borderColor: C.gray200 }}
-    >
-      <div className="mb-4 flex items-center gap-2">
-        <Star className="h-5 w-5" style={{ color: C.statusWarning }} />
-        <h4 className="font-semibold" style={{ color: C.text900, fontSize: 15 }}>
-          Avaliacao do Relatorio
-        </h4>
-      </div>
-
-      {feedbackEnviado ? (
-        <div className="flex items-center gap-2" style={{ color: C.statusSuccess }}>
-          <CheckCircle2 className="h-5 w-5" />
-          <span className="font-medium">Feedback enviado! Obrigado pela avaliacao.</span>
-        </div>
-      ) : (
-        <div className="space-y-4">
-          {/* Avaliacao geral */}
-          <div>
-            <Label className="text-sm font-medium" style={{ color: C.text700 }}>
-              Como voce avalia o relatorio?
-            </Label>
-            <div className="mt-2 flex flex-wrap gap-2">
-              {(
-                [
-                  { value: 'correto', label: 'Correto' },
-                  { value: 'parcial', label: 'Parcialmente correto' },
-                  { value: 'incorreto', label: 'Incorreto' },
-                  { value: 'erro_ia', label: 'Erro da IA' },
-                ] as const
-              ).map((opcao) => (
-                <Button
-                  key={opcao.value}
-                  size="sm"
-                  variant={feedbackAvaliacao === opcao.value ? 'default' : 'outline'}
-                  onClick={() => onAvaliacaoChange(opcao.value)}
-                  className="rounded-lg"
-                  style={
-                    feedbackAvaliacao === opcao.value
-                      ? { background: C.navy950, color: 'white' }
-                      : undefined
-                  }
-                >
-                  {opcao.label}
-                </Button>
-              ))}
-            </div>
-          </div>
-
-          {/* Nota por estrelas */}
-          <div>
-            <Label className="text-sm font-medium" style={{ color: C.text700 }}>
-              Nota (1 a 5 estrelas)
-            </Label>
-            <div className="mt-2 flex gap-1">
-              {[1, 2, 3, 4, 5].map((n) => (
-                <button
-                  key={n}
-                  type="button"
-                  onClick={() => onNotaChange(n)}
-                  className="focus:outline-none"
-                >
-                  <Star
-                    className="h-6 w-6 transition-colors"
-                    style={{
-                      color: n <= feedbackNota ? C.statusWarning : C.gray300,
-                      fill: n <= feedbackNota ? C.statusWarning : 'none',
-                    }}
-                  />
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Comentario */}
-          <div>
-            <Label
-              htmlFor="feedback-comentario"
-              className="text-sm font-medium"
-              style={{ color: C.text700 }}
-            >
-              Comentario (opcional)
-            </Label>
-            <Textarea
-              id="feedback-comentario"
-              value={feedbackComentario}
-              onChange={(e) => onComentarioChange(e.target.value)}
-              placeholder="Descreva o que pode ser melhorado..."
-              rows={3}
-              className="mt-2 rounded-xl"
-              style={{ borderColor: C.gray200 }}
-            />
-          </div>
-
-          <Button
-            onClick={onEnviar}
-            disabled={!feedbackAvaliacao || enviandoFeedback}
-            className="gap-2 rounded-xl text-white"
-            style={{ background: C.navy950 }}
-          >
-            {enviandoFeedback ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Send className="h-4 w-4" />
-            )}
-            Enviar Feedback
-          </Button>
-        </div>
-      )}
-    </div>
-  )
-}

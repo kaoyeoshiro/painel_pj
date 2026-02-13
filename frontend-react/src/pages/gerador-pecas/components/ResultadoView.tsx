@@ -1,15 +1,15 @@
 /**
  * Vista de resultado do Gerador de Pecas (split view).
  *
- * Coluna esquerda: documento gerado com barra de acoes e feedback inline.
+ * Coluna esquerda: documento gerado com barra de acoes e feedback card padronizado.
  * Coluna direita: painel de chat com sugestoes e historico de mensagens.
  */
 
+import { useState, useCallback } from 'react'
 import {
   Download,
   Copy,
   RotateCcw,
-  Star,
   Send,
   Bot,
   MessageSquare,
@@ -17,7 +17,12 @@ import {
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { useToast } from '@/components/ui/toast'
 import { C, FONT_DOC, FONT_UI } from '@/lib/designTokens'
+import { geradorApi } from '@/lib/api'
+import { FeedbackStarsCard } from '@/components/shared/FeedbackStarsCard'
+import { FeedbackGateModal } from '@/components/shared/FeedbackGateModal'
+import { useFeedbackGate } from '@/hooks/useFeedbackGate'
 import type { UseGeradorPecasReturn } from '../hooks/useGeradorPecas'
 import { CHAT_SUGESTOES } from '../types'
 
@@ -34,8 +39,97 @@ interface ResultadoViewProps {
 // ============================================================================
 
 export function ResultadoView({ h }: ResultadoViewProps) {
+  const { toast } = useToast()
+
+  // --- Feedback gate: guards download/copy until user rates ---
+  const {
+    hasFeedback,
+    gateOpen,
+    guardAction,
+    onFeedbackDone,
+    markAsRated,
+  } = useFeedbackGate(h.geracaoId)
+
+  // --- Feedback submission state ---
+  const [isFeedbackSubmitting, setIsFeedbackSubmitting] = useState(false)
+  const [isFeedbackSubmitted, setIsFeedbackSubmitted] = useState(false)
+
+  /** Label shown in the gate modal depending on which action triggered it */
+  const [pendingActionLabel, setPendingActionLabel] = useState<string | undefined>()
+
+  // Wrap guardAction to also capture the action label for the modal
+  const guardWithLabel = useCallback(
+    (fn: () => void, label: string) => {
+      setPendingActionLabel(label)
+      guardAction(fn)
+    },
+    [guardAction],
+  )
+
+  /** Submit feedback to the API (used by both inline card and gate modal) */
+  const submitFeedback = useCallback(
+    async (data: { nota: number; comentario: string | null }) => {
+      if (!h.geracaoId) return
+      setIsFeedbackSubmitting(true)
+      try {
+        await geradorApi.post('/feedback', {
+          geracao_id: h.geracaoId,
+          nota: data.nota,
+          comentario: data.comentario,
+        })
+        setIsFeedbackSubmitted(true)
+        markAsRated()
+        toast({ title: 'Sucesso', description: 'Avaliacao enviada! Obrigado.' })
+      } catch (error) {
+        toast({
+          title: 'Erro',
+          description: (error as Error).message || 'Falha ao enviar avaliacao',
+          variant: 'destructive',
+        })
+      } finally {
+        setIsFeedbackSubmitting(false)
+      }
+    },
+    [h.geracaoId, markAsRated, toast],
+  )
+
+  /** Handler for the gate modal — submits feedback then triggers the pending action */
+  const handleGateFeedback = useCallback(
+    async (data: { nota: number; comentario: string | null }) => {
+      if (!h.geracaoId) return
+      setIsFeedbackSubmitting(true)
+      try {
+        await geradorApi.post('/feedback', {
+          geracao_id: h.geracaoId,
+          nota: data.nota,
+          comentario: data.comentario,
+        })
+        toast({ title: 'Sucesso', description: 'Avaliacao enviada! Obrigado.' })
+        onFeedbackDone()
+      } catch (error) {
+        toast({
+          title: 'Erro',
+          description: (error as Error).message || 'Falha ao enviar avaliacao',
+          variant: 'destructive',
+        })
+      } finally {
+        setIsFeedbackSubmitting(false)
+      }
+    },
+    [h.geracaoId, onFeedbackDone, toast],
+  )
+
   return (
     <div className="-mx-4 flex h-full min-h-0 sm:-mx-6 lg:-mx-8">
+
+      {/* -- Feedback gate modal (blocks download/copy until rated) -- */}
+      <FeedbackGateModal
+        open={gateOpen}
+        onOpenChange={() => {/* controlled by gate hook — no-op */}}
+        onFeedbackSubmit={handleGateFeedback}
+        isSubmitting={isFeedbackSubmitting}
+        pendingActionLabel={pendingActionLabel}
+      />
 
       {/* -- Coluna do documento -- */}
       <main className="flex min-w-0 flex-1 flex-col p-5 pb-3">
@@ -54,8 +148,8 @@ export function ResultadoView({ h }: ResultadoViewProps) {
           </div>
           <div className="flex items-center">
             {[
-              { icon: Download, label: 'DOCX', action: h.exportarDocx, tooltip: 'Exportar como Word' },
-              { icon: Copy, label: 'Copiar', action: h.copiarMinuta, tooltip: 'Copiar texto' },
+              { icon: Download, label: 'DOCX', action: () => guardWithLabel(h.exportarDocx, 'download'), tooltip: 'Exportar como Word' },
+              { icon: Copy, label: 'Copiar', action: () => guardWithLabel(h.copiarMinuta, 'copiar'), tooltip: 'Copiar texto' },
               { icon: RotateCcw, label: 'Versoes', action: h.abrirHistoricoVersoes, tooltip: 'Historico de versoes' },
             ].map((btn) => (
               <Tooltip key={btn.label}>
@@ -82,32 +176,14 @@ export function ResultadoView({ h }: ResultadoViewProps) {
               dangerouslySetInnerHTML={{ __html: h.minutaHtml }}
             />
 
-            {/* Feedback — below document */}
-            {!h.showFeedback && h.geracaoId && (
-              <div className="mt-12 border-t border-slate-100 pt-8">
-                <div className="rounded-xl border border-slate-200/60 bg-slate-50/50 p-5 text-center" style={{ fontFamily: FONT_UI }}>
-                  <p className="text-[15px] font-medium text-slate-600">Qual a qualidade desta geracao?</p>
-                  <p className="mt-1 text-xs text-slate-400">Sua avaliacao ajuda a melhorar o sistema</p>
-                  <div className="mt-3 flex justify-center gap-1">
-                    {[1, 2, 3, 4, 5].map((nota) => (
-                      <button
-                        key={nota}
-                        onClick={() => { h.setFeedbackNota(nota); h.setShowFeedback(true) }}
-                        className="rounded-lg p-1.5 transition-transform hover:scale-110"
-                        aria-label={`Nota ${nota}`}
-                      >
-                        <Star
-                          className={cn(
-                            'h-6 w-6 transition-colors',
-                            h.feedbackNota && nota <= h.feedbackNota
-                              ? 'fill-amber-400 text-amber-400'
-                              : 'text-slate-300 hover:text-amber-300',
-                          )}
-                        />
-                      </button>
-                    ))}
-                  </div>
-                </div>
+            {/* Feedback — standardized card below document */}
+            {!hasFeedback && h.geracaoId && (
+              <div className="mt-12 border-t border-slate-100 pt-8" style={{ fontFamily: FONT_UI }}>
+                <FeedbackStarsCard
+                  onSubmit={submitFeedback}
+                  isSubmitting={isFeedbackSubmitting}
+                  isSubmitted={isFeedbackSubmitted}
+                />
               </div>
             )}
 

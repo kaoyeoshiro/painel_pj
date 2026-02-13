@@ -11,6 +11,9 @@ import { assistenciaApi } from '@/lib/api'
 import { useQuery } from '@tanstack/react-query'
 import { queryKeys } from '@/lib/query-client'
 import { useToast } from '@/components/ui/toast'
+import { FeedbackStarsCard } from '@/components/shared/FeedbackStarsCard'
+import { FeedbackGateModal } from '@/components/shared/FeedbackGateModal'
+import { useFeedbackGate } from '@/hooks/useFeedbackGate'
 import type {
   ConsultaRequest,
   ConsultaResponse,
@@ -22,9 +25,6 @@ import type {
 /** Tipo para o estado da tela */
 type ViewState = 'inicial' | 'loading' | 'resultado' | 'erro'
 
-/** Tipo para a avaliacao de feedback */
-type TipoAvaliacao = 'correto' | 'parcial' | 'incorreto' | 'erro_ia'
-
 export function AssistenciaPage() {
   const { toast } = useToast()
 
@@ -34,7 +34,15 @@ export function AssistenciaPage() {
   const [erroMensagem, setErroMensagem] = useState('')
   const [consultaAtual, setConsultaAtual] = useState<ConsultaResponse | null>(null)
   const [feedbackEnviado, setFeedbackEnviado] = useState(false)
-  const [feedbackTipo, setFeedbackTipo] = useState('')
+  const [feedbackSubmitting, setFeedbackSubmitting] = useState(false)
+
+  // Feedback gate: guards download/copy until rated
+  const {
+    gateOpen,
+    guardAction,
+    onFeedbackDone,
+    markAsRated,
+  } = useFeedbackGate(consultaAtual?.consulta_id ?? null)
 
   // Query do historico
   const {
@@ -61,22 +69,14 @@ export function AssistenciaPage() {
 
       if (feedback.has_feedback) {
         setFeedbackEnviado(true)
-        const tipoTexto: Record<string, string> = {
-          correto: 'Analise marcada como correta',
-          parcial: 'Analise marcada como parcialmente correta',
-          incorreto: 'Analise marcada como incorreta',
-          erro_ia: 'Reportado como erro da IA',
-        }
-        setFeedbackTipo(tipoTexto[feedback.avaliacao || ''] || '')
+        markAsRated()
       } else {
         setFeedbackEnviado(false)
-        setFeedbackTipo('')
       }
     } catch {
       setFeedbackEnviado(false)
-      setFeedbackTipo('')
     }
-  }, [])
+  }, [markAsRated])
 
   /** Consulta processo */
   const consultarProcesso = useCallback(
@@ -92,7 +92,6 @@ export function AssistenciaPage() {
 
       setViewState('loading')
       setFeedbackEnviado(false)
-      setFeedbackTipo('')
 
       try {
         const request: ConsultaRequest = {
@@ -150,9 +149,9 @@ export function AssistenciaPage() {
     }
   }, [consultaAtual, cnjInput, consultarProcesso])
 
-  /** Enviar feedback */
+  /** Enviar feedback (estrelas 1-5 + comentario) */
   const enviarFeedback = useCallback(
-    async (avaliacao: TipoAvaliacao) => {
+    async (data: { nota: number; comentario: string | null }) => {
       if (!consultaAtual?.consulta_id) {
         toast({
           title: 'Erro',
@@ -162,30 +161,19 @@ export function AssistenciaPage() {
         return
       }
 
-      let comentario: string | null = null
-
-      if (avaliacao === 'incorreto' || avaliacao === 'parcial') {
-        comentario = prompt('Por favor, descreva brevemente o que estava incorreto (opcional):')
-      }
+      setFeedbackSubmitting(true)
 
       try {
         const request: FeedbackRequest = {
           consulta_id: consultaAtual.consulta_id,
-          avaliacao,
-          comentario,
+          nota: data.nota,
+          comentario: data.comentario,
         }
 
         await assistenciaApi.post('/feedback', request)
 
-        const tipoTexto: Record<string, string> = {
-          correto: 'Analise marcada como correta',
-          parcial: 'Analise marcada como parcialmente correta',
-          incorreto: 'Analise marcada como incorreta',
-          erro_ia: 'Reportado como erro da IA',
-        }
-
         setFeedbackEnviado(true)
-        setFeedbackTipo(tipoTexto[avaliacao])
+        markAsRated()
 
         toast({
           title: 'Feedback registrado',
@@ -197,9 +185,47 @@ export function AssistenciaPage() {
           description: error instanceof Error ? error.message : 'Erro desconhecido',
           variant: 'destructive',
         })
+      } finally {
+        setFeedbackSubmitting(false)
       }
     },
-    [consultaAtual, toast]
+    [consultaAtual, toast, markAsRated]
+  )
+
+  /** Enviar feedback via gate modal (blocks download/copy until rated) */
+  const enviarFeedbackViaGate = useCallback(
+    async (data: { nota: number; comentario: string | null }) => {
+      if (!consultaAtual?.consulta_id) return
+
+      setFeedbackSubmitting(true)
+
+      try {
+        const request: FeedbackRequest = {
+          consulta_id: consultaAtual.consulta_id,
+          nota: data.nota,
+          comentario: data.comentario,
+        }
+
+        await assistenciaApi.post('/feedback', request)
+
+        setFeedbackEnviado(true)
+        onFeedbackDone()
+
+        toast({
+          title: 'Feedback registrado',
+          description: 'Obrigado pela sua avaliacao!',
+        })
+      } catch (error) {
+        toast({
+          title: 'Erro ao enviar feedback',
+          description: error instanceof Error ? error.message : 'Erro desconhecido',
+          variant: 'destructive',
+        })
+      } finally {
+        setFeedbackSubmitting(false)
+      }
+    },
+    [consultaAtual, toast, onFeedbackDone]
   )
 
   /** Excluir item do historico */
@@ -277,7 +303,6 @@ export function AssistenciaPage() {
     setViewState('inicial')
     setConsultaAtual(null)
     setFeedbackEnviado(false)
-    setFeedbackTipo('')
   }, [])
 
   /** Formata data em portugues */
@@ -528,7 +553,7 @@ export function AssistenciaPage() {
                   Reanalisar
                 </button>
                 <button
-                  onClick={() => downloadDocumento('docx')}
+                  onClick={() => guardAction(() => downloadDocumento('docx'))}
                   className="inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90"
                   style={{ background: C.navy950 }}
                 >
@@ -536,7 +561,7 @@ export function AssistenciaPage() {
                   DOCX
                 </button>
                 <button
-                  onClick={() => downloadDocumento('pdf')}
+                  onClick={() => guardAction(() => downloadDocumento('pdf'))}
                   className="inline-flex items-center gap-1.5 rounded-xl px-3.5 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90"
                   style={{ background: C.statusError }}
                 >
@@ -572,7 +597,7 @@ export function AssistenciaPage() {
           </div>
         </div>
 
-        {/* Card de feedback */}
+        {/* Card de feedback (estrelas 1-5) */}
         <div
           className="overflow-hidden rounded-2xl border bg-white shadow-sm"
           style={{ borderColor: C.gray200 }}
@@ -582,77 +607,25 @@ export function AssistenciaPage() {
               Avalie a Analise da IA
             </h3>
             <p className="text-sm mb-4" style={{ color: C.text400 }}>
-              Sua avaliacao nos ajuda a melhorar o sistema. Por favor, indique se a analise esta correta.
+              Sua avaliacao nos ajuda a melhorar o sistema. Por favor, avalie a analise com estrelas.
             </p>
 
-            {!feedbackEnviado ? (
-              <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-                <button
-                  onClick={() => enviarFeedback('correto')}
-                  className="flex h-auto flex-col items-center gap-1.5 rounded-xl py-4 text-center font-medium transition-all"
-                  style={{
-                    background: C.statusSuccess + '15',
-                    color: C.statusSuccess,
-                    border: '2px solid transparent',
-                  }}
-                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = C.statusSuccess }}
-                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'transparent' }}
-                >
-                  <span className="text-xl">&#10003;</span>
-                  <span className="text-sm">Correta</span>
-                </button>
-                <button
-                  onClick={() => enviarFeedback('parcial')}
-                  className="flex h-auto flex-col items-center gap-1.5 rounded-xl py-4 text-center font-medium transition-all"
-                  style={{
-                    background: C.statusWarning + '15',
-                    color: C.statusWarning,
-                    border: '2px solid transparent',
-                  }}
-                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = C.statusWarning }}
-                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'transparent' }}
-                >
-                  <span className="text-xl">&#9680;</span>
-                  <span className="text-sm">Parcialmente</span>
-                </button>
-                <button
-                  onClick={() => enviarFeedback('incorreto')}
-                  className="flex h-auto flex-col items-center gap-1.5 rounded-xl py-4 text-center font-medium transition-all"
-                  style={{
-                    background: C.statusError + '15',
-                    color: C.statusError,
-                    border: '2px solid transparent',
-                  }}
-                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = C.statusError }}
-                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'transparent' }}
-                >
-                  <span className="text-xl">&#10007;</span>
-                  <span className="text-sm">Incorreta</span>
-                </button>
-                <button
-                  onClick={() => enviarFeedback('erro_ia')}
-                  className="flex h-auto flex-col items-center gap-1.5 rounded-xl py-4 text-center font-medium transition-all"
-                  style={{
-                    background: C.gray100,
-                    color: C.text500,
-                    border: '2px solid transparent',
-                  }}
-                  onMouseEnter={(e) => { e.currentTarget.style.borderColor = C.gray500 }}
-                  onMouseLeave={(e) => { e.currentTarget.style.borderColor = 'transparent' }}
-                >
-                  <span className="text-xl">&#9888;</span>
-                  <span className="text-sm">Erro/Nao gerou</span>
-                </button>
-              </div>
-            ) : (
-              <div className="py-4 text-center">
-                <div className="mx-auto mb-2 text-3xl" style={{ color: C.statusSuccess }}>&#10003;</div>
-                <p className="font-medium" style={{ color: C.statusSuccess }}>Obrigado pelo seu feedback!</p>
-                <p className="text-sm mt-1" style={{ color: C.text400 }}>{feedbackTipo}</p>
-              </div>
-            )}
+            <FeedbackStarsCard
+              onSubmit={enviarFeedback}
+              isSubmitting={feedbackSubmitting}
+              isSubmitted={feedbackEnviado}
+            />
           </div>
         </div>
+
+        {/* Modal gate: bloqueia download/copiar ate avaliar */}
+        <FeedbackGateModal
+          open={gateOpen}
+          onOpenChange={() => {/* controlled by gate hook */}}
+          onFeedbackSubmit={enviarFeedbackViaGate}
+          isSubmitting={feedbackSubmitting}
+          pendingActionLabel="download"
+        />
       </div>
     )
   }

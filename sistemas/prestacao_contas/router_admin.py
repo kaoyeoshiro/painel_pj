@@ -109,7 +109,12 @@ def _calcular_estado_expirado(geracao: GeracaoAnalise) -> bool:
     """Verifica se o estado salvo expirou."""
     if not geracao.estado_expira_em:
         return True
-    return get_utc_now() > geracao.estado_expira_em
+    expira_em = geracao.estado_expira_em
+    # Garante comparação entre datetimes do mesmo tipo (aware)
+    if expira_em.tzinfo is None:
+        from datetime import timezone
+        expira_em = expira_em.replace(tzinfo=timezone.utc)
+    return get_utc_now() > expira_em
 
 
 def _pode_anexar_documentos(geracao: GeracaoAnalise) -> bool:

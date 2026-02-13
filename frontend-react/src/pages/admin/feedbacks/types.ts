@@ -44,6 +44,8 @@ export interface DashboardData {
   total_consultas: number
   total_feedbacks: number
   taxa_acerto: number
+  media_estrelas: number
+  distribuicao_estrelas: Record<string, number>
   consultas_sem_feedback: number
   avaliacoes: AvaliacaoContagem
   feedbacks_por_usuario: UserFeedbackSummary[]
@@ -82,6 +84,7 @@ export interface FeedbackItem {
   usuario: string
   username: string
   avaliacao: string
+  nota: number
   comentario: string | null
   campos_incorretos: string | null
   criado_em: string

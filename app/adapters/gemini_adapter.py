@@ -63,7 +63,7 @@ class GeminiAdapter(AIServiceProtocol):
             prompt=prompt,
             model=modelo,
             temperature=temperatura,
-            max_output_tokens=max_tokens,
+            max_tokens=max_tokens,
             **kwargs
         )
 
@@ -96,7 +96,7 @@ class GeminiAdapter(AIServiceProtocol):
             prompt=prompt,
             model=modelo,
             temperature=temperatura,
-            max_output_tokens=max_tokens,
+            max_tokens=max_tokens,
             **kwargs
         ):
             yield chunk

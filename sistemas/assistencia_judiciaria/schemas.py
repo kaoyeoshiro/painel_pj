@@ -5,10 +5,11 @@ Schemas Pydantic do sistema de Assistência Judiciária.
 Contém todos os modelos de request usados no router.
 """
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, model_validator
 from typing import Optional
 
 from sistemas.assistencia_judiciaria.core.logic import DEFAULT_MODEL
+from utils.feedback_helpers import validate_feedback_fields
 
 
 class ConsultationRequest(BaseModel):
@@ -19,9 +20,15 @@ class ConsultationRequest(BaseModel):
 
 class FeedbackRequest(BaseModel):
     consulta_id: int
-    avaliacao: str  # 'correto', 'parcial', 'incorreto', 'erro_ia'
+    nota: int = Field(..., ge=1, le=5, description="Nota de 1 a 5 estrelas")
+    avaliacao: Optional[str] = None  # Derivado de nota (backward compat)
     comentario: Optional[str] = None
     campos_incorretos: Optional[list] = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _validate(cls, values):
+        return validate_feedback_fields(values)
 
 
 class DocumentRequest(BaseModel):

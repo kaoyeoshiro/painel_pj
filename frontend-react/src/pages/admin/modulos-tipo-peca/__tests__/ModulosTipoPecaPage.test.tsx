@@ -29,15 +29,15 @@ describe('ModulosTipoPecaPage', () => {
     vi.mocked(adminApi.get).mockImplementation((url: string) => {
       if (url === '/admin/api/prompts-modulos/grupos') {
         return Promise.resolve([
-          { id: 1, name: 'Grupo Padrão' },
-          { id: 2, name: 'Grupo Teste' },
+          { id: 1, nome: 'Grupo Padrão' },
+          { id: 2, nome: 'Grupo Teste' },
         ])
       }
 
       if (url.includes('/admin/api/prompts-modulos/tipos-peca')) {
         return Promise.resolve([
-          { id: 1, titulo: 'Petição Inicial', categoria: 'peticao_inicial' },
-          { id: 2, titulo: 'Contestação', categoria: 'contestacao' },
+          { id: 1, titulo: 'Petição Inicial', nome: 'peticao_inicial' },
+          { id: 2, titulo: 'Contestação', nome: 'contestacao' },
         ])
       }
 
@@ -50,14 +50,14 @@ describe('ModulosTipoPecaPage', () => {
               titulo: 'Petição Inicial',
               modulos_ativos: 10,
               modulos_inativos: 5,
-              total_modulos: 15,
+              total_modulos: 50,
             },
             {
               tipo_peca: 'contestacao',
               titulo: 'Contestação',
               modulos_ativos: 8,
               modulos_inativos: 7,
-              total_modulos: 15,
+              total_modulos: 50,
             },
           ],
         })

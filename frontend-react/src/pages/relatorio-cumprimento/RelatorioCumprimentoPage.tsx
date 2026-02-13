@@ -1,8 +1,12 @@
+import { useState, useCallback } from 'react'
 import { FileText } from 'lucide-react'
 import { BreadcrumbBar } from '@/components/layout/BreadcrumbBar'
 import { ContentDialog } from '@/components/layout/ContentDialog'
 import { ChatPanel } from '@/components/layout/ChatPanel'
 import { ContentArea } from '@/components/layout/ContentArea'
+import { FeedbackStarsCard } from '@/components/shared/FeedbackStarsCard'
+import { FeedbackGateModal } from '@/components/shared/FeedbackGateModal'
+import { useFeedbackGate } from '@/hooks/useFeedbackGate'
 
 import { useRelatorioCumprimento } from './hooks/useRelatorioCumprimento'
 import {
@@ -14,7 +18,6 @@ import {
   HistoricoRecente,
   DocumentContent,
   HeaderActions,
-  FeedbackSection,
 } from './components/RelatorioSections'
 
 // ============================================================
@@ -23,6 +26,40 @@ import {
 
 export function RelatorioCumprimentoPage() {
   const vm = useRelatorioCumprimento()
+
+  // Feedback gate — blocks download/copy/export until user rates
+  const gate = useFeedbackGate(vm.geracaoId)
+
+  // Local submitting state for the gate modal feedback card
+  const [gateSubmitting, setGateSubmitting] = useState(false)
+
+  /** Shared handler for feedback submission (used by both inline card and gate modal) */
+  const handleFeedbackSubmit = useCallback(
+    async (data: { nota: number; comentario: string | null }) => {
+      await vm.handleEnviarFeedback(data)
+      gate.markAsRated()
+    },
+    [vm, gate],
+  )
+
+  /** Handler specifically for the gate modal (also calls onFeedbackDone to execute pending action) */
+  const handleGateFeedbackSubmit = useCallback(
+    async (data: { nota: number; comentario: string | null }) => {
+      setGateSubmitting(true)
+      try {
+        await vm.handleEnviarFeedback(data)
+        gate.onFeedbackDone()
+      } finally {
+        setGateSubmitting(false)
+      }
+    },
+    [vm, gate],
+  )
+
+  // Sync: if feedback was already sent (loaded from server), mark the gate as rated
+  if (vm.feedbackEnviado && !gate.hasFeedback) {
+    gate.markAsRated()
+  }
 
   return (
     <>
@@ -91,7 +128,7 @@ export function RelatorioCumprimentoPage() {
         title="Relatorio de Cumprimento"
         subtitle={vm.processoSubtitle}
         icon={<FileText className="h-5 w-5 text-white" />}
-        headerActions={<HeaderActions vm={vm} />}
+        headerActions={<HeaderActions vm={vm} guardAction={gate.guardAction} />}
         documentContent={<DocumentContent vm={vm} />}
         chatPanel={
           <ChatPanel
@@ -106,18 +143,27 @@ export function RelatorioCumprimentoPage() {
           />
         }
         feedbackSection={
-          <FeedbackSection
-            feedbackEnviado={vm.feedbackEnviado}
-            feedbackAvaliacao={vm.feedbackAvaliacao}
-            feedbackNota={vm.feedbackNota}
-            feedbackComentario={vm.feedbackComentario}
-            enviandoFeedback={vm.enviandoFeedback}
-            onAvaliacaoChange={vm.setFeedbackAvaliacao}
-            onNotaChange={vm.setFeedbackNota}
-            onComentarioChange={vm.setFeedbackComentario}
-            onEnviar={vm.handleEnviarFeedback}
+          <FeedbackStarsCard
+            onSubmit={handleFeedbackSubmit}
+            isSubmitting={vm.enviandoFeedback}
+            isSubmitted={vm.feedbackEnviado}
           />
         }
+      />
+
+      {/* ============================================================ */}
+      {/* FEEDBACK GATE MODAL — blocks actions until rated             */}
+      {/* ============================================================ */}
+      <FeedbackGateModal
+        open={gate.gateOpen}
+        onOpenChange={(open) => {
+          if (!open) {
+            // User cannot dismiss without submitting — do nothing
+          }
+        }}
+        onFeedbackSubmit={handleGateFeedbackSubmit}
+        isSubmitting={gateSubmitting}
+        pendingActionLabel="download"
       />
     </>
   )

@@ -10,8 +10,8 @@ import {
 import { useToast } from '@/components/ui/toast'
 import {
   ResponsiveContainer,
-  PieChart,
-  Pie,
+  BarChart,
+  Bar,
   Cell,
   LineChart,
   Line,
@@ -24,7 +24,7 @@ import {
   Download,
   Search,
   MessageSquare,
-  CheckCircle2,
+  Star,
   Clock3,
 } from 'lucide-react'
 import { BreadcrumbBar } from '@/components/layout/BreadcrumbBar'
@@ -32,7 +32,7 @@ import { ContentArea } from '@/components/layout/ContentArea'
 import { C } from '@/lib/designTokens'
 
 import { fetchDashboard, exportFeedbacks } from './api'
-import { SISTEMAS, MESES, ANOS, PIE_COLORS } from './constants'
+import { SISTEMAS, MESES, ANOS, STAR_COLORS } from './constants'
 import type { DashboardData, FeedbackItem } from './types'
 
 import { EvolutionChart } from './components/EvolutionChart'
@@ -155,14 +155,14 @@ export function FeedbacksPage() {
   // ---------------------------------------------------------------------------
   // Dados dos gráficos
   // ---------------------------------------------------------------------------
-  const pieData = useMemo(() => {
-    const base = dashboard?.avaliacoes
-    return [
-      { name: 'Corretas', value: base?.correto ?? 0 },
-      { name: 'Parciais', value: base?.parcial ?? 0 },
-      { name: 'Incorretas', value: base?.incorreto ?? 0 },
-      { name: 'Erro IA', value: base?.erro_ia ?? 0 },
-    ]
+  const starBarData = useMemo(() => {
+    const dist = dashboard?.distribuicao_estrelas ?? {}
+    return [1, 2, 3, 4, 5].map((n) => ({
+      nota: `${n}`,
+      label: `${n} estrela${n > 1 ? 's' : ''}`,
+      count: dist[String(n)] ?? 0,
+      fill: STAR_COLORS[n],
+    }))
   }, [dashboard])
 
   const lineData = useMemo(() => {
@@ -284,11 +284,24 @@ export function FeedbacksPage() {
           <div className="bg-white rounded-2xl shadow-sm p-6 border" style={{ borderColor: C.gray200 }}>
             <div className="flex items-center justify-between">
               <div>
-                <p className="text-sm" style={{ color: C.text500 }}>Taxa de Acerto</p>
-                <p className="text-4xl leading-none mt-1 font-bold" style={{ color: C.statusSuccess }}>{(dashboard?.taxa_acerto ?? 0).toFixed(0)}%</p>
+                <p className="text-sm" style={{ color: C.text500 }}>Media de Estrelas</p>
+                <div className="flex items-baseline gap-2 mt-1">
+                  <p className="text-4xl leading-none font-bold" style={{ color: C.chartStarYellow }}>{(dashboard?.media_estrelas ?? 0).toFixed(1)}</p>
+                  <span className="text-sm" style={{ color: C.text400 }}>/ 5</span>
+                </div>
+                <div className="flex gap-0.5 mt-1.5">
+                  {[1, 2, 3, 4, 5].map((s) => (
+                    <Star
+                      key={s}
+                      className="h-4 w-4"
+                      fill={s <= Math.round(dashboard?.media_estrelas ?? 0) ? C.chartStarYellow : 'transparent'}
+                      stroke={s <= Math.round(dashboard?.media_estrelas ?? 0) ? C.chartStarYellow : C.gray300}
+                    />
+                  ))}
+                </div>
               </div>
-              <div className="w-12 h-12 rounded-lg flex items-center justify-center" style={{ background: C.successBgStrong }}>
-                <CheckCircle2 className="h-6 w-6" style={{ color: C.statusSuccess }} />
+              <div className="w-12 h-12 rounded-lg flex items-center justify-center" style={{ background: '#fef9c3' }}>
+                <Star className="h-6 w-6" fill={C.chartStarYellow} stroke={C.chartStarYellow} />
               </div>
             </div>
           </div>
@@ -307,28 +320,41 @@ export function FeedbacksPage() {
         </div>
 
         {/* ============================================================= */}
-        {/* Gráficos: pizza + linha                                        */}
+        {/* Gráficos: estrelas (bar) + linha                               */}
         {/* ============================================================= */}
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           <div className="bg-white rounded-2xl shadow-sm p-6 border" style={{ borderColor: C.gray200 }}>
-            <h3 className="text-3 font-semibold mb-4" style={{ color: C.text900 }}>Distribuição de Avaliações</h3>
+            <h3 className="text-3 font-semibold mb-4" style={{ color: C.text900 }}>Distribuicao de Notas (Estrelas)</h3>
             <div className="h-64 min-h-[256px]">
               <ResponsiveContainer width="100%" height="100%" minWidth={1} minHeight={1}>
-                <PieChart>
-                  <Pie data={pieData} dataKey="value" innerRadius={55} outerRadius={85} paddingAngle={2}>
-                    {pieData.map((entry, index) => (
-                      <Cell key={entry.name} fill={PIE_COLORS[index % PIE_COLORS.length]} />
+                <BarChart data={starBarData} margin={{ top: 8, right: 16, bottom: 4, left: 0 }}>
+                  <CartesianGrid stroke={C.gray200} strokeDasharray="3 3" vertical={false} />
+                  <XAxis
+                    dataKey="label"
+                    stroke={C.gray500}
+                    tick={{ fontSize: 12 }}
+                    tickLine={false}
+                  />
+                  <YAxis stroke={C.gray500} tick={{ fontSize: 12 }} allowDecimals={false} />
+                  <Tooltip
+                    formatter={(value: number) => [value, 'Feedbacks']}
+                    labelFormatter={(label: string) => label}
+                  />
+                  <Bar dataKey="count" radius={[4, 4, 0, 0]} name="Feedbacks">
+                    {starBarData.map((entry) => (
+                      <Cell key={entry.nota} fill={entry.fill} />
                     ))}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
+                  </Bar>
+                </BarChart>
               </ResponsiveContainer>
             </div>
-            <div className="mt-2 flex flex-wrap items-center gap-4 text-xs" style={{ color: C.text500 }}>
-              <div className="flex items-center gap-1"><span className="h-2.5 w-10 bg-[#22c55e]" />Corretas</div>
-              <div className="flex items-center gap-1"><span className="h-2.5 w-10 bg-[#eab308]" />Parciais</div>
-              <div className="flex items-center gap-1"><span className="h-2.5 w-10 bg-[#ef4444]" />Incorretas</div>
-              <div className="flex items-center gap-1"><span className="h-2.5 w-10 bg-[#6b7280]" />Erro IA</div>
+            <div className="mt-2 flex flex-wrap items-center gap-3 text-xs" style={{ color: C.text500 }}>
+              {[1, 2, 3, 4, 5].map((n) => (
+                <div key={n} className="flex items-center gap-1">
+                  <span className="inline-block h-2.5 w-6 rounded-sm" style={{ background: STAR_COLORS[n] }} />
+                  {n} estrela{n > 1 ? 's' : ''}
+                </div>
+              ))}
             </div>
           </div>
 

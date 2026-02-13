@@ -16,7 +16,7 @@ from datetime import date
 from typing import List, Dict, Optional, Any
 from enum import Enum
 
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, JSON, Boolean
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, JSON, Boolean, UniqueConstraint
 from sqlalchemy.orm import relationship
 from database.connection import Base
 from utils.timezone import get_utc_now
@@ -173,18 +173,21 @@ class LogChamadaIARelatorioCumprimento(Base):
 class FeedbackRelatorioCumprimento(Base):
     """Armazena feedback do usuário sobre o relatório gerado"""
     __tablename__ = "feedbacks_relatorio_cumprimento"
+    __table_args__ = (
+        UniqueConstraint("geracao_id", "usuario_id", name="uq_feedbacks_relcumpr_geracao_user"),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     geracao_id = Column(Integer, ForeignKey("geracoes_relatorio_cumprimento.id"), nullable=False)
     usuario_id = Column(Integer, ForeignKey("users.id"), nullable=False)
 
-    # Avaliação: 'correto', 'parcial', 'incorreto', 'erro_ia'
-    avaliacao = Column(String(20), nullable=False)
+    # Nota de 1 a 5 estrelas (campo primario)
+    nota = Column(Integer, nullable=False)
 
-    # Nota de 1 a 5 estrelas
-    nota = Column(Integer, nullable=True)
+    # Avaliação derivada de nota (backward compat): 'correto', 'parcial', 'incorreto', 'erro_ia'
+    avaliacao = Column(String(20), nullable=True)
 
-    # Comentário opcional do usuário
+    # Comentário (obrigatório se nota <= 3)
     comentario = Column(Text, nullable=True)
 
     # Campos específicos que tiveram problemas (opcional)
@@ -196,7 +199,7 @@ class FeedbackRelatorioCumprimento(Base):
     geracao = relationship("GeracaoRelatorioCumprimento", back_populates="feedback")
 
     def __repr__(self):
-        return f"<FeedbackRelatorioCumprimento(id={self.id}, avaliacao='{self.avaliacao}')>"
+        return f"<FeedbackRelatorioCumprimento(id={self.id}, nota={self.nota})>"
 
 
 # ============================================

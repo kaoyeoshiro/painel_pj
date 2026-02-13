@@ -53,6 +53,18 @@ export const AVALIACAO_OPTIONS = [
 export const PIE_COLORS = [C.statusSuccess, C.chartYellow, C.statusError, C.gray600]
 
 // ---------------------------------------------------------------------------
+// Cores para estrelas (nota 1-5)
+// ---------------------------------------------------------------------------
+
+export const STAR_COLORS: Record<number, string> = {
+  1: '#ef4444', // red
+  2: '#f97316', // orange
+  3: '#eab308', // yellow
+  4: '#84cc16', // lime
+  5: '#22c55e', // green
+}
+
+// ---------------------------------------------------------------------------
 // Evolução — cores por sistema (linhas do gráfico)
 // ---------------------------------------------------------------------------
 

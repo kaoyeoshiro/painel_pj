@@ -4,7 +4,7 @@ Modelos SQLAlchemy para o sistema Matrículas Confrontantes
 """
 
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, Float, Boolean, DateTime, Text, JSON, ForeignKey
+from sqlalchemy import Column, Integer, String, Float, Boolean, DateTime, Text, JSON, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import relationship
 from database.connection import Base
 from utils.timezone import get_utc_now
@@ -90,27 +90,33 @@ class Analise(Base):
 class FeedbackMatricula(Base):
     """Armazena feedback do usuário sobre a análise de matrículas"""
     __tablename__ = "feedbacks_matricula"
+    __table_args__ = (
+        UniqueConstraint("analise_id", "usuario_id", name="uq_feedbacks_matricula_analise_user"),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     analise_id = Column(Integer, ForeignKey("analises.id"), nullable=False)
     usuario_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    
-    # Avaliação: 'correto', 'parcial', 'incorreto', 'erro_ia'
-    avaliacao = Column(String(20), nullable=False)
-    
-    # Comentário opcional do usuário
+
+    # Nota de 1 a 5 estrelas (campo primario)
+    nota = Column(Integer, nullable=False)
+
+    # Avaliação derivada de nota (backward compat): 'correto', 'parcial', 'incorreto', 'erro_ia'
+    avaliacao = Column(String(20), nullable=True)
+
+    # Comentário (obrigatório se nota <= 3)
     comentario = Column(Text, nullable=True)
-    
+
     # Campos específicos que estavam errados (opcional)
     campos_incorretos = Column(JSON, nullable=True)
-    
+
     criado_em = Column(DateTime(timezone=True), default=get_utc_now)
 
     # Relacionamentos
     analise = relationship("Analise", back_populates="feedback")
 
     def __repr__(self):
-        return f"<FeedbackMatricula(id={self.id}, avaliacao='{self.avaliacao}')>"
+        return f"<FeedbackMatricula(id={self.id}, nota={self.nota})>"
 
 
 class Registro(Base):

@@ -6,7 +6,6 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { Textarea } from '@/components/ui/textarea'
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetTrigger } from '@/components/ui/sheet'
 import { ScrollArea } from '@/components/ui/scroll-area'
 import { useToast } from '@/components/ui/toast'
@@ -15,6 +14,9 @@ import { queryKeys } from '@/lib/query-client'
 import { pedidoCalculoApi, getToken } from '@/lib/api'
 import { useStreamingFetch } from '@/services/api/streaming'
 import { useMarkdown } from '@/hooks/useMarkdown'
+import { FeedbackStarsCard } from '@/components/shared/FeedbackStarsCard'
+import { FeedbackGateModal } from '@/components/shared/FeedbackGateModal'
+import { useFeedbackGate } from '@/hooks/useFeedbackGate'
 import {
   Calculator,
   History,
@@ -25,7 +27,6 @@ import {
   Copy,
   FolderOpen,
   Send,
-  Star,
   FileText,
   Search,
   Brain,
@@ -90,10 +91,21 @@ export function PedidoCalculoPage() {
   const [documentContent, setDocumentContent] = useState<string | null>(null)
   const [isLoadingDocument, setIsLoadingDocument] = useState(false)
 
-  // Estado do feedback
-  const [showFeedback, setShowFeedback] = useState(false)
-  const [notaSelecionada, setNotaSelecionada] = useState<number | null>(null)
-  const [comentarioFeedback, setComentarioFeedback] = useState('')
+  // Estado do feedback (componentes padronizados)
+  const [isFeedbackSubmitting, setIsFeedbackSubmitting] = useState(false)
+  const [isFeedbackSubmitted, setIsFeedbackSubmitted] = useState(false)
+  const {
+    hasFeedback,
+    gateOpen,
+    guardAction,
+    onFeedbackDone,
+    markAsRated,
+  } = useFeedbackGate(geracaoId)
+
+  // Reset feedback submitted state when generation changes
+  useEffect(() => {
+    setIsFeedbackSubmitted(false)
+  }, [geracaoId])
 
   // Historico
   const {
@@ -318,9 +330,6 @@ export function PedidoCalculoPage() {
 
   const fecharEditor = () => {
     setShowEditor(false)
-    if (isNovaGeracao) {
-      setShowFeedback(true)
-    }
   }
 
   // Funcao para carregar do historico
@@ -501,28 +510,67 @@ export function PedidoCalculoPage() {
     }
   }
 
-  // Funcao para enviar feedback
-  const enviarFeedback = async () => {
-    if (!geracaoId || !notaSelecionada) return
+  // Funcao para enviar feedback (componentes padronizados)
+  const enviarFeedback = async (data: { nota: number; comentario: string | null }) => {
+    if (!geracaoId) return
 
+    setIsFeedbackSubmitting(true)
     try {
       await pedidoCalculoApi.post('/feedback', {
         geracao_id: geracaoId,
-        avaliacao: notaSelecionada >= 4 ? 'correto' : notaSelecionada >= 2 ? 'parcial' : 'incorreto',
-        nota: notaSelecionada,
-        comentario: comentarioFeedback || null,
+        avaliacao: data.nota >= 4 ? 'correto' : data.nota >= 2 ? 'parcial' : 'incorreto',
+        nota: data.nota,
+        comentario: data.comentario,
       })
+
+      setIsFeedbackSubmitted(true)
+      markAsRated()
 
       toast({
         title: 'Sucesso',
         description: 'Feedback enviado! Obrigado!',
       })
     } catch (error) {
-      console.error('Erro ao enviar feedback:', error)
+      const err = error as Error
+      toast({
+        title: 'Erro',
+        description: `Erro ao enviar feedback: ${err.message}`,
+        variant: 'destructive',
+      })
     } finally {
-      setShowFeedback(false)
-      setNotaSelecionada(null)
-      setComentarioFeedback('')
+      setIsFeedbackSubmitting(false)
+    }
+  }
+
+  // Handler para feedback via gate modal (download/copiar bloqueados)
+  const enviarFeedbackGate = async (data: { nota: number; comentario: string | null }) => {
+    if (!geracaoId) return
+
+    setIsFeedbackSubmitting(true)
+    try {
+      await pedidoCalculoApi.post('/feedback', {
+        geracao_id: geracaoId,
+        avaliacao: data.nota >= 4 ? 'correto' : data.nota >= 2 ? 'parcial' : 'incorreto',
+        nota: data.nota,
+        comentario: data.comentario,
+      })
+
+      setIsFeedbackSubmitted(true)
+      onFeedbackDone()
+
+      toast({
+        title: 'Sucesso',
+        description: 'Feedback enviado! Obrigado!',
+      })
+    } catch (error) {
+      const err = error as Error
+      toast({
+        title: 'Erro',
+        description: `Erro ao enviar feedback: ${err.message}`,
+        variant: 'destructive',
+      })
+    } finally {
+      setIsFeedbackSubmitting(false)
     }
   }
 
@@ -852,11 +900,11 @@ export function PedidoCalculoPage() {
                 <FolderOpen className="h-4 w-4" />
                 Acessar Autos
               </Button>
-              <Button onClick={baixarDocx} size="sm" className="gap-2 text-white/70 hover:bg-white/10 hover:text-white" style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.15)' }}>
+              <Button onClick={() => guardAction(baixarDocx)} size="sm" className="gap-2 text-white/70 hover:bg-white/10 hover:text-white" style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.15)' }}>
                 <Download className="h-4 w-4" />
                 Baixar DOCX
               </Button>
-              <Button onClick={copiarPedido} size="sm" className="gap-2 text-white/70 hover:bg-white/10 hover:text-white" style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.15)' }}>
+              <Button onClick={() => guardAction(copiarPedido)} size="sm" className="gap-2 text-white/70 hover:bg-white/10 hover:text-white" style={{ background: 'transparent', border: '1px solid rgba(255,255,255,0.15)' }}>
                 <Copy className="h-4 w-4" />
                 Copiar
               </Button>
@@ -884,6 +932,24 @@ export function PedidoCalculoPage() {
                     <MarkdownContent text={pedidoMarkdown} />
                   )}
                 </div>
+
+                {/* Feedback inline card — aparece apos a geracao, dentro do painel de visualizacao */}
+                {geracaoId && !isStreaming && !hasFeedback && (
+                  <FeedbackStarsCard
+                    onSubmit={enviarFeedback}
+                    isSubmitting={isFeedbackSubmitting}
+                    isSubmitted={isFeedbackSubmitted}
+                    className="mt-4"
+                  />
+                )}
+                {geracaoId && !isStreaming && hasFeedback && (
+                  <FeedbackStarsCard
+                    onSubmit={enviarFeedback}
+                    isSubmitting={false}
+                    isSubmitted={true}
+                    className="mt-4"
+                  />
+                )}
               </ScrollArea>
             </div>
 
@@ -1064,53 +1130,14 @@ export function PedidoCalculoPage() {
         </DialogContent>
       </Dialog>
 
-      {/* Modal de Feedback */}
-      <Dialog open={showFeedback} onOpenChange={setShowFeedback}>
-        <DialogContent className="max-w-md overflow-hidden p-0">
-          <div className="flex items-center gap-3 rounded-t-lg px-6 py-4" style={{ background: C.navy950 }}>
-            <div className="flex h-10 w-10 items-center justify-center rounded-xl" style={{ background: C.statusWarning }}>
-              <Star className="h-5 w-5 text-white" />
-            </div>
-            <DialogHeader className="flex-1 space-y-0 p-0">
-              <DialogTitle style={{ color: 'rgba(255,255,255,0.95)', fontSize: 16 }}>Como foi a experiencia?</DialogTitle>
-              <DialogDescription style={{ color: 'rgba(255,255,255,0.5)', fontSize: 13 }}>Seu feedback nos ajuda a melhorar o sistema</DialogDescription>
-            </DialogHeader>
-          </div>
-
-          <div className="space-y-4 p-6">
-            <div className="flex justify-center gap-2">
-              {[1, 2, 3, 4, 5].map((nota) => (
-                <button
-                  key={nota}
-                  onClick={() => setNotaSelecionada(nota)}
-                  className="transition-colors"
-                >
-                  <Star
-                    className={`h-8 w-8 ${notaSelecionada && nota <= notaSelecionada ? 'fill-yellow-400 text-yellow-400' : ''}`}
-                    style={{ color: notaSelecionada && nota <= notaSelecionada ? C.chartStarYellow : C.gray200 }}
-                  />
-                </button>
-              ))}
-            </div>
-
-            <Textarea
-              value={comentarioFeedback}
-              onChange={(e) => setComentarioFeedback(e.target.value)}
-              placeholder="Comentarios adicionais (opcional)"
-              rows={3}
-            />
-
-            <div className="flex justify-end gap-3">
-              <Button variant="ghost" onClick={() => setShowFeedback(false)} style={{ color: C.text400 }}>
-                Pular
-              </Button>
-              <Button onClick={enviarFeedback} disabled={!notaSelecionada} className="text-white" style={{ background: C.navy950 }}>
-                Enviar Feedback
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      {/* Modal de Feedback Gate (bloqueia download/copiar ate avaliar) */}
+      <FeedbackGateModal
+        open={gateOpen}
+        onOpenChange={(open) => { if (!open) onFeedbackDone() }}
+        onFeedbackSubmit={enviarFeedbackGate}
+        isSubmitting={isFeedbackSubmitting}
+        pendingActionLabel="executar esta acao"
+      />
     </>
   )
 }

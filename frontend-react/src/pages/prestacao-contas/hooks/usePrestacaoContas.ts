@@ -11,7 +11,6 @@ import type {
   EventoSSE,
   EtapaPipeline,
   EstadoPagina,
-  TipoAvaliacao,
   ResponderDuvidaResponse,
 } from '@/types/prestacao-contas'
 
@@ -66,11 +65,9 @@ export function usePrestacaoContas() {
   const [isEnviandoDocs, setIsEnviandoDocs] = useState(false)
   const fileInputRef = useRef<HTMLInputElement>(null)
 
-  // Feedback
-  const [, setShowFeedback] = useState(false)
-  const [avaliacaoSelecionada, setAvaliacaoSelecionada] = useState<TipoAvaliacao | null>(null)
-  const [comentarioFeedback, setComentarioFeedback] = useState('')
-  const [isEnviandoFeedback, setIsEnviandoFeedback] = useState(false)
+  // Feedback (stars)
+  const [isSubmittingFeedback, setIsSubmittingFeedback] = useState(false)
+  const [isFeedbackSubmitted, setIsFeedbackSubmitted] = useState(false)
 
   // Confirmacao sobrescrita
   const [showConfirmacao, setShowConfirmacao] = useState(false)
@@ -525,32 +522,30 @@ export function usePrestacaoContas() {
     }
   }
 
-  const enviarFeedback = async () => {
-    if (!geracaoId || !avaliacaoSelecionada) return
+  const handleFeedbackSubmit = async (data: { nota: number; comentario: string | null }) => {
+    if (!geracaoId) return
 
-    setIsEnviandoFeedback(true)
+    setIsSubmittingFeedback(true)
     try {
       await prestacaoContasApi.post('/feedback', {
         geracao_id: geracaoId,
-        avaliacao: avaliacaoSelecionada,
-        comentario: comentarioFeedback || undefined,
+        nota: data.nota,
+        comentario: data.comentario || undefined,
       })
 
       toast({
         title: 'Obrigado!',
-        description: 'Seu feedback foi registrado com sucesso.',
+        description: 'Sua avaliacao foi registrada com sucesso.',
       })
-      setShowFeedback(false)
-      setAvaliacaoSelecionada(null)
-      setComentarioFeedback('')
+      setIsFeedbackSubmitted(true)
     } catch (error) {
       toast({
         title: 'Erro',
-        description: (error as Error).message || 'Erro ao enviar feedback',
+        description: (error as Error).message || 'Erro ao enviar avaliacao',
         variant: 'destructive',
       })
     } finally {
-      setIsEnviandoFeedback(false)
+      setIsSubmittingFeedback(false)
     }
   }
 
@@ -567,6 +562,7 @@ export function usePrestacaoContas() {
     setProgressoMensagem('')
     setProgressoPercent(0)
     setShowResultDialog(false)
+    setIsFeedbackSubmitted(false)
   }
 
   // =====================================================
@@ -644,12 +640,9 @@ export function usePrestacaoContas() {
     isEnviandoDocs,
     fileInputRef,
 
-    // Feedback
-    avaliacaoSelecionada,
-    setAvaliacaoSelecionada,
-    comentarioFeedback,
-    setComentarioFeedback,
-    isEnviandoFeedback,
+    // Feedback (stars)
+    isSubmittingFeedback,
+    isFeedbackSubmitted,
 
     // Confirmacao
     showConfirmacao,
@@ -669,7 +662,7 @@ export function usePrestacaoContas() {
     continuarSemNotaFiscal,
     cancelarPorFalta,
     exportarDocx,
-    enviarFeedback,
+    handleFeedbackSubmit,
     resetarParaInicio,
 
     // Helpers

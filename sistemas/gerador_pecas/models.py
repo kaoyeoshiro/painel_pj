@@ -3,7 +3,7 @@
 Modelos do sistema de Geração de Peças Jurídicas
 """
 
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, JSON, Boolean
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, JSON, Boolean, UniqueConstraint
 from sqlalchemy.orm import relationship, deferred
 from database.connection import Base
 from utils.timezone import get_utc_now
@@ -122,27 +122,30 @@ class VersaoPeca(Base):
 class FeedbackPeca(Base):
     """Armazena feedback do usuário sobre a peça gerada"""
     __tablename__ = "feedbacks_pecas"
+    __table_args__ = (
+        UniqueConstraint("geracao_id", "usuario_id", name="uq_feedbacks_pecas_geracao_user"),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     geracao_id = Column(Integer, ForeignKey("geracoes_pecas.id"), nullable=False)
     usuario_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    
-    # Avaliação: 'correto', 'parcial', 'incorreto', 'erro_ia'
-    avaliacao = Column(String(20), nullable=False)
-    
-    # Nota de 1 a 5 estrelas
-    nota = Column(Integer, nullable=True)
-    
-    # Comentário opcional do usuário
+
+    # Nota de 1 a 5 estrelas (campo primario)
+    nota = Column(Integer, nullable=False)
+
+    # Avaliação derivada de nota (backward compat): 'correto', 'parcial', 'incorreto', 'erro_ia'
+    avaliacao = Column(String(20), nullable=True)
+
+    # Comentário (obrigatório se nota <= 3)
     comentario = Column(Text, nullable=True)
-    
+
     # Campos específicos que tiveram problemas (opcional)
     campos_incorretos = Column(JSON, nullable=True)
-    
+
     criado_em = Column(DateTime(timezone=True), default=get_utc_now)
 
     # Relacionamentos
     geracao = relationship("GeracaoPeca", back_populates="feedback")
 
     def __repr__(self):
-        return f"<FeedbackPeca(id={self.id}, avaliacao='{self.avaliacao}')>"
+        return f"<FeedbackPeca(id={self.id}, nota={self.nota})>"

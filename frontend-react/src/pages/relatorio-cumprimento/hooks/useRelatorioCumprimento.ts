@@ -12,12 +12,10 @@ import type {
   DadosProcesso,
   DocumentoClassificado,
   InfoTransitoJulgado,
-  FeedbackPayload,
   FeedbackResponse,
   ExportarResponse,
   EditarResponse,
   VerificacaoExistente,
-  AvaliacaoFeedback,
 } from '@/types/relatorio-cumprimento'
 
 // Base da API para chamadas SSE (fetch direto)
@@ -64,10 +62,7 @@ export function useRelatorioCumprimento() {
   // Estado de exportacao
   const [exportando, setExportando] = useState<'docx' | 'pdf' | null>(null)
 
-  // Estado de feedback
-  const [feedbackNota, setFeedbackNota] = useState<number>(0)
-  const [feedbackAvaliacao, setFeedbackAvaliacao] = useState<AvaliacaoFeedback | null>(null)
-  const [feedbackComentario, setFeedbackComentario] = useState('')
+  // Estado de feedback (simplificado — FeedbackStarsCard gerencia nota/comentario internamente)
   const [feedbackEnviado, setFeedbackEnviado] = useState(false)
   const [enviandoFeedback, setEnviandoFeedback] = useState(false)
 
@@ -147,9 +142,6 @@ export function useRelatorioCumprimento() {
         )
         if (resp.has_feedback) {
           setFeedbackEnviado(true)
-          if (resp.nota) setFeedbackNota(resp.nota)
-          if (resp.avaliacao) setFeedbackAvaliacao(resp.avaliacao)
-          if (resp.comentario) setFeedbackComentario(resp.comentario)
         }
       } catch {
         // Ignora erro silenciosamente
@@ -257,9 +249,6 @@ export function useRelatorioCumprimento() {
     setDocumentosBaixados([])
     setTransitoJulgado(null)
     setFeedbackEnviado(false)
-    setFeedbackNota(0)
-    setFeedbackAvaliacao(null)
-    setFeedbackComentario('')
     setSobrescrever(false)
     setChatMessages([])
 
@@ -369,20 +358,17 @@ export function useRelatorioCumprimento() {
     }
   }
 
-  /** Enviar feedback */
-  const handleEnviarFeedback = async () => {
-    if (!geracaoId || !feedbackAvaliacao) return
+  /** Enviar feedback (nota 1-5 + comentario opcional) */
+  const handleEnviarFeedback = async (data: { nota: number; comentario: string | null }) => {
+    if (!geracaoId) return
 
     setEnviandoFeedback(true)
     try {
-      const payload: FeedbackPayload = {
+      await relatorioCumprimentoApi.post('/feedback', {
         geracao_id: geracaoId,
-        avaliacao: feedbackAvaliacao,
-        nota: feedbackNota > 0 ? feedbackNota : undefined,
-        comentario: feedbackComentario.trim() || undefined,
-      }
-
-      await relatorioCumprimentoApi.post('/feedback', payload)
+        nota: data.nota,
+        comentario: data.comentario ?? undefined,
+      })
       setFeedbackEnviado(true)
     } catch (error) {
       const msg = error instanceof Error ? error.message : 'Erro ao enviar feedback'
@@ -410,9 +396,6 @@ export function useRelatorioCumprimento() {
     setEtapas(ETAPAS_INICIAIS)
     setErro(null)
     setFeedbackEnviado(false)
-    setFeedbackNota(0)
-    setFeedbackAvaliacao(null)
-    setFeedbackComentario('')
     setChatMessages([])
     setPageState('completed')
     setShowEditor(true)
@@ -434,9 +417,6 @@ export function useRelatorioCumprimento() {
     setDocumentosBaixados([])
     setTransitoJulgado(null)
     setFeedbackEnviado(false)
-    setFeedbackNota(0)
-    setFeedbackAvaliacao(null)
-    setFeedbackComentario('')
     setSobrescrever(false)
     setProcessoExistente(null)
     setChatMessages([])
@@ -484,12 +464,6 @@ export function useRelatorioCumprimento() {
     exportando,
 
     // Feedback
-    feedbackNota,
-    setFeedbackNota,
-    feedbackAvaliacao,
-    setFeedbackAvaliacao,
-    feedbackComentario,
-    setFeedbackComentario,
     feedbackEnviado,
     enviandoFeedback,
 

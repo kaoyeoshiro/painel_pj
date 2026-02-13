@@ -14,7 +14,7 @@ from typing import Dict, List, Optional, Any
 
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, BackgroundTasks, Request
 from fastapi.responses import FileResponse, JSONResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field, model_validator
 from sqlalchemy.orm import Session
 from app.repositories.sqlalchemy.session_ops import session_query
 from werkzeug.utils import secure_filename
@@ -23,6 +23,7 @@ from database.connection import get_db
 from utils.timezone import to_iso_utc, now_utc, now_local, get_utc_now
 from auth.dependencies import get_current_active_user, get_current_user_from_token_or_query
 from auth.models import User
+from utils.feedback_helpers import validate_feedback_fields
 # SECURITY: Rate Limiting para endpoints de IA
 from utils.rate_limit import limiter, LIMITS, get_user_identifier
 from utils.quota_manager import check_ai_quota
@@ -68,9 +69,15 @@ class AnaliseLoteRequest(BaseModel):
 # Schema para feedback
 class FeedbackMatriculaRequest(BaseModel):
     analise_id: int
-    avaliacao: str  # 'correto', 'parcial', 'incorreto', 'erro_ia'
+    nota: int = Field(..., ge=1, le=5, description="Nota de 1 a 5 estrelas")
+    avaliacao: Optional[str] = None  # Derivado de nota (backward compat)
     comentario: Optional[str] = None
     campos_incorretos: Optional[list] = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _validate(cls, values):
+        return validate_feedback_fields(values)
 
 
 # Estado global (em memória - será migrado para DB posteriormente)
@@ -1403,24 +1410,25 @@ async def enviar_feedback_matricula(
         if not analise:
             raise HTTPException(status_code=404, detail="Análise não encontrada")
         
-        # Verifica se já existe feedback para esta análise
+        # Upsert: atualiza se ja existe, cria se nao
         feedback_existente = session_query(db, FeedbackMatricula).filter(
-            FeedbackMatricula.analise_id == req.analise_id
+            FeedbackMatricula.analise_id == req.analise_id,
+            FeedbackMatricula.usuario_id == current_user.id,
         ).first()
-        
+
         if feedback_existente:
-            # Atualiza feedback existente
+            feedback_existente.nota = req.nota
             feedback_existente.avaliacao = req.avaliacao
             feedback_existente.comentario = req.comentario
             feedback_existente.campos_incorretos = req.campos_incorretos
         else:
-            # Cria novo feedback
             feedback = FeedbackMatricula(
                 analise_id=req.analise_id,
                 usuario_id=current_user.id,
+                nota=req.nota,
                 avaliacao=req.avaliacao,
                 comentario=req.comentario,
-                campos_incorretos=req.campos_incorretos
+                campos_incorretos=req.campos_incorretos,
             )
             db.add(feedback)
         

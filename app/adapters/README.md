@@ -186,11 +186,11 @@ Adapters traduzem entre a interface do protocol e a API do serviço real:
 
 ```python
 # Protocol define: max_tokens
-# GeminiService espera: max_output_tokens
+# GeminiService também usa: max_tokens
 
 async def gerar_texto(self, max_tokens=None, **kwargs):
     response = await self._service.generate(
-        max_output_tokens=max_tokens,  # tradução
+        max_tokens=max_tokens,
         **kwargs
     )
 ```

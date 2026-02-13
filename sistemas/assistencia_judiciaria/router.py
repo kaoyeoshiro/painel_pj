@@ -427,24 +427,25 @@ async def enviar_feedback(
         if not consulta:
             raise HTTPException(status_code=404, detail="Consulta não encontrada")
         
-        # Verifica se já existe feedback para esta consulta
+        # Upsert: atualiza se ja existe, cria se nao
         feedback_existente = session_query(db, FeedbackAnalise).filter(
-            FeedbackAnalise.consulta_id == req.consulta_id
+            FeedbackAnalise.consulta_id == req.consulta_id,
+            FeedbackAnalise.usuario_id == current_user.id,
         ).first()
-        
+
         if feedback_existente:
-            # Atualiza feedback existente
+            feedback_existente.nota = req.nota
             feedback_existente.avaliacao = req.avaliacao
             feedback_existente.comentario = req.comentario
             feedback_existente.campos_incorretos = req.campos_incorretos
         else:
-            # Cria novo feedback
             feedback = FeedbackAnalise(
                 consulta_id=req.consulta_id,
                 usuario_id=current_user.id,
+                nota=req.nota,
                 avaliacao=req.avaliacao,
                 comentario=req.comentario,
-                campos_incorretos=req.campos_incorretos
+                campos_incorretos=req.campos_incorretos,
             )
             db.add(feedback)
         

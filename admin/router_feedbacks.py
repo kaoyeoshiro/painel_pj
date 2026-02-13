@@ -440,6 +440,12 @@ async def dashboard_feedbacks(
                     })
             return resultado
 
+        # ============================================
+        # STAR METRICS (nota 1-5)
+        # ============================================
+        media_estrelas = feedback_repo.media_nota_global(ids_excluir, data_inicio, data_fim)
+        distribuicao_estrelas = feedback_repo.distribuicao_nota_global(ids_excluir, data_inicio, data_fim)
+
         evolucao_por_sistema = {}
 
         if incluir_aj:
@@ -471,6 +477,8 @@ async def dashboard_feedbacks(
             "total_feedbacks": total_feedbacks,
             "consultas_sem_feedback": total_consultas - total_feedbacks,
             "taxa_acerto": taxa_acerto,
+            "media_estrelas": round(media_estrelas, 2) if media_estrelas else 0,
+            "distribuicao_estrelas": distribuicao_estrelas,
             "avaliacoes": avaliacoes,
             "feedbacks_recentes": feedbacks_recentes,
             "feedbacks_por_usuario": feedbacks_por_usuario,
@@ -521,6 +529,8 @@ async def listar_feedbacks(
     sistema: Optional[str] = None,
     mes: Optional[int] = None,
     ano: Optional[int] = None,
+    nota_min: Optional[int] = None,
+    nota_max: Optional[int] = None,
     current_user: User = Depends(require_admin),
     feedback_repo: FeedbackRepository = Depends(get_feedback_repo)
 ):
@@ -561,9 +571,10 @@ async def listar_feedbacks(
                     "identificador": cnj_fmt or cnj,
                     "cnj": cnj_fmt or cnj,
                     "modelo": modelo,
-                    "usuario": full_name or username,
-                    "username": username,
+                    "usuario": full_name or username or "Usuário removido",
+                    "username": username or "desconhecido",
                     "avaliacao": fb.avaliacao,
+                    "nota": fb.nota,
                     "comentario": fb.comentario,
                     "campos_incorretos": fb.campos_incorretos,
                     "criado_em": to_iso_utc(fb.criado_em),
@@ -584,9 +595,10 @@ async def listar_feedbacks(
                     "identificador": matricula or file_name,
                     "cnj": None,
                     "modelo": modelo_usado or modelo_matriculas_default,
-                    "usuario": full_name or username,
-                    "username": username,
+                    "usuario": full_name or username or "Usuário removido",
+                    "username": username or "desconhecido",
                     "avaliacao": fb.avaliacao,
+                    "nota": fb.nota,
                     "comentario": fb.comentario,
                     "campos_incorretos": fb.campos_incorretos,
                     "criado_em": to_iso_utc(fb.criado_em),
@@ -634,9 +646,10 @@ async def listar_feedbacks(
                     "identificador": numero_cnj or tipo_peca,
                     "cnj": numero_cnj,
                     "modelo": modelo_usado or "gemini-3-flash-preview",
-                    "usuario": full_name or username,
-                    "username": username,
+                    "usuario": full_name or username or "Usuário removido",
+                    "username": username or "desconhecido",
                     "avaliacao": fb.avaliacao,
+                    "nota": fb.nota,
                     "comentario": fb.comentario,
                     "campos_incorretos": fb.campos_incorretos,
                     "criado_em": to_iso_utc(fb.criado_em),
@@ -656,9 +669,10 @@ async def listar_feedbacks(
                     "identificador": numero_cnj_fmt or numero_cnj,
                     "cnj": numero_cnj,
                     "modelo": modelo_usado or "gemini-3-flash-preview",
-                    "usuario": full_name or username,
-                    "username": username,
+                    "usuario": full_name or username or "Usuário removido",
+                    "username": username or "desconhecido",
                     "avaliacao": fb.avaliacao,
+                    "nota": fb.nota,
                     "comentario": fb.comentario,
                     "campos_incorretos": fb.campos_incorretos,
                     "criado_em": to_iso_utc(fb.criado_em),
@@ -686,9 +700,10 @@ async def listar_feedbacks(
                     "identificador": numero_cnj_fmt or numero_cnj,
                     "cnj": numero_cnj,
                     "modelo": modelo_usado or "gemini-2.0-flash",
-                    "usuario": full_name or username,
-                    "username": username,
+                    "usuario": full_name or username or "Usuário removido",
+                    "username": username or "desconhecido",
                     "avaliacao": fb.avaliacao,
+                    "nota": fb.nota,
                     "comentario": fb.comentario,
                     "campos_incorretos": campos_incorretos if campos_incorretos else None,
                     "criado_em": to_iso_utc(fb.criado_em),
@@ -707,14 +722,21 @@ async def listar_feedbacks(
                     "identificador": numero_cnj_fmt or numero_cnj,
                     "cnj": numero_cnj,
                     "modelo": modelo_usado or "gemini-3-flash-preview",
-                    "usuario": full_name or username,
-                    "username": username,
+                    "usuario": full_name or username or "Usuário removido",
+                    "username": username or "desconhecido",
                     "avaliacao": fb.avaliacao,
+                    "nota": fb.nota,
                     "comentario": fb.comentario,
                     "campos_incorretos": fb.campos_incorretos,
                     "criado_em": to_iso_utc(fb.criado_em),
                     "criado_em_dt": fb.criado_em
                 })
+
+        # Filtra por nota se solicitado
+        if nota_min is not None:
+            feedbacks_combinados = [fb for fb in feedbacks_combinados if fb.get("nota") is not None and fb["nota"] >= nota_min]
+        if nota_max is not None:
+            feedbacks_combinados = [fb for fb in feedbacks_combinados if fb.get("nota") is not None and fb["nota"] <= nota_max]
 
         # Ordena por data (mais recentes primeiro)
         feedbacks_combinados.sort(key=lambda x: x.get('criado_em_dt') or datetime.min, reverse=True)

@@ -18,7 +18,6 @@ import {
   X,
   Upload,
   Send,
-  Star,
   AlertCircle,
   Search,
   Brain,
@@ -34,7 +33,7 @@ import {
   ChevronRight,
   Info,
 } from 'lucide-react'
-import type { EtapaPipeline, GeracaoDetalhada, TipoAvaliacao } from '@/types/prestacao-contas'
+import type { EtapaPipeline, GeracaoDetalhada } from '@/types/prestacao-contas'
 import type { UsePrestacaoContasReturn } from '../hooks/usePrestacaoContas'
 
 // =====================================================
@@ -405,81 +404,6 @@ export function DocumentContent({ geracaoAtual, parecerBadgeStyle, parecerTexto,
               </li>
             ))}
           </ul>
-        </div>
-      )}
-    </div>
-  )
-}
-
-// =====================================================
-// FEEDBACK
-// =====================================================
-
-interface FeedbackSectionProps {
-  avaliacaoSelecionada: TipoAvaliacao | null
-  setAvaliacaoSelecionada: (v: TipoAvaliacao | null) => void
-  comentarioFeedback: string
-  setComentarioFeedback: (v: string) => void
-  isEnviandoFeedback: boolean
-  onEnviar: () => void
-}
-
-export function FeedbackSection({ avaliacaoSelecionada, setAvaliacaoSelecionada, comentarioFeedback, setComentarioFeedback, isEnviandoFeedback, onEnviar }: FeedbackSectionProps) {
-  return (
-    <div
-      className="rounded-xl border p-4"
-      style={{ borderColor: C.gray200, background: 'white' }}
-    >
-      <p className="mb-3 text-sm font-medium" style={{ color: C.text700 }}>
-        Como voce avalia este parecer?
-      </p>
-      <div className="flex flex-wrap gap-2">
-        {([
-          { value: 'correto' as const, label: 'Correto', icon: Check, bg: C.successBgStrong, color: C.successText, border: C.successBorder },
-          { value: 'parcial' as const, label: 'Parcial', icon: AlertCircle, bg: C.orange100, color: C.warningText, border: C.orange200 },
-          { value: 'incorreto' as const, label: 'Incorreto', icon: X, bg: C.errorBgStrong, color: C.errorText, border: C.errorBorder },
-        ]).map(opt => (
-          <Button
-            key={opt.value}
-            type="button"
-            variant="outline"
-            size="sm"
-            style={
-              avaliacaoSelecionada === opt.value
-                ? { background: opt.bg, color: opt.color, borderColor: opt.border }
-                : { borderColor: C.gray200, color: C.text500 }
-            }
-            onClick={() => setAvaliacaoSelecionada(opt.value)}
-          >
-            <opt.icon className="mr-1 h-3 w-3" />
-            {opt.label}
-          </Button>
-        ))}
-      </div>
-
-      {avaliacaoSelecionada && (
-        <div className="mt-3 space-y-2">
-          <Textarea
-            value={comentarioFeedback}
-            onChange={(e) => setComentarioFeedback(e.target.value)}
-            placeholder="Comentario opcional..."
-            rows={2}
-            className="text-sm"
-            style={{ borderColor: C.gray200 }}
-          />
-          <Button
-            size="sm"
-            onClick={onEnviar}
-            disabled={isEnviandoFeedback}
-            style={{ background: C.navy950 }}
-            className="text-white"
-          >
-            {isEnviandoFeedback ? (
-              <><Loader2 className="mr-2 h-3 w-3 animate-spin" /> Enviando...</>
-            ) : (
-              <><Star className="mr-2 h-3 w-3" /> Enviar Feedback</>
-            )}
-          </Button>
         </div>
       )}
     </div>

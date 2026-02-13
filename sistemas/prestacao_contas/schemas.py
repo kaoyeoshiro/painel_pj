@@ -3,9 +3,11 @@
 Schemas Pydantic para o sistema de Prestação de Contas
 """
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from typing import Optional, List, Dict, Any, Literal
 from datetime import datetime
+
+from utils.feedback_helpers import validate_feedback_fields
 
 
 # =====================================================
@@ -37,12 +39,17 @@ class ResponderDuvidaRequest(BaseModel):
 class FeedbackRequest(BaseModel):
     """Request para submeter feedback"""
     geracao_id: int
-    avaliacao: Literal["correto", "parcial", "incorreto", "erro_ia"]
-    nota: Optional[int] = Field(None, ge=1, le=5)
+    nota: int = Field(..., ge=1, le=5, description="Nota de 1 a 5 estrelas")
+    avaliacao: Optional[str] = None  # Derivado de nota (backward compat)
     comentario: Optional[str] = None
     parecer_correto: Optional[bool] = None
     valores_corretos: Optional[bool] = None
     medicamento_correto: Optional[bool] = None
+
+    @model_validator(mode="before")
+    @classmethod
+    def _validate(cls, values):
+        return validate_feedback_fields(values)
 
 
 class ExportarParecerRequest(BaseModel):
