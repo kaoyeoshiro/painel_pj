@@ -140,7 +140,15 @@ export function GeradorPecasPage() {
             <CuradoriaPreview
               curadoriaModulos={h.curadoriaModulos}
               curadoriaSelected={h.curadoriaSelected}
+              curadoriaManualIds={h.curadoriaManualIds}
+              curadoriaAvailableModulos={h.curadoriaAvailableModulos}
+              isLoadingAvailable={h.isLoadingAvailable}
+              curadoriaSearchResults={h.curadoriaSearchResults}
+              isSearching={h.isSearching}
               toggleModulo={h.toggleModulo}
+              addManualModulo={h.addManualModulo}
+              removeModulo={h.removeModulo}
+              searchModulos={h.searchModulos}
               gerarComCuradoria={h.gerarComCuradoria}
               voltarParaInicio={h.voltarParaInicio}
             />
