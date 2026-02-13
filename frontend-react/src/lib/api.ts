@@ -130,11 +130,12 @@ export async function apiRequest<T>(
     }
   }
 
-  const response = await fetch(`${API_BASE}${endpoint}`, {
-    ...rest,
-    headers,
-    body: processedBody,
-  })
+  const fetchOptions: RequestInit = { ...rest, headers }
+  if (processedBody !== undefined) {
+    fetchOptions.body = processedBody
+  }
+
+  const response = await fetch(`${API_BASE}${endpoint}`, fetchOptions)
 
   // Trata 401 — token invalido/expirado (com guard contra redirect duplicado)
   if (response.status === 401) {
