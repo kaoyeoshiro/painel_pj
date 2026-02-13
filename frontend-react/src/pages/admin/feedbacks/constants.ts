@@ -46,6 +46,15 @@ export const AVALIACAO_OPTIONS = [
   { value: 'erro_ia', label: 'Erro da IA' },
 ]
 
+export const NOTA_FILTER_OPTIONS = [
+  { value: '', label: 'Todas as notas' },
+  { value: '5', label: '5 estrelas' },
+  { value: '4', label: '4 estrelas' },
+  { value: '3', label: '3 estrelas' },
+  { value: '2', label: '2 estrelas' },
+  { value: '1', label: '1 estrela' },
+]
+
 // ---------------------------------------------------------------------------
 // Cores do gráfico de pizza
 // ---------------------------------------------------------------------------

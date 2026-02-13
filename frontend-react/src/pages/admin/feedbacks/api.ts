@@ -38,6 +38,8 @@ interface FeedbackListParams {
   page?: number
   per_page?: number
   avaliacao?: string
+  /** Nota exata (1-5) — envia nota_min=N&nota_max=N ao backend */
+  nota?: string
   sistema?: string
   mes?: string
   ano?: string
@@ -48,6 +50,10 @@ export async function fetchFeedbackList(params: FeedbackListParams): Promise<Fee
   qs.append('page', String(params.page ?? 1))
   qs.append('per_page', String(params.per_page ?? 20))
   if (params.avaliacao) qs.append('avaliacao', params.avaliacao)
+  if (params.nota) {
+    qs.append('nota_min', params.nota)
+    qs.append('nota_max', params.nota)
+  }
   if (params.sistema) qs.append('sistema', params.sistema)
   if (params.mes) qs.append('mes', params.mes)
   if (params.ano) qs.append('ano', params.ano)

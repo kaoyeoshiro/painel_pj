@@ -16,12 +16,12 @@ import {
 } from '@/components/ui/select'
 import { Button } from '@/components/ui/button'
 import { Skeleton } from '@/components/ui/skeleton'
-import { Eye, Expand, ChevronLeft, ChevronRight, Star } from 'lucide-react'
+import { Eye, Expand, ChevronLeft, ChevronRight } from 'lucide-react'
 import { C } from '@/lib/designTokens'
 import { fetchFeedbackList } from '../api'
-import { AVALIACAO_OPTIONS, formatarData, formatarHora } from '../constants'
+import { NOTA_FILTER_OPTIONS, formatarData, formatarHora } from '../constants'
 import { SistemaBadge } from './SistemaBadge'
-import { AvaliacaoBadge, NotaBadge } from './AvaliacaoBadge'
+import { NotaBadge } from './AvaliacaoBadge'
 import { ModoBadge } from './ModoBadge'
 import type { FeedbackItem, FeedbackListResponse } from '../types'
 
@@ -37,7 +37,7 @@ interface FeedbacksTableProps {
 }
 
 export function FeedbacksTable({ sistema, mes, ano, onViewReport, onViewComment }: FeedbacksTableProps) {
-  const [avaliacao, setAvaliacao] = useState('')
+  const [nota, setNota] = useState('')
   const [page, setPage] = useState(1)
   const [loading, setLoading] = useState(false)
   const [data, setData] = useState<FeedbackListResponse | null>(null)
@@ -48,7 +48,7 @@ export function FeedbacksTable({ sistema, mes, ano, onViewReport, onViewComment 
       const resp = await fetchFeedbackList({
         page,
         per_page: 20,
-        avaliacao: avaliacao || undefined,
+        nota: nota || undefined,
         sistema: sistema || undefined,
         mes: mes || undefined,
         ano: ano || undefined,
@@ -59,7 +59,7 @@ export function FeedbacksTable({ sistema, mes, ano, onViewReport, onViewComment 
     } finally {
       setLoading(false)
     }
-  }, [page, avaliacao, sistema, mes, ano])
+  }, [page, nota, sistema, mes, ano])
 
   useEffect(() => {
     void carregar()
@@ -68,7 +68,7 @@ export function FeedbacksTable({ sistema, mes, ano, onViewReport, onViewComment 
   /** Reseta para página 1 quando filtros globais mudam */
   useEffect(() => {
     setPage(1)
-  }, [sistema, mes, ano, avaliacao])
+  }, [sistema, mes, ano, nota])
 
   const totalPages = data?.total_pages ?? 1
 
@@ -77,10 +77,10 @@ export function FeedbacksTable({ sistema, mes, ano, onViewReport, onViewComment 
       {/* Header */}
       <div className="p-6 border-b border-gray-100 flex items-center justify-between">
         <h3 className="text-lg font-semibold" style={{ color: C.text900 }}>Feedbacks Recentes</h3>
-        <Select value={avaliacao || '__all__'} onValueChange={(v) => setAvaliacao(v === '__all__' ? '' : v)}>
-          <SelectTrigger className="w-[170px] h-9 text-sm"><SelectValue /></SelectTrigger>
+        <Select value={nota || '__all__'} onValueChange={(v) => setNota(v === '__all__' ? '' : v)}>
+          <SelectTrigger className="w-[160px] h-9 text-sm"><SelectValue /></SelectTrigger>
           <SelectContent>
-            {AVALIACAO_OPTIONS.map((o) => (
+            {NOTA_FILTER_OPTIONS.map((o) => (
               <SelectItem key={o.value || '__all__'} value={o.value || '__all__'}>{o.label}</SelectItem>
             ))}
           </SelectContent>
@@ -88,7 +88,7 @@ export function FeedbacksTable({ sistema, mes, ano, onViewReport, onViewComment 
       </div>
 
       {/* Tabela */}
-      <div className="overflow-x-auto">
+      <div className="overflow-hidden">
         {loading ? (
           <div className="p-4 space-y-3">
             {Array.from({ length: 5 }).map((_, i) => (
@@ -96,25 +96,23 @@ export function FeedbacksTable({ sistema, mes, ano, onViewReport, onViewComment 
             ))}
           </div>
         ) : (
-          <Table>
+          <Table style={{ tableLayout: 'fixed', width: '100%' }}>
             <TableHeader>
               <TableRow className="bg-gray-50">
-                <TableHead>Sistema</TableHead>
-                <TableHead>Processo/Arquivo</TableHead>
-                <TableHead>Usuário</TableHead>
-                <TableHead className="text-center">Modelo IA</TableHead>
-                <TableHead className="text-center">Modo</TableHead>
-                <TableHead className="text-center">Avaliação</TableHead>
-                <TableHead className="text-center">Nota</TableHead>
-                <TableHead>Comentário</TableHead>
-                <TableHead>Data</TableHead>
-                <TableHead className="text-center">Relatório</TableHead>
+                <TableHead style={{ width: 95 }} className="text-xs">Sistema</TableHead>
+                <TableHead style={{ width: 140 }} className="text-xs">Processo</TableHead>
+                <TableHead style={{ width: 100 }} className="text-xs">Usuário</TableHead>
+                <TableHead style={{ width: 80 }} className="text-xs text-center">Modo</TableHead>
+                <TableHead style={{ width: 85 }} className="text-xs text-center">Nota</TableHead>
+                <TableHead className="text-xs">Comentário</TableHead>
+                <TableHead style={{ width: 100 }} className="text-xs">Modelo / Data</TableHead>
+                <TableHead style={{ width: 50 }} className="text-xs text-center">Ver</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {!data || data.feedbacks.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={10} className="text-center h-24 text-gray-400">
+                  <TableCell colSpan={8} className="text-center h-24 text-gray-400">
                     Nenhum feedback encontrado
                   </TableCell>
                 </TableRow>
@@ -123,37 +121,29 @@ export function FeedbacksTable({ sistema, mes, ano, onViewReport, onViewComment 
                   const hora = formatarHora(fb.criado_em)
                   return (
                     <TableRow key={fb.id} className="hover:bg-gray-50">
-                      <TableCell className="text-xs">
+                      <TableCell className="py-2 px-3">
                         <SistemaBadge sistema={fb.sistema} />
                       </TableCell>
-                      <TableCell className="font-mono text-xs">{fb.identificador || fb.cnj || '-'}</TableCell>
-                      <TableCell className="text-sm">{fb.usuario}</TableCell>
-                      <TableCell className="text-center">
-                        {fb.modelo ? (
-                          <span className="px-2 py-0.5 bg-purple-50 text-purple-700 rounded text-xs font-mono">
-                            {fb.modelo}
-                          </span>
-                        ) : (
-                          <span className="text-gray-400 text-xs">N/A</span>
-                        )}
+                      <TableCell className="py-2 px-3 font-mono text-xs truncate" title={fb.identificador || fb.cnj || '-'}>
+                        {fb.identificador || fb.cnj || '-'}
                       </TableCell>
-                      <TableCell className="text-center">
+                      <TableCell className="py-2 px-3 text-xs truncate" title={fb.usuario}>
+                        {fb.usuario}
+                      </TableCell>
+                      <TableCell className="py-2 px-3 text-center">
                         <ModoBadge modo={fb.modo_ativacao} sistema={fb.sistema} />
                       </TableCell>
-                      <TableCell className="text-center">
-                        <AvaliacaoBadge avaliacao={fb.avaliacao} />
-                      </TableCell>
-                      <TableCell className="text-center">
+                      <TableCell className="py-2 px-3 text-center">
                         <NotaBadge nota={fb.nota} />
                       </TableCell>
-                      <TableCell className="max-w-[200px]">
+                      <TableCell className="py-2 px-3">
                         {fb.comentario ? (
-                          <div className="flex items-center gap-1">
-                            <span className="truncate text-sm text-gray-600">{fb.comentario}</span>
+                          <div className="flex items-center gap-1 min-w-0">
+                            <span className="truncate text-xs text-gray-600">{fb.comentario}</span>
                             <Button
                               variant="ghost"
                               size="sm"
-                              className="h-6 w-6 p-0 flex-shrink-0 text-purple-700 hover:bg-purple-100"
+                              className="h-5 w-5 p-0 flex-shrink-0 text-purple-700 hover:bg-purple-100"
                               onClick={() => onViewComment(fb)}
                               title="Ver comentário completo"
                             >
@@ -161,18 +151,23 @@ export function FeedbacksTable({ sistema, mes, ano, onViewReport, onViewComment 
                             </Button>
                           </div>
                         ) : (
-                          <span className="text-gray-300">-</span>
+                          <span className="text-gray-300 text-xs">-</span>
                         )}
                       </TableCell>
-                      <TableCell className="text-gray-500 text-sm">
+                      <TableCell className="py-2 px-3 text-xs" style={{ color: C.text500 }}>
+                        {fb.modelo && (
+                          <div className="truncate font-mono text-[10px] text-purple-700" title={fb.modelo}>
+                            {fb.modelo}
+                          </div>
+                        )}
                         <div>{formatarData(fb.criado_em)}</div>
-                        {hora && <div className="text-xs text-gray-400">{hora}</div>}
+                        {hora && <div className="text-[10px] text-gray-400">{hora}</div>}
                       </TableCell>
-                      <TableCell className="text-center">
+                      <TableCell className="py-2 px-3 text-center">
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-7 px-2 text-xs bg-blue-100 text-blue-700 hover:bg-blue-200"
+                          className="h-7 w-7 p-0 bg-blue-100 text-blue-700 hover:bg-blue-200"
                           onClick={() => onViewReport(fb.consulta_id, fb.sistema)}
                           title="Ver relatório"
                         >
