@@ -64,12 +64,25 @@
       btnEnviarChat?.addEventListener("click", () => {
         this.enviarMensagemChat();
       });
-      chatInput?.addEventListener("keypress", (e) => {
-        if (e.key === "Enter" && !e.shiftKey) {
-          e.preventDefault();
-          this.enviarMensagemChat();
-        }
-      });
+      if (chatInput) {
+        chatInput.addEventListener("keydown", (e) => {
+          if (e.key === "Enter" && !e.shiftKey) {
+            e.preventDefault();
+            this.enviarMensagemChat();
+          }
+        });
+        chatInput.addEventListener("input", () => {
+          chatInput.style.height = "auto";
+          const maxH = 144;
+          if (chatInput.scrollHeight > maxH) {
+            chatInput.style.height = maxH + "px";
+            chatInput.style.overflowY = "auto";
+          } else {
+            chatInput.style.height = chatInput.scrollHeight + "px";
+            chatInput.style.overflowY = "hidden";
+          }
+        });
+      }
       document.getElementById("btn-copiar-minuta")?.addEventListener("click", () => {
         this.copiarMinuta();
       });
@@ -466,6 +479,8 @@
       }
       this.isProcessingEdit = true;
       input.value = "";
+      input.style.height = "";
+      input.style.overflowY = "hidden";
       input.disabled = true;
       const btnEnviar = document.getElementById("btn-enviar-chat");
       if (btnEnviar) btnEnviar.disabled = true;
