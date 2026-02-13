@@ -14,15 +14,18 @@ import {
   Bot,
   MessageSquare,
   Sparkles,
+  Zap,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
 import { useToast } from '@/components/ui/toast'
 import { C, FONT_DOC, FONT_UI } from '@/lib/designTokens'
 import { geradorApi } from '@/lib/api'
 import { FeedbackStarsCard } from '@/components/shared/FeedbackStarsCard'
 import { FeedbackGateModal } from '@/components/shared/FeedbackGateModal'
 import { useFeedbackGate } from '@/hooks/useFeedbackGate'
+import { ActivationTracePanel } from '@/components/gerador/ActivationTracePanel'
 import type { UseGeradorPecasReturn } from '../hooks/useGeradorPecas'
 import { CHAT_SUGESTOES } from '../types'
 
@@ -49,6 +52,9 @@ export function ResultadoView({ h }: ResultadoViewProps) {
     onFeedbackDone,
     markAsRated,
   } = useFeedbackGate(h.geracaoId)
+
+  // --- Activation trace dialog ---
+  const [showActivationTrace, setShowActivationTrace] = useState(false)
 
   // --- Feedback submission state ---
   const [isFeedbackSubmitting, setIsFeedbackSubmitting] = useState(false)
@@ -131,6 +137,26 @@ export function ResultadoView({ h }: ResultadoViewProps) {
         pendingActionLabel={pendingActionLabel}
       />
 
+      {/* -- Activation trace dialog -- */}
+      {h.geracaoId && (
+        <Dialog open={showActivationTrace} onOpenChange={setShowActivationTrace}>
+          <DialogContent className="max-w-4xl max-h-[85vh] flex flex-col p-0 gap-0">
+            <DialogHeader className="p-4 border-b" style={{ borderColor: C.gray200 }}>
+              <DialogTitle className="flex items-center gap-2 text-base" style={{ color: C.text700 }}>
+                <Zap className="h-4 w-4" style={{ color: C.orange500 }} />
+                Ativação de Módulos
+              </DialogTitle>
+              <DialogDescription className="sr-only">
+                Detalhes de ativação de módulos desta geração
+              </DialogDescription>
+            </DialogHeader>
+            <div className="flex-1 min-h-0 overflow-y-auto">
+              <ActivationTracePanel geracaoId={h.geracaoId} />
+            </div>
+          </DialogContent>
+        </Dialog>
+      )}
+
       {/* -- Coluna do documento -- */}
       <main className="flex min-w-0 flex-1 flex-col p-5 pb-3">
         {/* Meta bar */}
@@ -151,6 +177,7 @@ export function ResultadoView({ h }: ResultadoViewProps) {
               { icon: Download, label: 'DOCX', action: () => guardWithLabel(h.exportarDocx, 'download'), tooltip: 'Exportar como Word' },
               { icon: Copy, label: 'Copiar', action: () => guardWithLabel(h.copiarMinuta, 'copiar'), tooltip: 'Copiar texto' },
               { icon: RotateCcw, label: 'Versoes', action: h.abrirHistoricoVersoes, tooltip: 'Historico de versoes' },
+              { icon: Zap, label: 'Ativação', action: () => setShowActivationTrace(true), tooltip: 'Ativação de módulos' },
             ].map((btn) => (
               <Tooltip key={btn.label}>
                 <TooltipTrigger asChild>

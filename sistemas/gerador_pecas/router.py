@@ -1281,6 +1281,22 @@ async def processar_processo_stream(
                 except AttributeError:
                     pass
 
+                # Salva activation trace para auditoria de ativação de módulos
+                try:
+                    from sistemas.gerador_pecas.services_activation_trace import (
+                        build_activation_trace, save_activation_trace
+                    )
+                    trace_data = build_activation_trace(
+                        decision_traces=resultado_agente2.decision_traces,
+                        variaveis_snapshot=resultado_agente2.variaveis_snapshot,
+                        modo_ativacao=resultado_agente2.modo_ativacao,
+                        db=db,
+                        modulos_avaliados_ids=resultado_agente2.modulos_ids,
+                    )
+                    save_activation_trace(geracao, trace_data)
+                except Exception as e_trace:
+                    logger.warning(f"[ACTIVATION-TRACE] Falha ao construir trace: {e_trace}")
+
                 try:
                     db.add(geracao)
                     db.flush()  # Flush para obter o ID sem commit
@@ -1299,15 +1315,16 @@ async def processar_processo_stream(
                     db.commit()
                     db.refresh(geracao)
                 except Exception as e:
-                    # Se falhou por colunas inexistentes, tenta sem os campos de modo de ativação
-                    if 'modo_ativacao_agente2' in str(e) or 'modulos_ativados' in str(e):
+                    # Se falhou por colunas inexistentes, tenta sem os campos extras
+                    if 'modo_ativacao_agente2' in str(e) or 'modulos_ativados' in str(e) or 'activation_trace' in str(e):
                         db.rollback()
                         geracao.modo_ativacao_agente2 = None
                         geracao.modulos_ativados_det = None
                         geracao.modulos_ativados_llm = None
+                        geracao.activation_trace = None
                         from sqlalchemy import inspect
                         state = inspect(geracao)
-                        for attr in ['modo_ativacao_agente2', 'modulos_ativados_det', 'modulos_ativados_llm']:
+                        for attr in ['modo_ativacao_agente2', 'modulos_ativados_det', 'modulos_ativados_llm', 'activation_trace']:
                             if attr in state.dict:
                                 del state.dict[attr]
                         db.add(geracao)
@@ -1924,6 +1941,22 @@ async def processar_pdfs_stream(
                 except AttributeError:
                     pass
 
+                # Salva activation trace para auditoria de ativação de módulos
+                try:
+                    from sistemas.gerador_pecas.services_activation_trace import (
+                        build_activation_trace, save_activation_trace
+                    )
+                    trace_data = build_activation_trace(
+                        decision_traces=resultado_agente2.decision_traces,
+                        variaveis_snapshot=resultado_agente2.variaveis_snapshot,
+                        modo_ativacao=resultado_agente2.modo_ativacao,
+                        db=db,
+                        modulos_avaliados_ids=resultado_agente2.modulos_ids,
+                    )
+                    save_activation_trace(geracao, trace_data)
+                except Exception as e_trace:
+                    logger.warning(f"[ACTIVATION-TRACE] Falha ao construir trace (PDF): {e_trace}")
+
                 db.add(geracao)
                 db.commit()
                 db.refresh(geracao)
@@ -2448,6 +2481,96 @@ async def salvar_geracao(
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+
+# ============================================
+# ============================================
+# Endpoint: Activation Trace (Ativação de Módulos)
+# ============================================
+
+@router.get("/historico/{geracao_id}/activation-trace")
+async def obter_activation_trace_usuario(
+    geracao_id: int,
+    current_user: User = Depends(get_current_active_user),
+    repo: GeracaoPecaRepository = Depends(get_geracao_repo),
+    db: Session = Depends(get_db),
+):
+    """
+    Obtém o rastreamento de ativação de módulos de uma geração do próprio usuário.
+
+    Retorna informações sobre POR QUE cada módulo foi ativado ou não.
+    """
+    geracao = repo.find_by_id_and_user(geracao_id, current_user.id)
+    if not geracao:
+        raise HTTPException(status_code=404, detail="Geração não encontrada")
+
+    # Tenta obter activation_trace salvo
+    trace_data = None
+    try:
+        trace_data = geracao.activation_trace
+    except Exception:
+        pass
+
+    if not trace_data:
+        # Tenta extrair traces da curadoria_metadata (retrocompatibilidade)
+        curadoria_meta = None
+        try:
+            curadoria_meta = geracao.curadoria_metadata
+        except Exception:
+            pass
+
+        if curadoria_meta:
+            decision_traces = curadoria_meta.get('decision_traces')
+            variaveis_snapshot = curadoria_meta.get('variaveis_snapshot')
+
+            if decision_traces:
+                try:
+                    from sistemas.gerador_pecas.services_activation_trace import build_activation_trace
+                    modo = None
+                    try:
+                        modo = geracao.modo_ativacao_agente2
+                    except Exception:
+                        pass
+                    trace_data = build_activation_trace(
+                        decision_traces=decision_traces,
+                        variaveis_snapshot=variaveis_snapshot or {},
+                        modo_ativacao=modo or 'unknown',
+                        db=db,
+                    )
+                except Exception:
+                    pass
+
+    if not trace_data:
+        modo = None
+        try:
+            modo = geracao.modo_ativacao_agente2
+        except Exception:
+            pass
+        return {
+            "geracao_id": geracao_id,
+            "modo_ativacao": modo,
+            "summary": None,
+            "variaveis_snapshot": None,
+            "modulos": [],
+        }
+
+    modulos = trace_data.get("modulos", [])
+    total_ativados = trace_data.get("total_ativados", 0)
+    total_avaliados = trace_data.get("total_avaliados", 0)
+
+    return {
+        "geracao_id": geracao_id,
+        "modo_ativacao": trace_data.get("modo_ativacao"),
+        "summary": {
+            "total_avaliados": total_avaliados,
+            "total_ativados": total_ativados,
+            "total_nao_ativados": total_avaliados - total_ativados,
+            "total_det": trace_data.get("total_det", 0),
+            "total_llm": trace_data.get("total_llm", 0),
+        },
+        "variaveis_snapshot": trace_data.get("variaveis_snapshot"),
+        "modulos": modulos,
+    }
 
 
 # ============================================
@@ -3527,6 +3650,23 @@ async def curation_generate_stream(
                     "variaveis_snapshot": req.variaveis_snapshot or {},
                     "parecer_context": parecer_context,
                 }
+                # Salva activation trace para auditoria de ativação de módulos
+                try:
+                    from sistemas.gerador_pecas.services_activation_trace import (
+                        build_activation_trace_for_curadoria, save_activation_trace
+                    )
+                    trace_data = build_activation_trace_for_curadoria(
+                        decision_traces=req.decision_traces or {},
+                        variaveis_snapshot=req.variaveis_snapshot or {},
+                        modulos_curados_ids=req.modulos_ids_curados,
+                        modulos_preview_ids=req.modulos_preview_ids or [],
+                        modulos_manuais_ids=req.modulos_manuais_ids or [],
+                        db=db,
+                    )
+                    save_activation_trace(geracao, trace_data)
+                except Exception as e_trace:
+                    print(f"[CURADORIA] Aviso: falha ao construir activation trace: {e_trace}")
+
                 print(f"[CURADORIA] Metadados salvos: preview={len(req.modulos_preview_ids or [])}, curados={len(req.modulos_ids_curados)}, manuais={total_manuais}, excluidos={len(req.modulos_excluidos_ids or [])}")
             except AttributeError as e:
                 print(f"[CURADORIA] Aviso: campo nao disponivel no modelo: {e}")
@@ -3548,13 +3688,13 @@ async def curation_generate_stream(
                 db.refresh(geracao)
             except Exception as e:
                 # Se erro for por colunas inexistentes, tenta salvar sem os campos de curadoria
-                if 'modo_ativacao_agente2' in str(e) or 'modulos_ativados' in str(e) or 'curadoria_metadata' in str(e):
+                if 'modo_ativacao_agente2' in str(e) or 'modulos_ativados' in str(e) or 'curadoria_metadata' in str(e) or 'activation_trace' in str(e):
                     db.rollback()
                     print(f"[CURADORIA] Colunas de curadoria nao existem no banco, salvando sem metadados: {e}")
                     # Remove atributos que causam erro
                     from sqlalchemy import inspect
                     state = inspect(geracao)
-                    for attr in ['modo_ativacao_agente2', 'modulos_ativados_det', 'modulos_ativados_llm', 'curadoria_metadata']:
+                    for attr in ['modo_ativacao_agente2', 'modulos_ativados_det', 'modulos_ativados_llm', 'curadoria_metadata', 'activation_trace']:
                         if attr in state.dict:
                             del state.dict[attr]
                     db.add(geracao)

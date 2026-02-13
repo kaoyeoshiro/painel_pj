@@ -382,6 +382,79 @@ async def obter_curadoria_geracao(
     }
 
 
+# ==========================================
+# Endpoint: Activation Trace (Auditoria de Ativação de Módulos)
+# ==========================================
 
+@router.get("/geracoes/{geracao_id}/activation-trace")
+async def obter_activation_trace(
+    geracao_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """
+    Obtém o rastreamento completo de ativação de módulos de uma geração.
 
+    Retorna informações detalhadas sobre POR QUE cada módulo foi ativado ou não:
+    - Modo de ativação (determinístico/LLM/misto)
+    - Para cada módulo: regra avaliada, variáveis usadas, resultado
+    - Para determinísticos: condições avaliadas com valores concretos
+    - Para LLM: justificativa e evidências citadas
+    - Variáveis do processo utilizadas na decisão
+    """
+    geracao = session_query(db, GeracaoPeca).filter(GeracaoPeca.id == geracao_id).first()
+    if not geracao:
+        raise HTTPException(status_code=404, detail="Geração não encontrada")
+
+    # Tenta obter activation_trace salvo
+    trace_data = _safe_get_attr(geracao, 'activation_trace')
+
+    if not trace_data:
+        # Tenta extrair traces da curadoria_metadata (retrocompatibilidade)
+        curadoria_meta = _safe_get_attr(geracao, 'curadoria_metadata') or {}
+        decision_traces = curadoria_meta.get('decision_traces')
+        variaveis_snapshot = curadoria_meta.get('variaveis_snapshot')
+
+        if decision_traces:
+            # Constrói trace a partir dos dados de curadoria
+            try:
+                from sistemas.gerador_pecas.services_activation_trace import build_activation_trace
+                trace_data = build_activation_trace(
+                    decision_traces=decision_traces,
+                    variaveis_snapshot=variaveis_snapshot or {},
+                    modo_ativacao=_safe_get_attr(geracao, 'modo_ativacao_agente2') or 'unknown',
+                    db=db,
+                )
+            except Exception as e:
+                logger.warning(f"[ACTIVATION-TRACE] Falha ao reconstruir trace de curadoria: {e}")
+                trace_data = None
+
+    if not trace_data:
+        # Sem dados de trace — retorna resposta vazia
+        return {
+            "geracao_id": geracao_id,
+            "modo_ativacao": _safe_get_attr(geracao, 'modo_ativacao_agente2'),
+            "summary": None,
+            "variaveis_snapshot": None,
+            "modulos": [],
+        }
+
+    # Formata resposta
+    modulos = trace_data.get("modulos", [])
+    total_ativados = trace_data.get("total_ativados", 0)
+    total_avaliados = trace_data.get("total_avaliados", 0)
+
+    return {
+        "geracao_id": geracao_id,
+        "modo_ativacao": trace_data.get("modo_ativacao"),
+        "summary": {
+            "total_avaliados": total_avaliados,
+            "total_ativados": total_ativados,
+            "total_nao_ativados": total_avaliados - total_ativados,
+            "total_det": trace_data.get("total_det", 0),
+            "total_llm": trace_data.get("total_llm", 0),
+        },
+        "variaveis_snapshot": trace_data.get("variaveis_snapshot"),
+        "modulos": modulos,
+    }
 

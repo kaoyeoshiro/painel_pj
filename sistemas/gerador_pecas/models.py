@@ -53,6 +53,12 @@ class GeracaoPeca(Base):
     modulos_ativados_det = deferred(Column(Integer, nullable=True))  # Ativados por regra determinística
     modulos_ativados_llm = deferred(Column(Integer, nullable=True))  # Ativados por LLM
 
+    # Rastreamento de ativação de módulos (JSONB)
+    # Armazena o trace completo da decisão de quais módulos foram ativados e por quê.
+    # Formato: ver build_activation_trace() em services_activation_trace.py
+    # NOTA: Usar deferred() para evitar erro se coluna não existir no banco (migration pendente)
+    activation_trace = deferred(Column(JSON, nullable=True))
+
     # Metadados de curadoria (modo semi-automático)
     # Formato JSON:
     # {

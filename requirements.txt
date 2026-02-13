@@ -48,12 +48,12 @@ Pillow>=10.0.0
 # Busca vetorial (embeddings)
 numpy>=1.24.0
 
-# Machine Learning (BERT Training)
+# Dados (Excel/CSV)
 pandas>=2.0.0
 openpyxl>=3.1.0
-torch>=2.0.0
-transformers>=4.30.0
-scikit-learn>=1.3.0
+
+# Machine Learning (BERT) — apenas local, NÃO deploy Railway
+# Instalar separadamente: pip install -r requirements-ml.txt
 
 # Scrapper de Subconta (Prestação de Contas)
 playwright>=1.40.0

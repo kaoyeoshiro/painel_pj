@@ -17,6 +17,7 @@ import { fetchConsultaReport } from '../api'
 import { SISTEMA_MAP, formatarDataHora } from '../constants'
 import { AvaliacaoBadge } from './AvaliacaoBadge'
 import { ModoBadge } from './ModoBadge'
+import { ActivationTracePanel } from '@/components/gerador/ActivationTracePanel'
 import type { ConsultaReport, ChatMessage, Versao } from '../types'
 
 // ---------------------------------------------------------------------------
@@ -277,6 +278,9 @@ export function ReportModal({ open, onClose, consultaId, sistema, onOpenCuration
                       )}
                     </TabsTrigger>
                   )}
+                  {sistema === 'gerador_pecas' && (
+                    <TabsTrigger value="ativacao">Ativação de Módulos</TabsTrigger>
+                  )}
                 </TabsList>
                 <TabsContent value="relatorio" className="mt-4">
                   {report.relatorio ? (
@@ -293,6 +297,11 @@ export function ReportModal({ open, onClose, consultaId, sistema, onOpenCuration
                 {sistema === 'gerador_pecas' && (
                   <TabsContent value="versoes" className="mt-4">
                     <VersoesTab versoes={report.versoes ?? []} />
+                  </TabsContent>
+                )}
+                {sistema === 'gerador_pecas' && (
+                  <TabsContent value="ativacao" className="mt-4 -mx-6 -mb-6">
+                    <ActivationTracePanel geracaoId={report.id} adminMode />
                   </TabsContent>
                 )}
               </Tabs>
