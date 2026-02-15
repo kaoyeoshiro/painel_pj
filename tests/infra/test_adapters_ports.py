@@ -19,8 +19,6 @@ from unittest.mock import AsyncMock, MagicMock
 
 import pytest
 
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
 from app.domain.shared.protocols import IGeminiPort, ITJMSPort, IBertPort
 
 
@@ -94,26 +92,26 @@ class TestStructural:
     """Verifica integridade estrutural dos protocols consolidados."""
 
     def test_protocols_file_exists(self):
-        protocols_path = Path(__file__).parent.parent / "app" / "domain" / "shared" / "protocols.py"
+        protocols_path = Path(__file__).parent.parent.parent / "app" / "domain" / "shared" / "protocols.py"
         assert protocols_path.exists()
 
     def test_app_adapters_exist(self):
         """Adapters canonicos estao em app/adapters/."""
-        adapters_dir = Path(__file__).parent.parent / "app" / "adapters"
+        adapters_dir = Path(__file__).parent.parent.parent / "app" / "adapters"
         assert (adapters_dir / "gemini_adapter.py").exists()
         assert (adapters_dir / "tjms_adapter.py").exists()
         assert (adapters_dir / "bert_adapter.py").exists()
 
     def test_root_adapters_removed(self):
         """Diretorio adapters/ na raiz NAO deve existir."""
-        root_adapters = Path(__file__).parent.parent / "adapters"
+        root_adapters = Path(__file__).parent.parent.parent / "adapters"
         assert not root_adapters.exists(), (
             f"Diretorio {root_adapters} deveria ter sido removido na consolidacao"
         )
 
     def test_protocols_use_protocol(self):
         """Protocols usam typing.Protocol (runtime checkable)."""
-        protocols_path = Path(__file__).parent.parent / "app" / "domain" / "shared" / "protocols.py"
+        protocols_path = Path(__file__).parent.parent.parent / "app" / "domain" / "shared" / "protocols.py"
         content = protocols_path.read_text(encoding="utf-8")
         assert "Protocol" in content
         assert "runtime_checkable" in content

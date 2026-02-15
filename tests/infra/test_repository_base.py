@@ -16,9 +16,6 @@ from unittest.mock import MagicMock, patch, PropertyMock
 
 import pytest
 
-# Adiciona raiz do projeto ao path
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
 from database.repository_base import BaseRepository
 from sistemas.gerador_pecas.repositories import (
     GeracaoPecaRepository,
@@ -242,7 +239,7 @@ class TestStructuralValidation:
 
     def test_router_imports_repositories(self):
         """Router do gerador_pecas importa os repos."""
-        router_path = Path(__file__).parent.parent / "sistemas" / "gerador_pecas" / "router.py"
+        router_path = Path(__file__).parent.parent.parent / "sistemas" / "gerador_pecas" / "router.py"
         content = router_path.read_text(encoding="utf-8")
         assert "GeracaoPecaRepository" in content
         assert "get_geracao_repo" in content
@@ -250,7 +247,7 @@ class TestStructuralValidation:
 
     def test_router_uses_repo_in_historico(self):
         """Endpoint listar_historico usa repo em vez de db.query."""
-        router_path = Path(__file__).parent.parent / "sistemas" / "gerador_pecas" / "router.py"
+        router_path = Path(__file__).parent.parent.parent / "sistemas" / "gerador_pecas" / "router.py"
         content = router_path.read_text(encoding="utf-8")
 
         # Busca a funcao listar_historico
@@ -263,7 +260,7 @@ class TestStructuralValidation:
 
     def test_router_uses_repo_in_feedback(self):
         """Endpoint enviar_feedback usa repo em vez de db.query."""
-        router_path = Path(__file__).parent.parent / "sistemas" / "gerador_pecas" / "router.py"
+        router_path = Path(__file__).parent.parent.parent / "sistemas" / "gerador_pecas" / "router.py"
         content = router_path.read_text(encoding="utf-8")
 
         start = content.find("async def enviar_feedback")

@@ -323,7 +323,7 @@ class TestPeticaoInicialCodigo10(unittest.TestCase):
         import json
         from pathlib import Path
 
-        json_path = Path(__file__).parent.parent / "categorias_documentos.json"
+        json_path = Path(__file__).parent.parent.parent / "categorias_documentos.json"
 
         with open(json_path, 'r', encoding='utf-8') as f:
             documentos = json.load(f)

@@ -19,9 +19,6 @@ import pytest
 
 pytestmark = pytest.mark.security
 
-# Adiciona raiz do projeto ao path
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
 from utils.quota_manager import QuotaManager, DAILY_AI_LIMIT, DAILY_AI_LIMIT_ADMIN
 
 

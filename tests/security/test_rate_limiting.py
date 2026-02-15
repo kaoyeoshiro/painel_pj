@@ -17,9 +17,6 @@ import pytest
 
 pytestmark = pytest.mark.security
 
-# Adiciona raiz do projeto ao path
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
 
 class TestEndpointAuth:
     """Testes de protecao de endpoints sensiveis."""
@@ -28,7 +25,7 @@ class TestEndpointAuth:
         """
         /health/detailed deve exigir admin (Depends(require_admin) na assinatura).
         """
-        main_path = Path(__file__).parent.parent / "main.py"
+        main_path = Path(__file__).parent.parent.parent / "main.py"
         content = main_path.read_text(encoding="utf-8")
 
         # Procura a funcao health_check_detailed com require_admin
@@ -45,7 +42,7 @@ class TestEndpointAuth:
         """
         /metrics deve exigir admin.
         """
-        main_path = Path(__file__).parent.parent / "main.py"
+        main_path = Path(__file__).parent.parent.parent / "main.py"
         content = main_path.read_text(encoding="utf-8")
 
         pattern = re.compile(
@@ -60,7 +57,7 @@ class TestEndpointAuth:
         """
         /metrics/json deve exigir admin.
         """
-        main_path = Path(__file__).parent.parent / "main.py"
+        main_path = Path(__file__).parent.parent.parent / "main.py"
         content = main_path.read_text(encoding="utf-8")
 
         pattern = re.compile(
@@ -75,7 +72,7 @@ class TestEndpointAuth:
         """
         /health (basico) NAO deve ter auth (necessario para load balancer/k8s).
         """
-        main_path = Path(__file__).parent.parent / "main.py"
+        main_path = Path(__file__).parent.parent.parent / "main.py"
         content = main_path.read_text(encoding="utf-8")
 
         # Procura a funcao health_check (sem _detailed)
@@ -133,7 +130,7 @@ class TestAIEndpointsHaveRateLimit:
         """
         Todos os endpoints de IA devem ter @limiter.limit antes da definicao.
         """
-        project_root = Path(__file__).parent.parent
+        project_root = Path(__file__).parent.parent.parent
         violations = []
 
         for rel_path, func_names in self._AI_ENDPOINTS.items():
@@ -162,7 +159,7 @@ class TestAIEndpointsHaveRateLimit:
         """
         Todos os routers de IA devem importar limiter e LIMITS.
         """
-        project_root = Path(__file__).parent.parent
+        project_root = Path(__file__).parent.parent.parent
         violations = []
 
         for rel_path in self._AI_ENDPOINTS:
