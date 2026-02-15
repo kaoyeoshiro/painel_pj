@@ -61,7 +61,7 @@ jobs:
 
       - name: Run architecture tests
         run: |
-          pytest tests/test_architecture_boundaries.py -v --tb=short
+          pytest tests/infra/test_architecture_boundaries.py -v --tb=short
 
       - name: Summary
         if: always()

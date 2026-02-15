@@ -107,11 +107,11 @@ jobs:
           DATABASE_URL: postgresql://ci:ci@localhost:5432/ci_test
         run: |
           python -m pytest \
-            tests/test_xss_prevention.py \
-            tests/test_torch_load_safety.py \
-            tests/test_upload_hardening.py \
-            tests/test_quota_manager.py \
-            tests/test_rate_limiting.py \
+            tests/security/test_xss_prevention.py \
+            tests/security/test_torch_load_safety.py \
+            tests/security/test_upload_hardening.py \
+            tests/security/test_quota_manager.py \
+            tests/security/test_rate_limiting.py \
             -v --tb=short
 
       # ==========================================
