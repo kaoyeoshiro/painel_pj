@@ -266,6 +266,38 @@ from .models import MeuModelo
 | Effects | Separar cleanup de intervals (`[]`) e recursos visuais (`[dep]`) em effects distintos |
 | console.log | Remover antes de merge — `console.warn`/`console.error` para erros sao OK |
 
+### Build e Deploy do Frontend (REGRA CRITICA)
+
+O Railway **NAO** roda `npm run build` durante o deploy. O `frontend-react/dist/` e commitado no git (excecao explicita no `.gitignore`) e servido diretamente pelo FastAPI via catch-all route.
+
+**Fluxo obrigatorio ao alterar qualquer arquivo em `frontend-react/src/`:**
+
+```bash
+# 1. Editar o codigo fonte
+# 2. Rebuild o dist
+cd frontend-react && node node_modules/vite/bin/vite.js build
+
+# 3. Commitar source + dist juntos
+git add frontend-react/src/<arquivos-alterados>
+git add -f frontend-react/dist/    # -f necessario por causa do gitignore
+git commit -m "feat(...): descricao"
+
+# 4. Push — Railway faz deploy automatico
+git push
+```
+
+**Se esquecer de commitar o dist, as mudancas NAO aparecerao em producao.**
+
+| Item | Detalhe |
+|------|---------|
+| `.gitignore` | `dist/` ignorado, `!frontend-react/dist/` excecao |
+| Build local | `node node_modules/vite/bin/vite.js build` (WSL) |
+| Railway build | Apenas Python (pip + playwright) — sem Node/Vite |
+| Railway projeto | `pleasant-caring`, servico `painel_pj` |
+| Railway CLI | `railway link --project pleasant-caring` + `railway service link painel_pj` |
+| Servindo SPA | `main.py` catch-all `/{full_path:path}` via `FileResponse` |
+| Cache headers | `Cache-Control: no-cache` no `index.html` (reload = versao nova) |
+
 ## Resolucao de Problemas Comuns
 
 ### Erro de Conexao TJ-MS
