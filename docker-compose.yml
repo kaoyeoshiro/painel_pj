@@ -47,11 +47,11 @@ services:
     depends_on:
       db:
         condition: service_healthy
-    # No dev, roda migrations antes do uvicorn
+    # Inicializa banco (cria tabelas se virgem) + hot reload
     command: >
       bash -c "
         echo '=== Portal PGE (dev) — Iniciando ===' &&
-        python scripts/pre_deploy.py &&
+        python scripts/docker_init_db.py &&
         alembic upgrade head &&
         echo '=== Migrations OK — Subindo uvicorn com hot reload ===' &&
         uvicorn main:app --reload --host 0.0.0.0 --port 8000

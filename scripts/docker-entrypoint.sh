@@ -3,9 +3,9 @@ set -e
 
 echo "=== Portal PGE — Iniciando (prod) ==="
 
-# Pre-deploy: garante que Alembic reconhece o estado do banco
-echo "Executando pre_deploy.py..."
-python scripts/pre_deploy.py
+# Inicializa banco (cria tabelas se virgem, stamp alembic se necessario)
+echo "Inicializando banco de dados..."
+python scripts/docker_init_db.py
 
 # Roda migrations pendentes
 echo "Executando migrations (alembic upgrade head)..."
