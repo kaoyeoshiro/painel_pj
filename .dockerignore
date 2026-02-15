@@ -1,0 +1,97 @@
+# === Git e CI ===
+.git
+.github
+
+# === Ambientes virtuais ===
+.venv
+venv
+ENV
+
+# === Python cache ===
+__pycache__
+*.pyc
+*.pyo
+*.pyd
+
+# === Variaveis de ambiente (secrets) ===
+.env
+.env.docker.local
+
+# === Banco local ===
+*.db
+*.sqlite3
+dumps/
+
+# === Node (frontend buildado ja e copiado via dist/) ===
+node_modules
+frontend-react/node_modules
+frontend-react/.vite
+frontend-react/test-results
+frontend-react/playwright-report
+frontend-react/reports
+frontend-react/prints
+frontend-react/vitest-*.txt
+
+# === ML / BERT (opcional, nao roda no container principal) ===
+bert_models
+requirements-ml.txt
+
+# === Dados locais ===
+data
+logs
+*.log
+
+# === Cobertura e testes ===
+htmlcov
+.coverage
+*.cover
+e2e-artifacts
+test_gemini_direct.py
+
+# === IDE ===
+.vscode
+.idea
+*.swp
+*.swo
+*.sublime-*
+*.code-workspace
+
+# === OS ===
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# === Temporarios ===
+*.pid
+.bert_worker_token
+scripts/_debug_*
+tmp_*
+tmpclaude-*
+temp_diff.txt
+tmp_main_before.py
+*main_before.py
+nul
+prompt.md
+prompt2.md
+run_teste.bat
+
+# === SonarQube ===
+.scannerwork/
+.sonar-scanner/
+sonar-bugs.json
+sonar-hotspots.json
+docker-compose.sonarqube.yml
+sonar-project.properties
+
+# === Claude Code ===
+.claude
+.playwright-mcp
+
+# === Documentacao (nao necessaria na imagem) ===
+docs
+
+# === Testes (nao necessarios na imagem prod — dev usa bind mount) ===
+tests
+
+# === Frontend legado ===
+frontend__DISABLED/

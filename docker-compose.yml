@@ -1,0 +1,83 @@
+# ============================================================
+# Portal PGE-MS — Docker Compose
+# ============================================================
+# Uso:
+#   DEV  (hot reload):  docker compose --profile dev up --build -d
+#   PROD (otimizado):   docker compose --profile prod up --build -d
+#
+# Parar:                docker compose --profile dev down
+# Parar + limpar BD:    docker compose --profile dev down -v
+# Logs:                 docker compose --profile dev logs -f app
+# ============================================================
+
+services:
+  # ---- Banco de Dados ----
+  db:
+    image: postgres:16-alpine
+    profiles: [dev, prod]
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: portal_pge
+    ports:
+      - "${DB_EXTERNAL_PORT:-5433}:5432"  # 5433 para evitar conflito com Postgres local
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  # ---- App — Desenvolvimento ----
+  app:
+    build:
+      context: .
+      target: dev
+    profiles: [dev]
+    ports:
+      - "8000:8000"
+    volumes:
+      - .:/app                              # Bind mount para hot reload
+      - /app/__pycache__                    # Nao sobrescrever cache do container
+      - /app/frontend-react/node_modules    # Protege node_modules do container
+    env_file: .env.docker
+    environment:
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@db:5432/portal_pge
+    depends_on:
+      db:
+        condition: service_healthy
+    # No dev, roda migrations antes do uvicorn
+    command: >
+      bash -c "
+        echo '=== Portal PGE (dev) — Iniciando ===' &&
+        python scripts/pre_deploy.py &&
+        alembic upgrade head &&
+        echo '=== Migrations OK — Subindo uvicorn com hot reload ===' &&
+        uvicorn main:app --reload --host 0.0.0.0 --port 8000
+      "
+
+  # ---- App — Producao ----
+  app-prod:
+    build:
+      context: .
+      target: prod
+    profiles: [prod]
+    ports:
+      - "8000:8000"
+    env_file: .env.docker
+    environment:
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@db:5432/portal_pge
+      ENV: production
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 30s
+      timeout: 10s
+      start_period: 60s
+      retries: 3
+
+volumes:
+  pgdata:
