@@ -18,7 +18,7 @@ pytestmark = pytest.mark.unit
 @pytest.fixture
 def project_root():
     """Retorna o diretório raiz do projeto."""
-    return Path(__file__).resolve().parent.parent
+    return Path(__file__).resolve().parent.parent.parent
 
 
 class TestArchitectureBoundaries:
@@ -63,8 +63,8 @@ class TestArchitectureBoundaries:
         """
         excluded = {
             "utils/safe_torch.py",
-            "tests/test_torch_load_safety.py",
-            "tests/test_architecture_boundaries.py",
+            "tests/security/test_torch_load_safety.py",
+            "tests/infra/test_architecture_boundaries.py",
             "scripts/check_boundaries.py",
         }
 
