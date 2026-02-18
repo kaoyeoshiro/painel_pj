@@ -25,6 +25,7 @@ import {
 import { BreadcrumbBar } from '@/components/layout/BreadcrumbBar'
 import { ContentArea } from '@/components/layout/ContentArea'
 import { AdminSubNav } from '@/components/layout'
+import { GroupSelector } from '@/components/ui/GroupSelector'
 import { C } from '@/lib/designTokens'
 
 interface Categoria {
@@ -79,6 +80,8 @@ type DownloadStatus = 'pendente' | 'baixando' | 'ok' | 'erro'
 export function TesteCategoriasPage() {
   const { toast } = useToast()
 
+  const [selectedGroupId, setSelectedGroupId] = useState<number | null>(null)
+
   const [categorias, setCategorias] = useState<Categoria[]>([])
   const [categoriaId, setCategoriaId] = useState<string>('')
 
@@ -110,9 +113,11 @@ export function TesteCategoriasPage() {
   const observationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
   useEffect(() => {
-    void carregarCategorias()
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- Carrega apenas na montagem
-  }, [])
+    if (selectedGroupId) {
+      void carregarCategorias()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- Recarrega quando grupo muda
+  }, [selectedGroupId])
 
   // Carregar observacoes e formato ao selecionar categoria
   useEffect(() => {
@@ -128,10 +133,13 @@ export function TesteCategoriasPage() {
   }, [categoriaId])
 
   async function carregarCategorias(): Promise<void> {
+    if (!selectedGroupId) return
     setLoadingCategorias(true)
+    setCategorias([])
+    setCategoriaId('')
     try {
       const data = await adminApi.get<Categoria[]>(
-        '/admin/api/teste-categorias/categorias-ativas',
+        `/admin/api/teste-categorias/categorias-ativas?group_id=${selectedGroupId}`,
       )
       setCategorias(data)
     } catch (error) {
@@ -510,6 +518,12 @@ export function TesteCategoriasPage() {
 
       <ContentArea className="space-y-6">
         <AdminSubNav />
+
+        <GroupSelector
+          selectedGroupId={selectedGroupId}
+          onGroupChange={setSelectedGroupId}
+        />
+
         <div className="grid grid-cols-12 gap-4">
           <div className="col-span-12 lg:col-span-3 space-y-4">
             <Card className="bg-white rounded-2xl shadow-sm overflow-hidden" style={{ borderColor: C.gray200 }}>

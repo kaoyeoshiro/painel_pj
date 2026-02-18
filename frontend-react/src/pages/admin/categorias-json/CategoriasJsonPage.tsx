@@ -23,6 +23,7 @@ import { useToast } from '@/hooks/use-toast'
 import { BreadcrumbBar } from '@/components/layout/BreadcrumbBar'
 import { AdminSubNav } from '@/components/layout'
 import { ContentArea } from '@/components/layout/ContentArea'
+import { GroupSelector } from '@/components/ui/GroupSelector'
 import { C } from '@/lib/designTokens'
 import type { CategoriaJSON } from './types'
 import * as categoriasApi from './api'
@@ -37,6 +38,9 @@ export function CategoriasJsonPage() {
   const [loading, setLoading] = useState(true)
   const [blacklistLoading, setBlacklistLoading] = useState(true)
 
+  // Seletor de grupo
+  const [selectedGroupId, setSelectedGroupId] = useState<number | null>(null)
+
   // Editor dialog
   const [editorOpen, setEditorOpen] = useState(false)
   const [editingId, setEditingId] = useState<number | null>(null)
@@ -45,31 +49,45 @@ export function CategoriasJsonPage() {
   const [deactivateTarget, setDeactivateTarget] = useState<{ id: number; titulo: string } | null>(null)
   const [deactivating, setDeactivating] = useState(false)
 
-  // Carregamento inicial em paralelo
-  const loadAll = useCallback(async () => {
+  // Carregamento inicial (blacklist e global, categorias por grupo)
+  const loadBlacklist = useCallback(async () => {
     try {
-      const [cats, blacklist] = await Promise.all([
-        categoriasApi.listar(false),
-        categoriasApi.getCodigosIgnorados(),
-      ])
-      setCategorias(cats)
+      const blacklist = await categoriasApi.getCodigosIgnorados()
       setCodigosIgnorados(blacklist.codigos)
     } catch {
-      toast({ title: 'Erro', description: 'Erro ao carregar dados', variant: 'destructive' })
+      // silently fail
+    } finally {
+      setBlacklistLoading(false)
+    }
+  }, [])
+
+  useEffect(() => {
+    loadBlacklist()
+  }, [loadBlacklist])
+
+  // Carrega categorias quando grupo muda
+  const loadCategorias = useCallback(async (groupId: number | null) => {
+    setLoading(true)
+    try {
+      const cats = await categoriasApi.listar(false, groupId)
+      setCategorias(cats)
+    } catch {
+      toast({ title: 'Erro', description: 'Erro ao carregar categorias', variant: 'destructive' })
     } finally {
       setLoading(false)
-      setBlacklistLoading(false)
     }
   }, [toast])
 
   useEffect(() => {
-    loadAll()
-  }, [loadAll])
+    if (selectedGroupId) {
+      loadCategorias(selectedGroupId)
+    }
+  }, [selectedGroupId, loadCategorias])
 
   // Recarrega apenas categorias (apos salvar/desativar)
   const reloadCategorias = async () => {
     try {
-      const cats = await categoriasApi.listar(false)
+      const cats = await categoriasApi.listar(false, selectedGroupId)
       setCategorias(cats)
     } catch {
       toast({ title: 'Erro', description: 'Erro ao recarregar categorias', variant: 'destructive' })
@@ -158,7 +176,13 @@ export function CategoriasJsonPage() {
       <ContentArea className="space-y-6">
         <AdminSubNav />
 
-        {/* Blacklist — secao separada no topo */}
+        {/* Seletor de grupo */}
+        <GroupSelector
+          selectedGroupId={selectedGroupId}
+          onGroupChange={setSelectedGroupId}
+        />
+
+        {/* Blacklist — secao separada no topo (GLOBAL, sem filtro por grupo) */}
         <BlacklistCard
           codigos={codigosIgnorados}
           onSave={handleBlacklistSave}
