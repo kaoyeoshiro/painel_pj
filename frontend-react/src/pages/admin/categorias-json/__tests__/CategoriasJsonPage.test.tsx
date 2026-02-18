@@ -21,6 +21,18 @@ vi.mock('@/hooks/use-toast', () => ({
   useToast: () => ({ toast: mockToast })
 }))
 
+// Mock useGruposDisponiveis (usado pelo GroupSelector)
+vi.mock('@/hooks/useQueries', () => ({
+  useGruposDisponiveis: () => ({
+    data: {
+      grupos: [{ id: 1, nome: 'PS', slug: 'ps' }],
+      default_group_id: 1,
+      requires_selection: false,
+    },
+    isLoading: false,
+  }),
+}))
+
 /** Dados de teste alinhados com os tipos corretos do backend */
 const mockCategorias = [
   {

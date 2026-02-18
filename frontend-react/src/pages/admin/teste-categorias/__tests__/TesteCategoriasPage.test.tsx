@@ -42,6 +42,18 @@ vi.mock('@/hooks/use-toast', () => ({
   })
 }))
 
+// Mock useGruposDisponiveis (usado pelo GroupSelector)
+vi.mock('@/hooks/useQueries', () => ({
+  useGruposDisponiveis: () => ({
+    data: {
+      grupos: [{ id: 1, nome: 'PS', slug: 'ps' }],
+      default_group_id: 1,
+      requires_selection: false,
+    },
+    isLoading: false,
+  }),
+}))
+
 describe('TesteCategoriasPage', () => {
   const mockCategorias = [
     { id: 1, nome: 'Categoria A' },
@@ -96,7 +108,7 @@ describe('TesteCategoriasPage', () => {
 
     await waitFor(() => {
       expect(adminApi.get).toHaveBeenCalledWith(
-        '/admin/api/teste-categorias/categorias-ativas'
+        expect.stringContaining('/admin/api/teste-categorias/categorias-ativas')
       )
     })
 

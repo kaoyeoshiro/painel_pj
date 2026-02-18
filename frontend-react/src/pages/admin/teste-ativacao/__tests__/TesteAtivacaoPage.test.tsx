@@ -20,6 +20,18 @@ vi.mock('@/hooks/use-toast', () => ({
   }),
 }))
 
+// Mock useGruposDisponiveis (usado pelo GroupSelector)
+vi.mock('@/hooks/useQueries', () => ({
+  useGruposDisponiveis: () => ({
+    data: {
+      grupos: [{ id: 1, nome: 'PS', slug: 'ps' }],
+      default_group_id: 1,
+      requires_selection: false,
+    },
+    isLoading: false,
+  }),
+}))
+
 describe('TesteAtivacaoPage', () => {
   const mockTiposPeca = [
     { slug: 'peticao_inicial', nome: 'Petição Inicial' },
@@ -97,7 +109,7 @@ describe('TesteAtivacaoPage', () => {
 
     // Aguardar carregamento
     await waitFor(() => {
-      expect(adminApi.get).toHaveBeenCalledWith('/admin/api/teste-ativacao/tipos-peca')
+      expect(adminApi.get).toHaveBeenCalledWith(expect.stringContaining('/admin/api/teste-ativacao/tipos-peca'))
     })
   })
 
@@ -106,7 +118,7 @@ describe('TesteAtivacaoPage', () => {
 
     // Aguardar carregamento dos tipos
     await waitFor(() => {
-      expect(adminApi.get).toHaveBeenCalledWith('/admin/api/teste-ativacao/tipos-peca')
+      expect(adminApi.get).toHaveBeenCalledWith(expect.stringContaining('/admin/api/teste-ativacao/tipos-peca'))
     })
 
     // Verificar que o label de tipo de peça está renderizado
@@ -118,7 +130,7 @@ describe('TesteAtivacaoPage', () => {
 
     // Aguardar carregamento das categorias
     await waitFor(() => {
-      expect(adminApi.get).toHaveBeenCalledWith('/admin/api/teste-ativacao/categorias-extracao')
+      expect(adminApi.get).toHaveBeenCalledWith(expect.stringContaining('/admin/api/teste-ativacao/categorias-extracao'))
     })
 
     // Verificar que as categorias foram renderizadas
@@ -228,7 +240,7 @@ describe('TesteAtivacaoPage', () => {
 
     // Aguardar carregamento completo
     await waitFor(() => {
-      expect(adminApi.get).toHaveBeenCalledWith('/admin/api/teste-ativacao/tipos-peca')
+      expect(adminApi.get).toHaveBeenCalledWith(expect.stringContaining('/admin/api/teste-ativacao/tipos-peca'))
     })
   })
 })
