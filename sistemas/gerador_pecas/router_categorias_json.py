@@ -6,7 +6,7 @@ Permite criar, editar e excluir categorias que definem o formato JSON
 de saída dos resumos de documentos baseados no código do documento TJ-MS.
 """
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy.orm import Session
 from app.repositories.sqlalchemy.session_ops import session_query
 from typing import List, Optional, Dict, Any
@@ -64,7 +64,7 @@ class CategoriaResumoJSONBase(BaseModel):
 
 
 class CategoriaResumoJSONCreate(CategoriaResumoJSONBase):
-    pass
+    group_id: int
 
 
 class CategoriaResumoJSONUpdate(BaseModel):
@@ -107,6 +107,7 @@ class CategoriaResumoJSONUpdate(BaseModel):
 
 class CategoriaResumoJSONResponse(BaseModel):
     id: int
+    group_id: int
     nome: str
     titulo: str
     descricao: Optional[str]
@@ -171,35 +172,45 @@ def verificar_permissao(user: User):
         )
 
 
-def buscar_categoria_por_codigo(db: Session, codigo_documento: int) -> Optional[CategoriaResumoJSON]:
+def buscar_categoria_por_codigo(db: Session, codigo_documento: int, group_id: Optional[int] = None) -> Optional[CategoriaResumoJSON]:
     """
     Busca a categoria ativa que contém o código de documento especificado.
     Se não encontrar, retorna a categoria residual.
+    Quando group_id é fornecido, filtra por grupo.
     """
     # Busca categoria específica para o código
-    categorias = session_query(db, CategoriaResumoJSON).filter(
+    query = session_query(db, CategoriaResumoJSON).filter(
         CategoriaResumoJSON.ativo == True,
         CategoriaResumoJSON.is_residual == False
-    ).all()
-    
+    )
+    if group_id is not None:
+        query = query.filter(CategoriaResumoJSON.group_id == group_id)
+
+    categorias = query.all()
+
     for cat in categorias:
         if codigo_documento in (cat.codigos_documento or []):
             return cat
-    
+
     # Se não achou, retorna a residual
-    residual = session_query(db, CategoriaResumoJSON).filter(
+    query_residual = session_query(db, CategoriaResumoJSON).filter(
         CategoriaResumoJSON.ativo == True,
         CategoriaResumoJSON.is_residual == True
-    ).first()
-    
-    return residual
+    )
+    if group_id is not None:
+        query_residual = query_residual.filter(CategoriaResumoJSON.group_id == group_id)
+
+    return query_residual.first()
 
 
-def obter_todas_categorias_ativas(db: Session) -> List[CategoriaResumoJSON]:
-    """Retorna todas as categorias ativas ordenadas"""
-    return session_query(db, CategoriaResumoJSON).filter(
+def obter_todas_categorias_ativas(db: Session, group_id: Optional[int] = None) -> List[CategoriaResumoJSON]:
+    """Retorna todas as categorias ativas ordenadas. Filtra por grupo se fornecido."""
+    query = session_query(db, CategoriaResumoJSON).filter(
         CategoriaResumoJSON.ativo == True
-    ).order_by(CategoriaResumoJSON.ordem).all()
+    )
+    if group_id is not None:
+        query = query.filter(CategoriaResumoJSON.group_id == group_id)
+    return query.order_by(CategoriaResumoJSON.ordem).all()
 
 
 # ==========================================
@@ -210,6 +221,7 @@ def obter_todas_categorias_ativas(db: Session) -> List[CategoriaResumoJSON]:
 async def listar_categorias(
     apenas_ativos: bool = True,
     apenas_com_variaveis: bool = False,
+    group_id: Optional[int] = Query(None),
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
@@ -219,6 +231,9 @@ async def listar_categorias(
 
     if apenas_ativos:
         query = query.filter(CategoriaResumoJSON.ativo == True)
+
+    if group_id is not None:
+        query = query.filter(CategoriaResumoJSON.group_id == group_id)
 
     # Filtra apenas categorias que possuem variáveis de extração
     if apenas_com_variaveis:
@@ -234,6 +249,7 @@ async def listar_categorias(
 
 @router.get("/codigos-disponiveis")
 async def listar_codigos_disponiveis(
+    group_id: Optional[int] = Query(None),
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
@@ -242,11 +258,14 @@ async def listar_codigos_disponiveis(
     Útil para ver quais códigos já estão atribuídos.
     """
     from sistemas.gerador_pecas.agente_tjms import CATEGORIAS_MAP
-    
-    # Busca todas as categorias ativas
-    categorias = session_query(db, CategoriaResumoJSON).filter(
+
+    # Busca categorias ativas (filtradas por grupo se fornecido)
+    query = session_query(db, CategoriaResumoJSON).filter(
         CategoriaResumoJSON.ativo == True
-    ).all()
+    )
+    if group_id is not None:
+        query = query.filter(CategoriaResumoJSON.group_id == group_id)
+    categorias = query.all()
     
     # Monta mapa de código -> categoria
     codigo_para_categoria = {}
@@ -331,27 +350,30 @@ async def criar_categoria(
     perf_ctx.set_action("criar_categoria")
     verificar_permissao(current_user)
     
-    # Verifica se já existe com mesmo nome
+    # Verifica se já existe com mesmo nome no mesmo grupo
     existente = session_query(db, CategoriaResumoJSON).filter(
-        CategoriaResumoJSON.nome == categoria_data.nome
+        CategoriaResumoJSON.nome == categoria_data.nome,
+        CategoriaResumoJSON.group_id == categoria_data.group_id
     ).first()
-    
+
     if existente:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail=f"Já existe uma categoria com o nome '{categoria_data.nome}'"
+            detail=f"Já existe uma categoria com o nome '{categoria_data.nome}' neste grupo"
         )
-    
-    # Se está criando como residual, desativa outras residuais
+
+    # Se está criando como residual, desativa outras residuais do mesmo grupo
     if categoria_data.is_residual:
         session_query(db, CategoriaResumoJSON).filter(
-            CategoriaResumoJSON.is_residual == True
+            CategoriaResumoJSON.is_residual == True,
+            CategoriaResumoJSON.group_id == categoria_data.group_id
         ).update({"is_residual": False, "atualizado_por": current_user.id})
-    
-    # Verifica se algum código já está em outra categoria
+
+    # Verifica se algum código já está em outra categoria do mesmo grupo
     if categoria_data.codigos_documento:
         categorias_existentes = session_query(db, CategoriaResumoJSON).filter(
-            CategoriaResumoJSON.ativo == True
+            CategoriaResumoJSON.ativo == True,
+            CategoriaResumoJSON.group_id == categoria_data.group_id
         ).all()
         
         for cat in categorias_existentes:
@@ -419,11 +441,12 @@ async def atualizar_categoria(
             CategoriaResumoJSON.id != categoria_id
         ).update({"is_residual": False, "atualizado_por": current_user.id})
     
-    # Verifica conflitos de códigos
+    # Verifica conflitos de códigos dentro do mesmo grupo
     if categoria_data.codigos_documento is not None:
         categorias_existentes = session_query(db, CategoriaResumoJSON).filter(
             CategoriaResumoJSON.ativo == True,
-            CategoriaResumoJSON.id != categoria_id
+            CategoriaResumoJSON.id != categoria_id,
+            CategoriaResumoJSON.group_id == categoria.group_id
         ).all()
         
         for cat in categorias_existentes:
@@ -924,6 +947,7 @@ class RepararTodasResponse(BaseModel):
 
 @router.post("/reparar-todas-consistencias", response_model=RepararTodasResponse)
 async def reparar_todas_consistencias(
+    group_id: Optional[int] = Query(None),
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
@@ -941,9 +965,12 @@ async def reparar_todas_consistencias(
 
     from .services_slug_rename import SlugConsistencyChecker
 
-    categorias = session_query(db, CategoriaResumoJSON).filter(
+    query = session_query(db, CategoriaResumoJSON).filter(
         CategoriaResumoJSON.ativo == True
-    ).all()
+    )
+    if group_id is not None:
+        query = query.filter(CategoriaResumoJSON.group_id == group_id)
+    categorias = query.all()
 
     checker = SlugConsistencyChecker(db)
     detalhes = []
