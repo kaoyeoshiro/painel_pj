@@ -17,9 +17,6 @@ import pytest
 
 pytestmark = pytest.mark.security
 
-# Adiciona raiz do projeto ao path
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
 
 class TestBertUploadHardening:
     """Testes de magic bytes no upload do BERT Training."""
@@ -29,7 +26,7 @@ class TestBertUploadHardening:
         upload_dataset deve validar magic bytes do Excel
         antes de processar o arquivo.
         """
-        router_path = Path(__file__).parent.parent / "sistemas" / "bert_training" / "router_datasets.py"
+        router_path = Path(__file__).parent.parent.parent / "sistemas" / "bert_training" / "router_datasets.py"
         content = router_path.read_text(encoding="utf-8")
 
         # Verifica presenca da validacao de magic bytes
@@ -79,7 +76,7 @@ class TestClassificadorUploadHardening:
         upload_arquivos_lote deve validar magic bytes de PDF e ZIP.
         """
         router_path = (
-            Path(__file__).parent.parent
+            Path(__file__).parent.parent.parent
             / "sistemas"
             / "classificador_documentos"
             / "router.py"

@@ -23,9 +23,6 @@ from typing import Dict, Any, List, Optional
 from datetime import datetime
 
 # Importa o avaliador de regras
-import sys
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
 from sistemas.gerador_pecas.services_deterministic import (
     DeterministicRuleEvaluator,
     verificar_variaveis_existem

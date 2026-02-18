@@ -18,7 +18,7 @@ copy .env.example .env
 uvicorn main:app --reload --host 127.0.0.1 --port 8000
 
 # Ou no Windows:
-run.bat
+scripts\run.bat
 ```
 
 **Acessar:**
@@ -62,11 +62,15 @@ portal-pge/
 │   ├── assistencia_judiciaria/
 │   ├── bert_training/
 │   └── classificador_documentos/
-├── tests/                  # Testes automatizados
+├── tests/                  # Testes automatizados (organizados por sistema)
+│   ├── gerador_pecas/      # Testes do gerador de pecas
+│   ├── extrator_autos/     # Testes do extrator de autos
+│   ├── security/           # Testes de seguranca
+│   ├── infra/              # Testes de infraestrutura
+│   └── ...                 # Demais subdirs por sistema
 ├── config.py               # Configuracoes globais
 ├── main.py                 # Entry point FastAPI
-├── requirements.txt        # Dependencias Python
-└── run.bat                 # Script para rodar local (Windows)
+└── requirements.txt        # Dependencias Python
 ```
 
 ## Sistemas Disponiveis

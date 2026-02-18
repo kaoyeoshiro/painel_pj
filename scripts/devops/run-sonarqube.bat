@@ -8,7 +8,7 @@ REM ============================================================================
 setlocal enabledelayedexpansion
 
 set PROJECT_DIR=%~dp0..
-set COMPOSE_FILE=%PROJECT_DIR%\docker-compose.sonarqube.yml
+set COMPOSE_FILE=%~dp0devops\docker-compose.sonarqube.yml
 set SONAR_URL=http://localhost:9000
 set SCANNER_VERSION=6.2.1.4610
 

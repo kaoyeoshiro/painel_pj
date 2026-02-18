@@ -14,8 +14,6 @@ from docx import Document
 from docx.oxml.ns import qn
 
 # Importa o conversor
-import sys
-sys.path.insert(0, str(Path(__file__).parent.parent))
 from sistemas.gerador_pecas.docx_converter import DocxConverter, markdown_to_docx
 
 

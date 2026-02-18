@@ -42,8 +42,8 @@ node_modules/
 npm_install.log
 package-lock.json
 
-# Frontend legado desabilitado (apagao controlado 2026-02-12)
-frontend__DISABLED/
+# Build artifacts
+portal_pge.egg-info/
 
 # OS
 .DS_Store
@@ -90,8 +90,7 @@ run_teste.bat
 .sonar-scanner/
 sonar-bugs.json
 sonar-hotspots.json
-docker-compose.sonarqube.yml
-sonar-project.properties
+# SonarQube configs movidos para scripts/devops/
 
 # === Arquivos temporários do projeto ===
 tmp_*
@@ -101,7 +100,7 @@ data/
 bert_models/
 e2e-artifacts/
 scripts/_debug_*
-test_gemini_direct.py
+# test_gemini_direct.py movido para scripts/
 %TEMP%*
 
 # Artefatos locais de auditoria/refactor

@@ -20,9 +20,6 @@ import pytest
 
 pytestmark = pytest.mark.security
 
-# Adiciona raiz do projeto ao path
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
 from utils.safe_torch import (
     safe_torch_load,
     _validate_path,
@@ -128,7 +125,7 @@ class TestCodebaseAudit:
 
         Todos devem usar safe_torch_load().
         """
-        project_root = Path(__file__).parent.parent
+        project_root = Path(__file__).parent.parent.parent
         violations = []
 
         # Diretorios Python a verificar

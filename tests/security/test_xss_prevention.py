@@ -17,9 +17,6 @@ import pytest
 
 pytestmark = pytest.mark.security
 
-# Adiciona raiz do projeto ao path
-sys.path.insert(0, str(Path(__file__).parent.parent))
-
 from utils.sanitize import validate_no_html, sanitize_user_field
 from auth.schemas import UserBase, UserCreate, UserUpdate
 

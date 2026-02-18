@@ -32,7 +32,7 @@ uvicorn main:app --reload --port 8000
 ### Windows (run.bat)
 
 ```batch
-run.bat
+scripts\run.bat
 ```
 
 ---
