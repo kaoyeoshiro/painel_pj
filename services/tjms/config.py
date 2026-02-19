@@ -49,19 +49,19 @@ class TJMSConfig:
             proxy_local_url=os.getenv("TJMS_PROXY_LOCAL_URL", "").strip().rstrip("/"),
             proxy_flyio_url=os.getenv("TJMS_PROXY_URL", "").strip().rstrip("/"),
             soap_user=(
-                os.getenv("MNI_USER", "") or
-                os.getenv("TJ_USER", "") or
-                os.getenv("TJ_WS_USER", "") or
-                os.getenv("WS_USER", "")
+                os.getenv("MNI_USER", "").strip() or
+                os.getenv("TJ_USER", "").strip() or
+                os.getenv("TJ_WS_USER", "").strip() or
+                os.getenv("WS_USER", "").strip()
             ),
             soap_pass=(
-                os.getenv("MNI_PASS", "") or
-                os.getenv("TJ_PASS", "") or
-                os.getenv("TJ_WS_PASS", "") or
-                os.getenv("WS_PASS", "")
+                os.getenv("MNI_PASS", "").strip() or
+                os.getenv("TJ_PASS", "").strip() or
+                os.getenv("TJ_WS_PASS", "").strip() or
+                os.getenv("WS_PASS", "").strip()
             ),
-            web_user=os.getenv("TJMS_USUARIO", ""),
-            web_pass=os.getenv("TJMS_SENHA", ""),
+            web_user=os.getenv("TJMS_USUARIO", "").strip(),
+            web_pass=os.getenv("TJMS_SENHA", "").strip(),
             soap_timeout=float(os.getenv("TJMS_SOAP_TIMEOUT", "60")),
             download_timeout=float(os.getenv("TJMS_DOWNLOAD_TIMEOUT", "180")),
             subconta_timeout=float(os.getenv("TJMS_SUBCONTA_TIMEOUT", "180")),
@@ -77,6 +77,14 @@ class TJMSConfig:
             f"proxy_local={bool(config.proxy_local_url)}, "
             f"soap_user={bool(config.soap_user)}"
         )
+
+        # Aviso critico se credenciais estao vazias
+        if not config.soap_user or not config.soap_pass:
+            logger.error(
+                "ATENCAO: Credenciais SOAP do TJ-MS NAO configuradas! "
+                "Defina TJ_WS_USER e TJ_WS_PASS no .env (ou .env.docker.local para Docker). "
+                "Consultas ao TJ-MS retornarao dados vazios."
+            )
 
         return config
 

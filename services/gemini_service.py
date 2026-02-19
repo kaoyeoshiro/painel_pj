@@ -129,7 +129,7 @@ class GeminiService:
         Args:
             api_key: API key do Gemini (opcional, usa GEMINI_KEY do ambiente)
         """
-        self._api_key = api_key or os.getenv("GEMINI_KEY", "")
+        self._api_key = (api_key or os.getenv("GEMINI_KEY", "")).strip()
     
     @property
     def api_key(self) -> str:

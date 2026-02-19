@@ -43,7 +43,7 @@ if not DATABASE_URL.startswith("postgresql://"):
 IS_PRODUCTION = os.getenv("RAILWAY_ENVIRONMENT") == "production" or os.getenv("ENV") == "production"
 
 # SECURITY: SECRET_KEY é OBRIGATÓRIA em produção
-SECRET_KEY = os.getenv("SECRET_KEY")
+SECRET_KEY = (os.getenv("SECRET_KEY") or "").strip() or None
 if not SECRET_KEY:
     if IS_PRODUCTION:
         raise RuntimeError(
@@ -63,8 +63,8 @@ ALGORITHM = os.getenv("ALGORITHM", "HS256")
 ACCESS_TOKEN_EXPIRE_MINUTES = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES", "480"))  # 8 horas
 
 # SECURITY: Credenciais do admin inicial
-ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "admin")
-ADMIN_PASSWORD = os.getenv("ADMIN_PASSWORD")
+ADMIN_USERNAME = os.getenv("ADMIN_USERNAME", "admin").strip()
+ADMIN_PASSWORD = (os.getenv("ADMIN_PASSWORD") or "").strip() or None
 if not ADMIN_PASSWORD:
     if IS_PRODUCTION:
         raise RuntimeError(
@@ -79,14 +79,14 @@ if not ADMIN_PASSWORD:
     ADMIN_PASSWORD = "admin"
 
 # SECURITY: Senha padrão para novos usuários (devem trocar no primeiro login)
-DEFAULT_USER_PASSWORD = os.getenv("DEFAULT_USER_PASSWORD", "mudar123")
+DEFAULT_USER_PASSWORD = os.getenv("DEFAULT_USER_PASSWORD", "mudar123").strip()
 
 # ==================================================
 # CONFIGURAÇÕES DO TJ-MS (Assistência Judiciária)
 # ==================================================
-TJ_WSDL_URL = os.getenv("TJ_WSDL_URL", "https://proxytjms.fly.dev")
-TJ_WS_USER = os.getenv("TJ_WS_USER", "")
-TJ_WS_PASS = os.getenv("TJ_WS_PASS", "")
+TJ_WSDL_URL = os.getenv("TJ_WSDL_URL", "https://proxytjms.fly.dev").strip()
+TJ_WS_USER = os.getenv("TJ_WS_USER", "").strip()
+TJ_WS_PASS = os.getenv("TJ_WS_PASS", "").strip()
 if not TJ_WS_USER or not TJ_WS_PASS:
     if IS_PRODUCTION:
         raise RuntimeError(
@@ -102,7 +102,7 @@ if not TJ_WS_USER or not TJ_WS_PASS:
 # ==================================================
 # CONFIGURAÇÕES DO GOOGLE GEMINI (IA)
 # ==================================================
-GEMINI_API_KEY = os.getenv("GEMINI_KEY", "")
+GEMINI_API_KEY = os.getenv("GEMINI_KEY", "").strip()
 if not GEMINI_API_KEY:
     if IS_PRODUCTION:
         raise RuntimeError(
@@ -121,7 +121,7 @@ DEFAULT_GEMINI_MODEL = os.getenv("GEMINI_MODEL", "gemini-3-flash-preview")
 # ==================================================
 # CONFIGURAÇÕES DO OPENROUTER (IA - Legado)
 # ==================================================
-OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "")
+OPENROUTER_API_KEY = os.getenv("OPENROUTER_API_KEY", "").strip()
 OPENROUTER_ENDPOINT = "https://openrouter.ai/api/v1/chat/completions"
 DEFAULT_MODEL = os.getenv("OPENROUTER_MODEL", "google/gemini-3-flash-preview")
 FULL_REPORT_MODEL = os.getenv("FULL_REPORT_MODEL", "google/gemini-3-flash-preview")

@@ -65,9 +65,9 @@ def _normalizar_texto_pdf(texto: str) -> str:
 from services.tjms import get_config as _get_tjms_config
 
 _tjms_config = _get_tjms_config()
-URL_WSDL = _tjms_config.soap_url
-WS_USER = _tjms_config.soap_user
-WS_PASS = _tjms_config.soap_pass
+URL_WSDL = _tjms_config.soap_url.strip()
+WS_USER = _tjms_config.soap_user.strip()
+WS_PASS = _tjms_config.soap_pass.strip()
 
 # Validação das configurações
 if not URL_WSDL:
@@ -1605,15 +1605,44 @@ RESUMOS DOS DOCUMENTOS PARA ANÁLISE:
                         gerenciador.preparar_lote(resultado.documentos)
 
                 # 4. Processar documentos em PARALELO com controle de concorrência
+                TIMEOUT_POR_DOCUMENTO = 90  # 90s por documento — se não terminar, segue sem
                 print(f"[4/4] Processando documentos em paralelo com IA (max {self.max_workers} simultâneos)...")
+
+                # Log detalhado dos documentos que serao processados
+                for i, doc in enumerate(resultado.documentos):
+                    agrupado = isinstance(doc.conteudo_base64, list)
+                    tem_conteudo = bool(doc.conteudo_base64)
+                    print(
+                        f"      doc[{i}]: id={doc.id} tipo={doc.tipo_documento} "
+                        f"cat='{doc.categoria_nome}' desc='{(doc.descricao or '?')[:40]}' "
+                        f"agrupado={agrupado} tem_conteudo={tem_conteudo}"
+                    )
 
                 # Criar semáforo para limitar concorrência
                 semaphore = asyncio.Semaphore(self.max_workers)
-                
+
                 async def processar_com_semaforo(doc):
-                    """Wrapper que aplica o semáforo para controlar concorrência"""
+                    """Wrapper que aplica semáforo + timeout por documento"""
+                    doc_label = f"id={doc.id} cat='{doc.categoria_nome}'"
+                    print(f"      [>>] Iniciando: {doc_label}")
                     async with semaphore:
-                        await self._processar_documento_async(session, doc)
+                        try:
+                            await asyncio.wait_for(
+                                self._processar_documento_async(session, doc),
+                                timeout=TIMEOUT_POR_DOCUMENTO
+                            )
+                            status = "OK" if doc.resumo else ("IRRELEVANTE" if doc.irrelevante else f"ERRO: {doc.erro}")
+                            print(f"      [<<] Concluido: {doc_label} → {status}")
+                        except asyncio.TimeoutError:
+                            doc.erro = f"Timeout ({TIMEOUT_POR_DOCUMENTO}s) ao processar documento"
+                            print(f"      [!!] TIMEOUT: {doc_label}")
+                            logger.warning(
+                                "[AGENTE1] Timeout ao processar documento: id=%s tipo=%s desc='%s'",
+                                doc.id, doc.tipo_documento, doc.descricao or "?"
+                            )
+                        except Exception as e:
+                            doc.erro = f"Erro inesperado: {type(e).__name__}: {str(e)}"
+                            print(f"      [!!] EXCEPTION: {doc_label} → {doc.erro}")
 
                 # Criar tasks para processamento paralelo
                 tasks = []
@@ -1623,10 +1652,13 @@ RESUMOS DOS DOCUMENTOS PARA ANÁLISE:
                         tasks.append(task)
                     else:
                         doc.erro = "Documento sem conteúdo disponível"
+                        print(f"      [SKIP] id={doc.id} → sem conteudo")
 
+                print(f"      Iniciando gather de {len(tasks)} tasks...")
                 # Executar todos em paralelo (limitado pelo semáforo)
                 if tasks:
                     await asyncio.gather(*tasks, return_exceptions=True)
+                print(f"      [OK] gather concluido!")
 
                 # Contar sucessos
                 docs_ok = resultado.documentos_com_resumo()
@@ -1729,16 +1761,27 @@ RESUMOS DOS DOCUMENTOS PARA ANÁLISE:
                 doc.numero_processo = numero_processo_origem
 
             # 5. Processar em paralelo com controle de concorrência
+            TIMEOUT_POR_DOCUMENTO = 90  # 90s por documento — se não terminar, segue sem
             print(f"      Processando {len(docs_origem)} documentos do 1º grau (max {self.max_workers} simultâneos)...")
-            
+
             # Criar semáforo para limitar concorrência
             semaphore = asyncio.Semaphore(self.max_workers)
-            
+
             async def processar_com_semaforo(doc):
-                """Wrapper que aplica o semáforo para controlar concorrência"""
+                """Wrapper que aplica semáforo + timeout por documento"""
                 async with semaphore:
-                    await self._processar_documento_async(session, doc)
-            
+                    try:
+                        await asyncio.wait_for(
+                            self._processar_documento_async(session, doc),
+                            timeout=TIMEOUT_POR_DOCUMENTO
+                        )
+                    except asyncio.TimeoutError:
+                        doc.erro = f"Timeout ({TIMEOUT_POR_DOCUMENTO}s) ao processar documento"
+                        logger.warning(
+                            "[AGENTE1] Timeout ao processar documento origem: id=%s tipo=%s",
+                            doc.id, doc.tipo_documento
+                        )
+
             tasks = []
             for doc in docs_origem:
                 if doc.conteudo_base64:
@@ -1975,15 +2018,21 @@ REGRAS IMPORTANTES:
                 for i, conteudo_b64 in enumerate(doc.conteudo_base64):
                     try:
                         pdf_bytes = base64.b64decode(conteudo_b64)
-                        # Executa extração em thread separada para não bloquear event loop
-                        conteudo_pdf = await asyncio.to_thread(extrair_conteudo_pdf, pdf_bytes)
+                        # Executa extração em thread separada com timeout
+                        conteudo_pdf = await asyncio.wait_for(
+                            asyncio.to_thread(extrair_conteudo_pdf, pdf_bytes),
+                            timeout=30  # 30s por PDF — se travar, pula
+                        )
 
                         if conteudo_pdf.tipo == 'texto' and conteudo_pdf.conteudo:
                             textos.append(f"--- PARTE {i+1} ---\n{conteudo_pdf.conteudo}")
                             tem_texto = True
                         elif conteudo_pdf.tipo == 'imagens':
                             todas_imagens.extend(conteudo_pdf.conteudo)
-                    except:
+                    except (asyncio.CancelledError, KeyboardInterrupt):
+                        raise  # Permite cancelamento e interrupcao
+                    except Exception as e:
+                        logger.warning("[AGENTE1] Erro na parte %d/%d do doc %s: %s", i+1, len(doc.conteudo_base64), doc.id, e)
                         continue
 
                 if tem_texto:
@@ -2109,8 +2158,11 @@ REGRAS IMPORTANTES:
             else:
                 # Documento único - processamento normal
                 pdf_bytes = base64.b64decode(doc.conteudo_base64)
-                # Executa extração em thread separada para não bloquear event loop
-                conteudo_pdf = await asyncio.to_thread(extrair_conteudo_pdf, pdf_bytes)
+                # Executa extração em thread separada com timeout (PyMuPDF pode travar em PDFs corrompidos)
+                conteudo_pdf = await asyncio.wait_for(
+                    asyncio.to_thread(extrair_conteudo_pdf, pdf_bytes),
+                    timeout=30  # 30s por PDF — se travar, pula
+                )
 
                 if conteudo_pdf.tipo == 'texto':
                     doc.texto_extraido = conteudo_pdf.conteudo

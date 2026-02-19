@@ -54,6 +54,9 @@ class XMLParserTJMS:
         # Parse seguro (previne XXE)
         self._root = safe_parse_xml(self.xml_text)
 
+        # Verifica SOAP faults e erros de aplicacao
+        self._verificar_erros()
+
         # Extrai numero do processo
         numero = self._extrair_numero_processo()
 
@@ -78,6 +81,32 @@ class XMLParserTJMS:
         self._detectar_processo_origem(processo)
 
         return processo
+
+    def _verificar_erros(self) -> None:
+        """Verifica SOAP faults e erros na resposta do TJ-MS."""
+        # SOAP Fault
+        fault = self._root.find(".//soap:Fault", NS)
+        if fault is None:
+            fault = self._root.find(".//{http://schemas.xmlsoap.org/soap/envelope/}Fault")
+        if fault is not None:
+            faultstring = fault.findtext("faultstring", "")
+            logger.error("SOAP Fault do TJ-MS: %s", faultstring)
+            return
+
+        # Verifica <sucesso>false</sucesso> (resposta de erro aplicacional)
+        sucesso = self._root.findtext(".//{http://www.cnj.jus.br/tipos-servico-intercomunicacao-2.2.2}sucesso")
+        if sucesso is None:
+            # Tenta sem namespace
+            sucesso = self._root.findtext(".//sucesso")
+
+        if sucesso and sucesso.lower() == "false":
+            mensagem = (
+                self._root.findtext(".//{http://www.cnj.jus.br/tipos-servico-intercomunicacao-2.2.2}mensagem")
+                or self._root.findtext(".//mensagem")
+                or "Sem detalhes"
+            )
+            logger.error("TJ-MS retornou erro: sucesso=false, mensagem='%s'", mensagem)
+            raise ValueError(f"TJ-MS retornou erro: {mensagem}")
 
     def _extrair_numero_processo(self) -> str:
         """Extrai numero do processo do XML."""
@@ -106,7 +135,13 @@ class XMLParserTJMS:
             dados_basicos = self._root.find(".//dadosBasicos", NS)
 
         if dados_basicos is None:
-            logger.warning("dadosBasicos nao encontrado no XML")
+            # Log diagnostico com trecho do XML para depuracao
+            trecho = self.xml_text[:500] if self.xml_text else "(vazio)"
+            logger.warning(
+                "dadosBasicos nao encontrado no XML. "
+                "Possivel causa: credenciais SOAP vazias ou invalidas. "
+                "Trecho do XML: %s", trecho
+            )
             return
 
         # Classe processual
