@@ -27,10 +27,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { X, Check, AlertCircle } from 'lucide-react'
+import { X, Check, AlertCircle, ShieldCheck } from 'lucide-react'
 import { useToast } from '@/hooks/use-toast'
 import { C } from '@/lib/designTokens'
-import type { CategoriaFormData, FonteEspecial } from './types'
+import type { CategoriaFormData, FonteEspecial, TipoPecaGrupo } from './types'
 import * as categoriasApi from './api'
 import { CodigosSelectorDialog } from './CodigosSelectorDialog'
 import { IATabContent } from './IATabContent'
@@ -38,6 +38,7 @@ import { IATabContent } from './IATabContent'
 interface CategoriaEditorDialogProps {
   open: boolean
   editingId: number | null
+  groupId?: number | null
   onClose: () => void
   onSaved: () => void
 }
@@ -54,9 +55,12 @@ const INITIAL_FORM: CategoriaFormData = {
   source_type: 'code',
   source_special_type: '',
   motivo: '',
+  obrigatoriedade_ativo: false,
+  obrigatoriedade_tipos_peca: [],
+  obrigatoriedade_mensagem: '',
 }
 
-export function CategoriaEditorDialog({ open, editingId, onClose, onSaved }: CategoriaEditorDialogProps) {
+export function CategoriaEditorDialog({ open, editingId, groupId, onClose, onSaved }: CategoriaEditorDialogProps) {
   const { toast } = useToast()
   const [form, setForm] = useState<CategoriaFormData>({ ...INITIAL_FORM })
   const [loading, setLoading] = useState(false)
@@ -68,6 +72,11 @@ export function CategoriaEditorDialog({ open, editingId, onClose, onSaved }: Cat
   const [codigosSelectorOpen, setCodigosSelectorOpen] = useState(false)
   const [codigoInput, setCodigoInput] = useState('')
   const [activeTab, setActiveTab] = useState<'manual' | 'ia'>('manual')
+  // Tipos de peca do grupo (para obrigatoriedade)
+  const [tiposPecaGrupo, setTiposPecaGrupo] = useState<TipoPecaGrupo[]>([])
+  const [loadingTiposPeca, setLoadingTiposPeca] = useState(false)
+  // group_id efetivo (da categoria carregada ou do prop)
+  const [effectiveGroupId, setEffectiveGroupId] = useState<number | null>(groupId ?? null)
 
   // ID real da categoria (pode mudar apos primeiro save de criacao)
   const [realId, setRealId] = useState<number | null>(editingId)
@@ -107,6 +116,7 @@ export function CategoriaEditorDialog({ open, editingId, onClose, onSaved }: Cat
     setLoading(true)
     try {
       const cat = await categoriasApi.obter(id)
+      const obrig = cat.obrigatoriedade
       setForm({
         nome: cat.nome,
         titulo: cat.titulo,
@@ -119,7 +129,12 @@ export function CategoriaEditorDialog({ open, editingId, onClose, onSaved }: Cat
         source_type: cat.source_type,
         source_special_type: cat.source_special_type || '',
         motivo: '',
+        obrigatoriedade_ativo: obrig?.ativo ?? false,
+        obrigatoriedade_tipos_peca: obrig?.tipos_peca ?? [],
+        obrigatoriedade_mensagem: obrig?.mensagem_quando_ausente ?? '',
       })
+      // Usa group_id da categoria carregada
+      setEffectiveGroupId(cat.group_id)
     } catch {
       toast({ title: 'Erro', description: 'Erro ao carregar categoria', variant: 'destructive' })
     } finally {
@@ -135,6 +150,28 @@ export function CategoriaEditorDialog({ open, editingId, onClose, onSaved }: Cat
       // Silencioso — fontes especiais sao opcionais
     }
   }
+
+  // Carrega tipos de peca quando group_id efetivo muda
+  useEffect(() => {
+    if (!open) return
+    const gid = effectiveGroupId ?? groupId
+    if (!gid) {
+      setTiposPecaGrupo([])
+      return
+    }
+    setLoadingTiposPeca(true)
+    categoriasApi.fetchTiposPecaGrupo(gid)
+      .then(setTiposPecaGrupo)
+      .catch(() => setTiposPecaGrupo([]))
+      .finally(() => setLoadingTiposPeca(false))
+  }, [open, effectiveGroupId, groupId])
+
+  // Sincroniza effectiveGroupId com prop
+  useEffect(() => {
+    if (!editingId && groupId) {
+      setEffectiveGroupId(groupId)
+    }
+  }, [editingId, groupId])
 
   const updateField = <K extends keyof CategoriaFormData>(key: K, value: CategoriaFormData[K]) => {
     setForm(prev => ({ ...prev, [key]: value }))
@@ -206,6 +243,15 @@ export function CategoriaEditorDialog({ open, editingId, onClose, onSaved }: Cat
     setSaveStatus('idle')
 
     try {
+      // Monta obrigatoriedade se ativa, senao null
+      const obrigPayload = form.obrigatoriedade_ativo
+        ? {
+            ativo: true,
+            tipos_peca: form.obrigatoriedade_tipos_peca,
+            mensagem_quando_ausente: form.obrigatoriedade_mensagem.trim(),
+          }
+        : null
+
       if (realId) {
         // Atualizar
         await categoriasApi.atualizar(realId, {
@@ -218,6 +264,7 @@ export function CategoriaEditorDialog({ open, editingId, onClose, onSaved }: Cat
           ativo: form.ativo,
           source_type: form.source_type,
           source_special_type: form.source_type === 'special' ? form.source_special_type || null : null,
+          obrigatoriedade: obrigPayload,
           motivo: form.motivo.trim() || 'Atualizacao via interface',
         })
       } else {
@@ -233,6 +280,7 @@ export function CategoriaEditorDialog({ open, editingId, onClose, onSaved }: Cat
           ativo: form.ativo,
           source_type: form.source_type,
           source_special_type: form.source_type === 'special' ? form.source_special_type || null : null,
+          obrigatoriedade: obrigPayload,
         })
         // Apos criar, muda para modo edicao com o ID retornado
         setRealId(created.id)
@@ -550,6 +598,76 @@ export function CategoriaEditorDialog({ open, editingId, onClose, onSaved }: Cat
                   data-testid="textarea-instrucoes"
                 />
               </div>
+
+              {/* === Obrigatoriedade === */}
+              <fieldset className="space-y-4 border rounded-lg p-4" style={{ borderColor: C.gray200 }}>
+                <legend className="text-sm font-semibold px-2 flex items-center gap-1.5" style={{ color: C.text700 }}>
+                  <ShieldCheck className="h-4 w-4" />
+                  Obrigatoriedade
+                </legend>
+
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={form.obrigatoriedade_ativo}
+                    onChange={e => updateField('obrigatoriedade_ativo', e.target.checked)}
+                    className="h-4 w-4"
+                    data-testid="switch-obrigatoriedade"
+                  />
+                  <span className="text-sm" style={{ color: C.text700 }}>
+                    Categoria obrigatoria neste grupo
+                  </span>
+                </label>
+
+                {form.obrigatoriedade_ativo && (
+                  <div className="space-y-4 pl-2 border-l-2 ml-5" style={{ borderColor: C.navy700 }}>
+                    {/* Tipos de peca */}
+                    <div>
+                      <Label className="text-sm font-medium">Para quais tipos de peca</Label>
+                      {loadingTiposPeca ? (
+                        <p className="text-xs mt-1" style={{ color: C.text400 }}>Carregando tipos de peca...</p>
+                      ) : tiposPecaGrupo.length === 0 ? (
+                        <p className="text-xs mt-1" style={{ color: C.text400 }}>
+                          Nenhum tipo de peca encontrado no grupo. Crie modulos tipo &quot;peca&quot; primeiro.
+                        </p>
+                      ) : (
+                        <div className="flex flex-wrap gap-3 mt-2" data-testid="tipos-peca-checkboxes">
+                          {tiposPecaGrupo.map(tp => (
+                            <label key={tp.nome} className="flex items-center gap-2 cursor-pointer">
+                              <input
+                                type="checkbox"
+                                className="h-4 w-4"
+                                checked={form.obrigatoriedade_tipos_peca.includes(tp.nome)}
+                                onChange={(e) => {
+                                  if (e.target.checked) {
+                                    updateField('obrigatoriedade_tipos_peca', [...form.obrigatoriedade_tipos_peca, tp.nome])
+                                  } else {
+                                    updateField('obrigatoriedade_tipos_peca', form.obrigatoriedade_tipos_peca.filter(n => n !== tp.nome))
+                                  }
+                                }}
+                              />
+                              <span className="text-sm" style={{ color: C.text700 }}>{tp.titulo}</span>
+                            </label>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Mensagem quando ausente */}
+                    <div>
+                      <Label htmlFor="editor-obrig-mensagem">Mensagem quando documento ausente</Label>
+                      <Textarea
+                        id="editor-obrig-mensagem"
+                        value={form.obrigatoriedade_mensagem}
+                        onChange={e => updateField('obrigatoriedade_mensagem', e.target.value)}
+                        placeholder="Ex: Parecer NATJus nao encontrado nos autos do processo."
+                        rows={2}
+                        data-testid="textarea-obrig-mensagem"
+                      />
+                    </div>
+                  </div>
+                )}
+              </fieldset>
 
               {/* === Opcoes === */}
               <div className="flex items-center gap-6">

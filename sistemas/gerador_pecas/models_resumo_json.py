@@ -103,6 +103,12 @@ class CategoriaResumoJSON(Base):
     # Usuário que gerou/aprovou o JSON via IA
     json_gerado_por = Column(Integer, ForeignKey("users.id"), nullable=True)
 
+    # === OBRIGATORIEDADE ===
+    # Configuração genérica de obrigatoriedade por categoria.
+    # Formato: {"ativo": bool, "tipos_peca": [str], "mensagem_quando_ausente": str}
+    # O grupo é implícito (vem do group_id), os códigos de documento também (codigos_documento).
+    obrigatoriedade = Column(JSON, nullable=True, default=None)
+
     # Se é a categoria residual (fallback para docs não categorizados)
     is_residual = Column(Boolean, default=False, index=True)
 

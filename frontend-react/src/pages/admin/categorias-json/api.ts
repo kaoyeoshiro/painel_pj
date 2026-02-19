@@ -11,6 +11,7 @@ import type {
   CodigoDisponivel,
   FonteEspecial,
   CodigosIgnoradosResponse,
+  TipoPecaGrupo,
   ExtractionQuestion,
   ExtractionQuestionCreate,
   ExtractionQuestionUpdate,
@@ -76,6 +77,17 @@ export async function getCodigosIgnorados(): Promise<CodigosIgnoradosResponse> {
 /** Atualiza codigos ignorados na extracao JSON. */
 export async function setCodigosIgnorados(codigos: number[]): Promise<{ success: boolean; codigos: number[] }> {
   return adminApi.put<{ success: boolean; codigos: number[] }>(`${BASE}/config/codigos-ignorados`, { codigos })
+}
+
+// ============================================================================
+// API DE TIPOS DE PECA POR GRUPO (router_prompts.py)
+// ============================================================================
+
+const PROMPTS = '/admin/api/prompts-modulos'
+
+/** Lista tipos de peca disponiveis para um grupo (PromptModulo tipo='peca'). */
+export async function fetchTiposPecaGrupo(groupId: number): Promise<TipoPecaGrupo[]> {
+  return adminApi.get<TipoPecaGrupo[]>(`${PROMPTS}/grupos/${groupId}/tipos-peca`)
 }
 
 // ============================================================================

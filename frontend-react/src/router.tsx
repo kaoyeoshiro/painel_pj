@@ -73,6 +73,7 @@ const HistoricoPedidoCalculoPage = lazyWithRetry(() => import('@/pages/admin/his
 const HistoricoPrestacaoContasPage = lazyWithRetry(() => import('@/pages/admin/historico-prestacao-contas/HistoricoPrestacaoContasPage').then(m => ({ default: m.HistoricoPrestacaoContasPage as ComponentType<unknown> })))
 const ModulosTipoPecaPage = lazyWithRetry(() => import('@/pages/admin/modulos-tipo-peca/ModulosTipoPecaPage').then(m => ({ default: m.ModulosTipoPecaPage as ComponentType<unknown> })))
 const ConfigPecasPage = lazyWithRetry(() => import('@/pages/admin/config-pecas/ConfigPecasPage').then(m => ({ default: m.ConfigPecasPage as ComponentType<unknown> })))
+const FiltroDocumentosPage = lazyWithRetry(() => import('@/pages/admin/filtro-documentos/FiltroDocumentosPage').then(m => ({ default: m.FiltroDocumentosPage as ComponentType<unknown> })))
 const TesteAtivacaoPage = lazyWithRetry(() => import('@/pages/admin/teste-ativacao/TesteAtivacaoPage').then(m => ({ default: m.TesteAtivacaoPage as ComponentType<unknown> })))
 const TesteCategoriasPage = lazyWithRetry(() => import('@/pages/admin/teste-categorias/TesteCategoriasPage').then(m => ({ default: m.TesteCategoriasPage as ComponentType<unknown> })))
 const TjmsDocsPage = lazyWithRetry(() => import('@/pages/admin/tjms-docs/TjmsDocsPage').then(m => ({ default: m.TjmsDocsPage as ComponentType<unknown> })))
@@ -307,6 +308,12 @@ const adminConfigPecasRoute = createRoute({
   component: ConfigPecasPage,
 })
 
+const adminFiltroDocumentosRoute = createRoute({
+  getParentRoute: () => layoutRoute,
+  path: '/admin/filtro-documentos',
+  component: FiltroDocumentosPage,
+})
+
 const adminTesteAtivacaoRoute = createRoute({
   getParentRoute: () => layoutRoute,
   path: '/admin/teste-ativacao',
@@ -394,6 +401,7 @@ const routeTree = rootRoute.addChildren([
     adminHistoricoPrestacaoContasAliasRoute,
     adminModulosTipoPecaRoute,
     adminConfigPecasRoute,
+    adminFiltroDocumentosRoute,
     adminTesteAtivacaoRoute,
     adminTesteAtivacaoAliasRoute,
     adminTesteCategoriasRoute,

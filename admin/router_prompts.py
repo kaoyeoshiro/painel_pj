@@ -356,6 +356,39 @@ async def listar_tipos_peca(
     ]
 
 
+@router.get("/grupos/{group_id}/tipos-peca")
+async def listar_tipos_peca_por_grupo(
+    group_id: int,
+    current_user: User = Depends(get_current_active_user),
+    modulo_repo: PromptModuloRepository = Depends(get_prompt_modulo_repo),
+):
+    """
+    Lista tipos de peca disponiveis para um grupo especifico.
+
+    Retorna nomes normalizados dos modulos tipo='peca' ativos no grupo,
+    usados para configurar obrigatoriedade em categorias de resumo JSON.
+    """
+    modulos_peca = (
+        modulo_repo.query()
+        .filter(
+            PromptModulo.tipo == "peca",
+            PromptModulo.ativo == True,
+            PromptModulo.group_id == group_id,
+        )
+        .order_by(PromptModulo.ordem)
+        .all()
+    )
+
+    return [
+        {
+            "nome": m.nome,
+            "titulo": m.titulo,
+            "categoria": m.categoria,
+        }
+        for m in modulos_peca
+    ]
+
+
 @router.get("/resumo-configuracao-tipos-peca")
 async def resumo_configuracao_tipos_peca(
     group_id: Optional[int] = None,

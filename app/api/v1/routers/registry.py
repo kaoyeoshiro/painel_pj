@@ -26,6 +26,7 @@ def register_v1_routers(app):
     # ==================================================
     from app.api.v1.routers.admin import (
         dashboard_router,
+        filtro_documentos_router,
         gemini_logs_router,
         performance_router,
         prompts_router,
@@ -36,6 +37,7 @@ def register_v1_routers(app):
     app.include_router(dashboard_router)
     app.include_router(performance_router)
     app.include_router(gemini_logs_router)
+    app.include_router(filtro_documentos_router, prefix="/admin/api")
 
     # ==================================================
     # SISTEMAS

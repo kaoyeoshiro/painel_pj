@@ -222,6 +222,7 @@ export function CategoriasJsonPage() {
       <CategoriaEditorDialog
         open={editorOpen}
         editingId={editingId}
+        groupId={selectedGroupId}
         onClose={handleEditorClose}
         onSaved={handleSaved}
       />

@@ -277,8 +277,28 @@ def piece_requires_parecer(
     tipo_peca: str | None,
     config: ParecerNatjusConfig,
     group_slug: str | None = None,
+    *,
+    db=None,
+    group_id: int | None = None,
 ) -> bool:
-    # Se group_slug fornecido, verificar se o grupo exige parecer
+    """
+    Verifica se o tipo de peca exige documentos obrigatorios.
+
+    Tenta primeiro o modelo novo (obrigatoriedade em CategoriaResumoJSON).
+    Se nenhuma obrigatoriedade estiver configurada, usa modelo legado (configuracoes_ia).
+    """
+    # Tentar modelo novo (obrigatoriedade)
+    if db is not None and group_id:
+        try:
+            from sistemas.gerador_pecas.services_obrigatoriedade import tipo_peca_tem_obrigatoriedade
+
+            resultado_novo = tipo_peca_tem_obrigatoriedade(tipo_peca, group_id, db)
+            if resultado_novo is not None:
+                return resultado_novo
+        except Exception as exc:
+            logger.warning("[PARECER-NATJUS] Erro ao verificar obrigatoriedade (novo modelo): %s", exc)
+
+    # Fallback: modelo legado (configuracoes_ia)
     if group_slug is not None and not group_requires_parecer(group_slug, config):
         return False
 
@@ -327,7 +347,29 @@ def evaluate_parecer_status(
     config: ParecerNatjusConfig,
     has_user_upload: bool = False,
     group_slug: str | None = None,
+    *,
+    db=None,
+    group_id: int | None = None,
 ) -> Dict[str, Any]:
+    """
+    Avalia status de documentos obrigatorios.
+
+    Tenta primeiro o modelo novo (obrigatoriedade em CategoriaResumoJSON).
+    Se nenhuma obrigatoriedade estiver configurada, usa modelo legado.
+    """
+    # Tentar modelo novo (obrigatoriedade)
+    if db is not None and group_id:
+        resultado_novo = evaluate_parecer_via_obrigatoriedade(
+            tipo_peca, documentos, group_id, db,
+        )
+        if resultado_novo is not None:
+            # Incorporar upload do usuario
+            if has_user_upload:
+                resultado_novo["parecer_found"] = True
+                resultado_novo["parecer_source"] = "user_upload"
+            return resultado_novo
+
+    # Fallback: modelo legado
     required = piece_requires_parecer(tipo_peca, config, group_slug=group_slug)
     matched_codes = find_matching_document_codes(documentos, config.document_codes)
 
@@ -360,6 +402,67 @@ def evaluate_parecer_status(
         "config_error": config_error,
         "config_error_message": config_error_message,
     }
+
+
+def evaluate_parecer_via_obrigatoriedade(
+    tipo_peca: str | None,
+    documentos: Sequence[Any] | None,
+    group_id: int | None,
+    db,
+) -> Dict[str, Any] | None:
+    """
+    Tenta avaliar obrigatoriedade de parecer usando o novo modelo
+    (coluna obrigatoriedade em CategoriaResumoJSON).
+
+    Retorna dict compativel com evaluate_parecer_status() se encontrou
+    configuracao de obrigatoriedade; retorna None se nenhuma categoria
+    tem obrigatoriedade configurada (fallback para modelo legado).
+    """
+    if not group_id:
+        return None
+
+    try:
+        from sistemas.gerador_pecas.services_obrigatoriedade import check_requisitos
+
+        resultados = check_requisitos(tipo_peca, group_id, documentos, db)
+        if not resultados:
+            # Nenhuma categoria com obrigatoriedade configurada para este tipo —
+            # pode significar que nao ha obrigatoriedade OU que nao foi migrado.
+            # Retorna None para que o chamador use fallback legado.
+            return None
+
+        # Consolida resultados (compatibilidade com formato de evaluate_parecer_status)
+        todas_satisfeitas = all(r["satisfeito"] for r in resultados)
+        codigos_encontrados = []
+        codigos_esperados = []
+        for r in resultados:
+            codigos_encontrados.extend(r.get("codigos_encontrados", []))
+            codigos_esperados.extend(r.get("codigos_esperados", []))
+
+        found = len(codigos_encontrados) > 0
+        source = "process_docs" if found else "none"
+
+        return {
+            "parecer_required": True,
+            "parecer_found": found,
+            "parecer_source": source,
+            "matched_document_codes": sorted(set(codigos_encontrados)),
+            "parecer_document_codes": sorted(set(codigos_esperados)),
+            "parecer_required_for_piece_types": [
+                tp for r in resultados for tp in r.get("tipos_peca", [])
+            ] if resultados else [],
+            "group_id": group_id,
+            "config_error": False,
+            "config_error_message": None,
+            "obrigatoriedade_resultados": resultados,
+            "via_obrigatoriedade": True,
+        }
+    except Exception as exc:
+        logger.warning(
+            "[PARECER-NATJUS] Erro ao avaliar obrigatoriedade via novo modelo: %s",
+            exc,
+        )
+        return None
 
 
 def build_parecer_audit_payload(

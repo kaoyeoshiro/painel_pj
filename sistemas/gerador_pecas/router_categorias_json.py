@@ -31,6 +31,13 @@ router = APIRouter(prefix="/categorias-resumo-json", tags=["Categorias Resumo JS
 # Schemas
 # ==========================================
 
+class ObrigatoriedadeConfig(BaseModel):
+    """Configuracao de obrigatoriedade de uma categoria de documento."""
+    ativo: bool = False
+    tipos_peca: List[str] = []
+    mensagem_quando_ausente: str = ""
+
+
 class CategoriaResumoJSONBase(BaseModel):
     nome: str
     titulo: str
@@ -51,6 +58,8 @@ class CategoriaResumoJSONBase(BaseModel):
     # Fonte especial (alternativa a códigos)
     source_type: str = "code"  # "code" ou "special"
     source_special_type: Optional[str] = None  # Ex: "peticao_inicial"
+    # Obrigatoriedade (generico)
+    obrigatoriedade: Optional[ObrigatoriedadeConfig] = None
 
     @field_validator('formato_json')
     @classmethod
@@ -88,6 +97,8 @@ class CategoriaResumoJSONUpdate(BaseModel):
     source_special_type: Optional[str] = None
     # Origem do JSON
     json_gerado_por_ia: Optional[bool] = None
+    # Obrigatoriedade (generico)
+    obrigatoriedade: Optional[ObrigatoriedadeConfig] = None
     motivo: str  # Obrigatório para rastrear alterações
     # Sincronização de variáveis (SEGURANÇA: desativado por padrão)
     sincronizar_variaveis: bool = False  # Se True, desativa variáveis órfãs
@@ -134,6 +145,8 @@ class CategoriaResumoJSONResponse(BaseModel):
     json_gerado_por_ia: bool = False  # Se JSON foi gerado por IA
     json_gerado_em: Optional[datetime] = None
     json_gerado_por: Optional[int] = None
+    # Obrigatoriedade (generico)
+    obrigatoriedade: Optional[Dict[str, Any]] = None
     # Auditoria
     criado_por: Optional[int]
     criado_em: datetime
@@ -458,7 +471,7 @@ async def atualizar_categoria(
                 )
     
     # Atualiza categoria
-    update_data = categoria_data.model_dump(exclude_unset=True, exclude={"motivo"})
+    update_data = categoria_data.model_dump(exclude_unset=True, exclude={"motivo", "sincronizar_variaveis"})
     for field, value in update_data.items():
         setattr(categoria, field, value)
     

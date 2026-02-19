@@ -928,7 +928,7 @@ async def processar_processo_stream(
                 
                 # === EARLY PARECER CHECK (pré-Agent 1) ===
                 parecer_config_early = load_parecer_natjus_config(db, use_cache=False)
-                if piece_requires_parecer(tipo_peca_inicial, parecer_config_early, group_slug=grupo.slug) and not req.parecer_upload_id and req.parecer_user_choice_when_missing != "continue_without":
+                if piece_requires_parecer(tipo_peca_inicial, parecer_config_early, group_slug=grupo.slug, db=db, group_id=grupo.id) and not req.parecer_upload_id and req.parecer_user_choice_when_missing != "continue_without":
                     yield stream_helper.format_info('Verificando documentos do processo...')
                     try:
                         docs_metadata = await orq.agente1.consultar_codigos_documentos(cnj_limpo)
@@ -938,6 +938,8 @@ async def processar_processo_stream(
                             config=parecer_config_early,
                             has_user_upload=False,
                             group_slug=grupo.slug,
+                            db=db,
+                            group_id=grupo.id,
                         )
                         if parecer_status_early.get("parecer_required") and not parecer_status_early.get("parecer_found"):
                             logger.warning(
@@ -1061,6 +1063,8 @@ async def processar_processo_stream(
                     config=parecer_config,
                     has_user_upload=bool(parecer_upload_metadata),
                     group_slug=grupo.slug,
+                    db=db,
+                    group_id=grupo.id,
                 )
                 parecer_audit_payload = build_parecer_audit_payload(
                     parecer_status,
@@ -3084,7 +3088,7 @@ async def curation_preview(
         # === EARLY PARECER CHECK (pré-Agent 1, curadoria) ===
         parecer_config_early = load_parecer_natjus_config(db, use_cache=False)
         if (
-            piece_requires_parecer(req.tipo_peca, parecer_config_early, group_slug=grupo.slug)
+            piece_requires_parecer(req.tipo_peca, parecer_config_early, group_slug=grupo.slug, db=db, group_id=grupo.id)
             and req.parecer_user_choice_when_missing != "continue_without"
             and not req.parecer_upload_id
         ):
@@ -3096,6 +3100,8 @@ async def curation_preview(
                     config=parecer_config_early,
                     has_user_upload=False,
                     group_slug=grupo.slug,
+                    db=db,
+                    group_id=grupo.id,
                 )
                 if parecer_status_early.get("parecer_required") and not parecer_status_early.get("parecer_found"):
                     logger.warning(
@@ -3161,6 +3167,8 @@ async def curation_preview(
             config=parecer_config,
             has_user_upload=bool(parecer_upload_metadata),
             group_slug=grupo.slug,
+            db=db,
+            group_id=grupo.id,
         )
 
         if parecer_status.get("config_error"):
