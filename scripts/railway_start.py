@@ -10,6 +10,13 @@ import sys
 import os
 import time
 
+# Garante que o diretorio raiz do projeto esta no sys.path.
+# Quando Python executa scripts/railway_start.py, sys.path[0] aponta
+# para /app/scripts/ — sem este ajuste, `import config` e `import main` falham.
+APP_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+if APP_DIR not in sys.path:
+    sys.path.insert(0, APP_DIR)
+
 def log(level: str, msg: str):
     """Log com flush imediato para garantir visibilidade no Railway."""
     print(f"[{level}] {msg}", flush=True)
