@@ -19,7 +19,7 @@ from datetime import datetime
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy.orm import Session
 from app.repositories.sqlalchemy.session_ops import session_query
-from sqlalchemy import func
+from sqlalchemy import func, or_
 
 from database.connection import get_db
 from auth.dependencies import get_current_active_user
@@ -50,6 +50,7 @@ router = APIRouter()
 @router.get("/variaveis", response_model=List[ExtractionVariableResponse])
 async def listar_variaveis(
     categoria_id: Optional[int] = Query(None, description="Filtrar por categoria"),
+    group_id: Optional[int] = Query(None, description="Filtrar por grupo"),
     source_question_id: Optional[int] = Query(None, description="Filtrar por pergunta de origem"),
     tipo: Optional[str] = Query(None, description="Filtrar por tipo"),
     busca: Optional[str] = Query(None, description="Buscar por slug ou label"),
@@ -110,6 +111,11 @@ async def listar_variaveis(
 
     if apenas_ativos:
         query = query.filter(ExtractionVariable.ativo == True)
+
+    if group_id:
+        query = query.filter(
+            or_(CategoriaResumoJSON.group_id == group_id, ExtractionVariable.categoria_id.is_(None))
+        )
 
     # Ordena e pagina
     query = query.order_by(
@@ -295,6 +301,7 @@ async def listar_variaveis(
 
 @router.get("/variaveis/resumo")
 async def resumo_variaveis(
+    group_id: Optional[int] = Query(None, description="Filtrar por grupo"),
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
@@ -313,55 +320,71 @@ async def resumo_variaveis(
         from .services_process_variables import ProcessVariableResolver
         variaveis_processo = ProcessVariableResolver.get_all_definitions()
         # Total de variáveis
-        total = session_query(db, ExtractionVariable).filter(ExtractionVariable.ativo == True).count()
+        total_q = session_query(db, ExtractionVariable).filter(ExtractionVariable.ativo == True)
+        if group_id:
+            total_q = total_q.outerjoin(
+                CategoriaResumoJSON, ExtractionVariable.categoria_id == CategoriaResumoJSON.id
+            ).filter(or_(CategoriaResumoJSON.group_id == group_id, ExtractionVariable.categoria_id.is_(None)))
+        total = total_q.count()
 
         # Por tipo
-        tipos = session_query(db, 
+        tipos_q = session_query(db,
             ExtractionVariable.tipo,
             func.count(ExtractionVariable.id)
-        ).filter(
-            ExtractionVariable.ativo == True
-        ).group_by(ExtractionVariable.tipo).all()
+        ).filter(ExtractionVariable.ativo == True)
+        if group_id:
+            tipos_q = tipos_q.outerjoin(
+                CategoriaResumoJSON, ExtractionVariable.categoria_id == CategoriaResumoJSON.id
+            ).filter(or_(CategoriaResumoJSON.group_id == group_id, ExtractionVariable.categoria_id.is_(None)))
+        tipos = tipos_q.group_by(ExtractionVariable.tipo).all()
 
         distribuicao_tipos = {t[0]: t[1] for t in tipos}
 
         # Variáveis com uso em prompts (regras determinísticas)
         # Nota: usamos query apenas pelo ID para evitar erro de DISTINCT em colunas JSON no PostgreSQL
-        variaveis_com_uso_prompts = session_query(db, ExtractionVariable.id).join(
+        vcu_q = session_query(db, ExtractionVariable.id).join(
             PromptVariableUsage,
             PromptVariableUsage.variable_slug == ExtractionVariable.slug
-        ).filter(
-            ExtractionVariable.ativo == True
-        ).distinct().count()
+        ).filter(ExtractionVariable.ativo == True)
+        if group_id:
+            vcu_q = vcu_q.outerjoin(
+                CategoriaResumoJSON, ExtractionVariable.categoria_id == CategoriaResumoJSON.id
+            ).filter(or_(CategoriaResumoJSON.group_id == group_id, ExtractionVariable.categoria_id.is_(None)))
+        variaveis_com_uso_prompts = vcu_q.distinct().count()
 
         # Variáveis em uso no JSON de categorias com json_gerado_por_ia=True
-        variaveis_em_uso_json = session_query(db, ExtractionVariable.id).join(
+        vej_q = session_query(db, ExtractionVariable.id).join(
             CategoriaResumoJSON,
             ExtractionVariable.categoria_id == CategoriaResumoJSON.id
-        ).filter(
-            ExtractionVariable.ativo == True,
-            CategoriaResumoJSON.json_gerado_por_ia == True
-        ).distinct().count()
+        ).filter(ExtractionVariable.ativo == True, CategoriaResumoJSON.json_gerado_por_ia == True)
+        if group_id:
+            vej_q = vej_q.filter(CategoriaResumoJSON.group_id == group_id)
+        variaveis_em_uso_json = vej_q.distinct().count()
 
         # Total de variáveis em uso (união dos dois conjuntos)
         # Para evitar contagem dupla, usamos uma abordagem diferente
         variaveis_ids_em_uso = set()
 
         # IDs de variáveis usadas em prompts
-        ids_prompts = session_query(db, ExtractionVariable.id).join(
+        ids_prompts_q = session_query(db, ExtractionVariable.id).join(
             PromptVariableUsage,
             PromptVariableUsage.variable_slug == ExtractionVariable.slug
-        ).filter(ExtractionVariable.ativo == True).distinct().all()
+        ).filter(ExtractionVariable.ativo == True)
+        if group_id:
+            ids_prompts_q = ids_prompts_q.outerjoin(
+                CategoriaResumoJSON, ExtractionVariable.categoria_id == CategoriaResumoJSON.id
+            ).filter(or_(CategoriaResumoJSON.group_id == group_id, ExtractionVariable.categoria_id.is_(None)))
+        ids_prompts = ids_prompts_q.distinct().all()
         variaveis_ids_em_uso.update(id[0] for id in ids_prompts)
 
         # IDs de variáveis em uso no JSON
-        ids_json = session_query(db, ExtractionVariable.id).join(
+        ids_json_q = session_query(db, ExtractionVariable.id).join(
             CategoriaResumoJSON,
             ExtractionVariable.categoria_id == CategoriaResumoJSON.id
-        ).filter(
-            ExtractionVariable.ativo == True,
-            CategoriaResumoJSON.json_gerado_por_ia == True
-        ).distinct().all()
+        ).filter(ExtractionVariable.ativo == True, CategoriaResumoJSON.json_gerado_por_ia == True)
+        if group_id:
+            ids_json_q = ids_json_q.filter(CategoriaResumoJSON.group_id == group_id)
+        ids_json = ids_json_q.distinct().all()
         variaveis_ids_em_uso.update(id[0] for id in ids_json)
 
         variaveis_com_uso = len(variaveis_ids_em_uso)

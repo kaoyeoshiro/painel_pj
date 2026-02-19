@@ -92,9 +92,9 @@ const ADMIN_META_BY_PATH: Record<string, AdminRouteMeta> = {
     title: 'Integracao TJMS',
     subtitle: 'Documentacao e sincronizacao',
   },
-  '/admin/config-pecas': {
-    title: 'Configuracao de Tipos de Peca',
-    subtitle: 'Categorias por tipo de peca juridica',
+  '/admin/filtro-documentos': {
+    title: 'Filtro de Documentos',
+    subtitle: 'Categorias de documento e tipos de peca para filtragem do Agente 1',
   },
 }
 

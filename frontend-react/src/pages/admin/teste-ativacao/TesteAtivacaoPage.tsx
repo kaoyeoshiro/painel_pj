@@ -29,6 +29,7 @@ import {
 import { BreadcrumbBar } from '@/components/layout/BreadcrumbBar'
 import { ContentArea } from '@/components/layout/ContentArea'
 import { AdminSubNav } from '@/components/layout'
+import { GroupSelector } from '@/components/ui/GroupSelector'
 import { C } from '@/lib/designTokens'
 
 interface TipoPeca {
@@ -91,6 +92,8 @@ type ActiveTab = 'variaveis-extracao' | 'variaveis-processo' | 'resultados'
 export function TesteAtivacaoPage() {
   const { toast } = useToast()
 
+  const [selectedGroupId, setSelectedGroupId] = useState<number | null>(null)
+
   const [tiposPeca, setTiposPeca] = useState<TipoPeca[]>([])
   const [tipoPecaSelecionado, setTipoPecaSelecionado] = useState('')
 
@@ -128,17 +131,21 @@ export function TesteAtivacaoPage() {
   const { html: relatorioHtml } = useMarkdown(relatorioConteudo)
 
   useEffect(() => {
-    void carregarDadosIniciais()
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- Carrega apenas na montagem
-  }, [])
+    if (selectedGroupId) {
+      void carregarDadosIniciais()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- Recarrega quando grupo muda
+  }, [selectedGroupId])
 
   async function carregarDadosIniciais() {
+    if (!selectedGroupId) return
     setLoading(true)
     try {
+      const groupParam = `group_id=${selectedGroupId}`
       const [tipos, cats, vars, cs] = await Promise.all([
         adminApi.get<TipoPeca[]>('/admin/api/teste-ativacao/tipos-peca'),
-        adminApi.get<CategoriaExtracao[]>('/admin/api/teste-ativacao/categorias-extracao'),
-        adminApi.get<Variavel[]>('/admin/api/teste-ativacao/variaveis-processo'),
+        adminApi.get<CategoriaExtracao[]>(`/admin/api/teste-ativacao/categorias-extracao?${groupParam}`),
+        adminApi.get<Variavel[]>(`/admin/api/teste-ativacao/variaveis-processo?${groupParam}`),
         adminApi.get<Cenario[]>('/admin/api/teste-ativacao/cenarios'),
       ])
 
@@ -196,6 +203,7 @@ export function TesteAtivacaoPage() {
         categorias_extracao: Array.from(categoriasSelecionadas),
         variaveis: valoresVariaveis,
         descricao_situacao: descricaoSituacao || undefined,
+        group_id: selectedGroupId,
       })
       setResultado(data)
       setActiveTab('resultados')
@@ -221,6 +229,7 @@ export function TesteAtivacaoPage() {
       const data = await adminApi.post<Record<string, string | boolean>>('/admin/api/teste-ativacao/gerar-variaveis-ia', {
         tipo_peca: tipoPecaSelecionado,
         categorias: Array.from(categoriasSelecionadas),
+        group_id: selectedGroupId,
       })
       setValoresVariaveis((prev) => ({ ...prev, ...data }))
       toast({ title: 'Variaveis geradas via IA' })
@@ -426,6 +435,12 @@ export function TesteAtivacaoPage() {
 
       <ContentArea className="space-y-6">
         <AdminSubNav />
+
+        <GroupSelector
+          selectedGroupId={selectedGroupId}
+          onGroupChange={setSelectedGroupId}
+        />
+
         <div className="grid grid-cols-12 gap-4">
           <div className="col-span-12 lg:col-span-3 space-y-4">
             <Card className="bg-white rounded-2xl shadow-sm overflow-hidden" style={{ borderColor: C.gray200 }}>

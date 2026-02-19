@@ -10,6 +10,7 @@ import { useToast } from '@/components/ui/toast'
 import { Search, Hash, Link2, Unlink2, Layers3, BookOpen, HelpCircle, Plus, Users, ChevronLeft, ChevronRight, Variable } from 'lucide-react'
 import { BreadcrumbBar } from '@/components/layout/BreadcrumbBar'
 import { ContentArea } from '@/components/layout/ContentArea'
+import { GroupSelector } from '@/components/ui/GroupSelector'
 import { C } from '@/lib/designTokens'
 import { AdminSubNav } from '@/components/layout/AdminSubNav'
 
@@ -39,6 +40,8 @@ interface Categoria {
 export function VariaveisPage() {
   const { toast } = useToast()
 
+  const [selectedGroupId, setSelectedGroupId] = useState<number | null>(null)
+
   const [resumo, setResumo] = useState<VariavelResumo | null>(null)
   const [variaveis, setVariaveis] = useState<Variavel[]>([])
   const [categorias, setCategorias] = useState<Categoria[]>([])
@@ -53,23 +56,26 @@ export function VariaveisPage() {
   const [ajudaOpen, setAjudaOpen] = useState(false)
 
   useEffect(() => {
-    void carregarDados()
+    if (selectedGroupId) {
+      void carregarDados()
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- Recarrega quando filtros mudam; carregarDados é estável
-  }, [busca, tipoFiltro, categoriaFiltro, showInactive])
+  }, [busca, tipoFiltro, categoriaFiltro, showInactive, selectedGroupId])
 
   async function carregarDados() {
+    if (!selectedGroupId) return
     setLoading(true)
     try {
-      const params = new URLSearchParams({ limit: '200', offset: '0' })
+      const params = new URLSearchParams({ limit: '200', offset: '0', group_id: String(selectedGroupId) })
       if (busca) params.append('busca', busca)
       if (tipoFiltro) params.append('tipo', tipoFiltro)
       if (categoriaFiltro) params.append('categoria_id', categoriaFiltro)
       if (showInactive) params.append('incluir_inativas', 'true')
 
       const [resumoData, variaveisData, categoriasData] = await Promise.all([
-        adminApi.get<VariavelResumo>('/admin/api/extraction/variaveis/resumo'),
+        adminApi.get<VariavelResumo>(`/admin/api/extraction/variaveis/resumo?group_id=${selectedGroupId}`),
         adminApi.get<Variavel[]>(`/admin/api/extraction/variaveis?${params.toString()}`),
-        adminApi.get<Categoria[]>('/admin/api/categorias-resumo-json?apenas_com_variaveis=true'),
+        adminApi.get<Categoria[]>(`/admin/api/categorias-resumo-json?apenas_com_variaveis=true&group_id=${selectedGroupId}`),
       ])
 
       setResumo(resumoData)
@@ -130,6 +136,11 @@ export function VariaveisPage() {
 
       <ContentArea>
         <AdminSubNav />
+
+        <GroupSelector
+          selectedGroupId={selectedGroupId}
+          onGroupChange={setSelectedGroupId}
+        />
 
         <div>
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">

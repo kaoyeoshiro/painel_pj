@@ -22,6 +22,18 @@ vi.mock('@/components/ui/toast', () => ({
   }),
 }))
 
+// Mock useGruposDisponiveis (usado pelo GroupSelector)
+vi.mock('@/hooks/useQueries', () => ({
+  useGruposDisponiveis: () => ({
+    data: {
+      grupos: [{ id: 1, nome: 'PS', slug: 'ps' }],
+      default_group_id: 1,
+      requires_selection: false,
+    },
+    isLoading: false,
+  }),
+}))
+
 describe('VariaveisPage', () => {
   const mockResumo = {
     total: 15,
@@ -89,13 +101,13 @@ describe('VariaveisPage', () => {
 
     // Configurar mocks padrão
     vi.mocked(adminApi.get).mockImplementation((url: string) => {
-      if (url === '/admin/api/extraction/variaveis/resumo') {
+      if (url.includes('/admin/api/extraction/variaveis/resumo')) {
         return Promise.resolve(mockResumo)
       }
-      if (url.startsWith('/admin/api/extraction/variaveis?')) {
+      if (url.includes('/admin/api/extraction/variaveis?')) {
         return Promise.resolve(mockVariaveis)
       }
-      if (url.startsWith('/admin/api/categorias-resumo-json')) {
+      if (url.includes('/admin/api/categorias-resumo-json')) {
         return Promise.resolve(mockCategorias)
       }
       return Promise.reject(new Error('URL não mockada'))
@@ -135,13 +147,15 @@ describe('VariaveisPage', () => {
       expect(screen.getByText('observacoes')).toBeInTheDocument()
     })
 
-    // Verificar chamadas à API
-    expect(adminApi.get).toHaveBeenCalledWith('/admin/api/extraction/variaveis/resumo')
+    // Verificar chamadas à API (agora com group_id)
+    expect(adminApi.get).toHaveBeenCalledWith(
+      expect.stringContaining('/admin/api/extraction/variaveis/resumo?group_id=')
+    )
     expect(adminApi.get).toHaveBeenCalledWith(
       expect.stringContaining('/admin/api/extraction/variaveis?')
     )
     expect(adminApi.get).toHaveBeenCalledWith(
-      '/admin/api/categorias-resumo-json?apenas_com_variaveis=true'
+      expect.stringContaining('apenas_com_variaveis=true')
     )
   })
 
@@ -186,13 +200,13 @@ describe('VariaveisPage', () => {
     // Limpar mock para contar novas chamadas
     vi.clearAllMocks()
     vi.mocked(adminApi.get).mockImplementation((url: string) => {
-      if (url === '/admin/api/extraction/variaveis/resumo') {
+      if (url.includes('/admin/api/extraction/variaveis/resumo')) {
         return Promise.resolve(mockResumo)
       }
-      if (url.startsWith('/admin/api/extraction/variaveis?')) {
+      if (url.includes('/admin/api/extraction/variaveis?')) {
         return Promise.resolve([mockVariaveis[0]]) // Retornar apenas valor_causa
       }
-      if (url.startsWith('/admin/api/categorias-resumo-json')) {
+      if (url.includes('/admin/api/categorias-resumo-json')) {
         return Promise.resolve(mockCategorias)
       }
       return Promise.reject(new Error('URL não mockada'))
@@ -229,13 +243,13 @@ describe('VariaveisPage', () => {
 
   it('deve exibir estado vazio quando não há variáveis', async () => {
     vi.mocked(adminApi.get).mockImplementation((url: string) => {
-      if (url === '/admin/api/extraction/variaveis/resumo') {
+      if (url.includes('/admin/api/extraction/variaveis/resumo')) {
         return Promise.resolve({ total: 0, variaveis_com_uso: 0, variaveis_sem_uso: 0, distribuicao_tipos: {} })
       }
-      if (url.startsWith('/admin/api/extraction/variaveis?')) {
+      if (url.includes('/admin/api/extraction/variaveis?')) {
         return Promise.resolve([])
       }
-      if (url.startsWith('/admin/api/categorias-resumo-json')) {
+      if (url.includes('/admin/api/categorias-resumo-json')) {
         return Promise.resolve([])
       }
       return Promise.reject(new Error('URL não mockada'))

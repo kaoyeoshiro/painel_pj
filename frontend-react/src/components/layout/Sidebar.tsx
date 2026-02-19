@@ -68,7 +68,7 @@ const adminItems: NavItem[] = [
   { to: '/admin/variaveis', icon: Variable, label: 'Variáveis', adminOnly: true },
   { to: '/admin/categorias-json', icon: FileJson, label: 'Categorias JSON', adminOnly: true },
   { to: '/admin/historico-gerador', icon: History, label: 'Histórico Gerador', adminOnly: true },
-  { to: '/admin/config-pecas', icon: Settings, label: 'Config Peças', adminOnly: true },
+  { to: '/admin/filtro-documentos', icon: Settings, label: 'Filtro Documentos', adminOnly: true },
   { to: '/admin/teste-ativacao', icon: Zap, label: 'Teste Ativação', adminOnly: true },
   { to: '/admin/teste-categorias', icon: FlaskConical, label: 'Teste Categorias', adminOnly: true },
   { to: '/admin/tjms-docs', icon: BookOpen, label: 'TJ-MS Docs', adminOnly: true },

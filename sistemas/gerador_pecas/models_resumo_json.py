@@ -7,7 +7,7 @@ baseados no tipo de documento (código do TJ-MS).
 """
 
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, JSON, ForeignKey
+from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, JSON, ForeignKey, UniqueConstraint
 from sqlalchemy.orm import relationship
 from database.connection import Base
 from utils.timezone import get_utc_now
@@ -29,11 +29,17 @@ class CategoriaResumoJSON(Base):
       {"tipo": "string", "partes": {"autor": "string", "reu": "string"}, "pedidos": ["string"]}
     """
     __tablename__ = "categorias_resumo_json"
+    __table_args__ = (
+        UniqueConstraint('nome', 'group_id', name='uq_categoria_nome_group'),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
 
+    # Grupo (PS, PP, DETRAN)
+    group_id = Column(Integer, ForeignKey("prompt_groups.id"), nullable=False, index=True)
+
     # Identificação
-    nome = Column(String(100), nullable=False, unique=True, index=True)
+    nome = Column(String(100), nullable=False, index=True)
     titulo = Column(String(200), nullable=False)
     descricao = Column(Text, nullable=True)
 
@@ -96,6 +102,12 @@ class CategoriaResumoJSON(Base):
     
     # Usuário que gerou/aprovou o JSON via IA
     json_gerado_por = Column(Integer, ForeignKey("users.id"), nullable=True)
+
+    # === OBRIGATORIEDADE ===
+    # Configuração genérica de obrigatoriedade por categoria.
+    # Formato: {"ativo": bool, "tipos_peca": [str], "mensagem_quando_ausente": str}
+    # O grupo é implícito (vem do group_id), os códigos de documento também (codigos_documento).
+    obrigatoriedade = Column(JSON, nullable=True, default=None)
 
     # Se é a categoria residual (fallback para docs não categorizados)
     is_residual = Column(Boolean, default=False, index=True)

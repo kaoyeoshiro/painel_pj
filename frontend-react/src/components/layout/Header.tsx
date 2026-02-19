@@ -9,7 +9,7 @@ import { useAuthStore } from '@/stores/auth-store'
 import { useUiStore } from '@/stores/ui-store'
 import { useNavigate } from '@tanstack/react-router'
 import { Menu, Home, KeyRound, LogOut } from 'lucide-react'
-import logo from '@/assets/logo-pge-branco.png'
+import logo from '@/assets/logo-pge-branco2.png'
 import { Button } from '@/components/ui/button'
 import {
   DropdownMenu,
@@ -66,25 +66,12 @@ export const Header = memo(function Header() {
             <Home className="h-5 w-5" />
           </Button>
 
-          {/* LOGO */}
+          {/* LOGO INSTITUCIONAL (PGE + Brasão + Texto) */}
           <img
             src={logo}
-            alt="PGE-MS"
-            className="h-12 sm:h-14 w-auto object-contain"
+            alt="PGE-MS — Procuradoria-Geral do Estado de Mato Grosso do Sul"
+            className="h-12 sm:h-16 w-auto object-contain"
           />
-
-          {/* DIVISOR */}
-          <div className="h-8 w-[1px] bg-white/20 hidden lg:block" />
-
-          {/* NOME DO SISTEMA */}
-          <div className="hidden lg:flex flex-col">
-            <span className="text-white font-bold text-lg leading-none">
-              Procuradoria-Geral do Estado
-            </span>
-            <span className="text-white/50 text-xs">
-              Mato Grosso do Sul
-            </span>
-          </div>
         </div>
 
         {/* DIREITA: USUÁRIO */}

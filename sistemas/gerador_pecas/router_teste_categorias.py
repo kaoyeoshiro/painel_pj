@@ -17,7 +17,7 @@ from typing import List, Optional, Dict, Any, Tuple
 from datetime import datetime, timedelta
 from dataclasses import dataclass, field
 
-from fastapi import APIRouter, Depends, HTTPException, status, Response
+from fastapi import APIRouter, Depends, HTTPException, status, Response, Query
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, field_validator
 from sqlalchemy.orm import Session
@@ -1156,14 +1156,20 @@ async def classificar_com_comparacao(
 @router.get("/categorias-ativas")
 async def listar_categorias_ativas(
     current_user: User = Depends(get_current_active_user),
-    db: Session = Depends(get_db)
+    db: Session = Depends(get_db),
+    group_id: Optional[int] = Query(None, description="Filtrar por grupo")
 ):
     """Lista categorias ativas para seleção no teste"""
     verificar_permissao(current_user)
 
-    categorias = session_query(db, CategoriaResumoJSON).filter(
+    query = session_query(db, CategoriaResumoJSON).filter(
         CategoriaResumoJSON.ativo == True
-    ).order_by(CategoriaResumoJSON.ordem, CategoriaResumoJSON.nome).all()
+    )
+
+    if group_id is not None:
+        query = query.filter(CategoriaResumoJSON.group_id == group_id)
+
+    categorias = query.order_by(CategoriaResumoJSON.ordem, CategoriaResumoJSON.nome).all()
 
     return [
         {

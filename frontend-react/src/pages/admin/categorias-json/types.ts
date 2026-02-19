@@ -3,9 +3,24 @@
  * Espelham os schemas Pydantic do backend (router_categorias_json.py).
  */
 
+/** Configuracao de obrigatoriedade de uma categoria */
+export interface ObrigatoriedadeConfig {
+  ativo: boolean
+  tipos_peca: string[]
+  mensagem_quando_ausente: string
+}
+
+/** Tipo de peca retornado pelo endpoint /grupos/{id}/tipos-peca */
+export interface TipoPecaGrupo {
+  nome: string
+  titulo: string
+  categoria: string | null
+}
+
 /** Resposta completa do GET /categorias-resumo-json e GET /{id} */
 export interface CategoriaJSON {
   id: number
+  group_id: number
   nome: string
   titulo: string
   descricao: string | null
@@ -22,6 +37,8 @@ export interface CategoriaJSON {
   // Origem do JSON
   json_gerado_por_ia: boolean
   json_gerado_em: string | null
+  // Obrigatoriedade
+  obrigatoriedade: ObrigatoriedadeConfig | null
   // Auditoria
   criado_em: string
   atualizado_em: string | null
@@ -39,6 +56,7 @@ export interface CategoriaCreatePayload {
   ativo: boolean
   source_type: 'code' | 'special'
   source_special_type: string | null
+  obrigatoriedade?: ObrigatoriedadeConfig | null
 }
 
 /** Payload para PUT /categorias-resumo-json/{id} */
@@ -52,6 +70,7 @@ export interface CategoriaUpdatePayload {
   ativo?: boolean
   source_type?: 'code' | 'special'
   source_special_type?: string | null
+  obrigatoriedade?: ObrigatoriedadeConfig | null
   motivo: string
 }
 
@@ -86,6 +105,10 @@ export interface CategoriaFormData {
   source_type: 'code' | 'special'
   source_special_type: string
   motivo: string
+  // Obrigatoriedade
+  obrigatoriedade_ativo: boolean
+  obrigatoriedade_tipos_peca: string[]
+  obrigatoriedade_mensagem: string
 }
 
 /** Resposta do endpoint GET/PUT /config/codigos-ignorados */

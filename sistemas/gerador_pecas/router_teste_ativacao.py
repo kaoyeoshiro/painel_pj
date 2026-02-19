@@ -15,7 +15,7 @@ import logging
 from typing import List, Optional, Dict, Any
 from datetime import datetime
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session
 from app.repositories.sqlalchemy.session_ops import session_query
@@ -54,6 +54,7 @@ class GerarVariaveisRequest(BaseModel):
     descricao_situacao: str = Field(..., description="Descrição textual da situação processual")
     categorias_ids: List[int] = Field(default=[], description="IDs das categorias para filtrar variáveis")
     tipo_peca: Optional[str] = Field(None, description="Tipo de peça (ex: contestacao)")
+    group_id: Optional[int] = Field(None, description="ID do grupo para filtrar variáveis")
 
 
 class GerarVariaveisResponse(BaseModel):
@@ -70,6 +71,7 @@ class SimularRequest(BaseModel):
     variaveis_processo: Dict[str, Any] = Field(default={}, description="Variáveis do processo")
     tipo_peca: str = Field(..., description="Tipo de peça (ex: contestacao)")
     categorias_ids: List[int] = Field(default=[], description="IDs das categorias para filtrar módulos")
+    group_id: Optional[int] = Field(None, description="ID do grupo")
 
 
 class ModuloResultado(BaseModel):
@@ -137,7 +139,7 @@ def verificar_permissao(user: User):
         )
 
 
-def carregar_modulos_para_tipo_peca(db: Session, tipo_peca: str, categorias_ids: List[int] = None) -> List[PromptModulo]:
+def carregar_modulos_para_tipo_peca(db: Session, tipo_peca: str, categorias_ids: List[int] = None, group_id: Optional[int] = None) -> List[PromptModulo]:
     """
     Carrega módulos de conteúdo disponíveis para um tipo de peça.
 
@@ -145,6 +147,7 @@ def carregar_modulos_para_tipo_peca(db: Session, tipo_peca: str, categorias_ids:
         db: Sessão do banco
         tipo_peca: Tipo de peça (ex: contestacao)
         categorias_ids: IDs das categorias para filtrar (opcional)
+        group_id: ID do grupo para filtrar (opcional)
 
     Returns:
         Lista de módulos de conteúdo ativos
@@ -153,6 +156,9 @@ def carregar_modulos_para_tipo_peca(db: Session, tipo_peca: str, categorias_ids:
         PromptModulo.tipo == "conteudo",
         PromptModulo.ativo == True
     )
+
+    if group_id:
+        query = query.filter(PromptModulo.group_id == group_id)
 
     # Ordena por grupo e ordem
     query = query.order_by(PromptModulo.group_id, PromptModulo.ordem)
@@ -166,6 +172,7 @@ def carregar_modulos_para_tipo_peca(db: Session, tipo_peca: str, categorias_ids:
 
 @router.get("/categorias-extracao")
 async def listar_categorias_extracao(
+    group_id: Optional[int] = Query(None, description="Filtrar por grupo"),
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
@@ -174,9 +181,14 @@ async def listar_categorias_extracao(
     """
     verificar_permissao(current_user)
 
-    categorias = session_query(db, CategoriaResumoJSON).filter(
+    query = session_query(db, CategoriaResumoJSON).filter(
         CategoriaResumoJSON.ativo == True
-    ).order_by(CategoriaResumoJSON.ordem, CategoriaResumoJSON.nome).all()
+    )
+
+    if group_id is not None:
+        query = query.filter(CategoriaResumoJSON.group_id == group_id)
+
+    categorias = query.order_by(CategoriaResumoJSON.ordem, CategoriaResumoJSON.nome).all()
 
     resultado = []
     for cat in categorias:
@@ -287,6 +299,9 @@ async def gerar_variaveis(
 
         if request.categorias_ids:
             query = query.filter(ExtractionVariable.categoria_id.in_(request.categorias_ids))
+
+        if request.group_id is not None:
+            query = query.filter(CategoriaResumoJSON.group_id == request.group_id)
 
         for v, categoria_titulo in query.all():
             variaveis_extracao_disponiveis.append({
@@ -430,7 +445,7 @@ async def simular_ativacao(
     logger.info(f"[SIMULAR] Variáveis consolidadas ({len(dados_consolidados)}): {list(dados_consolidados.keys())}")
 
     # Carrega módulos
-    modulos = carregar_modulos_para_tipo_peca(db, request.tipo_peca, request.categorias_ids)
+    modulos = carregar_modulos_para_tipo_peca(db, request.tipo_peca, request.categorias_ids, request.group_id)
     logger.info(f"[SIMULAR] Total de módulos carregados: {len(modulos)}")
 
     # Carrega grupos para exibição

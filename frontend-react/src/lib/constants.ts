@@ -28,7 +28,7 @@ export const ADMIN_PAGES = [
   { id: 'historico-pedido-calculo', nome: 'Historico Pedido Calculo', rota: '/admin/historico-pedido-calculo' },
   { id: 'historico-prestacao-contas', nome: 'Historico Prestacao Contas', rota: '/admin/historico-prestacao-contas' },
   { id: 'modulos-tipo-peca', nome: 'Modulos por Tipo de Peca', rota: '/admin/modulos-tipo-peca' },
-  { id: 'config-pecas', nome: 'Config Pecas', rota: '/admin/config-pecas' },
+  { id: 'filtro-documentos', nome: 'Filtro Documentos', rota: '/admin/filtro-documentos' },
   { id: 'teste-ativacao', nome: 'Teste de Ativacao', rota: '/admin/teste-ativacao' },
   { id: 'teste-categorias', nome: 'Teste de Categorias', rota: '/admin/teste-categorias' },
   { id: 'tjms-docs', nome: 'TJ-MS Docs', rota: '/admin/tjms-docs' },

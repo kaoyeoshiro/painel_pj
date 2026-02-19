@@ -1,7 +1,9 @@
 {
-  "github": {
-    "type": "stdio",
-    "command": "gh",
-    "args": ["mcp", "serve"]
+  "mcpServers": {
+    "github": {
+      "type": "stdio",
+      "command": "gh",
+      "args": ["mcp", "serve"]
+    }
   }
 }

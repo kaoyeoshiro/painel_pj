@@ -438,12 +438,20 @@ IMPORTANTE: Os seguintes tipos de documento SÃO RELEVANTES e devem ser resumido
 
 def seed_categorias_resumo_json():
     """Cria as categorias de formato de resumo JSON padrão"""
-    
+    from admin.models_prompt_groups import PromptGroup
+
     db = SessionLocal()
     try:
+        # Busca grupo PS para associar categorias
+        grupo_ps = db.query(PromptGroup).filter(PromptGroup.slug == "ps").first()
+        if not grupo_ps:
+            print("[WARN] Grupo PS não encontrado, pulando seed de categorias resumo JSON")
+            return
+        ps_group_id = grupo_ps.id
+
         # Verifica se já existem categorias
         existing = db.query(CategoriaResumoJSON).count()
-        
+
         if existing == 0:
             # Formato JSON residual (padrão para todos os documentos)
             formato_residual = '''{
@@ -491,7 +499,8 @@ O campo "irrelevante" deve ser true apenas se o documento for meramente administ
                 instrucoes_extracao=instrucoes_residual,
                 is_residual=True,
                 ativo=True,
-                ordem=999
+                ordem=999,
+                group_id=ps_group_id,
             )
             db.add(categoria_residual)
             
@@ -541,7 +550,8 @@ O campo "irrelevante" deve ser true apenas se o documento for meramente administ
                 instrucoes_extracao="Extraia TODOS os pedidos formulados, separando por tipo (principal, subsidiário, tutela de urgência). Liste todos os fundamentos jurídicos citados.",
                 is_residual=False,
                 ativo=True,
-                ordem=1
+                ordem=1,
+                group_id=ps_group_id,
             )
             db.add(categoria_peticoes)
             
@@ -581,7 +591,8 @@ O campo "irrelevante" deve ser true apenas se o documento for meramente administ
                 instrucoes_extracao="Identifique claramente o DISPOSITIVO da decisão (procedente/improcedente/etc). Liste TODAS as obrigações impostas com prazos e multas.",
                 is_residual=False,
                 ativo=True,
-                ordem=2
+                ordem=2,
+                group_id=ps_group_id,
             )
             db.add(categoria_decisoes)
             
@@ -615,7 +626,8 @@ O campo "irrelevante" deve ser true apenas se o documento for meramente administ
                 instrucoes_extracao="Liste TODAS as teses recursais separando preliminares de mérito. Para Agravo de Instrumento, SEMPRE identifique o processo de origem.",
                 is_residual=False,
                 ativo=True,
-                ordem=3
+                ordem=3,
+                group_id=ps_group_id,
             )
             db.add(categoria_recursos)
             
@@ -652,7 +664,8 @@ O campo "irrelevante" deve ser true apenas se o documento for meramente administ
                 instrucoes_extracao="TRANSCREVA a conclusão do parecer. Identifique claramente se o medicamento/procedimento está incorporado ao SUS e para quais indicações.",
                 is_residual=False,
                 ativo=True,
-                ordem=4
+                ordem=4,
+                group_id=ps_group_id,
             )
             db.add(categoria_pareceres)
             

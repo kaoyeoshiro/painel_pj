@@ -41,9 +41,36 @@ services:
       - .:/app                              # Bind mount para hot reload
       - /app/__pycache__                    # Nao sobrescrever cache do container
       - /app/frontend-react/node_modules    # Protege node_modules do container
-    env_file: .env.docker
     environment:
+      # Banco — aponta ao container db (sobrescreve .env localhost)
       DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@db:5432/portal_pge
+      # JWT
+      SECRET_KEY: "${SECRET_KEY:-dev-docker-secret-key-fallback}"
+      ALGORITHM: "${ALGORITHM:-HS256}"
+      ACCESS_TOKEN_EXPIRE_MINUTES: "${ACCESS_TOKEN_EXPIRE_MINUTES:-480}"
+      ADMIN_USERNAME: "${ADMIN_USERNAME:-admin}"
+      ADMIN_PASSWORD: "${ADMIN_PASSWORD:-admin}"
+      # TJ-MS (SOAP/MNI)
+      TJ_WSDL_URL: "${TJ_WSDL_URL:-}"
+      TJ_WS_USER: "${TJ_WS_USER:-}"
+      TJ_WS_PASS: "${TJ_WS_PASS:-}"
+      # TJ-MS (Playwright)
+      TJMS_USUARIO: "${TJMS_USUARIO:-}"
+      TJMS_SENHA: "${TJMS_SENHA:-}"
+      # Gemini
+      GEMINI_KEY: "${GEMINI_KEY:-}"
+      # OpenRouter
+      OPENROUTER_API_KEY: "${OPENROUTER_API_KEY:-}"
+      OPENROUTER_MODEL: "${OPENROUTER_MODEL:-google/gemini-3-pro-preview}"
+      FULL_REPORT_MODEL: "${FULL_REPORT_MODEL:-google/gemini-3-pro-preview}"
+      # GitHub / SuperMemory
+      GITHUB_PERSONAL_ACCESS_TOKEN: "${GITHUB_PERSONAL_ACCESS_TOKEN:-}"
+      SUPERMEMORY_API_KEY: "${SUPERMEMORY_API_KEY:-}"
+      # Configuracoes opcionais
+      DELAY_MIN: "${DELAY_MIN:-2.0}"
+      DELAY_MAX: "${DELAY_MAX:-5.0}"
+      MAX_TENTATIVAS: "${MAX_TENTATIVAS:-3}"
+      HEADLESS: "${HEADLESS:-true}"
     depends_on:
       db:
         condition: service_healthy
@@ -65,10 +92,37 @@ services:
     profiles: [prod]
     ports:
       - "8000:8000"
-    env_file: .env.docker
     environment:
+      # Banco — aponta ao container db
       DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@db:5432/portal_pge
       ENV: production
+      # JWT
+      SECRET_KEY: "${SECRET_KEY}"
+      ALGORITHM: "${ALGORITHM:-HS256}"
+      ACCESS_TOKEN_EXPIRE_MINUTES: "${ACCESS_TOKEN_EXPIRE_MINUTES:-480}"
+      ADMIN_USERNAME: "${ADMIN_USERNAME:-admin}"
+      ADMIN_PASSWORD: "${ADMIN_PASSWORD}"
+      # TJ-MS (SOAP/MNI)
+      TJ_WSDL_URL: "${TJ_WSDL_URL:-}"
+      TJ_WS_USER: "${TJ_WS_USER:-}"
+      TJ_WS_PASS: "${TJ_WS_PASS:-}"
+      # TJ-MS (Playwright)
+      TJMS_USUARIO: "${TJMS_USUARIO:-}"
+      TJMS_SENHA: "${TJMS_SENHA:-}"
+      # Gemini
+      GEMINI_KEY: "${GEMINI_KEY:-}"
+      # OpenRouter
+      OPENROUTER_API_KEY: "${OPENROUTER_API_KEY:-}"
+      OPENROUTER_MODEL: "${OPENROUTER_MODEL:-google/gemini-3-pro-preview}"
+      FULL_REPORT_MODEL: "${FULL_REPORT_MODEL:-google/gemini-3-pro-preview}"
+      # GitHub / SuperMemory
+      GITHUB_PERSONAL_ACCESS_TOKEN: "${GITHUB_PERSONAL_ACCESS_TOKEN:-}"
+      SUPERMEMORY_API_KEY: "${SUPERMEMORY_API_KEY:-}"
+      # Configuracoes opcionais
+      DELAY_MIN: "${DELAY_MIN:-2.0}"
+      DELAY_MAX: "${DELAY_MAX:-5.0}"
+      MAX_TENTATIVAS: "${MAX_TENTATIVAS:-3}"
+      HEADLESS: "${HEADLESS:-true}"
     depends_on:
       db:
         condition: service_healthy

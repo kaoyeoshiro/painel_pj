@@ -11,6 +11,7 @@ import type {
   CodigoDisponivel,
   FonteEspecial,
   CodigosIgnoradosResponse,
+  TipoPecaGrupo,
   ExtractionQuestion,
   ExtractionQuestionCreate,
   ExtractionQuestionUpdate,
@@ -31,8 +32,10 @@ import type {
 const BASE = '/admin/api/categorias-resumo-json'
 
 /** Lista categorias. Por padrao inclui inativos (apenas_ativos=false). */
-export async function listar(apenasAtivos = false): Promise<CategoriaJSON[]> {
-  return adminApi.get<CategoriaJSON[]>(`${BASE}?apenas_ativos=${apenasAtivos}`)
+export async function listar(apenasAtivos = false, groupId?: number | null): Promise<CategoriaJSON[]> {
+  const params = new URLSearchParams({ apenas_ativos: String(apenasAtivos) })
+  if (groupId) params.append('group_id', String(groupId))
+  return adminApi.get<CategoriaJSON[]>(`${BASE}?${params.toString()}`)
 }
 
 /** Obtem uma categoria por ID. */
@@ -40,8 +43,8 @@ export async function obter(id: number): Promise<CategoriaJSON> {
   return adminApi.get<CategoriaJSON>(`${BASE}/${id}`)
 }
 
-/** Cria uma nova categoria. */
-export async function criar(data: CategoriaCreatePayload): Promise<CategoriaJSON> {
+/** Cria uma nova categoria. groupId e incluido automaticamente no payload. */
+export async function criar(data: CategoriaCreatePayload & { group_id?: number }): Promise<CategoriaJSON> {
   return adminApi.post<CategoriaJSON>(BASE, data)
 }
 
@@ -56,8 +59,9 @@ export async function desativar(id: number): Promise<{ message: string }> {
 }
 
 /** Lista todos os codigos de documento TJ-MS disponiveis. */
-export async function codigosDisponiveis(): Promise<CodigoDisponivel[]> {
-  return adminApi.get<CodigoDisponivel[]>(`${BASE}/codigos-disponiveis`)
+export async function codigosDisponiveis(groupId?: number | null): Promise<CodigoDisponivel[]> {
+  const params = groupId ? `?group_id=${groupId}` : ''
+  return adminApi.get<CodigoDisponivel[]>(`${BASE}/codigos-disponiveis${params}`)
 }
 
 /** Lista fontes especiais disponiveis. */
@@ -73,6 +77,17 @@ export async function getCodigosIgnorados(): Promise<CodigosIgnoradosResponse> {
 /** Atualiza codigos ignorados na extracao JSON. */
 export async function setCodigosIgnorados(codigos: number[]): Promise<{ success: boolean; codigos: number[] }> {
   return adminApi.put<{ success: boolean; codigos: number[] }>(`${BASE}/config/codigos-ignorados`, { codigos })
+}
+
+// ============================================================================
+// API DE TIPOS DE PECA POR GRUPO (router_prompts.py)
+// ============================================================================
+
+const PROMPTS = '/admin/api/prompts-modulos'
+
+/** Lista tipos de peca disponiveis para um grupo (PromptModulo tipo='peca'). */
+export async function fetchTiposPecaGrupo(groupId: number): Promise<TipoPecaGrupo[]> {
+  return adminApi.get<TipoPecaGrupo[]>(`${PROMPTS}/grupos/${groupId}/tipos-peca`)
 }
 
 // ============================================================================
