@@ -31,6 +31,7 @@ from sistemas.gerador_pecas.schemas import (
     TipoPecaCreate,
     TipoPecaResponse,
     AssociacaoCategoriasRequest,
+    AssociacaoCategoriasGrupoRequest,
 )
 from sistemas.gerador_pecas.services_source_resolver import invalidar_cache_source_resolver
 
@@ -157,44 +158,108 @@ async def excluir_categoria(
 # Tipos de Peca
 # ===========================================
 
-@router.get("/tipos-peca", response_model=List[TipoPecaResponse])
+@router.get("/tipos-peca")
 async def listar_tipos_peca(
-    ativo: Optional[bool] = None,
+    group_id: Optional[int] = None,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ):
-    """Lista todos os tipos de peca com suas categorias."""
-    query = session_query(db, TipoPeca)
-    if ativo is not None:
-        query = query.filter(TipoPeca.ativo == ativo)
-    return query.order_by(TipoPeca.ordem, TipoPeca.titulo).all()
+    """
+    Lista tipos de peca derivados de prompt_modulos (tipo='peca').
+    Se group_id informado, retorna apenas os tipos com template naquele grupo.
+    Inclui categorias associadas via tipo_peca_grupo_categorias.
+    """
+    from admin.models_prompts import PromptModulo
+    from sistemas.gerador_pecas.models_config_pecas import TipoPecaGrupoCategoria
+
+    query = db.query(PromptModulo).filter(
+        PromptModulo.tipo == "peca",
+        PromptModulo.ativo == True,
+    )
+    if group_id:
+        query = query.filter(PromptModulo.group_id == group_id)
+
+    modulos_peca = query.order_by(PromptModulo.ordem).all()
+
+    resultado = []
+    for m in modulos_peca:
+        cats = []
+        cat_count = 0
+        effective_group_id = group_id or m.group_id
+        if effective_group_id:
+            assocs = db.query(TipoPecaGrupoCategoria).filter(
+                TipoPecaGrupoCategoria.tipo_peca_nome == m.nome,
+                TipoPecaGrupoCategoria.group_id == effective_group_id,
+            ).all()
+            cat_ids = [a.categoria_documento_id for a in assocs]
+            if cat_ids:
+                cats_db = session_query(db, CategoriaDocumento).filter(
+                    CategoriaDocumento.id.in_(cat_ids)
+                ).order_by(CategoriaDocumento.ordem).all()
+                cats = [
+                    {
+                        "id": c.id,
+                        "nome": c.nome,
+                        "titulo": c.titulo,
+                        "descricao": c.descricao,
+                        "codigos_documento": c.codigos_documento or [],
+                        "cor": c.cor,
+                        "ordem": c.ordem,
+                        "ativo": c.ativo,
+                        "is_primeiro_documento": c.is_primeiro_documento,
+                    }
+                    for c in cats_db
+                ]
+            cat_count = len(cats)
+
+        resultado.append({
+            "nome": m.nome,
+            "titulo": m.titulo,
+            "group_id": effective_group_id,
+            "categorias_count": cat_count,
+            "categorias_documento": cats,
+        })
+
+    return resultado
 
 
-@router.put("/tipos-peca/{tipo_id}/categorias")
+@router.put("/tipos-peca/{tipo_peca_nome}/categorias")
 async def atualizar_categorias_tipo_peca(
-    tipo_id: int,
-    dados: AssociacaoCategoriasRequest,
+    tipo_peca_nome: str,
+    dados: AssociacaoCategoriasGrupoRequest,
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user),
 ):
-    """Atualiza associacao de categorias a um tipo de peca."""
+    """
+    Atualiza associacao de categorias para um tipo de peca em um grupo.
+    Substitui todas as associacoes existentes para (tipo_peca_nome, group_id).
+    """
     if current_user.role != "admin":
         raise HTTPException(status_code=403, detail="Acesso negado")
 
-    tipo = session_query(db, TipoPeca).filter(TipoPeca.id == tipo_id).first()
-    if not tipo:
-        raise HTTPException(status_code=404, detail="Tipo de peca nao encontrado")
+    from sistemas.gerador_pecas.models_config_pecas import TipoPecaGrupoCategoria
 
-    categorias = session_query(db, CategoriaDocumento).filter(
-        CategoriaDocumento.id.in_(dados.categorias_ids)
-    ).all()
-    tipo.categorias_documento = categorias
+    # Remove associacoes antigas
+    db.query(TipoPecaGrupoCategoria).filter(
+        TipoPecaGrupoCategoria.tipo_peca_nome == tipo_peca_nome,
+        TipoPecaGrupoCategoria.group_id == dados.group_id,
+    ).delete()
+
+    # Cria novas associacoes
+    for cat_id in dados.categorias_ids:
+        db.add(TipoPecaGrupoCategoria(
+            tipo_peca_nome=tipo_peca_nome,
+            group_id=dados.group_id,
+            categoria_documento_id=cat_id,
+        ))
+
     db.commit()
 
     return {
         "message": "Categorias atualizadas com sucesso",
-        "tipo_id": tipo_id,
-        "categorias_count": len(categorias),
+        "tipo_peca": tipo_peca_nome,
+        "group_id": dados.group_id,
+        "categorias_count": len(dados.categorias_ids),
     }
 
 

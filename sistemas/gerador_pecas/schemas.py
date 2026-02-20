@@ -178,6 +178,12 @@ class AssociacaoCategoriasRequest(BaseModel):
     categorias_ids: List[int]
 
 
+class AssociacaoCategoriasGrupoRequest(BaseModel):
+    """Request para associar categorias a um tipo de peca em um grupo."""
+    group_id: int
+    categorias_ids: List[int]
+
+
 class ParecerNatjusAdminConfigUpdateRequest(BaseModel):
     parecer_required_for_piece_types: List[str] = []
     parecer_document_codes: List[int] = []
