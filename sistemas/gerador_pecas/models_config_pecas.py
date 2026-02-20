@@ -9,7 +9,7 @@ Permite definir:
 """
 
 from datetime import datetime
-from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, JSON, ForeignKey, Table
+from sqlalchemy import Column, Integer, String, Text, Boolean, DateTime, JSON, ForeignKey, Table, UniqueConstraint
 from sqlalchemy.orm import relationship
 from database.connection import Base
 from utils.timezone import get_utc_now
@@ -150,6 +150,30 @@ class TipoPeca(Base):
     def documento_permitido(self, codigo_documento: int) -> bool:
         """Verifica se um código de documento é permitido para este tipo de peça"""
         return codigo_documento in self.get_codigos_permitidos()
+
+
+class TipoPecaGrupoCategoria(Base):
+    """
+    Associacao entre tipo de peca, grupo e categoria de documento.
+
+    Permite configurar quais categorias de documento o Agente 1 analisa
+    para cada tipo de peca em cada grupo (PS, PP, Detran).
+    """
+    __tablename__ = "tipo_peca_grupo_categorias"
+    __table_args__ = (
+        UniqueConstraint(
+            'tipo_peca_nome', 'group_id', 'categoria_documento_id',
+            name='uq_tpgc_tipo_group_cat'
+        ),
+    )
+
+    id = Column(Integer, primary_key=True, index=True)
+    tipo_peca_nome = Column(String(50), nullable=False, index=True)
+    group_id = Column(Integer, ForeignKey("prompt_groups.id"), nullable=False, index=True)
+    categoria_documento_id = Column(Integer, ForeignKey("categorias_documento.id"), nullable=False)
+
+    # Relacionamentos
+    categoria = relationship("CategoriaDocumento")
 
 
 # ===========================================
