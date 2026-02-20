@@ -1606,21 +1606,38 @@ class FeedbackRepository:
             )
         return query.group_by(modelo_feedback.nota).all()
 
+    _SISTEMA_TABELA = {
+        'assistencia_judiciaria': [FeedbackAnalise],
+        'matriculas': [FeedbackMatricula],
+        'gerador_pecas': [FeedbackPeca],
+        'pedido_calculo': [FeedbackPedidoCalculo],
+        'prestacao_contas': [FeedbackPrestacao],
+        'relatorio_cumprimento': [FeedbackRelatorioCumprimento],
+    }
+
+    _TODAS_TABELAS = [
+        FeedbackAnalise,
+        FeedbackMatricula,
+        FeedbackPeca,
+        FeedbackPedidoCalculo,
+        FeedbackPrestacao,
+        FeedbackRelatorioCumprimento,
+    ]
+
+    def _tabelas_para_sistema(self, sistema: Optional[str] = None):
+        if sistema and sistema in self._SISTEMA_TABELA:
+            return self._SISTEMA_TABELA[sistema]
+        return self._TODAS_TABELAS
+
     def media_nota_global(
         self,
         ids_excluir: list[int],
         data_inicio: Optional[datetime] = None,
         data_fim: Optional[datetime] = None,
+        sistema: Optional[str] = None,
     ) -> Optional[float]:
-        """AVG(nota) across all 6 feedback tables (weighted by count)."""
-        tabelas = [
-            FeedbackAnalise,
-            FeedbackMatricula,
-            FeedbackPeca,
-            FeedbackPedidoCalculo,
-            FeedbackPrestacao,
-            FeedbackRelatorioCumprimento,
-        ]
+        """AVG(nota) across feedback tables (weighted by count), optionally filtered by sistema."""
+        tabelas = self._tabelas_para_sistema(sistema)
         soma_total = 0.0
         count_total = 0
         for modelo in tabelas:
@@ -1649,16 +1666,10 @@ class FeedbackRepository:
         ids_excluir: list[int],
         data_inicio: Optional[datetime] = None,
         data_fim: Optional[datetime] = None,
+        sistema: Optional[str] = None,
     ) -> dict[int, int]:
-        """COUNT GROUP BY nota across all 6 tables, returns {1: N, 2: N, 3: N, 4: N, 5: N}."""
-        tabelas = [
-            FeedbackAnalise,
-            FeedbackMatricula,
-            FeedbackPeca,
-            FeedbackPedidoCalculo,
-            FeedbackPrestacao,
-            FeedbackRelatorioCumprimento,
-        ]
+        """COUNT GROUP BY nota across feedback tables, returns {1: N, 2: N, 3: N, 4: N, 5: N}."""
+        tabelas = self._tabelas_para_sistema(sistema)
         distribuicao: dict[int, int] = {1: 0, 2: 0, 3: 0, 4: 0, 5: 0}
         for modelo in tabelas:
             rows = self._count_by_nota(modelo, ids_excluir, data_inicio, data_fim)

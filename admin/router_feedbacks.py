@@ -443,8 +443,8 @@ async def dashboard_feedbacks(
         # ============================================
         # STAR METRICS (nota 1-5)
         # ============================================
-        media_estrelas = feedback_repo.media_nota_global(ids_excluir, data_inicio, data_fim)
-        distribuicao_estrelas = feedback_repo.distribuicao_nota_global(ids_excluir, data_inicio, data_fim)
+        media_estrelas = feedback_repo.media_nota_global(ids_excluir, data_inicio, data_fim, sistema)
+        distribuicao_estrelas = feedback_repo.distribuicao_nota_global(ids_excluir, data_inicio, data_fim, sistema)
 
         evolucao_por_sistema = {}
 
