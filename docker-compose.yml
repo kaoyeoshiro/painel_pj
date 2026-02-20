@@ -135,3 +135,5 @@ services:
 
 volumes:
   pgdata:
+    external: true
+    name: portal-pge_pgdata
