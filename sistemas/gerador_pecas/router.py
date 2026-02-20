@@ -917,8 +917,8 @@ async def processar_processo_stream(
                 if tipo_peca_inicial:
                     try:
                         if filtro.tem_configuracao():
-                            codigos = filtro.get_codigos_permitidos(tipo_peca_inicial)
-                            codigos_primeiro = filtro.get_codigos_primeiro_documento(tipo_peca_inicial)
+                            codigos = filtro.get_codigos_permitidos(tipo_peca_inicial, group_id=group_id)
+                            codigos_primeiro = filtro.get_codigos_primeiro_documento(tipo_peca_inicial, group_id=group_id)
                             if codigos:
                                 orq.agente1.atualizar_codigos_permitidos(codigos, codigos_primeiro)
                                 yield stream_helper.format_info(f'Filtro ativado: {len(codigos)} categorias para {tipo_peca_inicial}')
@@ -1005,7 +1005,7 @@ async def processar_processo_stream(
                 # No modo automático, após detectar o tipo, filtra os resumos
                 if modo_automatico and tipo_peca:
                     try:
-                        codigos_tipo = filtro.get_codigos_permitidos(tipo_peca) if filtro.tem_configuracao() else None
+                        codigos_tipo = filtro.get_codigos_permitidos(tipo_peca, group_id=group_id) if filtro.tem_configuracao() else None
                         if codigos_tipo:
                             yield stream_helper.format_info(f'Filtrando resumos para {tipo_peca}: {len(codigos_tipo)} categorias')
                             
@@ -3078,8 +3078,8 @@ async def curation_preview(
             from sistemas.gerador_pecas.filtro_categorias import FiltroCategoriasDocumento
             filtro = FiltroCategoriasDocumento(db)
             if filtro.tem_configuracao():
-                codigos = filtro.get_codigos_permitidos(req.tipo_peca)
-                codigos_primeiro = filtro.get_codigos_primeiro_documento(req.tipo_peca)
+                codigos = filtro.get_codigos_permitidos(req.tipo_peca, group_id=grupo.id)
+                codigos_primeiro = filtro.get_codigos_primeiro_documento(req.tipo_peca, group_id=grupo.id)
                 if codigos:
                     orq.agente1.atualizar_codigos_permitidos(codigos, codigos_primeiro)
         except Exception as e:
@@ -3424,8 +3424,8 @@ async def curation_generate_stream(
                     from sistemas.gerador_pecas.filtro_categorias import FiltroCategoriasDocumento
                     filtro = FiltroCategoriasDocumento(db)
                     if filtro.tem_configuracao():
-                        codigos = filtro.get_codigos_permitidos(req.tipo_peca)
-                        codigos_primeiro = filtro.get_codigos_primeiro_documento(req.tipo_peca)
+                        codigos = filtro.get_codigos_permitidos(req.tipo_peca, group_id=grupo.id)
+                        codigos_primeiro = filtro.get_codigos_primeiro_documento(req.tipo_peca, group_id=grupo.id)
                         if codigos:
                             orq.agente1.atualizar_codigos_permitidos(codigos, codigos_primeiro)
                 except Exception:
