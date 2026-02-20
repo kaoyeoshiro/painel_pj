@@ -23,6 +23,7 @@ import { AdminSubNav } from '@/components/layout'
 import { ContentArea } from '@/components/layout/ContentArea'
 import { C } from '@/lib/designTokens'
 import { createApiClient } from '@/lib/api'
+import { GroupSelector } from '@/components/ui/GroupSelector'
 import { Filter, FileText, RefreshCw, Database, Pencil, Settings2 } from 'lucide-react'
 
 // ============================================================
@@ -42,14 +43,10 @@ interface CategoriaDocumento {
 }
 
 interface TipoPeca {
-  id: number
   nome: string
   titulo: string
-  descricao: string | null
-  icone: string
-  ordem: number
-  ativo: boolean
-  is_padrao: boolean
+  group_id: number
+  categorias_count: number
   categorias_documento: CategoriaDocumento[]
 }
 
@@ -278,12 +275,14 @@ function EditarCategoriaDialog({
 function EditarTipoPecaDialog({
   tipoPeca,
   todasCategorias,
+  selectedGroupId,
   open,
   onOpenChange,
   onSaved,
 }: {
   tipoPeca: TipoPeca | null
   todasCategorias: CategoriaDocumento[]
+  selectedGroupId: number | null
   open: boolean
   onOpenChange: (v: boolean) => void
   onSaved: () => void
@@ -314,7 +313,8 @@ function EditarTipoPecaDialog({
     if (!tipoPeca) return
     setSaving(true)
     try {
-      await api.put(`/tipos-peca/${tipoPeca.id}/categorias`, {
+      await api.put(`/tipos-peca/${tipoPeca.nome}/categorias`, {
+        group_id: selectedGroupId,
         categorias_ids: Array.from(selectedIds),
       })
       toast({
@@ -402,6 +402,7 @@ function EditarTipoPecaDialog({
 
 export function FiltroDocumentosPage() {
   const { toast } = useToast()
+  const [selectedGroupId, setSelectedGroupId] = useState<number | null>(null)
   const [categorias, setCategorias] = useState<CategoriaDocumento[]>([])
   const [tiposPeca, setTiposPeca] = useState<TipoPeca[]>([])
   const [loading, setLoading] = useState(true)
@@ -416,9 +417,10 @@ export function FiltroDocumentosPage() {
   const loadData = useCallback(async () => {
     setLoading(true)
     try {
+      const params = selectedGroupId ? `?group_id=${selectedGroupId}` : ''
       const [cats, tipos] = await Promise.all([
         api.get<CategoriaDocumento[]>('/categorias'),
-        api.get<TipoPeca[]>('/tipos-peca'),
+        api.get<TipoPeca[]>(`/tipos-peca${params}`),
       ])
       setCategorias(cats)
       setTiposPeca(tipos)
@@ -427,7 +429,7 @@ export function FiltroDocumentosPage() {
     } finally {
       setLoading(false)
     }
-  }, [toast])
+  }, [toast, selectedGroupId])
 
   const seedDados = useCallback(async () => {
     setSeeding(true)
@@ -450,8 +452,10 @@ export function FiltroDocumentosPage() {
   }, [toast, loadData])
 
   useEffect(() => {
-    loadData()
-  }, [loadData])
+    if (selectedGroupId) {
+      loadData()
+    }
+  }, [selectedGroupId, loadData])
 
   const openEditCategoria = (cat: CategoriaDocumento) => {
     setEditCat(cat)
@@ -474,7 +478,12 @@ export function FiltroDocumentosPage() {
         subtitle="Categorias de documento e tipos de peca usados na filtragem do Agente 1"
         icon={<Filter className="h-5 w-5" />}
         actions={
-          <div className="flex gap-2">
+          <div className="flex gap-2 items-center">
+            <GroupSelector
+              selectedGroupId={selectedGroupId}
+              onGroupChange={setSelectedGroupId}
+              label="Grupo"
+            />
             <Button variant="outline" size="sm" onClick={loadData} disabled={loading}>
               <RefreshCw className={`h-4 w-4 mr-1 ${loading ? 'animate-spin' : ''}`} />
               Recarregar
@@ -584,7 +593,10 @@ export function FiltroDocumentosPage() {
             )}
 
             {/* Tipos de Peca */}
-            {tiposPeca.length > 0 && (
+            {!selectedGroupId && (
+              <p className="text-sm text-gray-500">Selecione um grupo para ver os tipos de peca.</p>
+            )}
+            {selectedGroupId && tiposPeca.length > 0 && (
               <section>
                 <h2 className="text-lg font-semibold mb-3" style={{ color: C.text700 }}>
                   Tipos de Peca ({tiposPeca.length})
@@ -592,7 +604,7 @@ export function FiltroDocumentosPage() {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   {tiposPeca.map(tipo => (
                     <Card
-                      key={tipo.id}
+                      key={tipo.nome}
                       className="border cursor-pointer hover:shadow-md transition-shadow"
                       style={{ borderColor: C.gray200 }}
                       onClick={() => openEditTipoPeca(tipo)}
@@ -600,11 +612,10 @@ export function FiltroDocumentosPage() {
                       <CardHeader className="pb-2">
                         <CardTitle className="text-sm flex items-center gap-2">
                           <span className="flex-1">{tipo.titulo}</span>
-                          {!tipo.ativo && (
-                            <Badge variant="secondary" className="text-xs">Inativo</Badge>
-                          )}
-                          {tipo.is_padrao && (
-                            <Badge className="text-xs bg-blue-100 text-blue-800">Padrao</Badge>
+                          {tipo.categorias_count === 0 && (
+                            <Badge variant="outline" className="text-xs text-amber-600 border-amber-300">
+                              Sem filtro configurado
+                            </Badge>
                           )}
                           <Settings2
                             className="h-3.5 w-3.5 flex-shrink-0 opacity-40 hover:opacity-100"
@@ -614,7 +625,7 @@ export function FiltroDocumentosPage() {
                       </CardHeader>
                       <CardContent>
                         <p className="text-xs mb-2" style={{ color: C.text400 }}>
-                          {tipo.descricao || tipo.nome}
+                          {tipo.nome}
                         </p>
                         <div className="flex flex-wrap gap-1">
                           {(tipo.categorias_documento || []).map(cat => (
@@ -649,6 +660,7 @@ export function FiltroDocumentosPage() {
       <EditarTipoPecaDialog
         tipoPeca={editTipo}
         todasCategorias={categorias}
+        selectedGroupId={selectedGroupId}
         open={editTipoOpen}
         onOpenChange={setEditTipoOpen}
         onSaved={loadData}
