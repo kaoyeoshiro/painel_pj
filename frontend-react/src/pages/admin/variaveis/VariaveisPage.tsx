@@ -142,7 +142,7 @@ export function VariaveisPage() {
           onGroupChange={setSelectedGroupId}
         />
 
-        <div>
+        <div className="mt-4">
           <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-6">
             <div className="bg-white rounded-xl shadow-sm p-4" style={{ border: `1px solid ${C.gray200}` }}>
               <div className="flex items-center gap-3">
