@@ -134,7 +134,7 @@ export function VariaveisPage() {
         }
       />
 
-      <ContentArea>
+      <ContentArea className="space-y-6">
         <AdminSubNav />
 
         <GroupSelector

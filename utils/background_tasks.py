@@ -330,13 +330,13 @@ async def _run_periodic_task(
                 db = db_factory()
                 try:
                     result = func(db)
-                    if result:
+                    if result and result.get("problems_detected"):
                         logger.debug(f"[Scheduler] {name}: {result}")
                 finally:
                     db.close()
             else:
                 result = func()
-                if result:
+                if result and result.get("problems_detected"):
                     logger.debug(f"[Scheduler] {name}: {result}")
 
         except asyncio.CancelledError:

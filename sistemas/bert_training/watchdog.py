@@ -332,7 +332,7 @@ def run_watchdog_check(db: Session) -> Dict[str, Any]:
         logger.info(f"Watchdog: {len(results['problems_detected'])} problemas detectados, "
                    f"{len(results['actions_taken'])} acoes tomadas")
     else:
-        logger.debug("Watchdog: nenhum problema detectado")
+        pass  # sem problemas, nada a logar
 
     return results
 
