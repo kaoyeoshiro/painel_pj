@@ -67,6 +67,39 @@ def upgrade() -> None:
         ["tipo_peca_nome", "group_id"],
     )
 
+    # ------------------------------------------------------------------
+    # Migra dados existentes de tipo_peca_categorias (sem grupo) para
+    # tipo_peca_grupo_categorias (com grupo).
+    # Para cada grupo ativo, replica as associacoes da tabela antiga.
+    # ------------------------------------------------------------------
+    conn = op.get_bind()
+
+    has_old_table = conn.execute(
+        sa.text(
+            "SELECT EXISTS (SELECT 1 FROM information_schema.tables "
+            "WHERE table_name = 'tipo_peca_categorias')"
+        )
+    ).scalar()
+    if not has_old_table:
+        return
+
+    old_count = conn.execute(
+        sa.text("SELECT count(*) FROM tipo_peca_categorias")
+    ).scalar()
+    if not old_count:
+        return
+
+    conn.execute(sa.text("""
+        INSERT INTO tipo_peca_grupo_categorias
+            (tipo_peca_nome, group_id, categoria_documento_id)
+        SELECT tp.nome, pg.id, tpc.categoria_documento_id
+        FROM tipo_peca_categorias tpc
+        JOIN tipos_peca tp ON tp.id = tpc.tipo_peca_id
+        CROSS JOIN prompt_groups pg
+        WHERE pg.active = true
+        ON CONFLICT ON CONSTRAINT uq_tpgc_tipo_group_cat DO NOTHING
+    """))
+
 
 def downgrade() -> None:
     if not _table_exists("tipo_peca_grupo_categorias"):
