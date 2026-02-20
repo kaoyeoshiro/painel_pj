@@ -1113,7 +1113,7 @@ class CuradoriaModule {
         const numeroCnj = document.getElementById('numero-cnj').value;
         const tipoPeca = document.getElementById('tipo-peca').value || this.dadosCuradoria.tipo_peca;
         const observacao = document.getElementById('observacao-usuario').value;
-        const groupId = document.getElementById('grupo-principal')?.value;
+        const groupId = this.currentGroupId || document.getElementById('grupo-principal')?.value;
         const subcategoriaIds = app.getSubcategoriasIds?.() || [];
 
         // Calcula módulos excluídos (estavam no preview mas não estão selecionados)
