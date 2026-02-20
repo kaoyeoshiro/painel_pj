@@ -57,6 +57,12 @@ else:
         pool_timeout=POOL_TIMEOUT,
         pool_recycle=POOL_RECYCLE,
         pool_pre_ping=True,  # RELIABILITY: Verifica conexão antes de usar
+        connect_args={
+            "keepalives": 1,            # Habilita TCP keepalive
+            "keepalives_idle": 60,      # Envia keepalive após 60s ocioso
+            "keepalives_interval": 10,  # Reenvia a cada 10s se sem resposta
+            "keepalives_count": 5,      # Desiste após 5 tentativas sem resposta
+        },
     )
     logger.info(
         f"Database pool configurado: size={POOL_SIZE}, overflow={MAX_OVERFLOW}, "
