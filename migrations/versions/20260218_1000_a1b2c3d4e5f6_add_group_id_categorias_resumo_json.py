@@ -48,6 +48,18 @@ def _constraint_exists(constraint_name: str) -> bool:
     return result.scalar()
 
 
+def _index_exists(index_name: str) -> bool:
+    """Verifica se indice ja existe (pg_indexes)."""
+    conn = op.get_bind()
+    result = conn.execute(
+        sa.text(
+            "SELECT EXISTS (SELECT 1 FROM pg_indexes WHERE indexname = :name)"
+        ),
+        {"name": index_name},
+    )
+    return result.scalar()
+
+
 def upgrade() -> None:
     # 1. Adiciona coluna group_id (nullable=True inicialmente)
     if not _column_exists("categorias_resumo_json", "group_id"):
@@ -70,7 +82,7 @@ def upgrade() -> None:
     op.alter_column("categorias_resumo_json", "group_id", nullable=False)
 
     # 4. Cria index em group_id
-    if not _constraint_exists("ix_categorias_resumo_json_group_id"):
+    if not _index_exists("ix_categorias_resumo_json_group_id"):
         op.create_index("ix_categorias_resumo_json_group_id", "categorias_resumo_json", ["group_id"])
 
     # 5. Remove unique constraint antigo em nome (se existir)

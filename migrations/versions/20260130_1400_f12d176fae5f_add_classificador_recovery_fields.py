@@ -19,6 +19,18 @@ branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 
+def _column_exists(table_name: str, column_name: str) -> bool:
+    """Verifica se uma coluna já existe na tabela (idempotência pós-baseline)."""
+    conn = op.get_bind()
+    result = conn.execute(sa.text(
+        "SELECT EXISTS ("
+        "  SELECT 1 FROM information_schema.columns"
+        "  WHERE table_name = :table_name AND column_name = :column_name"
+        ")"
+    ), {"table_name": table_name, "column_name": column_name})
+    return result.scalar()
+
+
 def upgrade() -> None:
     """
     Adiciona campos de heartbeat e recuperação ao Classificador de Documentos.
@@ -37,46 +49,57 @@ def upgrade() -> None:
     """
 
     # Adiciona colunas na tabela execucoes_classificacao
-    op.add_column('execucoes_classificacao',
-        sa.Column('ultimo_heartbeat', sa.DateTime(), nullable=True,
-                  comment='Timestamp do último heartbeat (atualizado a cada documento)'))
+    if not _column_exists('execucoes_classificacao', 'ultimo_heartbeat'):
+        op.add_column('execucoes_classificacao',
+            sa.Column('ultimo_heartbeat', sa.DateTime(), nullable=True,
+                      comment='Timestamp do último heartbeat (atualizado a cada documento)'))
 
-    op.add_column('execucoes_classificacao',
-        sa.Column('ultimo_codigo_processado', sa.String(100), nullable=True,
-                  comment='Código do último documento processado'))
+    if not _column_exists('execucoes_classificacao', 'ultimo_codigo_processado'):
+        op.add_column('execucoes_classificacao',
+            sa.Column('ultimo_codigo_processado', sa.String(100), nullable=True,
+                      comment='Código do último documento processado'))
 
-    op.add_column('execucoes_classificacao',
-        sa.Column('tentativas_retry', sa.Integer(), nullable=True, server_default='0',
-                  comment='Número de vezes que a execução foi retomada'))
+    if not _column_exists('execucoes_classificacao', 'tentativas_retry'):
+        op.add_column('execucoes_classificacao',
+            sa.Column('tentativas_retry', sa.Integer(), nullable=True, server_default='0',
+                      comment='Número de vezes que a execução foi retomada'))
 
-    op.add_column('execucoes_classificacao',
-        sa.Column('max_retries', sa.Integer(), nullable=True, server_default='3',
-                  comment='Limite máximo de retomadas permitidas'))
+    if not _column_exists('execucoes_classificacao', 'max_retries'):
+        op.add_column('execucoes_classificacao',
+            sa.Column('max_retries', sa.Integer(), nullable=True, server_default='3',
+                      comment='Limite máximo de retomadas permitidas'))
 
-    op.add_column('execucoes_classificacao',
-        sa.Column('rota_origem', sa.String(200), nullable=True, server_default='/classificador/',
-                  comment='Rota que iniciou a execução'))
+    if not _column_exists('execucoes_classificacao', 'rota_origem'):
+        op.add_column('execucoes_classificacao',
+            sa.Column('rota_origem', sa.String(200), nullable=True, server_default='/classificador/',
+                      comment='Rota que iniciou a execução'))
 
     # Adiciona colunas na tabela resultados_classificacao
-    op.add_column('resultados_classificacao',
-        sa.Column('erro_stack', sa.Text(), nullable=True,
-                  comment='Stack trace do erro para debug'))
+    if not _column_exists('resultados_classificacao', 'erro_stack'):
+        op.add_column('resultados_classificacao',
+            sa.Column('erro_stack', sa.Text(), nullable=True,
+                      comment='Stack trace do erro para debug'))
 
-    op.add_column('resultados_classificacao',
-        sa.Column('tentativas', sa.Integer(), nullable=True, server_default='0',
-                  comment='Número de tentativas de processamento'))
+    if not _column_exists('resultados_classificacao', 'tentativas'):
+        op.add_column('resultados_classificacao',
+            sa.Column('tentativas', sa.Integer(), nullable=True, server_default='0',
+                      comment='Número de tentativas de processamento'))
 
-    op.add_column('resultados_classificacao',
-        sa.Column('ultimo_erro_em', sa.DateTime(), nullable=True,
-                  comment='Timestamp do último erro'))
+    if not _column_exists('resultados_classificacao', 'ultimo_erro_em'):
+        op.add_column('resultados_classificacao',
+            sa.Column('ultimo_erro_em', sa.DateTime(), nullable=True,
+                      comment='Timestamp do último erro'))
 
     # Cria índice para buscar execuções em andamento com heartbeat antigo (para watchdog)
-    op.create_index(
-        'ix_execucoes_classificacao_status_heartbeat',
-        'execucoes_classificacao',
-        ['status', 'ultimo_heartbeat'],
-        unique=False
-    )
+    try:
+        op.create_index(
+            'ix_execucoes_classificacao_status_heartbeat',
+            'execucoes_classificacao',
+            ['status', 'ultimo_heartbeat'],
+            unique=False
+        )
+    except Exception:
+        pass
 
 
 def downgrade() -> None:

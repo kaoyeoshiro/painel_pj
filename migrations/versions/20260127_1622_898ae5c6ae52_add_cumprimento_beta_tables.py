@@ -12,13 +12,26 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision: str = '898ae5c6ae52'
-down_revision: Union[str, None] = None
+down_revision: Union[str, None] = '9e503612a490'
 branch_labels: Union[str, Sequence[str], None] = None
 depends_on: Union[str, Sequence[str], None] = None
 
 
+def _table_exists(name: str) -> bool:
+    """Verifica se uma tabela já existe (idempotência pós-baseline)."""
+    conn = op.get_bind()
+    result = conn.execute(sa.text(
+        "SELECT EXISTS (SELECT 1 FROM information_schema.tables WHERE table_name = :name)"
+    ), {"name": name})
+    return result.scalar()
+
+
 def upgrade() -> None:
     """Cria tabelas do módulo Cumprimento de Sentença Beta."""
+    # Após baseline (create_all), tabelas podem já existir
+    if _table_exists('sessoes_cumprimento_beta'):
+        return
+
     # Tabela principal: sessoes_cumprimento_beta
     op.create_table('sessoes_cumprimento_beta',
         sa.Column('id', sa.Integer(), nullable=False),
