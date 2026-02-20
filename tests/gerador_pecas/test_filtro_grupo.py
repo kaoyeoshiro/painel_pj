@@ -113,5 +113,84 @@ class TestTipoPecaGrupoCategoriasModel(unittest.TestCase):
         self.assertEqual(ids_detran, {cat_peticao.id, cat_laudo.id})
 
 
+class TestFiltroCategoriasComGrupo(unittest.TestCase):
+    """Testa FiltroCategoriasDocumento com suporte a group_id."""
+
+    def setUp(self):
+        from auth.models import User  # noqa: F401
+        self.engine = create_engine(
+            "sqlite:///:memory:",
+            connect_args={"check_same_thread": False}
+        )
+        Base.metadata.create_all(bind=self.engine)
+        self.Session = sessionmaker(bind=self.engine)
+        self.db = self.Session()
+
+    def tearDown(self):
+        self.db.close()
+        Base.metadata.drop_all(bind=self.engine)
+
+    def _setup_dados(self):
+        """Cria dados base: 2 grupos, 3 categorias, associacoes distintas."""
+        from admin.models_prompt_groups import PromptGroup
+        from sistemas.gerador_pecas.models_config_pecas import (
+            CategoriaDocumento,
+            TipoPecaGrupoCategoria,
+        )
+
+        grupo_ps = PromptGroup(name="PS", slug="ps", active=True)
+        grupo_detran = PromptGroup(name="Detran", slug="detran", active=True)
+        self.db.add_all([grupo_ps, grupo_detran])
+        self.db.flush()
+
+        cat_peticao = CategoriaDocumento(nome="peticao", titulo="Peticao", codigos_documento=[500, 510])
+        cat_decisao = CategoriaDocumento(nome="decisao", titulo="Decisao", codigos_documento=[600, 610])
+        cat_laudo = CategoriaDocumento(nome="laudo", titulo="Laudo", codigos_documento=[700])
+        self.db.add_all([cat_peticao, cat_decisao, cat_laudo])
+        self.db.flush()
+
+        # PS: contestacao usa peticao + decisao
+        self.db.add(TipoPecaGrupoCategoria(tipo_peca_nome="contestacao", group_id=grupo_ps.id, categoria_documento_id=cat_peticao.id))
+        self.db.add(TipoPecaGrupoCategoria(tipo_peca_nome="contestacao", group_id=grupo_ps.id, categoria_documento_id=cat_decisao.id))
+
+        # Detran: contestacao usa peticao + laudo
+        self.db.add(TipoPecaGrupoCategoria(tipo_peca_nome="contestacao", group_id=grupo_detran.id, categoria_documento_id=cat_peticao.id))
+        self.db.add(TipoPecaGrupoCategoria(tipo_peca_nome="contestacao", group_id=grupo_detran.id, categoria_documento_id=cat_laudo.id))
+        self.db.commit()
+
+        return grupo_ps, grupo_detran
+
+    def test_codigos_permitidos_com_group_id(self):
+        """Retorna codigos corretos quando group_id e informado."""
+        from sistemas.gerador_pecas.filtro_categorias import FiltroCategoriasDocumento
+        grupo_ps, grupo_detran = self._setup_dados()
+        filtro = FiltroCategoriasDocumento(self.db)
+
+        codigos_ps = filtro.get_codigos_permitidos("contestacao", group_id=grupo_ps.id)
+        self.assertEqual(codigos_ps, {500, 510, 600, 610})
+
+        codigos_detran = filtro.get_codigos_permitidos("contestacao", group_id=grupo_detran.id)
+        self.assertEqual(codigos_detran, {500, 510, 700})
+
+    def test_codigos_permitidos_sem_group_id_fallback(self):
+        """Sem group_id, faz fallback para comportamento antigo."""
+        from sistemas.gerador_pecas.filtro_categorias import FiltroCategoriasDocumento
+        self._setup_dados()
+        filtro = FiltroCategoriasDocumento(self.db)
+        codigos = filtro.get_codigos_permitidos("contestacao")
+        self.assertIsInstance(codigos, set)
+
+    def test_documento_permitido_com_group_id(self):
+        """Verifica documento_permitido() com group_id."""
+        from sistemas.gerador_pecas.filtro_categorias import FiltroCategoriasDocumento
+        grupo_ps, grupo_detran = self._setup_dados()
+        filtro = FiltroCategoriasDocumento(self.db)
+
+        self.assertFalse(filtro.documento_permitido("contestacao", 700, group_id=grupo_ps.id))
+        self.assertTrue(filtro.documento_permitido("contestacao", 700, group_id=grupo_detran.id))
+        self.assertTrue(filtro.documento_permitido("contestacao", 600, group_id=grupo_ps.id))
+        self.assertFalse(filtro.documento_permitido("contestacao", 600, group_id=grupo_detran.id))
+
+
 if __name__ == "__main__":
     unittest.main()
