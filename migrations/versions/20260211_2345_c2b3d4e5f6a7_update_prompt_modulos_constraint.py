@@ -39,19 +39,12 @@ _FK_TABLES = [
 
 
 def _remove_duplicates(tables: set[str], group_cols: list[str]) -> None:
-    """Remove APENAS duplicatas reais de base/peca (criadas por migrate_per_group_prompts).
-
-    IMPORTANTE: Nunca deletar prompts de tipo 'conteudo' — eles sao criados
-    manualmente pelos usuarios e nao devem ser tratados como duplicatas.
-    """
+    """Remove linhas duplicadas e suas FK refs antes de criar constraint."""
+    # Subquery: IDs duplicados (manter menor ID por grupo)
     group_by = ", ".join(group_cols)
-
-    # Apenas prompts base/peca podem ter duplicatas (criadas pela migracao por grupo)
-    tipo_filter = "tipo IN ('base', 'peca')"
-
     dup_subquery = (
-        f"SELECT id FROM prompt_modulos WHERE {tipo_filter} AND id NOT IN ("
-        f"  SELECT MIN(id) FROM prompt_modulos WHERE {tipo_filter} GROUP BY {group_by}"
+        f"SELECT id FROM prompt_modulos WHERE id NOT IN ("
+        f"  SELECT MIN(id) FROM prompt_modulos GROUP BY {group_by}"
         f")"
     )
 
@@ -62,10 +55,10 @@ def _remove_duplicates(tables: set[str], group_cols: list[str]) -> None:
                 f"DELETE FROM {fk_table} WHERE {fk_col} IN ({dup_subquery})"
             )
 
-    # Remove apenas duplicatas de base/peca
+    # Remove duplicatas
     op.execute(
-        f"DELETE FROM prompt_modulos WHERE {tipo_filter} AND id NOT IN ("
-        f"  SELECT MIN(id) FROM prompt_modulos WHERE {tipo_filter} GROUP BY {group_by}"
+        f"DELETE FROM prompt_modulos WHERE id NOT IN ("
+        f"  SELECT MIN(id) FROM prompt_modulos GROUP BY {group_by}"
         f")"
     )
 

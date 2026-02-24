@@ -2227,7 +2227,7 @@ class TestModoAutomaticoInabalterado:
         # Lê o arquivo orquestrador_agentes.py diretamente
         orq_path = os.path.join(
             os.path.dirname(__file__),
-            "..", "sistemas", "gerador_pecas", "orquestrador_agentes.py"
+            "..", "..", "sistemas", "gerador_pecas", "orquestrador_agentes.py"
         )
         orq_path = os.path.normpath(orq_path)
 
@@ -2249,7 +2249,7 @@ class TestModoAutomaticoInabalterado:
         # Lê o arquivo services_curadoria.py diretamente
         curadoria_path = os.path.join(
             os.path.dirname(__file__),
-            "..", "sistemas", "gerador_pecas", "services_curadoria.py"
+            "..", "..", "sistemas", "gerador_pecas", "services_curadoria.py"
         )
         curadoria_path = os.path.normpath(curadoria_path)
 
@@ -2270,13 +2270,13 @@ class TestModoAutomaticoInabalterado:
         # Arquivos do modo automático
         orq_path = os.path.join(
             os.path.dirname(__file__),
-            "..", "sistemas", "gerador_pecas", "orquestrador_agentes.py"
+            "..", "..", "sistemas", "gerador_pecas", "orquestrador_agentes.py"
         )
 
         # Arquivos do modo semi-automático
         curadoria_path = os.path.join(
             os.path.dirname(__file__),
-            "..", "sistemas", "gerador_pecas", "services_curadoria.py"
+            "..", "..", "sistemas", "gerador_pecas", "services_curadoria.py"
         )
 
         # Ambos devem existir como arquivos separados

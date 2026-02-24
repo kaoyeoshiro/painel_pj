@@ -780,7 +780,8 @@ INSTRUÇÕES ESPECIAIS PARA ANÁLISE EM LOTE:
 def run_analysis_task(file_id: str, file_path: str, model: str, api_key: str, user_id: int, matricula_hint: Optional[str] = None):
     """Task de análise executada em background - não armazena o PDF, apenas o JSON"""
     from database.connection import SessionLocal
-
+    from admin.models import ConfiguracaoIA
+    
     file_name = os.path.basename(file_path)
     logger.info(f"📄 Iniciando análise: {file_name}")
     if matricula_hint:
@@ -788,7 +789,20 @@ def run_analysis_task(file_id: str, file_path: str, model: str, api_key: str, us
     
     db = SessionLocal()
     try:
-        # Importa função de análise (modelo é resolvido internamente via get_ia_params)
+        # Verifica se há modelo configurado no banco
+        try:
+            config_model = session_query(db, ConfiguracaoIA).filter(
+                ConfiguracaoIA.sistema == "matriculas",
+                ConfiguracaoIA.chave == "modelo"
+            ).first()
+            if config_model and config_model.valor:
+                model = config_model.valor
+        except Exception as e:
+            logger.warning(f"   ⚠️ Erro ao buscar modelo do banco: {e}")
+        
+        logger.info(f"   └─ Modelo: {model}")
+        
+        # Importa função de análise
         from sistemas.matriculas_confrontantes.services_ia import analyze_with_vision_llm
         
         logger.info(f"🤖 Enviando para IA...")
@@ -843,7 +857,6 @@ def run_analysis_task(file_id: str, file_path: str, model: str, api_key: str, us
         analise.num_confrontantes = len(lotes)
         analise.analisado_em = get_utc_now()
         analise.file_path = None  # Limpa o caminho do arquivo se existia
-        analise.relatorio_texto = None  # Limpa relatório cacheado para forçar regeneração
         
         db.commit()
         logger.info(f"💾 Salvo no banco: ID={analise.id}")
@@ -1163,38 +1176,39 @@ async def gerar_relatorio(
     
     try:
         from sistemas.matriculas_confrontantes.services_ia import (
-            call_gemini_text_async, build_full_report_prompt, get_system_prompt
+            call_openrouter_text, build_full_report_prompt, get_system_prompt
         )
-        from services.ia_params_resolver import get_ia_params
-
+        
         # Monta payload
         payload = analise.resultado_json or {}
         payload["gerado_em"] = to_iso_utc(now_utc())
-
-        # Obtém configurações via resolver centralizado
-        params = get_ia_params(db, "matriculas", "relatorio")
-        modelo_relatorio = params.modelo
-        temperatura = params.temperatura
-        max_tokens = params.max_tokens
-
+        
+        # Obtém configurações do banco
+        from sistemas.matriculas_confrontantes.services_ia import get_config_from_db
+        
+        modelo_relatorio = get_config_from_db("matriculas", "modelo_relatorio") or FULL_REPORT_MODEL
+        temperatura = float(get_config_from_db("matriculas", "temperatura_relatorio") or "0.2")
+        max_tokens = int(get_config_from_db("matriculas", "max_tokens_relatorio") or "3200")
+        
         payload["modelo_utilizado"] = modelo_relatorio
-
+        
         payload_json = json.dumps(payload, ensure_ascii=False, indent=2)
-
+        
         # Gera relatório - usa prompt do banco se disponível
         prompt = build_full_report_prompt(payload_json)
         system_prompt = get_system_prompt()
-
-        report_text = await call_gemini_text_async(
+        
+        report_text = call_openrouter_text(
             model=modelo_relatorio,
             system_prompt=system_prompt,
             user_prompt=prompt,
             temperature=temperatura,
-            max_tokens=max_tokens
+            max_tokens=max_tokens,
+            api_key=state.api_key
         )
-
+        
         report_text = report_text.strip()
-
+        
         # Salva relatório e modelo usado no banco para não precisar regenerar
         analise.relatorio_texto = report_text
         analise.modelo_usado = modelo_relatorio

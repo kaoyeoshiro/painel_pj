@@ -24,7 +24,7 @@ from sqlalchemy.orm import Session
 
 from auth.dependencies import get_current_active_user, get_current_user_from_token_or_query
 from auth.models import User
-from database.connection import get_db, SessionLocal
+from database.connection import get_db
 from utils.timezone import to_iso_utc, get_utc_now, now_local
 from services.text_normalizer import text_normalizer
 from services.performance_tracker import (
@@ -1165,11 +1165,6 @@ async def processar_processo_stream(
                 if req.observacao_usuario:
                     yield stream_helper.format_info('Observações do usuário serão consideradas na geração')
 
-                # Libera sessão DB antes do streaming do Agente 3
-                # Todos os reads já terminaram; a sessão ficaria ociosa 30-120s
-                # e o Railway derruba conexões idle. Session.close() é idempotente.
-                db.close()
-
                 # Usa versão STREAMING do Agente 3 para TTFT rápido
                 tracker.mark("prompt_build_done")
                 tracker.mark("llm_call_start")
@@ -1270,53 +1265,78 @@ async def processar_processo_stream(
                     })
                 tracker.mark("postprocess_done")
 
-                # Abre nova sessão DB para salvar (a anterior foi fechada antes do Agent 3)
-                db_save = SessionLocal()
+                # Salva no banco (usa resumo filtrado se disponível)
+                tracker.mark("db_save_start")
+                geracao = GeracaoPeca(
+                    numero_cnj=cnj_limpo,
+                    numero_cnj_formatado=cnj_limpo,
+                    tipo_peca=tipo_peca,
+                    dados_processo=dados_extracao,  # Persiste variáveis extraídas para auditoria
+                    conteudo_gerado=resultado_agente3.conteudo_markdown,
+                    prompt_enviado=resultado_agente3.prompt_enviado,
+                    resumo_consolidado=resumo_para_geracao,
+                    documentos_processados=documentos_processados,
+                    modelo_usado=modelo,
+                    usuario_id=current_user.id
+                )
+
+                # Campos de modo de ativação (podem não existir no banco se migration pendente)
                 try:
-                    # Salva no banco (usa resumo filtrado se disponível)
-                    tracker.mark("db_save_start")
-                    geracao = GeracaoPeca(
-                        numero_cnj=cnj_limpo,
-                        numero_cnj_formatado=cnj_limpo,
-                        tipo_peca=tipo_peca,
-                        dados_processo=dados_extracao,  # Persiste variáveis extraídas para auditoria
-                        conteudo_gerado=resultado_agente3.conteudo_markdown,
-                        prompt_enviado=resultado_agente3.prompt_enviado,
-                        resumo_consolidado=resumo_para_geracao,
-                        documentos_processados=documentos_processados,
-                        modelo_usado=modelo,
-                        usuario_id=current_user.id
+                    geracao.modo_ativacao_agente2 = resultado_agente2.modo_ativacao
+                    geracao.modulos_ativados_det = resultado_agente2.modulos_ativados_det
+                    geracao.modulos_ativados_llm = resultado_agente2.modulos_ativados_llm
+                except AttributeError:
+                    pass
+
+                # Salva activation trace para auditoria de ativação de módulos
+                try:
+                    from sistemas.gerador_pecas.services_activation_trace import (
+                        build_activation_trace, save_activation_trace
                     )
+                    trace_data = build_activation_trace(
+                        decision_traces=resultado_agente2.decision_traces,
+                        variaveis_snapshot=resultado_agente2.variaveis_snapshot,
+                        modo_ativacao=resultado_agente2.modo_ativacao,
+                        db=db,
+                        modulos_avaliados_ids=resultado_agente2.modulos_ids,
+                    )
+                    save_activation_trace(geracao, trace_data)
+                except Exception as e_trace:
+                    logger.warning(f"[ACTIVATION-TRACE] Falha ao construir trace: {e_trace}")
 
-                    # Campos de modo de ativação (podem não existir no banco se migration pendente)
-                    try:
-                        geracao.modo_ativacao_agente2 = resultado_agente2.modo_ativacao
-                        geracao.modulos_ativados_det = resultado_agente2.modulos_ativados_det
-                        geracao.modulos_ativados_llm = resultado_agente2.modulos_ativados_llm
-                    except AttributeError:
-                        pass
+                try:
+                    db.add(geracao)
+                    db.flush()  # Flush para obter o ID sem commit
 
-                    # Salva activation trace para auditoria de ativação de módulos
-                    try:
-                        from sistemas.gerador_pecas.services_activation_trace import (
-                            build_activation_trace, save_activation_trace
-                        )
-                        trace_data = build_activation_trace(
-                            decision_traces=resultado_agente2.decision_traces,
-                            variaveis_snapshot=resultado_agente2.variaveis_snapshot,
-                            modo_ativacao=resultado_agente2.modo_ativacao,
-                            db=db_save,
-                            modulos_avaliados_ids=resultado_agente2.modulos_ids,
-                        )
-                        save_activation_trace(geracao, trace_data)
-                    except Exception as e_trace:
-                        logger.warning(f"[ACTIVATION-TRACE] Falha ao construir trace: {e_trace}")
+                    # Cria versão inicial na mesma transação (evita commit duplo)
+                    versao = VersaoPeca(
+                        geracao_id=geracao.id,
+                        numero_versao=1,
+                        conteudo=resultado_agente3.conteudo_markdown,
+                        origem='geracao_inicial',
+                        descricao_alteracao='Versão inicial gerada pela IA',
+                        diff_anterior=None
+                    )
+                    db.add(versao)
 
-                    try:
-                        db_save.add(geracao)
-                        db_save.flush()  # Flush para obter o ID sem commit
+                    db.commit()
+                    db.refresh(geracao)
+                except Exception as e:
+                    # Se falhou por colunas inexistentes, tenta sem os campos extras
+                    if 'modo_ativacao_agente2' in str(e) or 'modulos_ativados' in str(e) or 'activation_trace' in str(e):
+                        db.rollback()
+                        geracao.modo_ativacao_agente2 = None
+                        geracao.modulos_ativados_det = None
+                        geracao.modulos_ativados_llm = None
+                        geracao.activation_trace = None
+                        from sqlalchemy import inspect
+                        state = inspect(geracao)
+                        for attr in ['modo_ativacao_agente2', 'modulos_ativados_det', 'modulos_ativados_llm', 'activation_trace']:
+                            if attr in state.dict:
+                                del state.dict[attr]
+                        db.add(geracao)
+                        db.flush()
 
-                        # Cria versão inicial na mesma transação (evita commit duplo)
                         versao = VersaoPeca(
                             geracao_id=geracao.id,
                             numero_versao=1,
@@ -1325,65 +1345,35 @@ async def processar_processo_stream(
                             descricao_alteracao='Versão inicial gerada pela IA',
                             diff_anterior=None
                         )
-                        db_save.add(versao)
+                        db.add(versao)
 
-                        db_save.commit()
-                        db_save.refresh(geracao)
-                    except Exception as e:
-                        # Se falhou por colunas inexistentes, tenta sem os campos extras
-                        if 'modo_ativacao_agente2' in str(e) or 'modulos_ativados' in str(e) or 'activation_trace' in str(e):
-                            db_save.rollback()
-                            geracao.modo_ativacao_agente2 = None
-                            geracao.modulos_ativados_det = None
-                            geracao.modulos_ativados_llm = None
-                            geracao.activation_trace = None
-                            from sqlalchemy import inspect
-                            state = inspect(geracao)
-                            for attr in ['modo_ativacao_agente2', 'modulos_ativados_det', 'modulos_ativados_llm', 'activation_trace']:
-                                if attr in state.dict:
-                                    del state.dict[attr]
-                            db_save.add(geracao)
-                            db_save.flush()
+                        db.commit()
+                        db.refresh(geracao)
+                    else:
+                        raise
 
-                            versao = VersaoPeca(
-                                geracao_id=geracao.id,
-                                numero_versao=1,
-                                conteudo=resultado_agente3.conteudo_markdown,
-                                origem='geracao_inicial',
-                                descricao_alteracao='Versão inicial gerada pela IA',
-                                diff_anterior=None
-                            )
-                            db_save.add(versao)
+                tracker.mark("db_save_done")
 
-                            db_save.commit()
-                            db_save.refresh(geracao)
-                        else:
-                            raise
+                # Resultado final
+                tracker.mark("response_sent")
+                tracker.set_metadata("tipo_peca", tipo_peca)
+                tracker.set_metadata("modelo", modelo)
+                tracker.log_summary()
 
-                    tracker.mark("db_save_done")
+                # Inclui metricas de performance no evento final
+                perf_report = tracker.get_report()
 
-                    # Resultado final
-                    tracker.mark("response_sent")
-                    tracker.set_metadata("tipo_peca", tipo_peca)
-                    tracker.set_metadata("modelo", modelo)
-                    tracker.log_summary()
-
-                    # Inclui metricas de performance no evento final
-                    perf_report = tracker.get_report()
-
-                    # Salva log de performance detalhado no banco
-                    try:
-                        log_request_perf(
-                            report=perf_report,
-                            db=db_save,
-                            user_id=current_user.id if current_user else None,
-                            username=current_user.username if current_user else None,
-                            success=True
-                        )
-                    except Exception as e:
-                        print(f"[PERF] Erro ao salvar log: {e}")
-                finally:
-                    db_save.close()
+                # Salva log de performance detalhado no banco
+                try:
+                    log_request_perf(
+                        report=perf_report,
+                        db=db,
+                        user_id=current_user.id if current_user else None,
+                        username=current_user.username if current_user else None,
+                        success=True
+                    )
+                except Exception as e:
+                    print(f"[PERF] Erro ao salvar log: {e}")
 
                 yield stream_helper.format_sucesso(
                     geracao_id=geracao.id,

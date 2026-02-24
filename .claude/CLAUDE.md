@@ -615,7 +615,7 @@ Esta separação é intencional para distinguir claramente entre:
 
 **Funcionalidades implementadas**:
 1. **Correção do bug "Sugestões do Sistema = 0"**: O endpoint de listagem não retornava `total_preview` (linha 1631-1637 do router.py)
-2. **Botão "Ver Auditoria Completa"**: Abre modal detalhado usando endpoint `/api/gerador-pecas/admin/geracoes/{id}/curadoria`
+2. **Botão "Ver Auditoria Completa"**: Abre modal detalhado usando endpoint `/admin/api/gerador-pecas-admin/geracoes/{id}/curadoria`
 3. **Seções colapsáveis**:
    - Sugestões Confirmadas (módulos vindos do preview que o usuário aceitou)
    - Adicionados Manualmente (módulos que o usuário incluiu)
@@ -625,7 +625,7 @@ Esta separação é intencional para distinguir claramente entre:
 
 **Endpoint de auditoria detalhada**:
 ```
-GET /api/gerador-pecas/admin/geracoes/{geracao_id}/curadoria
+GET /admin/api/gerador-pecas-admin/geracoes/{geracao_id}/curadoria
 ```
 Retorna:
 - `metadata`: total_preview, total_incluidos, total_confirmados, total_manuais, total_excluidos
