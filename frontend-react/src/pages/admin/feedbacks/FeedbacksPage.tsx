@@ -36,6 +36,7 @@ import { SISTEMAS, MESES, ANOS, STAR_COLORS } from './constants'
 import type { DashboardData, FeedbackItem } from './types'
 
 import { EvolutionChart } from './components/EvolutionChart'
+import { AIModelsCards } from './components/AIModelsCards'
 import { UsersFeedbackTable } from './components/UsersFeedbackTable'
 import { PendingEvaluationTable } from './components/PendingEvaluationTable'
 import { FeedbacksTable } from './components/FeedbacksTable'
@@ -383,12 +384,20 @@ export function FeedbacksPage() {
         />
 
         {/* ============================================================= */}
-        {/* Pendentes de Avaliação (largura total)                         */}
+        {/* Modelos de IA em uso                                           */}
         {/* ============================================================= */}
-        <PendingEvaluationTable
-          data={dashboard?.pendentes_feedback ?? []}
-          onViewReport={handleViewReport}
-        />
+        <AIModelsCards />
+
+        {/* ============================================================= */}
+        {/* Top 10 usuários + Pendentes                                    */}
+        {/* ============================================================= */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <UsersFeedbackTable data={dashboard?.feedbacks_por_usuario ?? []} />
+          <PendingEvaluationTable
+            data={dashboard?.pendentes_feedback ?? []}
+            onViewReport={handleViewReport}
+          />
+        </div>
 
         {/* ============================================================= */}
         {/* Tabela de feedbacks com paginação server-side                   */}
@@ -400,11 +409,6 @@ export function FeedbacksPage() {
           onViewReport={handleViewReport}
           onViewComment={handleViewComment}
         />
-
-        {/* ============================================================= */}
-        {/* Feedbacks por Usuário (Top 10)                                  */}
-        {/* ============================================================= */}
-        <UsersFeedbackTable data={dashboard?.feedbacks_por_usuario ?? []} />
       </ContentArea>
 
       {/* ================================================================= */}

@@ -93,6 +93,6 @@ export async function exportFeedbacks(): Promise<Blob> {
 
 export async function fetchCuradoriaAudit(geracaoId: number): Promise<CuradoriaAuditData> {
   return adminApi.get<CuradoriaAuditData>(
-    `/api/gerador-pecas/admin/geracoes/${geracaoId}/curadoria`
+    `/admin/api/gerador-pecas-admin/geracoes/${geracaoId}/curadoria`
   )
 }

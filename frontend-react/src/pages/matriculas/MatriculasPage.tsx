@@ -132,28 +132,21 @@ export default function MatriculasPage() {
   // Carrega detalhes do documento
   const loadDocumentDetails = useCallback(
     async (fileId: string) => {
-      // 1. Carrega PDF primeiro (sempre funciona se o arquivo existe)
-      try {
-        const blob = await matriculasApi.blob(`/files/${fileId}/view`)
-        const url = URL.createObjectURL(blob)
-        if (pdfViewerUrl) URL.revokeObjectURL(pdfViewerUrl)
-        setPdfViewerUrl(url)
-      } catch (error) {
-        console.error('Erro ao carregar PDF:', error)
-      }
-
-      // 2. Tenta buscar resultado da análise (pode não existir ainda)
       try {
         const result = await matriculasApi.get<ResultadoAnalise>(`/resultado/${fileId}`)
         setDocumentDetails(result)
         setCurrentAnaliseId(result.analise_id || null)
 
-        // Gera relatório apenas se já tem análise
+        // Carrega PDF via cliente centralizado
+        const blob = await matriculasApi.blob(`/files/${fileId}/view`)
+        const url = URL.createObjectURL(blob)
+        if (pdfViewerUrl) URL.revokeObjectURL(pdfViewerUrl)
+        setPdfViewerUrl(url)
+
+        // Gera relatorio
         await generateReport()
-      } catch {
-        // Arquivo ainda não analisado - limpa detalhes anteriores
-        setDocumentDetails(null)
-        setCurrentAnaliseId(null)
+      } catch (error) {
+        console.error('Erro ao carregar documento:', error)
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps -- generateReport é estável (não depende de estado reativo)
