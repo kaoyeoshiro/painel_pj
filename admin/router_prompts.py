@@ -897,10 +897,11 @@ async def criar_modulo(
 
     # Verifica se já existe com mesmo nome
     if modulo_data.tipo == "peca":
-        # Para peça, verifica apenas tipo + nome (categoria/subcategoria são null)
+        # Para peça, verifica tipo + nome + group_id (peças homônimas em grupos diferentes são permitidas)
         existente = modulo_repo.query().filter(
             PromptModulo.tipo == "peca",
-            PromptModulo.nome == modulo_data.nome
+            PromptModulo.nome == modulo_data.nome,
+            PromptModulo.group_id == modulo_data.group_id
         ).first()
     else:
         # Verifica constraint unique do banco: (tipo, nome, group_id)
@@ -913,7 +914,7 @@ async def criar_modulo(
     if existente:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Já existe um módulo com este nome" if modulo_data.tipo == "peca" else "Já existe um módulo com este nome neste grupo"
+            detail="Já existe um módulo com este nome neste grupo"
         )
 
     group_id = modulo_data.group_id
@@ -940,10 +941,23 @@ async def criar_modulo(
                     status_code=status.HTTP_400_BAD_REQUEST,
                     detail="Subgrupo invalido para o grupo informado"
                 )
+    elif modulo_data.tipo in ("peca", "base"):
+        if not group_id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Grupo é obrigatório para módulo do tipo peça ou base"
+            )
+        grupo = group_repo.get_by_id(group_id)
+        if not grupo:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="Grupo inválido"
+            )
+        subgroup_id = None  # subgrupos só se aplicam a conteudo
     else:
         group_id = None
         subgroup_id = None
-    
+
     modulo_payload = modulo_data.model_dump(exclude={"subcategoria_ids"})
 
     # Normaliza booleanos nas regras determinísticas antes de salvar (1/0 -> true/false)
@@ -1109,10 +1123,13 @@ async def atualizar_modulo(
     update_data["modo_ativacao"] = modo_correto
 
     if modulo.tipo == "peca":
-        # Prompts de peça não devem ter categoria/subcategoria
+        # Prompts de peça não devem ter categoria/subcategoria/subgrupo
+        # group_id é preservado — peças pertencem a um grupo
         update_data["categoria"] = None
         update_data["subcategoria"] = None
-        update_data["group_id"] = None
+        update_data["subgroup_id"] = None
+    elif modulo.tipo == "base":
+        # Módulos base preservam group_id mas não têm subgrupo
         update_data["subgroup_id"] = None
     elif modulo.tipo != "conteudo":
         if "group_id" in update_data:
