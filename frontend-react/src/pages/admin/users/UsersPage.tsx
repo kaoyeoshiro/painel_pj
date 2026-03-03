@@ -227,6 +227,22 @@ export function UsersPage() {
         })
         return
       }
+      // Valida requisitos de senha antes de enviar
+      const pwd = formData.password ?? ''
+      const pwdErrors: string[] = []
+      if (pwd.length < 8) pwdErrors.push('mínimo 8 caracteres')
+      if (!/[A-Z]/.test(pwd)) pwdErrors.push('uma letra maiúscula')
+      if (!/[a-z]/.test(pwd)) pwdErrors.push('uma letra minúscula')
+      if (!/\d/.test(pwd)) pwdErrors.push('um número')
+      if (!/[!@#$%^&*(),.?":{}|<>_\-+=[\]\\\/~`';]/.test(pwd)) pwdErrors.push('um caractere especial (!@#$%^&*)')
+      if (pwdErrors.length > 0) {
+        toast({
+          title: 'Senha fraca',
+          description: `A senha deve conter: ${pwdErrors.join(', ')}`,
+          variant: 'destructive',
+        })
+        return
+      }
     } else {
       // Edicao — nome completo continua obrigatorio
       if (!formData.full_name?.trim()) {
@@ -662,13 +678,16 @@ export function UsersPage() {
 
             {!editingUser && (
               <div className="space-y-2">
-                <Label htmlFor="password">Senha {!editingUser && '*'}</Label>
+                <Label htmlFor="password">Senha *</Label>
                 <Input
                   id="password"
                   type="password"
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
                 />
+                <p className="text-xs text-muted-foreground">
+                  Mínimo 8 caracteres com maiúscula, minúscula, número e caractere especial (!@#$%^&*)
+                </p>
               </div>
             )}
 
