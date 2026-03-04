@@ -127,7 +127,7 @@ export const EVOLUCAO_SEMANAS_OPTIONS = [
 ]
 
 export const EVOLUCAO_METRICA_OPTIONS = [
-  { value: 'taxa_acerto', label: 'Taxa de Acerto (%)' },
+  { value: 'satisfacao', label: 'Satisfação (%)' },
   { value: 'total', label: 'Total de Feedbacks' },
   { value: 'corretos', label: 'Feedbacks Corretos' },
 ]
