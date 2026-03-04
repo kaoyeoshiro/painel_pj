@@ -420,7 +420,8 @@ async def dashboard_feedbacks(
                     'corretos': r.corretos or 0,
                     'parciais': r.parciais or 0,
                     'incorretos': r.incorretos or 0,
-                    'taxa_acerto': round((r.corretos or 0) / r.total * 100, 1) if r.total > 0 else 0
+                    'taxa_acerto': round((r.corretos or 0) / r.total * 100, 1) if r.total > 0 else 0,
+                    'satisfacao': round(float(r.media_nota) / 5 * 100, 1) if r.media_nota is not None else None
                 }
 
             # Preenche todas as semanas, usando null para semanas sem dados
@@ -436,7 +437,8 @@ async def dashboard_feedbacks(
                         'corretos': 0,
                         'parciais': 0,
                         'incorretos': 0,
-                        'taxa_acerto': None  # null indica ausência de dados
+                        'taxa_acerto': None,  # null indica ausência de dados
+                        'satisfacao': None
                     })
             return resultado
 
