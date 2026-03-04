@@ -11,6 +11,7 @@ export interface EvolucaoSemana {
   taxa: number | null
   corretos?: number
   taxa_acerto?: number | null
+  satisfacao?: number | null
 }
 
 export interface AvaliacaoContagem {
