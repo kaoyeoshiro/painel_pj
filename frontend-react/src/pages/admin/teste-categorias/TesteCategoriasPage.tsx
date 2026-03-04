@@ -42,13 +42,11 @@ interface ProcessoValidado {
 
 interface ClassificacaoResultado {
   processo: string
-  categoria_id: number
-  json_extraido: Record<string, unknown>
-  modelo_usado: string
-  tempo_segundos: number
-  tokens_usados: number
-  status: 'ok' | 'erro'
-  erro?: string
+  sucesso: boolean
+  json_extraido: Record<string, unknown> | null
+  json_raw: string | null
+  erro: string | null
+  tempo_processamento_ms: number
 }
 
 interface DiferencaCampo {
@@ -275,53 +273,38 @@ export function TesteCategoriasPage() {
     }
   }
 
-  /** Classificar processos — usa lote se PDFs disponiveis no cache */
+  /** Classificar processos — PDFs do cache sao obrigatorios */
   async function classificarProcessos(): Promise<void> {
     const processosAptos = processosValidados
       .filter((p) => p.valido && p.normalizado)
       .map((p) => p.normalizado as string)
 
-    if (!categoriaId) {
-      toast({ variant: 'destructive', title: 'Selecione uma categoria' })
+    if (!categoriaId || processosAptos.length === 0) {
+      toast({ variant: 'destructive', title: 'Adicione processos validos primeiro' })
       return
     }
 
-    if (processosAptos.length === 0) {
-      toast({ variant: 'destructive', title: 'Nenhum processo valido para classificar' })
+    const itensComPdf = processosAptos
+      .filter(p => pdfCache[p])
+      .map(p => ({ processo: p, pdf_base64: pdfCache[p] }))
+
+    if (itensComPdf.length === 0) {
+      toast({
+        variant: 'destructive',
+        title: 'PDFs nao baixados',
+        description: 'Clique em "Baixar PDFs" antes de classificar',
+      })
       return
     }
 
     setLoadingClassificar(true)
     try {
-      // Verifica se ha PDFs no cache para usar lote
-      const itensComPdf = processosAptos
-        .filter(p => pdfCache[p])
-        .map(p => ({ processo: p, pdf_base64: pdfCache[p] }))
-
-      if (itensComPdf.length > 0) {
-        const data = await adminApi.post<ClassificacaoResultado[]>(
-          '/admin/api/teste-categorias/classificar-lote',
-          {
-            categoria_id: Number(categoriaId),
-            itens: itensComPdf,
-          },
-        )
-        setResultados(data)
-        // Salvar resultados no backend
-        await salvarDocumentosLote(data)
-      } else {
-        const data = await adminApi.post<ClassificacaoResultado[]>(
-          '/admin/api/teste-categorias/classificar',
-          {
-            processos: processosAptos,
-            categoria_id: Number(categoriaId),
-            comparar_modelos: compareModels,
-            observacoes: observations || undefined,
-          },
-        )
-        setResultados(data)
-        await salvarDocumentosLote(data)
-      }
+      const data = await adminApi.post<ClassificacaoResultado[]>(
+        '/admin/api/teste-categorias/classificar-lote',
+        { categoria_id: Number(categoriaId), itens: itensComPdf },
+      )
+      setResultados(data)
+      setActiveTab('resultados')
     } catch (error) {
       toast({
         variant: 'destructive',
@@ -330,24 +313,6 @@ export function TesteCategoriasPage() {
       })
     } finally {
       setLoadingClassificar(false)
-    }
-  }
-
-  /** Salvar resultados em lote no backend */
-  async function salvarDocumentosLote(resultadosParaSalvar: ClassificacaoResultado[]): Promise<void> {
-    if (!categoriaId || resultadosParaSalvar.length === 0) return
-    try {
-      await adminApi.post('/admin/api/teste-categorias/documentos/lote', {
-        categoria_id: Number(categoriaId),
-        documentos: resultadosParaSalvar.map(r => ({
-          processo: r.processo,
-          json_extraido: r.json_extraido,
-          modelo_usado: r.modelo_usado,
-          status: r.status,
-        })),
-      })
-    } catch {
-      // Falha silenciosa — resultados ja estao em memoria
     }
   }
 
@@ -399,7 +364,14 @@ export function TesteCategoriasPage() {
       setPdfCache(novoPdfCache)
       setDownloadProgress(novoProgress)
       const okCount = Object.values(novoProgress).filter(s => s === 'ok').length
-      toast({ title: `Download concluido`, description: `${okCount}/${processosAptos.length} PDFs baixados` })
+      if (okCount > 0) {
+        toast({
+          title: `${okCount} PDFs prontos`,
+          description: 'Clique em "Classificar Pendentes" para continuar',
+        })
+      } else {
+        toast({ variant: 'destructive', title: 'Nenhum PDF baixado com sucesso' })
+      }
     } catch (error) {
       processosAptos.forEach(p => {
         setDownloadProgress(prev => ({ ...prev, [p]: 'erro' }))
@@ -486,7 +458,7 @@ export function TesteCategoriasPage() {
     try {
       await adminApi.post('/admin/api/teste-categorias/resetar-erros')
       setResultados((prev) =>
-        prev.map((r) => (r.status === 'erro' ? { ...r, status: 'ok', erro: undefined } : r)),
+        prev.map((r) => (!r.sucesso ? { ...r, sucesso: true, erro: null } : r)),
       )
     } catch (error) {
       toast({
@@ -501,13 +473,14 @@ export function TesteCategoriasPage() {
 
   const filteredResults = useMemo(() => {
     if (statusFilter === 'todos') return resultados
-    return resultados.filter((r) => r.status === statusFilter)
+    if (statusFilter === 'ok') return resultados.filter(r => r.sucesso)
+    return resultados.filter(r => !r.sucesso)
   }, [resultados, statusFilter])
 
   const progressStats = useMemo(() => {
     const total = resultados.length
-    const ok = resultados.filter((r) => r.status === 'ok').length
-    const erros = resultados.filter((r) => r.status === 'erro').length
+    const ok = resultados.filter((r) => r.sucesso).length
+    const erros = resultados.filter((r) => !r.sucesso).length
     return { total, ok, erros }
   }, [resultados])
 
@@ -620,13 +593,14 @@ export function TesteCategoriasPage() {
                     processosValidados.map((p, idx) => (
                       <div key={`${p.original}-${idx}`} className="text-xs px-2 py-1 rounded flex items-center justify-between" style={{ background: C.gray50, border: `1px solid ${C.gray200}` }}>
                         <span>{p.normalizado || p.original}</span>
-                        {downloadProgress[p.normalizado || p.original] && (
-                          <span className="ml-2">
-                            {downloadProgress[p.normalizado || p.original] === 'baixando' && <Loader2 className="h-3 w-3 animate-spin" style={{ color: C.navy600 }} />}
-                            {downloadProgress[p.normalizado || p.original] === 'ok' && <CheckCircle2 className="h-3 w-3" style={{ color: C.statusSuccess }} />}
-                            {downloadProgress[p.normalizado || p.original] === 'erro' && <XCircle className="h-3 w-3" style={{ color: C.statusError }} />}
-                          </span>
-                        )}
+                        <span className="flex items-center gap-1 ml-2">
+                          {pdfCache[p.normalizado || p.original] && (
+                            <span title="PDF disponivel" style={{ color: C.statusSuccess }}>📄</span>
+                          )}
+                          {downloadProgress[p.normalizado || p.original] === 'baixando' && <Loader2 className="h-3 w-3 animate-spin" style={{ color: C.navy600 }} />}
+                          {downloadProgress[p.normalizado || p.original] === 'ok' && <CheckCircle2 className="h-3 w-3" style={{ color: C.statusSuccess }} />}
+                          {downloadProgress[p.normalizado || p.original] === 'erro' && <XCircle className="h-3 w-3" style={{ color: C.statusError }} />}
+                        </span>
                       </div>
                     ))
                   )}
@@ -771,10 +745,25 @@ export function TesteCategoriasPage() {
                                     Comparar
                                   </Button>
                                 )}
-                                <Badge variant={res.status === 'ok' ? 'success' : 'destructive'}>{res.status}</Badge>
+                                <Badge variant={res.sucesso ? 'success' : 'destructive'}>
+                                  {res.sucesso ? 'ok' : 'erro'}
+                                </Badge>
                               </div>
                             </div>
-                            <p className="text-xs" style={{ color: C.text500 }}>Modelo: {res.modelo_usado} | Tokens: {res.tokens_usados}</p>
+                            <p className="text-xs" style={{ color: C.text500 }}>{(res.tempo_processamento_ms / 1000).toFixed(1)}s</p>
+                            {res.json_extraido && (
+                              <details className="mt-2">
+                                <summary className="text-xs cursor-pointer" style={{ color: C.navy600 }}>
+                                  Ver JSON extraido
+                                </summary>
+                                <pre className="text-xs bg-muted p-2 rounded overflow-auto mt-1">
+                                  {JSON.stringify(res.json_extraido, null, 2)}
+                                </pre>
+                              </details>
+                            )}
+                            {res.erro && (
+                              <p className="text-xs mt-1" style={{ color: C.statusError }}>{res.erro}</p>
+                            )}
                           </Card>
                         ))}
                       </div>
