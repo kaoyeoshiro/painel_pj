@@ -445,8 +445,23 @@ async def dashboard_feedbacks(
         # ============================================
         # STAR METRICS (nota 1-5)
         # ============================================
-        media_estrelas = feedback_repo.media_nota_global(ids_excluir, data_inicio, data_fim)
-        distribuicao_estrelas = feedback_repo.distribuicao_nota_global(ids_excluir, data_inicio, data_fim)
+        # Filtra as tabelas de feedback pelo sistema selecionado
+        modelos_estrelas = []
+        if incluir_aj:
+            modelos_estrelas.append(FeedbackAnalise)
+        if incluir_mat:
+            modelos_estrelas.append(FeedbackMatricula)
+        if incluir_gp:
+            modelos_estrelas.append(FeedbackPeca)
+        if incluir_pc:
+            modelos_estrelas.append(FeedbackPedidoCalculo)
+        if incluir_prest:
+            modelos_estrelas.append(FeedbackPrestacao)
+        if incluir_rc:
+            modelos_estrelas.append(FeedbackRelatorioCumprimento)
+
+        media_estrelas = feedback_repo.media_nota_global(ids_excluir, data_inicio, data_fim, modelos=modelos_estrelas)
+        distribuicao_estrelas = feedback_repo.distribuicao_nota_global(ids_excluir, data_inicio, data_fim, modelos=modelos_estrelas)
 
         evolucao_por_sistema = {}
 

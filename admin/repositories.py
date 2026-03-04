@@ -1612,9 +1612,10 @@ class FeedbackRepository:
         ids_excluir: list[int],
         data_inicio: Optional[datetime] = None,
         data_fim: Optional[datetime] = None,
+        modelos: list | None = None,
     ) -> Optional[float]:
-        """AVG(nota) across all 6 feedback tables (weighted by count)."""
-        tabelas = [
+        """AVG(nota) ponderada. Se `modelos` for passado, consulta apenas as tabelas indicadas."""
+        tabelas = modelos if modelos is not None else [
             FeedbackAnalise,
             FeedbackMatricula,
             FeedbackPeca,
@@ -1650,9 +1651,10 @@ class FeedbackRepository:
         ids_excluir: list[int],
         data_inicio: Optional[datetime] = None,
         data_fim: Optional[datetime] = None,
+        modelos: list | None = None,
     ) -> dict[int, int]:
-        """COUNT GROUP BY nota across all 6 tables, returns {1: N, 2: N, 3: N, 4: N, 5: N}."""
-        tabelas = [
+        """COUNT GROUP BY nota. Se `modelos` for passado, consulta apenas as tabelas indicadas."""
+        tabelas = modelos if modelos is not None else [
             FeedbackAnalise,
             FeedbackMatricula,
             FeedbackPeca,
