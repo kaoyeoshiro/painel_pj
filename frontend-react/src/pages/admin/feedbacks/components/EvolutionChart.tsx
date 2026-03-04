@@ -32,7 +32,7 @@ interface EvolutionChartProps {
   onSemanasChange?: (semanas: string) => void
 }
 
-type Metrica = 'taxa_acerto' | 'total' | 'corretos'
+type Metrica = 'satisfacao' | 'total' | 'corretos'
 
 /** Formata rótulo de semana: "2026-S05" → "S05" */
 function formatarSemana(s: string): string {
@@ -43,7 +43,7 @@ function formatarSemana(s: string): string {
 export function EvolutionChart({ data, loading, onSemanasChange }: EvolutionChartProps) {
   const [sistemaFiltro, setSistemaFiltro] = useState('')
   const [semanas, setSemanas] = useState('12')
-  const [metrica, setMetrica] = useState<Metrica>('taxa_acerto')
+  const [metrica, setMetrica] = useState<Metrica>('satisfacao')
 
   const handleSemanasChange = (v: string) => {
     setSemanas(v)
@@ -75,8 +75,8 @@ export function EvolutionChart({ data, loading, onSemanasChange }: EvolutionChar
           ponto[sistema] = null
           continue
         }
-        if (metrica === 'taxa_acerto') {
-          ponto[sistema] = d.taxa_acerto ?? d.taxa ?? null
+        if (metrica === 'satisfacao') {
+          ponto[sistema] = d.satisfacao ?? null
         } else if (metrica === 'total') {
           ponto[sistema] = d.total > 0 ? d.total : null
         } else {
@@ -92,7 +92,7 @@ export function EvolutionChart({ data, loading, onSemanasChange }: EvolutionChar
     return Object.keys(dadosFiltrados).filter((sistema) => {
       const arr = dadosFiltrados[sistema]
       return arr.some((d) => {
-        if (metrica === 'taxa_acerto') return (d.taxa_acerto ?? d.taxa) !== null
+        if (metrica === 'satisfacao') return d.satisfacao !== null && d.satisfacao !== undefined
         if (metrica === 'total') return d.total > 0
         return (d.corretos ?? 0) > 0
       })
@@ -100,7 +100,7 @@ export function EvolutionChart({ data, loading, onSemanasChange }: EvolutionChar
   }, [dadosFiltrados, metrica])
 
   const yLabel =
-    metrica === 'taxa_acerto' ? 'Taxa de Acerto (%)'
+    metrica === 'satisfacao' ? 'Satisfação (%)'
     : metrica === 'total' ? 'Total de Feedbacks'
     : 'Feedbacks Corretos'
 
@@ -111,7 +111,7 @@ export function EvolutionChart({ data, loading, onSemanasChange }: EvolutionChar
       {/* Header com filtros */}
       <div className="flex flex-wrap items-center justify-between gap-3 mb-4">
         <h3 className="text-lg font-semibold flex items-center gap-2" style={{ color: C.text900 }}>
-          Evolução da Taxa de Acerto por Sistema
+          Evolução da Satisfação por Sistema
         </h3>
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2">
@@ -174,7 +174,7 @@ export function EvolutionChart({ data, loading, onSemanasChange }: EvolutionChar
               <YAxis
                 stroke={C.gray500}
                 tick={{ fontSize: 12 }}
-                domain={metrica === 'taxa_acerto' ? [0, 100] : [0, 'auto']}
+                domain={metrica === 'satisfacao' ? [0, 100] : [0, 'auto']}
                 label={{ value: yLabel, angle: -90, position: 'insideLeft', style: { fontSize: 11, fill: C.gray500 } }}
               />
               <Tooltip
@@ -182,7 +182,7 @@ export function EvolutionChart({ data, loading, onSemanasChange }: EvolutionChar
                   if (value === null || value === undefined) return ['Sem avaliações', name]
                   const sistemaConfig = SISTEMAS.find((s) => s.value === name)
                   const label = sistemaConfig?.shortLabel ?? name
-                  return [metrica === 'taxa_acerto' ? `${value.toFixed(1)}%` : value, label]
+                  return [metrica === 'satisfacao' ? `${value.toFixed(1)}%` : value, label]
                 }}
               />
               <Legend
