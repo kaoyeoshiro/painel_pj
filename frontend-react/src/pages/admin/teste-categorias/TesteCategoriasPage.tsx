@@ -51,12 +51,45 @@ interface ClassificacaoResultado {
   erro?: string
 }
 
+interface DiferencaCampo {
+  campo: string
+  tipo_campo: string
+  valor_a: unknown
+  valor_b: unknown
+  comparavel: boolean
+}
+
+interface RelatorioComparacao {
+  total_campos: number
+  campos_comparados: number
+  campos_iguais: number
+  campos_diferentes: number
+  campos_text_ignorados: number
+  porcentagem_acordo: number
+  diferencas: DiferencaCampo[]
+  resumo: string
+}
+
 interface ComparacaoResultado {
   processo: string
-  acordo: boolean
-  diferencas: string[]
-  modelo_a: { nome: string; json_extraido: Record<string, unknown>; tempo_segundos: number }
-  modelo_b: { nome: string; json_extraido: Record<string, unknown>; tempo_segundos: number }
+  sucesso: boolean
+  resultado_a: Record<string, unknown> | null
+  resultado_b: Record<string, unknown> | null
+  modelo_a: string
+  modelo_b: string
+  config_a: string
+  config_b: string
+  tempo_a_ms: number
+  tempo_b_ms: number
+  report: RelatorioComparacao | null
+  erro?: string | null
+}
+
+interface ProcessoDocumentosResp {
+  processo: string
+  status: string
+  pdf_unificado_base64?: string | null
+  erro?: string | null
 }
 
 interface FormatoCampo {
@@ -343,7 +376,7 @@ export function TesteCategoriasPage() {
     })
 
     try {
-      const data = await adminApi.post<Record<string, { pdf_base64: string; status: string }>>(
+      const data = await adminApi.post<ProcessoDocumentosResp[]>(
         '/admin/api/teste-categorias/baixar-documentos',
         {
           processos: processosAptos,
@@ -354,13 +387,12 @@ export function TesteCategoriasPage() {
       const novoPdfCache: Record<string, string> = { ...pdfCache }
       const novoProgress: Record<string, DownloadStatus> = {}
 
-      for (const processo of processosAptos) {
-        const item = data[processo]
-        if (item?.pdf_base64) {
-          novoPdfCache[processo] = item.pdf_base64
-          novoProgress[processo] = 'ok'
+      for (const item of data) {
+        if (item.status === 'ok' && item.pdf_unificado_base64) {
+          novoPdfCache[item.processo] = item.pdf_unificado_base64
+          novoProgress[item.processo] = 'ok'
         } else {
-          novoProgress[processo] = 'erro'
+          novoProgress[item.processo] = 'erro'
         }
       }
 
@@ -429,7 +461,7 @@ export function TesteCategoriasPage() {
   async function handleDownloadAll(): Promise<void> {
     setLoadingExportAll(true)
     try {
-      const blob = await adminApi.blob('/admin/api/teste-categorias/exportar')
+      const blob = new Blob([JSON.stringify(resultados, null, 2)], { type: 'application/json' })
       const url = URL.createObjectURL(blob)
       const link = document.createElement('a')
       link.href = url
@@ -775,19 +807,19 @@ export function TesteCategoriasPage() {
                       <div
                         className="p-4 rounded-xl mb-4"
                         style={{
-                          background: comparacaoResult.acordo ? C.successBg : C.warningBgAlt,
-                          border: `1px solid ${comparacaoResult.acordo ? C.statusSuccess : C.statusWarning}`,
+                          background: comparacaoResult.report?.campos_diferentes === 0 ? C.successBg : C.warningBgAlt,
+                          border: `1px solid ${comparacaoResult.report?.campos_diferentes === 0 ? C.statusSuccess : C.statusWarning}`,
                         }}
                       >
-                        <p className="text-sm font-semibold" style={{ color: comparacaoResult.acordo ? C.successText : C.warningText }}>
-                          {comparacaoResult.acordo
-                            ? '100% acordo entre os modelos'
-                            : `${comparacaoResult.diferencas.length} diferenca(s) encontrada(s)`}
+                        <p className="text-sm font-semibold" style={{ color: comparacaoResult.report?.campos_diferentes === 0 ? C.successText : C.warningText }}>
+                          {comparacaoResult.report?.resumo ?? (comparacaoResult.erro ?? 'Sem relatório')}
                         </p>
-                        {comparacaoResult.diferencas.length > 0 && (
+                        {(comparacaoResult.report?.diferencas?.length ?? 0) > 0 && (
                           <ul className="mt-2 space-y-1">
-                            {comparacaoResult.diferencas.map((d, i) => (
-                              <li key={i} className="text-xs" style={{ color: C.warningText }}>- {d}</li>
+                            {comparacaoResult.report!.diferencas.map((d, i) => (
+                              <li key={i} className="text-xs" style={{ color: C.warningText }}>
+                                <strong>{d.campo}</strong>: A={JSON.stringify(d.valor_a)} | B={JSON.stringify(d.valor_b)}
+                              </li>
                             ))}
                           </ul>
                         )}
@@ -795,17 +827,17 @@ export function TesteCategoriasPage() {
 
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <Card className="p-4 rounded-2xl" style={{ borderLeft: `4px solid ${C.statusSuccess}`, borderColor: C.gray200 }}>
-                          <p className="text-sm font-semibold mb-1" style={{ color: C.text700 }}>{comparacaoResult.modelo_a.nome}</p>
-                          <p className="text-xs mb-2" style={{ color: C.text400 }}>{comparacaoResult.modelo_a.tempo_segundos.toFixed(1)}s</p>
-                          <pre className="text-xs bg-muted p-2 rounded overflow-auto max-h-48">
-                            {JSON.stringify(comparacaoResult.modelo_a.json_extraido, null, 2)}
+                          <p className="text-sm font-semibold mb-1" style={{ color: C.text700 }}>{comparacaoResult.modelo_a} <span className="font-normal text-xs">({comparacaoResult.config_a})</span></p>
+                          <p className="text-xs mb-2" style={{ color: C.text400 }}>{(comparacaoResult.tempo_a_ms / 1000).toFixed(1)}s</p>
+                          <pre className="text-xs bg-muted p-2 rounded overflow-auto">
+                            {JSON.stringify(comparacaoResult.resultado_a, null, 2)}
                           </pre>
                         </Card>
                         <Card className="p-4 rounded-2xl" style={{ borderLeft: `4px solid ${C.statusWarning}`, borderColor: C.gray200 }}>
-                          <p className="text-sm font-semibold mb-1" style={{ color: C.text700 }}>{comparacaoResult.modelo_b.nome}</p>
-                          <p className="text-xs mb-2" style={{ color: C.text400 }}>{comparacaoResult.modelo_b.tempo_segundos.toFixed(1)}s</p>
-                          <pre className="text-xs bg-muted p-2 rounded overflow-auto max-h-48">
-                            {JSON.stringify(comparacaoResult.modelo_b.json_extraido, null, 2)}
+                          <p className="text-sm font-semibold mb-1" style={{ color: C.text700 }}>{comparacaoResult.modelo_b} <span className="font-normal text-xs">({comparacaoResult.config_b})</span></p>
+                          <p className="text-xs mb-2" style={{ color: C.text400 }}>{(comparacaoResult.tempo_b_ms / 1000).toFixed(1)}s</p>
+                          <pre className="text-xs bg-muted p-2 rounded overflow-auto">
+                            {JSON.stringify(comparacaoResult.resultado_b, null, 2)}
                           </pre>
                         </Card>
                       </div>
@@ -918,7 +950,7 @@ export function TesteCategoriasPage() {
 
       {/* Dialog de comparacao de modelos */}
       <Dialog open={dialogComparacao} onOpenChange={setDialogComparacao}>
-        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Comparacao de Modelos — {processoSelecionado}</DialogTitle>
             <DialogDescription className="sr-only">
@@ -934,36 +966,40 @@ export function TesteCategoriasPage() {
               <div
                 className="p-4 rounded-xl"
                 style={{
-                  background: comparacaoResult.acordo ? C.successBg : C.warningBgAlt,
-                  border: `1px solid ${comparacaoResult.acordo ? C.statusSuccess : C.statusWarning}`,
+                  background: comparacaoResult.report?.campos_diferentes === 0 ? C.successBg : C.warningBgAlt,
+                  border: `1px solid ${comparacaoResult.report?.campos_diferentes === 0 ? C.statusSuccess : C.statusWarning}`,
                 }}
               >
-                <p className="text-sm font-semibold" style={{ color: comparacaoResult.acordo ? C.successText : C.warningText }}>
-                  {comparacaoResult.acordo
-                    ? '100% acordo entre os modelos'
-                    : `${comparacaoResult.diferencas.length} diferenca(s) encontrada(s)`}
+                <p className="text-sm font-semibold" style={{ color: comparacaoResult.report?.campos_diferentes === 0 ? C.successText : C.warningText }}>
+                  {comparacaoResult.report?.resumo ?? (comparacaoResult.erro ?? 'Sem relatório')}
                 </p>
-                {comparacaoResult.diferencas.length > 0 && (
+                {(comparacaoResult.report?.diferencas?.length ?? 0) > 0 && (
                   <ul className="mt-2 space-y-1">
-                    {comparacaoResult.diferencas.map((d, i) => (
-                      <li key={i} className="text-xs" style={{ color: C.warningText }}>- {d}</li>
+                    {comparacaoResult.report!.diferencas.map((d, i) => (
+                      <li key={i} className="text-xs" style={{ color: C.warningText }}>
+                        <strong>{d.campo}</strong>: A={JSON.stringify(d.valor_a)} | B={JSON.stringify(d.valor_b)}
+                      </li>
                     ))}
                   </ul>
                 )}
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Card className="p-4 rounded-2xl" style={{ borderLeft: `4px solid ${C.statusSuccess}`, borderColor: C.gray200 }}>
-                  <p className="text-sm font-semibold mb-1" style={{ color: C.text700 }}>Modelo A: {comparacaoResult.modelo_a.nome}</p>
-                  <p className="text-xs mb-2" style={{ color: C.text400 }}>{comparacaoResult.modelo_a.tempo_segundos.toFixed(1)}s</p>
-                  <pre className="text-xs bg-muted p-2 rounded overflow-auto max-h-64">
-                    {JSON.stringify(comparacaoResult.modelo_a.json_extraido, null, 2)}
+                  <p className="text-sm font-semibold mb-1" style={{ color: C.text700 }}>
+                    Modelo A: {comparacaoResult.modelo_a} <span className="font-normal text-xs" style={{ color: C.text400 }}>({comparacaoResult.config_a})</span>
+                  </p>
+                  <p className="text-xs mb-2" style={{ color: C.text400 }}>{(comparacaoResult.tempo_a_ms / 1000).toFixed(1)}s</p>
+                  <pre className="text-xs bg-muted p-2 rounded overflow-auto">
+                    {JSON.stringify(comparacaoResult.resultado_a, null, 2)}
                   </pre>
                 </Card>
                 <Card className="p-4 rounded-2xl" style={{ borderLeft: `4px solid ${C.statusWarning}`, borderColor: C.gray200 }}>
-                  <p className="text-sm font-semibold mb-1" style={{ color: C.text700 }}>Modelo B: {comparacaoResult.modelo_b.nome}</p>
-                  <p className="text-xs mb-2" style={{ color: C.text400 }}>{comparacaoResult.modelo_b.tempo_segundos.toFixed(1)}s</p>
-                  <pre className="text-xs bg-muted p-2 rounded overflow-auto max-h-64">
-                    {JSON.stringify(comparacaoResult.modelo_b.json_extraido, null, 2)}
+                  <p className="text-sm font-semibold mb-1" style={{ color: C.text700 }}>
+                    Modelo B: {comparacaoResult.modelo_b} <span className="font-normal text-xs" style={{ color: C.text400 }}>({comparacaoResult.config_b})</span>
+                  </p>
+                  <p className="text-xs mb-2" style={{ color: C.text400 }}>{(comparacaoResult.tempo_b_ms / 1000).toFixed(1)}s</p>
+                  <pre className="text-xs bg-muted p-2 rounded overflow-auto">
+                    {JSON.stringify(comparacaoResult.resultado_b, null, 2)}
                   </pre>
                 </Card>
               </div>
