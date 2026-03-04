@@ -592,7 +592,7 @@ export function TesteCategoriasPage() {
               </div>
 
               <div className="border-t" style={{ borderColor: C.gray200 }}>
-                <div className="px-4 py-2 flex items-center justify-between" style={{ background: C.gray50 }}>
+                <div className="px-4 py-2 flex flex-col gap-2" style={{ background: C.gray50 }}>
                   <span className="text-sm font-medium flex items-center gap-1" style={{ color: C.text500 }}>
                     <AlertTriangle className="h-4 w-4" style={{ color: C.statusWarning }} />
                     Pendentes ({pendentes})
