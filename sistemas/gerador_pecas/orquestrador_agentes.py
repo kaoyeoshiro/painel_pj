@@ -661,6 +661,8 @@ class OrquestradorAgentes:
         
         # Inicializa agentes com modelos configurados
         # O Agente 1 recebe a sessão do banco para buscar formatos JSON
+        print(f"[AGENTE1] Modelo: {self.modelo_agente1} (fonte: {self.params_agente1.modelo_source})")
+        print(f"[AGENTE2] Modelo: {self.modelo_agente2} (fonte: {self.params_agente2.modelo_source})")
         self.agente1 = AgenteTJMSIntegrado(
             modelo=self.modelo_agente1,
             db_session=db,
