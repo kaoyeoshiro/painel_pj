@@ -105,7 +105,6 @@ interface DocumentoTeste {
 }
 
 type StatusFilter = 'todos' | 'ok' | 'erro'
-type ActiveTab = 'resultados' | 'visualizacao' | 'progresso'
 type DownloadStatus = 'pendente' | 'baixando' | 'ok' | 'erro'
 
 function formatarValor(val: unknown): string {
@@ -140,7 +139,8 @@ export function TesteCategoriasPage() {
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('todos')
   const [compareModels, setCompareModels] = useState(false)
   const [observations, setObservations] = useState('')
-  const [activeTab, setActiveTab] = useState<ActiveTab>('resultados')
+  const [processoSelecionado, setProcessoSelecionado] = useState<string | null>(null)
+  const [pdfBlobUrl, setPdfBlobUrl] = useState<string | null>(null)
 
   const [loadingCategorias, setLoadingCategorias] = useState(false)
   const [loadingValidar, setLoadingValidar] = useState(false)
@@ -156,7 +156,7 @@ export function TesteCategoriasPage() {
   const [documentosDB, setDocumentosDB] = useState<DocumentoTeste[]>([])
   const [loadingDownload, setLoadingDownload] = useState(false)
   const [loadingComparacao, setLoadingComparacao] = useState(false)
-  const [processoSelecionado, setProcessoSelecionado] = useState<string | null>(null)
+  const [processoComparacao, setProcessoComparacao] = useState<string | null>(null)
   const [dialogComparacao, setDialogComparacao] = useState(false)
   const observationTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
 
@@ -166,6 +166,20 @@ export function TesteCategoriasPage() {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps -- Recarrega quando grupo muda
   }, [selectedGroupId])
+
+  // Gerar blob URL do PDF para o processo selecionado
+  useEffect(() => {
+    let url: string | null = null
+    if (processoSelecionado && pdfCache[processoSelecionado]) {
+      const base64 = pdfCache[processoSelecionado]
+      const bytes = atob(base64)
+      const arr = new Uint8Array(bytes.length)
+      for (let i = 0; i < bytes.length; i++) arr[i] = bytes.charCodeAt(i)
+      url = URL.createObjectURL(new Blob([arr], { type: 'application/pdf' }))
+    }
+    setPdfBlobUrl(url)
+    return () => { if (url) URL.revokeObjectURL(url) }
+  }, [processoSelecionado, pdfCache])
 
   // Carregar observacoes e formato ao selecionar categoria
   useEffect(() => {
@@ -321,7 +335,6 @@ export function TesteCategoriasPage() {
         { categoria_id: Number(categoriaId), itens: itensComPdf },
       )
       setResultados(data)
-      setActiveTab('resultados')
     } catch (error) {
       toast({
         variant: 'destructive',
@@ -345,17 +358,11 @@ export function TesteCategoriasPage() {
     }
 
     setLoadingDownload(true)
-    setActiveTab('progresso')
-
-    // Inicializar progresso
-    const progressInicial: Record<string, DownloadStatus> = {}
-    processosAptos.forEach(p => { progressInicial[p] = 'pendente' })
-    setDownloadProgress(progressInicial)
 
     // Marcar todos como baixando
-    processosAptos.forEach(p => {
-      setDownloadProgress(prev => ({ ...prev, [p]: 'baixando' }))
-    })
+    const progressInicial: Record<string, DownloadStatus> = {}
+    processosAptos.forEach(p => { progressInicial[p] = 'baixando' })
+    setDownloadProgress(progressInicial)
 
     try {
       const data = await adminApi.post<ProcessoDocumentosResp[]>(
@@ -411,7 +418,7 @@ export function TesteCategoriasPage() {
     }
 
     setLoadingComparacao(true)
-    setProcessoSelecionado(processo)
+    setProcessoComparacao(processo)
     setDialogComparacao(true)
     try {
       const data = await adminApi.post<ComparacaoResultado>(
@@ -445,6 +452,8 @@ export function TesteCategoriasPage() {
     setDownloadProgress({})
     setComparacaoResult(null)
     setProcessoSelecionado(null)
+    setProcessoComparacao(null)
+    setPdfBlobUrl(null)
   }, [])
 
   async function handleDownloadAll(): Promise<void> {
@@ -488,28 +497,23 @@ export function TesteCategoriasPage() {
     }
   }
 
-  const filteredResults = useMemo(() => {
-    if (statusFilter === 'todos') return resultados
-    if (statusFilter === 'ok') return resultados.filter(r => r.sucesso)
-    return resultados.filter(r => !r.sucesso)
-  }, [resultados, statusFilter])
+  const resultadoSelecionado = useMemo(() =>
+    resultados.find(r => r.processo === processoSelecionado) ?? null,
+    [resultados, processoSelecionado]
+  )
 
-  const progressStats = useMemo(() => {
-    const total = resultados.length
-    const ok = resultados.filter((r) => r.sucesso).length
-    const erros = resultados.filter((r) => !r.sucesso).length
-    return { total, ok, erros }
-  }, [resultados])
+  const pendingDownloadCount = useMemo(() =>
+    processosValidados.filter(p => p.valido && p.normalizado && !pdfCache[p.normalizado!]).length,
+    [processosValidados, pdfCache]
+  )
 
-  const downloadStats = useMemo(() => {
-    const entries = Object.values(downloadProgress)
-    return {
-      total: entries.length,
-      ok: entries.filter(s => s === 'ok').length,
-      baixando: entries.filter(s => s === 'baixando').length,
-      erro: entries.filter(s => s === 'erro').length,
-    }
-  }, [downloadProgress])
+  const pendingClassifyCount = useMemo(() =>
+    processosValidados.filter(p =>
+      p.valido && p.normalizado && pdfCache[p.normalizado!] &&
+      !resultados.find(r => r.processo === p.normalizado)
+    ).length,
+    [processosValidados, pdfCache, resultados]
+  )
 
   const dialogData = useMemo(() => {
     if (!comparacaoResult?.report) return null
@@ -521,8 +525,6 @@ export function TesteCategoriasPage() {
     )
     return { report, difsEstruturais, camposTexto, camposIguais }
   }, [comparacaoResult])
-
-  const pendentes = processosValidados.filter((p) => p.valido).length
 
   return (
     <>
@@ -558,6 +560,8 @@ export function TesteCategoriasPage() {
         />
 
         <div className="grid grid-cols-12 gap-4">
+
+          {/* Col 1: Sidebar — Adicionar Processos + Observações */}
           <div className="col-span-12 lg:col-span-3 space-y-4">
             <Card className="bg-white rounded-2xl shadow-sm overflow-hidden" style={{ borderColor: C.gray200 }}>
               <div className="px-4 py-3 border-b" style={{ borderColor: C.gray200, background: C.navy50 }}>
@@ -569,7 +573,7 @@ export function TesteCategoriasPage() {
               <div className="p-4">
                 <Textarea
                   id="input-processos"
-                  rows={4}
+                  rows={6}
                   value={textProcessos}
                   onChange={(e) => setTextProcessos(e.target.value)}
                   className="w-full font-mono text-sm resize-none"
@@ -585,53 +589,9 @@ export function TesteCategoriasPage() {
                     <Plus className="h-4 w-4 mr-1" />
                     {loadingValidar ? 'Adicionando...' : 'Adicionar'}
                   </Button>
-                  <Button variant="outline" onClick={handleClear} title="Limpar pendentes" data-testid="btn-limpar">
+                  <Button variant="outline" onClick={handleClear} title="Limpar tudo" data-testid="btn-limpar">
                     <Trash2 className="h-4 w-4" />
                   </Button>
-                </div>
-              </div>
-
-              <div className="border-t" style={{ borderColor: C.gray200 }}>
-                <div className="px-4 py-2 flex flex-col gap-2" style={{ background: C.gray50 }}>
-                  <span className="text-sm font-medium flex items-center gap-1" style={{ color: C.text500 }}>
-                    <AlertTriangle className="h-4 w-4" style={{ color: C.statusWarning }} />
-                    Pendentes ({pendentes})
-                  </span>
-                  <div className="flex gap-1">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleDownloadDocumentos}
-                      disabled={loadingDownload || pendentes === 0 || !categoriaId}
-                      title="Baixar PDFs dos processos"
-                    >
-                      <FileDown className="h-3.5 w-3.5 mr-1" style={{ color: C.navy700 }} />
-                      {loadingDownload ? 'Baixando...' : 'Baixar PDFs'}
-                    </Button>
-                    <Button variant="default" size="sm" onClick={handleDownloadAll} disabled={loadingExportAll}>
-                      <Download className="h-3.5 w-3.5 mr-1" />
-                      Baixar Todos
-                    </Button>
-                  </div>
-                </div>
-                <div className="max-h-[200px] overflow-y-auto p-2 space-y-1">
-                  {processosValidados.length === 0 ? (
-                    <p className="text-center text-sm py-4" style={{ color: C.text400 }}>Selecione uma categoria</p>
-                  ) : (
-                    processosValidados.map((p, idx) => (
-                      <div key={`${p.original}-${idx}`} className="text-xs px-2 py-1 rounded flex items-center justify-between" style={{ background: C.gray50, border: `1px solid ${C.gray200}` }}>
-                        <span>{p.normalizado || p.original}</span>
-                        <span className="flex items-center gap-1 ml-2">
-                          {pdfCache[p.normalizado || p.original] && (
-                            <span title="PDF disponivel" style={{ color: C.statusSuccess }}>📄</span>
-                          )}
-                          {downloadProgress[p.normalizado || p.original] === 'baixando' && <Loader2 className="h-3 w-3 animate-spin" style={{ color: C.navy600 }} />}
-                          {downloadProgress[p.normalizado || p.original] === 'ok' && <CheckCircle2 className="h-3 w-3" style={{ color: C.statusSuccess }} />}
-                          {downloadProgress[p.normalizado || p.original] === 'erro' && <XCircle className="h-3 w-3" style={{ color: C.statusError }} />}
-                        </span>
-                      </div>
-                    ))
-                  )}
                 </div>
               </div>
             </Card>
@@ -645,7 +605,7 @@ export function TesteCategoriasPage() {
               </div>
               <div className="p-3">
                 <Textarea
-                  rows={5}
+                  rows={6}
                   value={observations}
                   onChange={(e) => handleObservationChange(e.target.value)}
                   className="w-full text-sm resize-none"
@@ -658,258 +618,268 @@ export function TesteCategoriasPage() {
             </Card>
           </div>
 
-          <div className="col-span-12 lg:col-span-9">
-            <div className="bg-white rounded-2xl shadow-sm overflow-hidden h-[calc(100vh-140px)] min-h-[560px]" style={{ border: `1px solid ${C.gray200}` }}>
-              <div className="flex border-b" style={{ borderColor: C.gray200 }}>
-                <button
-                  onClick={() => setActiveTab('resultados')}
-                  className="flex-1 px-6 py-3 text-sm font-medium flex items-center justify-center gap-2"
-                  style={{
-                    borderBottom: activeTab === 'resultados' ? `3px solid ${C.navy700}` : '3px solid transparent',
-                    color: activeTab === 'resultados' ? C.navy700 : C.text500,
-                    background: activeTab === 'resultados' ? C.navy50 : 'transparent',
-                  }}
-                  data-testid="tab-resultados"
-                >
-                  <List className="h-4 w-4" />
-                  Resultados ({resultados.length})
-                </button>
-                <button
-                  onClick={() => setActiveTab('visualizacao')}
-                  className="flex-1 px-6 py-3 text-sm font-medium flex items-center justify-center gap-2"
-                  style={{
-                    borderBottom: activeTab === 'visualizacao' ? `3px solid ${C.navy700}` : '3px solid transparent',
-                    color: activeTab === 'visualizacao' ? C.navy700 : C.text500,
-                    background: activeTab === 'visualizacao' ? C.navy50 : 'transparent',
-                  }}
-                  data-testid="tab-visualizacao"
-                >
-                  <Eye className="h-4 w-4" />
-                  Formato
-                </button>
-                <button
-                  onClick={() => setActiveTab('progresso')}
-                  className="flex-1 px-6 py-3 text-sm font-medium flex items-center justify-center gap-2"
-                  style={{
-                    borderBottom: activeTab === 'progresso' ? `3px solid ${C.navy700}` : '3px solid transparent',
-                    color: activeTab === 'progresso' ? C.navy700 : C.text500,
-                    background: activeTab === 'progresso' ? C.navy50 : 'transparent',
-                  }}
-                  data-testid="tab-progresso"
-                >
-                  <List className="h-4 w-4" />
-                  Progresso
-                </button>
+          {/* Col 2: Lista de Processos */}
+          <div className="col-span-12 lg:col-span-3">
+            <Card
+              className="bg-white rounded-2xl shadow-sm overflow-hidden flex flex-col"
+              style={{ borderColor: C.gray200, height: 'calc(100vh - 180px)', minHeight: '560px' }}
+            >
+              {/* Barra de ações */}
+              <div className="px-3 py-3 border-b space-y-2 flex-none" style={{ borderColor: C.gray200, background: C.gray50 }}>
+                <div className="flex gap-2">
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={handleDownloadDocumentos}
+                    disabled={loadingDownload || pendingDownloadCount === 0 || !categoriaId}
+                    className="flex-1 text-xs"
+                    title="Baixar PDFs dos processos pendentes"
+                  >
+                    <FileDown className="h-3.5 w-3.5 mr-1" style={{ color: C.navy700 }} />
+                    {loadingDownload ? 'Baixando...' : `Baixar PDFs (${pendingDownloadCount})`}
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={classificarProcessos}
+                    disabled={loadingClassificar || pendingClassifyCount === 0 || !categoriaId}
+                    className="flex-1 text-xs text-white bg-green-600 hover:bg-green-700"
+                  >
+                    {loadingClassificar ? 'Classificando...' : `Classificar (${pendingClassifyCount})`}
+                  </Button>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-1.5 px-2 py-1 bg-indigo-50 rounded-lg border border-indigo-200 flex-1">
+                    <Checkbox
+                      checked={compareModels}
+                      onCheckedChange={(checked) => setCompareModels(checked === true)}
+                      id="toggle-comparacao"
+                    />
+                    <label htmlFor="toggle-comparacao" className="text-xs text-indigo-700 cursor-pointer whitespace-nowrap">
+                      Comparar 2 modelos
+                    </label>
+                  </div>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleResetErrors}
+                    disabled={loadingResetErrors}
+                    title="Resetar erros"
+                    className="text-amber-700 border-amber-200 bg-amber-50 hover:bg-amber-100"
+                  >
+                    <RotateCcw className="h-3.5 w-3.5" />
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleDownloadAll}
+                    disabled={loadingExportAll}
+                    title="Exportar todos os resultados"
+                  >
+                    <Download className="h-3.5 w-3.5" />
+                  </Button>
+                </div>
               </div>
 
-              {activeTab === 'resultados' && (
-                <div className="h-full overflow-hidden flex flex-col">
-                  <div className="px-4 py-3 border-b flex items-center gap-4 flex-wrap" style={{ borderColor: C.gray200, background: C.gray50 }}>
-                    <div className="flex items-center gap-2">
-                      <label className="text-sm" style={{ color: C.text500 }}>Status:</label>
-                      <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as StatusFilter)}>
-                        <SelectTrigger className="h-9 w-[140px]">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="todos">Todos</SelectItem>
-                          <SelectItem value="ok">Sucesso</SelectItem>
-                          <SelectItem value="erro">Erro</SelectItem>
-                        </SelectContent>
-                      </Select>
+              {/* Lista scrollável de processos */}
+              <div className="flex-1 overflow-y-auto p-2 space-y-1">
+                {!categoriaId ? (
+                  <div className="h-full flex items-center justify-center">
+                    <div className="text-center py-8">
+                      <AlertTriangle className="h-8 w-8 mx-auto mb-2" style={{ color: C.statusWarning }} />
+                      <p className="text-sm" style={{ color: C.text400 }}>Selecione uma categoria</p>
                     </div>
-
-                    <div className="flex-1" />
-
-                    <div className="flex items-center gap-2 px-3 py-1.5 bg-indigo-50 rounded-lg border border-indigo-200">
-                      <Checkbox
-                        checked={compareModels}
-                        onCheckedChange={(checked) => setCompareModels(checked === true)}
-                        id="toggle-comparacao"
-                      />
-                      <label htmlFor="toggle-comparacao" className="text-sm text-indigo-700 cursor-pointer whitespace-nowrap">
-                        Comparar 2 modelos
-                      </label>
-                    </div>
-
-                    <Button onClick={classificarProcessos} disabled={loadingClassificar} className="bg-green-600 hover:bg-green-700 text-white">
-                      {loadingClassificar ? 'Classificando...' : 'Classificar Pendentes'}
-                    </Button>
-
-                    <Button variant="outline" onClick={handleResetErrors} disabled={loadingResetErrors} className="bg-amber-50 text-amber-700 border-amber-200 hover:bg-amber-100">
-                      <RotateCcw className="h-4 w-4 mr-1" />
-                      Resetar Erros
-                    </Button>
                   </div>
-
-                  <div className="flex-1 overflow-y-auto p-4">
-                    {!categoriaId ? (
-                      <div className="h-full flex items-center justify-center" style={{ color: C.text400 }}>
-                        <div className="text-center">
-                          <AlertTriangle className="h-14 w-14 mx-auto mb-3" style={{ color: C.statusWarning }} />
-                          <p className="text-2xl" style={{ color: C.statusWarning }}>Selecione uma categoria</p>
-                          <p className="text-sm mt-1">Os resultados sao exibidos por categoria</p>
+                ) : processosValidados.length === 0 ? (
+                  <div className="h-full flex items-center justify-center">
+                    <p className="text-sm py-8" style={{ color: C.text400 }}>Nenhum processo adicionado</p>
+                  </div>
+                ) : (
+                  processosValidados.map((p, idx) => {
+                    const processo = p.normalizado || p.original
+                    const resultado = resultados.find(r => r.processo === processo)
+                    const hasPdf = p.normalizado && !!pdfCache[p.normalizado]
+                    const dlStatus = downloadProgress[processo]
+                    const isSelected = processoSelecionado === processo
+                    return (
+                      <div
+                        key={`${p.original}-${idx}`}
+                        onClick={() => setProcessoSelecionado(isSelected ? null : processo)}
+                        className="cursor-pointer px-2 py-1.5 rounded-lg"
+                        style={{
+                          background: isSelected ? C.navy50 : 'white',
+                          border: `1px solid ${isSelected ? C.navy300 : C.gray200}`,
+                        }}
+                      >
+                        <div className="flex items-center justify-between gap-1">
+                          <span className="font-mono text-xs truncate flex-1 min-w-0" style={{ color: isSelected ? C.navy700 : C.text700 }}>
+                            {processo}
+                          </span>
+                          <div className="flex items-center gap-1 flex-shrink-0">
+                            {/* Status download */}
+                            {dlStatus === 'baixando' && <Loader2 className="h-3 w-3 animate-spin" style={{ color: C.navy600 }} />}
+                            {(dlStatus === 'ok' || hasPdf) && dlStatus !== 'baixando' && <CheckCircle2 className="h-3 w-3" style={{ color: C.statusSuccess }} />}
+                            {dlStatus === 'erro' && <XCircle className="h-3 w-3" style={{ color: C.statusError }} />}
+                            {/* Status classificação */}
+                            {resultado && (
+                              <Badge variant={resultado.sucesso ? 'success' : 'destructive'} className="text-xs px-1 py-0 h-4">
+                                {resultado.sucesso ? 'ok' : 'err'}
+                              </Badge>
+                            )}
+                          </div>
                         </div>
+                        {!p.valido && p.erro && (
+                          <p className="text-xs mt-0.5" style={{ color: C.statusError }}>{p.erro}</p>
+                        )}
+                        {compareModels && hasPdf && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={(e) => { e.stopPropagation(); handleComparar(processo) }}
+                            disabled={loadingComparacao}
+                            className="mt-1 h-5 text-xs w-full"
+                          >
+                            Comparar
+                          </Button>
+                        )}
                       </div>
-                    ) : filteredResults.length === 0 ? (
-                      <div className="h-full flex items-center justify-center" style={{ color: C.text400 }}>
-                        <p className="text-xl">Nenhum resultado ainda. Selecione uma categoria e classifique os processos.</p>
-                      </div>
+                    )
+                  })
+                )}
+              </div>
+
+              {/* Rodapé com contadores */}
+              <div className="px-3 py-2 border-t flex items-center gap-3 flex-none" style={{ borderColor: C.gray200, background: C.gray50 }}>
+                <span className="text-xs" style={{ color: C.text400 }}>
+                  {resultados.length} classificados · {Object.values(downloadProgress).filter(s => s === 'ok').length} PDFs
+                </span>
+              </div>
+            </Card>
+          </div>
+
+          {/* Col 3: Visualizador PDF + Resultado + Formato */}
+          <div className="col-span-12 lg:col-span-6">
+            <Card
+              className="bg-white rounded-2xl shadow-sm overflow-hidden flex flex-col"
+              style={{ borderColor: C.gray200, height: 'calc(100vh - 180px)', minHeight: '560px' }}
+            >
+              {processoSelecionado ? (
+                <>
+                  {/* Visualizador PDF — 55% da altura */}
+                  <div className="flex-none border-b" style={{ height: '55%', borderColor: C.gray200 }}>
+                    {pdfBlobUrl ? (
+                      <iframe
+                        src={pdfBlobUrl}
+                        className="w-full h-full"
+                        title={`PDF — ${processoSelecionado}`}
+                      />
                     ) : (
-                      <div className="space-y-3">
-                        {filteredResults.map((res, idx) => (
-                          <Card key={`${res.processo}-${idx}`} className="p-4 rounded-2xl" style={{ borderColor: C.gray200 }}>
-                            <div className="flex items-center justify-between mb-2">
-                              <h3 className="font-mono text-sm font-semibold" style={{ color: C.text900 }}>{res.processo}</h3>
-                              <div className="flex items-center gap-2">
-                                {compareModels && pdfCache[res.processo] && (
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => handleComparar(res.processo)}
-                                    disabled={loadingComparacao}
-                                    className="text-xs"
-                                  >
-                                    Comparar
-                                  </Button>
-                                )}
-                                <Badge variant={res.sucesso ? 'success' : 'destructive'}>
-                                  {res.sucesso ? 'ok' : 'erro'}
-                                </Badge>
-                              </div>
-                            </div>
-                            <p className="text-xs" style={{ color: C.text500 }}>{(res.tempo_processamento_ms / 1000).toFixed(1)}s</p>
-                            {res.json_extraido && (
-                              <details className="mt-2">
-                                <summary className="text-xs cursor-pointer" style={{ color: C.navy600 }}>
-                                  Ver JSON extraido
-                                </summary>
-                                <pre className="text-xs bg-muted p-2 rounded overflow-auto mt-1">
-                                  {JSON.stringify(res.json_extraido, null, 2)}
-                                </pre>
-                              </details>
-                            )}
-                            {res.erro && (
-                              <p className="text-xs mt-1" style={{ color: C.statusError }}>{res.erro}</p>
-                            )}
-                          </Card>
-                        ))}
+                      <div className="w-full h-full flex items-center justify-center" style={{ background: C.gray50 }}>
+                        <div className="text-center">
+                          <FileDown className="h-10 w-10 mx-auto mb-2" style={{ color: C.text300 }} />
+                          <p className="text-sm font-medium" style={{ color: C.text500 }}>PDF não baixado</p>
+                          <p className="text-xs mt-1" style={{ color: C.text400 }}>Clique em "Baixar PDFs" para carregar</p>
+                        </div>
                       </div>
                     )}
                   </div>
-                </div>
-              )}
 
-              {activeTab === 'visualizacao' && (
-                <div className="h-full overflow-y-auto p-6">
-                  {/* Formato da categoria */}
-                  {formatoCategoria && (
-                    <div className="mb-6">
-                      <h3 className="text-sm font-semibold mb-3" style={{ color: C.text700 }}>Formato da Categoria</h3>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                        {Object.entries(formatoCategoria).map(([campo, info]) => (
-                          <div key={campo} className="p-3 rounded-xl" style={{ background: C.gray50, border: `1px solid ${C.gray200}` }}>
-                            <p className="text-sm font-mono font-semibold" style={{ color: C.navy700 }}>{campo}</p>
-                            <p className="text-xs mt-1" style={{ color: C.text500 }}>{info.description}</p>
-                            <Badge variant="default" className="mt-1 text-xs">{info.type}</Badge>
-                          </div>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-
-                  {!formatoCategoria && (
-                    <div className="h-full flex items-center justify-center" style={{ color: C.text400 }}>
-                      <div className="text-center">
-                        <Eye className="h-14 w-14 mx-auto mb-3" />
-                        <p className="text-lg">Selecione uma categoria para ver o formato</p>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Documentos salvos no backend */}
-                  {documentosDB.length > 0 && (
-                    <div className="mt-6">
-                      <h3 className="text-sm font-semibold mb-3" style={{ color: C.text700 }}>
-                        Documentos Salvos ({documentosDB.length})
+                  {/* Resultado de classificação + Formato — 45% restante */}
+                  <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                    {/* Cabeçalho do processo */}
+                    <div className="flex items-center justify-between">
+                      <h3 className="font-mono text-sm font-semibold truncate" style={{ color: C.text800 }}>
+                        {processoSelecionado}
                       </h3>
-                      <div className="space-y-2">
-                        {documentosDB.map((doc) => (
-                          <div key={doc.id} className="flex items-center justify-between px-3 py-2 rounded-lg" style={{ background: C.gray50, border: `1px solid ${C.gray200}` }}>
-                            <span className="font-mono text-xs" style={{ color: C.text700 }}>{doc.processo}</span>
-                            <div className="flex items-center gap-2">
-                              <span className="text-xs" style={{ color: C.text400 }}>{doc.modelo_usado}</span>
-                              <Badge variant={doc.status === 'ok' ? 'success' : 'destructive'} className="text-xs">{doc.status}</Badge>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
+                      {resultadoSelecionado && (
+                        <div className="flex items-center gap-2 flex-shrink-0 ml-2">
+                          <span className="text-xs" style={{ color: C.text400 }}>
+                            {(resultadoSelecionado.tempo_processamento_ms / 1000).toFixed(1)}s
+                          </span>
+                          <Badge variant={resultadoSelecionado.sucesso ? 'success' : 'destructive'}>
+                            {resultadoSelecionado.sucesso ? 'ok' : 'erro'}
+                          </Badge>
+                        </div>
+                      )}
                     </div>
-                  )}
-                </div>
-              )}
 
-              {activeTab === 'progresso' && (
-                <div className="h-full overflow-y-auto p-6">
-                  {/* Stats de classificacao */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                    <Card className="p-4 text-center rounded-2xl" style={{ borderColor: C.gray200 }}>
-                      <p className="text-sm" style={{ color: C.text500 }}>Total Classificados</p>
-                      <p className="text-3xl font-bold" style={{ color: C.text900 }}>{progressStats.total}</p>
-                    </Card>
-                    <Card className="p-4 text-center rounded-2xl" style={{ borderColor: C.gray200 }}>
-                      <p className="text-sm" style={{ color: C.text500 }}>Sucesso</p>
-                      <p className="text-3xl font-bold" style={{ color: C.statusSuccess }}>{progressStats.ok}</p>
-                    </Card>
-                    <Card className="p-4 text-center rounded-2xl" style={{ borderColor: C.gray200 }}>
-                      <p className="text-sm" style={{ color: C.text500 }}>Erros</p>
-                      <p className="text-3xl font-bold" style={{ color: C.statusError }}>{progressStats.erros}</p>
-                    </Card>
+                    {/* JSON extraído */}
+                    {resultadoSelecionado?.json_extraido ? (
+                      <pre
+                        className="text-xs p-3 rounded-xl overflow-auto"
+                        style={{ background: C.gray50, border: `1px solid ${C.gray200}`, maxHeight: '200px' }}
+                      >
+                        {JSON.stringify(resultadoSelecionado.json_extraido, null, 2)}
+                      </pre>
+                    ) : resultadoSelecionado?.erro ? (
+                      <p className="text-xs p-3 rounded-xl" style={{ background: '#fef2f2', color: C.statusError, border: '1px solid #fecaca' }}>
+                        {resultadoSelecionado.erro}
+                      </p>
+                    ) : (
+                      <p className="text-sm text-center py-4" style={{ color: C.text400 }}>
+                        Processo não classificado ainda
+                      </p>
+                    )}
+
+                    {/* Formato da categoria — collapsible */}
+                    {formatoCategoria && (
+                      <details>
+                        <summary
+                          className="cursor-pointer text-xs font-medium py-2 px-3 rounded-lg list-none"
+                          style={{ background: C.gray50, border: `1px solid ${C.gray200}`, color: C.text600 }}
+                        >
+                          ▶ Formato da Categoria — {Object.keys(formatoCategoria).length} campos
+                        </summary>
+                        <div className="mt-2 grid grid-cols-2 gap-2">
+                          {Object.entries(formatoCategoria).map(([campo, info]) => (
+                            <div key={campo} className="p-2 rounded-lg" style={{ background: C.gray50, border: `1px solid ${C.gray200}` }}>
+                              <p className="text-xs font-mono font-semibold" style={{ color: C.navy700 }}>{campo}</p>
+                              <p className="text-xs mt-0.5" style={{ color: C.text500 }}>{info.description}</p>
+                              <Badge variant="default" className="mt-1 text-xs">{info.type}</Badge>
+                            </div>
+                          ))}
+                        </div>
+                      </details>
+                    )}
+
+                    {/* Documentos salvos no backend — collapsible */}
+                    {documentosDB.length > 0 && (
+                      <details>
+                        <summary
+                          className="cursor-pointer text-xs font-medium py-2 px-3 rounded-lg list-none"
+                          style={{ background: C.gray50, border: `1px solid ${C.gray200}`, color: C.text600 }}
+                        >
+                          ▶ Histórico BD — {documentosDB.length} documentos
+                        </summary>
+                        <div className="mt-2 space-y-1">
+                          {documentosDB.map((doc) => (
+                            <div key={doc.id} className="flex items-center justify-between px-3 py-1.5 rounded-lg" style={{ background: C.gray50, border: `1px solid ${C.gray200}` }}>
+                              <span className="font-mono text-xs" style={{ color: C.text700 }}>{doc.processo}</span>
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs" style={{ color: C.text400 }}>{doc.modelo_usado}</span>
+                                <Badge variant={doc.status === 'ok' ? 'success' : 'destructive'} className="text-xs">{doc.status}</Badge>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      </details>
+                    )}
                   </div>
-
-                  {/* Stats de download */}
-                  {downloadStats.total > 0 && (
-                    <>
-                      <h3 className="text-sm font-semibold mb-3" style={{ color: C.text700 }}>Download de PDFs</h3>
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                        <Card className="p-4 text-center rounded-2xl" style={{ borderColor: C.gray200 }}>
-                          <p className="text-sm" style={{ color: C.text500 }}>Baixados</p>
-                          <p className="text-3xl font-bold" style={{ color: C.statusSuccess }}>{downloadStats.ok}</p>
-                        </Card>
-                        <Card className="p-4 text-center rounded-2xl" style={{ borderColor: C.gray200 }}>
-                          <p className="text-sm" style={{ color: C.text500 }}>Em andamento</p>
-                          <p className="text-3xl font-bold" style={{ color: C.navy600 }}>{downloadStats.baixando}</p>
-                        </Card>
-                        <Card className="p-4 text-center rounded-2xl" style={{ borderColor: C.gray200 }}>
-                          <p className="text-sm" style={{ color: C.text500 }}>Falhas</p>
-                          <p className="text-3xl font-bold" style={{ color: C.statusError }}>{downloadStats.erro}</p>
-                        </Card>
-                      </div>
-
-                      {/* Lista detalhada de progresso por processo */}
-                      <div className="space-y-1">
-                        {Object.entries(downloadProgress).map(([processo, status]) => (
-                          <div
-                            key={processo}
-                            className="flex items-center justify-between px-3 py-2 rounded-lg text-sm"
-                            style={{ background: C.gray50, border: `1px solid ${C.gray200}` }}
-                          >
-                            <span className="font-mono text-xs" style={{ color: C.text700 }}>{processo}</span>
-                            <span className="flex items-center gap-1">
-                              {status === 'pendente' && <span className="text-xs" style={{ color: C.text400 }}>Pendente</span>}
-                              {status === 'baixando' && <Loader2 className="h-3.5 w-3.5 animate-spin" style={{ color: C.navy600 }} />}
-                              {status === 'ok' && <CheckCircle2 className="h-3.5 w-3.5" style={{ color: C.statusSuccess }} />}
-                              {status === 'erro' && <XCircle className="h-3.5 w-3.5" style={{ color: C.statusError }} />}
-                            </span>
-                          </div>
-                        ))}
-                      </div>
-                    </>
-                  )}
+                </>
+              ) : (
+                /* Estado vazio — nenhum processo selecionado */
+                <div className="flex-1 flex items-center justify-center">
+                  <div className="text-center">
+                    <Eye className="h-14 w-14 mx-auto mb-3" style={{ color: C.text300 }} />
+                    <p className="text-lg font-medium" style={{ color: C.text500 }}>Selecione um processo</p>
+                    <p className="text-sm mt-1" style={{ color: C.text400 }}>
+                      para visualizar o PDF e o resultado da classificação
+                    </p>
+                  </div>
                 </div>
               )}
-            </div>
+            </Card>
           </div>
+
         </div>
       </ContentArea>
 
@@ -917,7 +887,7 @@ export function TesteCategoriasPage() {
       <Dialog open={dialogComparacao} onOpenChange={setDialogComparacao}>
         <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Comparação: {processoSelecionado}</DialogTitle>
+            <DialogTitle>Comparação: {processoComparacao}</DialogTitle>
             <DialogDescription className="sr-only">
               Resultados da comparação entre modelos de classificação
             </DialogDescription>
