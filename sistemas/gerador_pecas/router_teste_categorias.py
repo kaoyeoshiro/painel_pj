@@ -1016,7 +1016,7 @@ async def classificar_com_comparacao(
     Classifica um documento usando dois modelos de IA e compara resultados.
 
     Modelo A: gemini-3-flash-preview com thinking="low"
-    Modelo B: gemini-2.5-flash-lite com thinking=None (padrão)
+    Modelo B: gemini-3.1-flash-lite-preview com thinking=None (padrão)
 
     Executa ambos em paralelo e retorna relatório de comparação.
     """
@@ -1037,7 +1037,7 @@ async def classificar_com_comparacao(
     THINKING_A = "low"
     CONFIG_A = "thinking: low"
 
-    MODELO_B = "gemini-2.5-flash-lite"
+    MODELO_B = "gemini-3.1-flash-lite-preview"
     THINKING_B = None
     CONFIG_B = "thinking: default"
 
