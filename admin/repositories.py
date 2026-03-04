@@ -1316,14 +1316,15 @@ class FeedbackRepository:
         data_inicio: datetime,
         data_fim: datetime,
     ) -> list:
-        """Calcula taxa de acerto por semana para um modelo de feedback."""
+        """Calcula métricas por semana para um modelo de feedback (taxa de acerto e satisfação)."""
         query = self.db.query(
             extract('isoyear', modelo_feedback.criado_em).label('ano'),
             extract('week', modelo_feedback.criado_em).label('semana'),
             func.count(modelo_feedback.id).label('total'),
             func.sum(case((modelo_feedback.avaliacao == 'correto', 1), else_=0)).label('corretos'),
             func.sum(case((modelo_feedback.avaliacao == 'parcial', 1), else_=0)).label('parciais'),
-            func.sum(case((modelo_feedback.avaliacao == 'incorreto', 1), else_=0)).label('incorretos')
+            func.sum(case((modelo_feedback.avaliacao == 'incorreto', 1), else_=0)).label('incorretos'),
+            func.avg(case((modelo_feedback.nota.isnot(None), modelo_feedback.nota), else_=None)).label('media_nota')
         ).filter(
             modelo_feedback.criado_em >= data_inicio,
             modelo_feedback.criado_em <= data_fim
