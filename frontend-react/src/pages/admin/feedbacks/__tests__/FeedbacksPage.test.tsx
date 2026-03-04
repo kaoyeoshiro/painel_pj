@@ -167,11 +167,11 @@ describe('FeedbacksPage', () => {
     expect(limparButton).toBeInTheDocument()
   })
 
-  it('deve exibir seção de evolução da taxa de acerto', async () => {
+  it('deve exibir seção de evolução da satisfação', async () => {
     setupMocks()
     render(<FeedbacksPage />)
     await waitFor(() => {
-      expect(screen.getByText('Evolução da Taxa de Acerto por Sistema')).toBeInTheDocument()
+      expect(screen.getByText('Evolução da Satisfação por Sistema')).toBeInTheDocument()
     })
   })
 

@@ -403,7 +403,7 @@ async def dashboard_feedbacks(
         todas_semanas_evolucao = gerar_semanas_periodo(data_inicio_evolucao, data_fim_evolucao)
 
         def calcular_evolucao_semanal(feedback_model, ids_excluir):
-            """Calcula taxa de acerto por semana para um modelo de feedback (últimas N semanas)."""
+            """Calcula satisfação e métricas por semana para um modelo de feedback (últimas N semanas)."""
             return feedback_repo.evolucao_semanal(
                 feedback_model, ids_excluir, data_inicio_evolucao, data_fim_evolucao
             )
