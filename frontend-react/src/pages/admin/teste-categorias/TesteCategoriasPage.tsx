@@ -108,6 +108,23 @@ type StatusFilter = 'todos' | 'ok' | 'erro'
 type ActiveTab = 'resultados' | 'visualizacao' | 'progresso'
 type DownloadStatus = 'pendente' | 'baixando' | 'ok' | 'erro'
 
+function formatarValor(val: unknown): string {
+  if (val === null || val === undefined) return '—'
+  if (Array.isArray(val)) return val.length === 0 ? '[ ]' : val.map(String).join(', ')
+  if (typeof val === 'object') return JSON.stringify(val)
+  return String(val)
+}
+
+const COR_TIPO: Record<string, string> = {
+  boolean: '#7c3aed',
+  choice:  '#0284c7',
+  date:    '#b45309',
+  list:    '#047857',
+  number:  '#0f766e',
+  object:  '#6b7280',
+  text:    '#9ca3af',
+}
+
 export function TesteCategoriasPage() {
   const { toast } = useToast()
 
@@ -494,6 +511,17 @@ export function TesteCategoriasPage() {
     }
   }, [downloadProgress])
 
+  const dialogData = useMemo(() => {
+    if (!comparacaoResult?.report) return null
+    const report = comparacaoResult.report
+    const difsEstruturais = report.diferencas.filter(d => d.comparavel)
+    const camposTexto = report.diferencas.filter(d => !d.comparavel)
+    const camposIguais = Object.keys(comparacaoResult.resultado_a || {}).filter(
+      k => !report.diferencas.some(d => d.campo === k)
+    )
+    return { report, difsEstruturais, camposTexto, camposIguais }
+  }, [comparacaoResult])
+
   const pendentes = processosValidados.filter((p) => p.valido).length
 
   return (
@@ -657,7 +685,7 @@ export function TesteCategoriasPage() {
                   data-testid="tab-visualizacao"
                 >
                   <Eye className="h-4 w-4" />
-                  Visualizacao
+                  Formato
                 </button>
                 <button
                   onClick={() => setActiveTab('progresso')}
@@ -790,63 +818,11 @@ export function TesteCategoriasPage() {
                     </div>
                   )}
 
-                  {/* Resultado da comparacao */}
-                  {comparacaoResult && (
-                    <div className="mb-6">
-                      <div
-                        className="p-4 rounded-xl mb-4"
-                        style={{
-                          background: comparacaoResult.report?.campos_diferentes === 0 ? C.successBg : C.warningBgAlt,
-                          border: `1px solid ${comparacaoResult.report?.campos_diferentes === 0 ? C.statusSuccess : C.statusWarning}`,
-                        }}
-                      >
-                        <p className="text-sm font-semibold" style={{ color: comparacaoResult.report?.campos_diferentes === 0 ? C.successText : C.warningText }}>
-                          {comparacaoResult.report?.resumo ?? (comparacaoResult.erro ?? 'Sem relatório')}
-                        </p>
-                        {(comparacaoResult.report?.diferencas?.length ?? 0) > 0 && (
-                          <ul className="mt-2 space-y-1">
-                            {comparacaoResult.report!.diferencas.map((d, i) => (
-                              <li key={i} className="text-xs" style={{ color: C.warningText }}>
-                                <strong>{d.campo}</strong>: A={JSON.stringify(d.valor_a)} | B={JSON.stringify(d.valor_b)}
-                              </li>
-                            ))}
-                          </ul>
-                        )}
-                      </div>
-
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <Card className="p-4 rounded-2xl" style={{ borderLeft: `4px solid ${C.statusSuccess}`, borderColor: C.gray200 }}>
-                          <p className="text-sm font-semibold mb-1" style={{ color: C.text700 }}>{comparacaoResult.modelo_a} <span className="font-normal text-xs">({comparacaoResult.config_a})</span></p>
-                          <p className="text-xs mb-2" style={{ color: C.text400 }}>{(comparacaoResult.tempo_a_ms / 1000).toFixed(1)}s</p>
-                          <pre className="text-xs bg-muted p-2 rounded overflow-auto">
-                            {JSON.stringify(comparacaoResult.resultado_a, null, 2)}
-                          </pre>
-                        </Card>
-                        <Card className="p-4 rounded-2xl" style={{ borderLeft: `4px solid ${C.statusWarning}`, borderColor: C.gray200 }}>
-                          <p className="text-sm font-semibold mb-1" style={{ color: C.text700 }}>{comparacaoResult.modelo_b} <span className="font-normal text-xs">({comparacaoResult.config_b})</span></p>
-                          <p className="text-xs mb-2" style={{ color: C.text400 }}>{(comparacaoResult.tempo_b_ms / 1000).toFixed(1)}s</p>
-                          <pre className="text-xs bg-muted p-2 rounded overflow-auto">
-                            {JSON.stringify(comparacaoResult.resultado_b, null, 2)}
-                          </pre>
-                        </Card>
-                      </div>
-                    </div>
-                  )}
-
-                  {/* Resultado selecionado */}
-                  {processoSelecionado && !comparacaoResult && (
-                    <div className="text-center py-8" style={{ color: C.text400 }}>
-                      <Loader2 className="h-8 w-8 mx-auto animate-spin mb-2" />
-                      <p>Carregando comparacao...</p>
-                    </div>
-                  )}
-
-                  {!formatoCategoria && !comparacaoResult && !processoSelecionado && (
+                  {!formatoCategoria && (
                     <div className="h-full flex items-center justify-center" style={{ color: C.text400 }}>
                       <div className="text-center">
                         <Eye className="h-14 w-14 mx-auto mb-3" />
                         <p className="text-lg">Selecione uma categoria para ver o formato</p>
-                        <p className="text-sm mt-1">Ou compare modelos na aba Resultados</p>
                       </div>
                     </div>
                   )}
@@ -939,60 +915,153 @@ export function TesteCategoriasPage() {
 
       {/* Dialog de comparacao de modelos */}
       <Dialog open={dialogComparacao} onOpenChange={setDialogComparacao}>
-        <DialogContent className="max-w-5xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Comparacao de Modelos — {processoSelecionado}</DialogTitle>
+            <DialogTitle>Comparação: {processoSelecionado}</DialogTitle>
             <DialogDescription className="sr-only">
-              Resultados da comparacao entre modelos de classificacao
+              Resultados da comparação entre modelos de classificação
             </DialogDescription>
           </DialogHeader>
+
           {loadingComparacao ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-8 w-8 animate-spin" style={{ color: C.navy600 }} />
             </div>
-          ) : comparacaoResult ? (
-            <div className="space-y-4">
-              <div
-                className="p-4 rounded-xl"
-                style={{
-                  background: comparacaoResult.report?.campos_diferentes === 0 ? C.successBg : C.warningBgAlt,
-                  border: `1px solid ${comparacaoResult.report?.campos_diferentes === 0 ? C.statusSuccess : C.statusWarning}`,
-                }}
-              >
-                <p className="text-sm font-semibold" style={{ color: comparacaoResult.report?.campos_diferentes === 0 ? C.successText : C.warningText }}>
-                  {comparacaoResult.report?.resumo ?? (comparacaoResult.erro ?? 'Sem relatório')}
-                </p>
-                {(comparacaoResult.report?.diferencas?.length ?? 0) > 0 && (
-                  <ul className="mt-2 space-y-1">
-                    {comparacaoResult.report!.diferencas.map((d, i) => (
-                      <li key={i} className="text-xs" style={{ color: C.warningText }}>
-                        <strong>{d.campo}</strong>: A={JSON.stringify(d.valor_a)} | B={JSON.stringify(d.valor_b)}
-                      </li>
+          ) : dialogData ? (
+            <div className="space-y-5">
+              {/* SCOREBOARD */}
+              <div className="rounded-xl p-4" style={{ background: C.navy50, border: `1px solid ${C.gray200}` }}>
+                <div className="flex items-center gap-4 flex-wrap mb-3">
+                  <div
+                    className="w-16 h-16 rounded-full flex items-center justify-center flex-shrink-0 font-bold"
+                    style={{
+                      fontSize: '1rem',
+                      color: dialogData.report.porcentagem_acordo >= 100 ? C.statusSuccess : '#b45309',
+                      background: dialogData.report.porcentagem_acordo >= 100 ? C.successBg : C.warningBgAlt,
+                      border: `2px solid ${dialogData.report.porcentagem_acordo >= 100 ? C.statusSuccess : '#b45309'}`,
+                    }}
+                  >
+                    {dialogData.report.porcentagem_acordo.toFixed(0)}%
+                  </div>
+                  <div>
+                    <p className="text-sm font-semibold" style={{ color: C.text700 }}>acordo estrutural</p>
+                    <div className="flex items-center gap-2 mt-1 flex-wrap">
+                      <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: '#fee2e2', color: '#dc2626' }}>
+                        {dialogData.difsEstruturais.length} difs estruturais
+                      </span>
+                      <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: '#d1fae5', color: '#065f46' }}>
+                        {dialogData.camposIguais.length} iguais
+                      </span>
+                      <span className="text-xs px-2 py-0.5 rounded-full font-medium" style={{ background: C.gray100, color: C.text500 }}>
+                        {dialogData.camposTexto.length} texto ignorado
+                      </span>
+                    </div>
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-2 text-xs" style={{ color: C.text500 }}>
+                  <div>
+                    <span className="font-medium" style={{ color: C.text700 }}>Modelo A:</span>{' '}
+                    {comparacaoResult!.modelo_a} · {comparacaoResult!.config_a} · {(comparacaoResult!.tempo_a_ms / 1000).toFixed(1)}s
+                  </div>
+                  <div>
+                    <span className="font-medium" style={{ color: C.text700 }}>Modelo B:</span>{' '}
+                    {comparacaoResult!.modelo_b} · {comparacaoResult!.config_b} · {(comparacaoResult!.tempo_b_ms / 1000).toFixed(1)}s
+                  </div>
+                </div>
+              </div>
+
+              {/* DIFERENCAS ESTRUTURAIS */}
+              <div>
+                <h3 className="text-sm font-semibold mb-2" style={{ color: C.text700 }}>
+                  {dialogData.difsEstruturais.length} Diferenças Estruturais
+                </h3>
+                {dialogData.difsEstruturais.length === 0 ? (
+                  <div className="rounded-xl p-4 text-center" style={{ background: C.successBg, border: `1px solid ${C.statusSuccess}` }}>
+                    <CheckCircle2 className="h-6 w-6 mx-auto mb-1" style={{ color: C.statusSuccess }} />
+                    <p className="text-sm font-medium" style={{ color: C.successText }}>
+                      Modelos em 100% acordo nos campos estruturais
+                    </p>
+                  </div>
+                ) : (
+                  <div className="space-y-2">
+                    {dialogData.difsEstruturais.map((d, i) => (
+                      <div key={i} className="rounded-xl p-3" style={{ border: `1px solid ${C.gray200}`, background: 'white' }}>
+                        <div className="flex items-center gap-2 mb-2">
+                          <span className="text-sm font-mono font-medium" style={{ color: C.text800 }}>{d.campo}</span>
+                          <span
+                            className="text-xs px-1.5 py-0.5 rounded font-medium"
+                            style={{
+                              background: `${COR_TIPO[d.tipo_campo] ?? '#6b7280'}20`,
+                              color: COR_TIPO[d.tipo_campo] ?? '#6b7280',
+                            }}
+                          >
+                            {d.tipo_campo}
+                          </span>
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div className="rounded-lg p-2" style={{ background: '#eff6ff', border: '1px solid #bfdbfe' }}>
+                            <p className="text-xs font-medium mb-1" style={{ color: '#1d4ed8' }}>Modelo A</p>
+                            <p className="text-xs font-mono" style={{ color: C.text700 }}>{formatarValor(d.valor_a)}</p>
+                          </div>
+                          <div className="rounded-lg p-2" style={{ background: '#fffbeb', border: '1px solid #fcd34d' }}>
+                            <p className="text-xs font-medium mb-1" style={{ color: '#b45309' }}>Modelo B</p>
+                            <p className="text-xs font-mono" style={{ color: C.text700 }}>{formatarValor(d.valor_b)}</p>
+                          </div>
+                        </div>
+                      </div>
                     ))}
-                  </ul>
+                  </div>
                 )}
               </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Card className="p-4 rounded-2xl" style={{ borderLeft: `4px solid ${C.statusSuccess}`, borderColor: C.gray200 }}>
-                  <p className="text-sm font-semibold mb-1" style={{ color: C.text700 }}>
-                    Modelo A: {comparacaoResult.modelo_a} <span className="font-normal text-xs" style={{ color: C.text400 }}>({comparacaoResult.config_a})</span>
-                  </p>
-                  <p className="text-xs mb-2" style={{ color: C.text400 }}>{(comparacaoResult.tempo_a_ms / 1000).toFixed(1)}s</p>
-                  <pre className="text-xs bg-muted p-2 rounded overflow-auto">
-                    {JSON.stringify(comparacaoResult.resultado_a, null, 2)}
-                  </pre>
-                </Card>
-                <Card className="p-4 rounded-2xl" style={{ borderLeft: `4px solid ${C.statusWarning}`, borderColor: C.gray200 }}>
-                  <p className="text-sm font-semibold mb-1" style={{ color: C.text700 }}>
-                    Modelo B: {comparacaoResult.modelo_b} <span className="font-normal text-xs" style={{ color: C.text400 }}>({comparacaoResult.config_b})</span>
-                  </p>
-                  <p className="text-xs mb-2" style={{ color: C.text400 }}>{(comparacaoResult.tempo_b_ms / 1000).toFixed(1)}s</p>
-                  <pre className="text-xs bg-muted p-2 rounded overflow-auto">
-                    {JSON.stringify(comparacaoResult.resultado_b, null, 2)}
-                  </pre>
-                </Card>
-              </div>
+
+              {/* CAMPOS DE TEXTO — collapsible */}
+              {dialogData.camposTexto.length > 0 && (
+                <details>
+                  <summary
+                    className="cursor-pointer text-sm font-medium py-2 px-3 rounded-lg list-none"
+                    style={{ background: C.gray50, border: `1px solid ${C.gray200}`, color: C.text600 }}
+                  >
+                    ▶ Campos de Texto — {dialogData.camposTexto.length} ignorados (diferenças esperadas)
+                  </summary>
+                  <div className="mt-2 flex flex-wrap gap-1.5 px-1">
+                    {dialogData.camposTexto.map((d, i) => (
+                      <span
+                        key={i}
+                        className="text-xs px-2 py-0.5 rounded-full"
+                        style={{ background: C.gray100, color: C.text500, border: `1px solid ${C.gray200}` }}
+                      >
+                        {d.campo}
+                      </span>
+                    ))}
+                  </div>
+                </details>
+              )}
+
+              {/* CAMPOS IGUAIS — collapsible */}
+              {dialogData.camposIguais.length > 0 && (
+                <details>
+                  <summary
+                    className="cursor-pointer text-sm font-medium py-2 px-3 rounded-lg list-none"
+                    style={{ background: C.gray50, border: `1px solid ${C.gray200}`, color: C.text600 }}
+                  >
+                    ▶ Campos Iguais — {dialogData.camposIguais.length} campos
+                  </summary>
+                  <div className="mt-2 flex flex-wrap gap-1.5 px-1">
+                    {dialogData.camposIguais.map((campo, i) => (
+                      <span
+                        key={i}
+                        className="text-xs px-2 py-0.5 rounded-full font-mono"
+                        style={{ background: '#d1fae5', color: '#065f46', border: '1px solid #a7f3d0' }}
+                      >
+                        {campo}: {formatarValor((comparacaoResult!.resultado_a ?? {})[campo])}
+                      </span>
+                    ))}
+                  </div>
+                </details>
+              )}
             </div>
+          ) : comparacaoResult?.erro ? (
+            <p className="text-sm" style={{ color: C.statusError }}>{comparacaoResult.erro}</p>
           ) : null}
         </DialogContent>
       </Dialog>
