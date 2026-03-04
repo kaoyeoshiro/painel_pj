@@ -114,8 +114,8 @@ describe('getSupportedLevels', () => {
     expect(getSupportedLevels('gemini-3-pro-preview')).toEqual(['low', 'high'])
   })
 
-  it('retorna array vazio para gemini-2.5-flash-lite (usa thinkingBudget)', () => {
-    expect(getSupportedLevels('gemini-2.5-flash-lite')).toEqual([])
+  it('retorna minimal/low/medium/high para gemini-3.1-flash-lite-preview', () => {
+    expect(getSupportedLevels('gemini-3.1-flash-lite-preview')).toEqual(['minimal', 'low', 'medium', 'high'])
   })
 
   it('retorna array vazio para string vazia', () => {

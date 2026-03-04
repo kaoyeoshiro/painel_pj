@@ -65,14 +65,14 @@ export const MODELOS_IA = [
   { value: INHERIT_VALUE, label: 'Herdar' },
   { value: 'gemini-3-flash-preview', label: 'Gemini 3 Flash Preview (padrão)' },
   { value: 'gemini-3-pro-preview', label: 'Gemini 3 Pro Preview' },
-  { value: 'gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash Lite' },
+  { value: 'gemini-3.1-flash-lite-preview', label: 'Gemini 3.1 Flash Lite Preview' },
 ]
 
 /** Modelos de IA para selects diretos (sem opção "Herdar") */
 export const MODELOS_IA_DIRETO = [
   { value: 'gemini-3-flash-preview', label: 'Gemini 3 Flash Preview (padrão)' },
   { value: 'gemini-3-pro-preview', label: 'Gemini 3 Pro Preview (avançado)' },
-  { value: 'gemini-2.5-flash-lite', label: 'Gemini 2.5 Flash Lite (econômico)' },
+  { value: 'gemini-3.1-flash-lite-preview', label: 'Gemini 3.1 Flash Lite Preview (econômico)' },
 ]
 
 /** Opções de thinking_level sem "Herdar" (para configurações diretas) */
@@ -103,8 +103,8 @@ const AGENT_KEY_PATTERNS = [
 export const MODEL_THINKING_SUPPORT: Record<string, string[]> = {
   'gemini-3-flash': ['minimal', 'low', 'medium', 'high'],
   'gemini-3-pro': ['low', 'high'],
+  'gemini-3.1-flash-lite': ['minimal', 'low', 'medium', 'high'],
 }
-// gemini-2.5-flash-lite usa thinkingBudget (inteiro), não thinkingLevel — dropdown não se aplica
 
 /** Mapa de normalização de valores legados PT-BR para API EN */
 export const NORMALIZE_THINKING_LEVEL: Record<string, string> = {
