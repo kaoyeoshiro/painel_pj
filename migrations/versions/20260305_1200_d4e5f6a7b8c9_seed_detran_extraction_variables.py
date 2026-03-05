@@ -57,17 +57,17 @@ _BOOL_VARS = [
     ("detran_vicio_citacao",                "Vício de citação",                              "Há vício na citação do réu?"),
 ]
 
-# Variável tipo select (lista de valores)
+# Variável tipo select — apenas os valores (opcoes é List[str] no schema)
 _TIPO_ACAO_OPCOES = [
-    {"valor": "multa",                  "label": "Multa de trânsito"},
-    {"valor": "cassacao_cnh",           "label": "Cassação da CNH"},
-    {"valor": "suspensao_cnh",          "label": "Suspensão da CNH"},
-    {"valor": "ear_cnh",                "label": "Exame de Aptidão para renovação (EAR)"},
-    {"valor": "pontuacao_cnh",          "label": "Pontuação na CNH"},
-    {"valor": "transferencia_registro", "label": "Transferência de registro do veículo"},
-    {"valor": "baixa_veiculo",          "label": "Baixa de veículo"},
-    {"valor": "bloqueio_renajud",       "label": "Bloqueio RENAJUD"},
-    {"valor": "exame_toxicologico",     "label": "Exame toxicológico"},
+    "multa",
+    "cassacao_cnh",
+    "suspensao_cnh",
+    "ear_cnh",
+    "pontuacao_cnh",
+    "transferencia_registro",
+    "baixa_veiculo",
+    "bloqueio_renajud",
+    "exame_toxicologico",
 ]
 
 
