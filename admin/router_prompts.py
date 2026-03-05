@@ -1451,7 +1451,7 @@ async def exportar_todos(
     modulos = modulo_repo.query().filter(PromptModulo.ativo == True).all()
 
     export_data = {
-        "versao": "2.0",
+        "versao": "2.1",
         "exportado_em": to_iso_utc(now_utc()),
         "exportado_por": current_user.username,
         "modulos": []
@@ -1485,7 +1485,13 @@ async def exportar_todos(
             "conteudo": modulo.conteudo,
             "palavras_chave": modulo.palavras_chave or [],
             "tags": modulo.tags or [],
-            "ordem": modulo.ordem
+            "ordem": modulo.ordem,
+            "modo_ativacao": modulo.modo_ativacao or "llm",
+            "regra_deterministica": modulo.regra_deterministica,
+            "regra_texto_original": modulo.regra_texto_original,
+            "fallback_habilitado": modulo.fallback_habilitado or False,
+            "regra_deterministica_secundaria": modulo.regra_deterministica_secundaria,
+            "regra_secundaria_texto_original": modulo.regra_secundaria_texto_original,
         })
 
     return export_data
@@ -1504,7 +1510,7 @@ async def exportar_selecionados(
     modulos = modulo_repo.query().filter(PromptModulo.id.in_(req.ids)).all()
 
     export_data = {
-        "versao": "2.0",
+        "versao": "2.1",
         "exportado_em": to_iso_utc(now_utc()),
         "exportado_por": current_user.username,
         "total": len(modulos),
@@ -1539,7 +1545,13 @@ async def exportar_selecionados(
             "conteudo": modulo.conteudo,
             "palavras_chave": modulo.palavras_chave or [],
             "tags": modulo.tags or [],
-            "ordem": modulo.ordem
+            "ordem": modulo.ordem,
+            "modo_ativacao": modulo.modo_ativacao or "llm",
+            "regra_deterministica": modulo.regra_deterministica,
+            "regra_texto_original": modulo.regra_texto_original,
+            "fallback_habilitado": modulo.fallback_habilitado or False,
+            "regra_deterministica_secundaria": modulo.regra_deterministica_secundaria,
+            "regra_secundaria_texto_original": modulo.regra_secundaria_texto_original,
         })
 
     return export_data
@@ -1637,7 +1649,7 @@ async def importar_modulos(
     - 'subgroup_slug': recorte operacional (Conhecimento, Cumprimento)
     NAO confundir esses conceitos!
 
-    Formato esperado do JSON (versão 2.0):
+    Formato esperado do JSON (versão 2.0 e 2.1 — backward compatible):
     {
         "modulos": [
             {
@@ -1708,6 +1720,31 @@ async def importar_modulos(
             palavras_chave = item.get("palavras_chave", [])
             tags = item.get("tags", [])
             ordem = item.get("ordem", 0)
+
+            # Campos de ativação determinística (v2.1 — opcionais, backward compatible)
+            modo_ativacao = item.get("modo_ativacao", "llm")
+            regra_deterministica = item.get("regra_deterministica")
+            regra_texto_original = item.get("regra_texto_original")
+            fallback_habilitado = item.get("fallback_habilitado", False)
+            regra_deterministica_secundaria = item.get("regra_deterministica_secundaria")
+            regra_secundaria_texto_original = item.get("regra_secundaria_texto_original")
+
+            # ==========================================================================
+            # REGRA DE OURO: Normaliza booleanos e resolve modo de ativação correto
+            # (mesmo comportamento do endpoint de criação individual)
+            # ==========================================================================
+            if regra_deterministica:
+                regra_deterministica = normalizar_booleanos_regra(regra_deterministica)
+            if regra_deterministica_secundaria:
+                regra_deterministica_secundaria = normalizar_booleanos_regra(regra_deterministica_secundaria)
+
+            from sistemas.gerador_pecas.services_deterministic import resolve_activation_mode
+            modo_ativacao = resolve_activation_mode(
+                modo_ativacao_salvo=modo_ativacao,
+                regra_primaria=regra_deterministica,
+                regra_secundaria=regra_deterministica_secundaria,
+                fallback_habilitado=fallback_habilitado,
+            )
 
             # Dados do grupo
             grupo_slug = item.get("group_slug") or item.get("grupo_slug")
@@ -1807,6 +1844,12 @@ async def importar_modulos(
                     existente.atualizado_por = current_user.id
                     existente.atualizado_em = get_utc_now()
                     existente.ativo = True
+                    existente.modo_ativacao = modo_ativacao
+                    existente.regra_deterministica = regra_deterministica
+                    existente.regra_texto_original = regra_texto_original
+                    existente.fallback_habilitado = fallback_habilitado
+                    existente.regra_deterministica_secundaria = regra_deterministica_secundaria
+                    existente.regra_secundaria_texto_original = regra_secundaria_texto_original
 
                     modulo_para_associar = existente
                     atualizados += 1
@@ -1830,7 +1873,13 @@ async def importar_modulos(
                     ativo=True,
                     versao=1,
                     criado_por=current_user.id,
-                    atualizado_por=current_user.id
+                    atualizado_por=current_user.id,
+                    modo_ativacao=modo_ativacao,
+                    regra_deterministica=regra_deterministica,
+                    regra_texto_original=regra_texto_original,
+                    fallback_habilitado=fallback_habilitado,
+                    regra_deterministica_secundaria=regra_deterministica_secundaria,
+                    regra_secundaria_texto_original=regra_secundaria_texto_original,
                 )
                 modulo_repo.add(novo_modulo)
                 modulo_repo.flush()  # Garante que o ID seja gerado

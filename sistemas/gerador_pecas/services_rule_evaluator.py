@@ -93,11 +93,17 @@ class DeterministicRuleEvaluator:
         if operator == "in_list":
             if not isinstance(value, list):
                 value = [value]
+            if isinstance(valor_pai, list):
+                # Campo é lista (ex: tipo_acao multiselect): checar se algum valor esperado está na lista
+                return any(v in valor_pai for v in value)
             return valor_pai in value
 
         if operator == "not_in_list":
             if not isinstance(value, list):
                 value = [value]
+            if isinstance(valor_pai, list):
+                # Campo é lista: checar se NENHUM valor esperado está na lista
+                return not any(v in valor_pai for v in value)
             return valor_pai not in value
 
         if operator == "greater_than":
@@ -279,11 +285,17 @@ class DeterministicRuleEvaluator:
         elif operador == "in_list":
             if not isinstance(valor_esperado, list):
                 valor_esperado = [valor_esperado]
+            if isinstance(valor_atual, list):
+                # Campo é lista (ex: tipo_acao multiselect): checar se algum valor esperado está na lista
+                return any(v in valor_atual for v in valor_esperado)
             return valor_atual in valor_esperado
 
         elif operador == "not_in_list":
             if not isinstance(valor_esperado, list):
                 valor_esperado = [valor_esperado]
+            if isinstance(valor_atual, list):
+                # Campo é lista: checar se NENHUM valor esperado está na lista
+                return not any(v in valor_atual for v in valor_esperado)
             return valor_atual not in valor_esperado
 
         elif operador == "matches_regex":
