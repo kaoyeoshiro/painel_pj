@@ -1,0 +1,415 @@
+{
+  "_meta": {
+    "grupo": "DETRAN",
+    "descricao": "Schema de extração de variáveis para processos do DETRAN/MS",
+    "total_variaveis": 59,
+    "formato": "AplicarJsonRequest — aplicar via POST /admin/api/gerador-pecas-admin/categorias/{id}/aplicar-json",
+    "versao": "2.0",
+    "data_criacao": "2026-03-05",
+    "nota_in_list": "O operador 'in_list' neste sistema avalia: valor_do_campo IN lista_esperada. Para o campo 'detran_tipo_acao' (tipo list/multiselect), verificar compatibilidade com o avaliador antes de usar em regras determinísticas."
+  },
+
+  "detran_tipo_acao": {
+    "type": "list",
+    "description": "Quais tipos de pedido o autor formula nesta ação? Selecione todos que se aplicam.",
+    "options": [
+      "multa",
+      "suspensao_cnh",
+      "cassacao_cnh",
+      "transferencia_registro",
+      "baixa_veiculo",
+      "pontuacao_cnh",
+      "bloqueio_renajud",
+      "ear_cnh",
+      "exame_toxicologico"
+    ]
+  },
+
+  "detran_agravo": {
+    "type": "boolean",
+    "description": "A petição é um agravo de instrumento?"
+  },
+
+  "detran_processo_origem": {
+    "type": "number",
+    "description": "Qual o número do processo de origem?",
+    "depends_on": "detran_agravo",
+    "dependency_operator": "equals",
+    "dependency_value": true
+  },
+
+  "detran_tutela_urgencia": {
+    "type": "boolean",
+    "description": "O autor pede tutela de urgência (liminar ou antecipação de tutela)?"
+  },
+
+  "detran_dano_moral": {
+    "type": "boolean",
+    "description": "O autor formula pedido de indenização por dano moral?"
+  },
+
+  "detran_dano_material": {
+    "type": "boolean",
+    "description": "O autor formula pedido de indenização por dano material?"
+  },
+
+  "detran_juizado_especial": {
+    "type": "boolean",
+    "description": "A ação foi ajuizada no Juizado Especial (JEC/JESP)?"
+  },
+
+  "detran_alega_ilegitimidade": {
+    "type": "boolean",
+    "description": "O autor alega ilegitimidade passiva do DETRAN/MS (ex: auto lavrado por outro órgão, ação envolve autarquia municipal)?"
+  },
+
+  "detran_alega_prescricao_decadencia": {
+    "type": "boolean",
+    "description": "O autor alega prescrição ou decadência do poder punitivo da Administração?"
+  },
+
+  "detran_alega_incompetencia": {
+    "type": "boolean",
+    "description": "O autor alega incompetência do juízo (territorial, material ou para o Juizado Especial)?"
+  },
+
+  "detran_falta_interesse_agir": {
+    "type": "boolean",
+    "description": "O autor foi acusado de falta de interesse de agir ou impossibilidade jurídica do pedido?"
+  },
+
+  "detran_ilegitimidade_ativa": {
+    "type": "boolean",
+    "description": "O autor que ajuizou a ação não é o titular do direito discutido (ex: terceiro não proprietário questiona multa, representante sem poderes)?"
+  },
+
+  "detran_litisconsorcio_necessario": {
+    "type": "boolean",
+    "description": "A pretensão envolve terceiros indispensáveis não incluídos no polo passivo (ex: adquirentes em alienações sucessivas, fiduciário)?"
+  },
+
+  "detran_alega_inepcia_inicial": {
+    "type": "boolean",
+    "description": "A petição inicial apresenta defeitos formais graves que impossibilitem o exercício do contraditório (art. 319 do CPC)?"
+  },
+
+  "detran_vicio_citacao": {
+    "type": "boolean",
+    "description": "Há vício na citação ou intimação do DETRAN/MS que justifique prazo em dobro ou nulidade processual?"
+  },
+
+  "detran_coisa_julgada": {
+    "type": "boolean",
+    "description": "Há decisão judicial anterior transitada em julgado sobre a mesma matéria entre as mesmas partes?"
+  },
+
+  "detran_valor_causa_incompativel": {
+    "type": "boolean",
+    "description": "O valor atribuído à causa é manifestamente incompatível com o proveito econômico pretendido?"
+  },
+
+  "detran_litispendencia_conexao": {
+    "type": "boolean",
+    "description": "Há outro processo em andamento com mesma causa de pedir e pedidos similares envolvendo a mesma portaria ou infração?"
+  },
+
+  "detran_invoca_cdc": {
+    "type": "boolean",
+    "description": "O autor invoca o Código de Defesa do Consumidor (CDC) ou requer inversão do ônus da prova alegando relação de consumo com o DETRAN?"
+  },
+
+  "detran_documentos_duvidosos": {
+    "type": "boolean",
+    "description": "O autor apresenta documentos cuja autenticidade ou validade é duvidosa (adulteração, falsificação, declaração unilateral sem prova)?"
+  },
+
+  "detran_alega_nulidade_processo_adm": {
+    "type": "boolean",
+    "description": "A petição alega cerceamento de defesa, violação ao contraditório ou ausência de ampla defesa no processo administrativo do DETRAN?"
+  },
+
+  "detran_contesta_validade_notificacao": {
+    "type": "boolean",
+    "description": "O autor questiona a FORMA da notificação: ausência de AR (aviso de recebimento), notificação por edital inválida, ou invalidade do SNE (Sistema de Notificação Eletrônica)?"
+  },
+
+  "detran_alega_irregularidade_recurso_adm": {
+    "type": "boolean",
+    "description": "A petição alega irregularidade no recurso administrativo (JARI/CETRAN): decisões genéricas, supressão de instância ou omissão no julgamento?"
+  },
+
+  "detran_pagou_voluntariamente": {
+    "type": "boolean",
+    "description": "O autor pagou voluntariamente a multa ou penalidade antes de ajuizar a ação, ou quitou os débitos durante o processo?"
+  },
+
+  "detran_alega_inercia_orgao": {
+    "type": "boolean",
+    "description": "O autor alega inércia ou omissão do DETRAN/MS sem ter formalizado requerimento prévio ou sem demonstrar resistência do órgão?"
+  },
+
+  "detran_invoca_proporcionalidade": {
+    "type": "boolean",
+    "description": "O autor invoca os princípios da razoabilidade e proporcionalidade para reduzir ou anular a penalidade aplicada?"
+  },
+
+  "detran_autor_inerte": {
+    "type": "boolean",
+    "description": "O autor permaneceu inerte no cumprimento de obrigações básicas (regularização, transferência, pagamentos) por longo período?"
+  },
+
+  "detran_impugna_remocao": {
+    "type": "boolean",
+    "description": "O autor impugna remoção ou apreensão do veículo, questiona valores de guincho/estadia, ou é arrematante com débitos anteriores?"
+  },
+
+  "detran_acao_fabricante_placas": {
+    "type": "boolean",
+    "description": "A ação é movida por fabricante ou estampador de placas alegando invasão de competência federal ou exigências indevidas do DETRAN?"
+  },
+
+  "detran_num_ait": {
+    "type": "text",
+    "description": "Qual o número do Auto de Infração de Trânsito (AIT) impugnado?",
+    "depends_on": "detran_tipo_acao",
+    "dependency_operator": "in_list",
+    "dependency_value": "multa"
+  },
+
+  "detran_orgao_autuador": {
+    "type": "text",
+    "description": "Qual órgão de trânsito lavrou o auto de infração (ex: DETRAN, PMR, PRF, DENATRAN)?",
+    "depends_on": "detran_tipo_acao",
+    "dependency_operator": "in_list",
+    "dependency_value": "multa"
+  },
+
+  "detran_data_infracao": {
+    "type": "date",
+    "description": "Qual a data em que ocorreu a infração de trânsito?",
+    "depends_on": "detran_tipo_acao",
+    "dependency_operator": "in_list",
+    "dependency_value": "multa"
+  },
+
+  "detran_artigo_infracao": {
+    "type": "text",
+    "description": "Qual o artigo do CTB ou norma infringida (ex: art. 165, art. 165-A, art. 218)?",
+    "depends_on": "detran_tipo_acao",
+    "dependency_operator": "in_list",
+    "dependency_value": "multa"
+  },
+
+  "detran_alega_nao_notificado_autuacao": {
+    "type": "boolean",
+    "description": "O autor alega que não foi notificado da autuação (1ª notificação)?",
+    "depends_on": "detran_tipo_acao",
+    "dependency_operator": "in_list",
+    "dependency_value": "multa"
+  },
+
+  "detran_alega_nao_notificado_penalidade": {
+    "type": "boolean",
+    "description": "O autor alega que não foi notificado da penalidade (2ª notificação)?",
+    "depends_on": "detran_tipo_acao",
+    "dependency_operator": "in_list",
+    "dependency_value": "multa"
+  },
+
+  "detran_alega_equipamento_invalido": {
+    "type": "boolean",
+    "description": "O autor questiona a validade ou calibração do equipamento de fiscalização (radar, etilômetro)?",
+    "depends_on": "detran_tipo_acao",
+    "dependency_operator": "in_list",
+    "dependency_value": "multa"
+  },
+
+  "detran_alega_nao_era_condutor": {
+    "type": "boolean",
+    "description": "O autor (proprietário) alega que não era o condutor no momento da infração e quer indicar o responsável?",
+    "depends_on": "detran_tipo_acao",
+    "dependency_operator": "in_list",
+    "dependency_value": "multa"
+  },
+
+  "detran_recusa_etilometro": {
+    "type": "boolean",
+    "description": "A infração impugnada é de recusa ao teste do etilômetro (art. 165-A do CTB)?",
+    "depends_on": "detran_tipo_acao",
+    "dependency_operator": "in_list",
+    "dependency_value": "multa"
+  },
+
+  "detran_num_cnh": {
+    "type": "text",
+    "description": "Qual o número do Registro Nacional de Carteira de Habilitação (RENACH/CNH)?",
+    "depends_on": "detran_tipo_acao",
+    "dependency_operator": "in_list",
+    "dependency_value": "suspensao_cnh"
+  },
+
+  "detran_categoria_cnh": {
+    "type": "choice",
+    "description": "Qual a categoria da CNH do autor?",
+    "options": ["A", "B", "C", "D", "E", "AB", "AC", "AD", "AE"],
+    "depends_on": "detran_tipo_acao",
+    "dependency_operator": "in_list",
+    "dependency_value": "suspensao_cnh"
+  },
+
+  "detran_motivo_suspensao": {
+    "type": "choice",
+    "description": "Qual o motivo da suspensão ou cassação da CNH?",
+    "options": [
+      "pontuacao_excessiva",
+      "alcool_droga",
+      "recusa_etilometro",
+      "infracoes_especificas",
+      "reincidencia"
+    ],
+    "depends_on": "detran_tipo_acao",
+    "dependency_operator": "in_list",
+    "dependency_value": "suspensao_cnh"
+  },
+
+  "detran_prazo_suspensao": {
+    "type": "text",
+    "description": "Qual o prazo de suspensão ou cassação determinado (ex: '6 meses', '12 meses')?",
+    "depends_on": "detran_tipo_acao",
+    "dependency_operator": "in_list",
+    "dependency_value": "suspensao_cnh"
+  },
+
+  "detran_alega_nao_notificado_suspensao": {
+    "type": "boolean",
+    "description": "O autor alega que não foi notificado da suspensão ou cassação?",
+    "depends_on": "detran_tipo_acao",
+    "dependency_operator": "in_list",
+    "dependency_value": "suspensao_cnh"
+  },
+
+  "detran_motorista_profissional": {
+    "type": "boolean",
+    "description": "O autor exerce atividade profissional que depende da habilitação (motorista, caminhoneiro, taxista, etc.)?",
+    "depends_on": "detran_tipo_acao",
+    "dependency_operator": "in_list",
+    "dependency_value": "suspensao_cnh"
+  },
+
+  "detran_placa_veiculo": {
+    "type": "text",
+    "description": "Qual a placa do veículo envolvido na ação?",
+    "depends_on": "detran_tipo_acao",
+    "dependency_operator": "in_list",
+    "dependency_value": "transferencia_registro"
+  },
+
+  "detran_renavam": {
+    "type": "text",
+    "description": "Qual o número do RENAVAM do veículo?",
+    "depends_on": "detran_tipo_acao",
+    "dependency_operator": "in_list",
+    "dependency_value": "transferencia_registro"
+  },
+
+  "detran_pendencias_veiculo": {
+    "type": "boolean",
+    "description": "O veículo possui pendências administrativas (multas não pagas, IPVA em atraso, licenciamento vencido)?",
+    "depends_on": "detran_tipo_acao",
+    "dependency_operator": "in_list",
+    "dependency_value": "transferencia_registro"
+  },
+
+  "detran_alienacao_fiduciaria": {
+    "type": "boolean",
+    "description": "O veículo possui gravame de alienação fiduciária (financiamento)?",
+    "depends_on": "detran_tipo_acao",
+    "dependency_operator": "in_list",
+    "dependency_value": "transferencia_registro"
+  },
+
+  "detran_veiculo_clonado": {
+    "type": "boolean",
+    "description": "O autor alega que o veículo foi clonado (uso indevido de placa/chassi por terceiro)?",
+    "depends_on": "detran_tipo_acao",
+    "dependency_operator": "in_list",
+    "dependency_value": "transferencia_registro"
+  },
+
+  "detran_veiculo_furtado_roubado": {
+    "type": "boolean",
+    "description": "O autor alega que o veículo foi furtado ou roubado na época da infração ou do débito?",
+    "depends_on": "detran_tipo_acao",
+    "dependency_operator": "in_list",
+    "dependency_value": "transferencia_registro"
+  },
+
+  "detran_alega_comunicou_venda": {
+    "type": "boolean",
+    "description": "O autor alega que comunicou a venda do veículo ao DETRAN no prazo legal?",
+    "depends_on": "detran_tipo_acao",
+    "dependency_operator": "in_list",
+    "dependency_value": "transferencia_registro"
+  },
+
+  "detran_data_venda": {
+    "type": "date",
+    "description": "Qual a data da venda/transferência do veículo ao novo proprietário?",
+    "depends_on": "detran_alega_comunicou_venda",
+    "dependency_operator": "equals",
+    "dependency_value": true
+  },
+
+  "detran_ipva_pendente": {
+    "type": "boolean",
+    "description": "O bloqueio ou recusa de transferência se deve a débitos de IPVA?",
+    "depends_on": "detran_tipo_acao",
+    "dependency_operator": "in_list",
+    "dependency_value": "transferencia_registro"
+  },
+
+  "detran_total_pontos": {
+    "type": "number",
+    "description": "Qual o total de pontos que o autor contesta ter na CNH?",
+    "depends_on": "detran_tipo_acao",
+    "dependency_operator": "in_list",
+    "dependency_value": "pontuacao_cnh"
+  },
+
+  "detran_alega_bis_in_idem": {
+    "type": "boolean",
+    "description": "O autor alega bis in idem na pontuação (mesma infração computada mais de uma vez)?",
+    "depends_on": "detran_tipo_acao",
+    "dependency_operator": "in_list",
+    "dependency_value": "pontuacao_cnh"
+  },
+
+  "detran_pede_transferencia_pontos": {
+    "type": "boolean",
+    "description": "O autor pede transferência judicial de pontos para o verdadeiro infrator?",
+    "depends_on": "detran_tipo_acao",
+    "dependency_operator": "in_list",
+    "dependency_value": "pontuacao_cnh"
+  },
+
+  "detran_valor_dano_moral": {
+    "type": "currency",
+    "description": "Qual o valor de indenização por dano moral pedido pelo autor?",
+    "depends_on": "detran_dano_moral",
+    "dependency_operator": "equals",
+    "dependency_value": true
+  },
+
+  "detran_valor_dano_material": {
+    "type": "currency",
+    "description": "Qual o valor de indenização por dano material pedido pelo autor?",
+    "depends_on": "detran_dano_material",
+    "dependency_operator": "equals",
+    "dependency_value": true
+  },
+
+  "detran_fato_gerador_dano": {
+    "type": "text",
+    "description": "Qual o fato gerador do dano alegado pelo autor (ex: apreensão indevida do veículo, cassação irregular da CNH)?"
+  }
+}
