@@ -218,11 +218,6 @@ def importar_modulos(session, dry_run: bool) -> bool:
             PromptModulo.group_id == group_id
         ).first()
 
-        regra_det = mod.get("regra_deterministica")
-        regra_det_json = json.dumps(regra_det, ensure_ascii=False) if regra_det else None
-        regra_sec = mod.get("regra_deterministica_secundaria")
-        regra_sec_json = json.dumps(regra_sec, ensure_ascii=False) if regra_sec else None
-
         campos = {
             "titulo": mod.get("titulo", ""),
             "conteudo": mod.get("conteudo", ""),
@@ -233,10 +228,10 @@ def importar_modulos(session, dry_run: bool) -> bool:
             "palavras_chave": mod.get("palavras_chave", []),
             "tags": mod.get("tags", []),
             "modo_ativacao": mod.get("modo_ativacao", "llm"),
-            "regra_deterministica": regra_det_json,
+            "regra_deterministica": mod.get("regra_deterministica"),
             "regra_texto_original": mod.get("regra_texto_original"),
             "fallback_habilitado": mod.get("fallback_habilitado", False),
-            "regra_deterministica_secundaria": regra_sec_json,
+            "regra_deterministica_secundaria": mod.get("regra_deterministica_secundaria"),
             "regra_secundaria_texto_original": mod.get("regra_secundaria_texto_original"),
         }
 
