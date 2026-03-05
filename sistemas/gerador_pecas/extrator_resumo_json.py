@@ -828,9 +828,11 @@ class GerenciadorFormatosJSON:
     - Blacklist de códigos a ignorar na extração (configurável via admin)
     """
 
-    def __init__(self, db: Session):
+    def __init__(self, db: Session, group_id: Optional[int] = None):
         self.db = db
-        self._cache: Dict[int, FormatoResumo] = {}  # código -> formato
+        self.group_id = group_id  # Se definido, prefere categorias deste grupo
+        self._cache: Dict[int, FormatoResumo] = {}  # código -> formato (genérico, sem grupo)
+        self._cache_grupo: Dict[tuple, FormatoResumo] = {}  # (código, group_id) -> formato
         self._residual: Optional[FormatoResumo] = None
         self._carregado = False
 
@@ -893,7 +895,12 @@ class GerenciadorFormatosJSON:
             else:
                 # Categoria por código normal
                 for codigo in (cat.codigos_documento or []):
-                    self._cache[codigo] = formato
+                    if cat.group_id is not None:
+                        # Categoria específica de grupo — chaveada por (codigo, group_id)
+                        self._cache_grupo[(codigo, cat.group_id)] = formato
+                    else:
+                        # Categoria genérica (sem grupo) — compatibilidade retroativa
+                        self._cache[codigo] = formato
 
         self._carregado = True
 
@@ -989,7 +996,13 @@ class GerenciadorFormatosJSON:
         if codigo_documento in self._codigos_ignorados:
             return None  # Documento será ignorado na extração JSON
 
-        # Tenta cache específico por código
+        # Tenta cache específico de grupo (ex: DETRAN) antes do genérico
+        if self.group_id is not None:
+            chave_grupo = (codigo_documento, self.group_id)
+            if chave_grupo in self._cache_grupo:
+                return self._cache_grupo[chave_grupo]
+
+        # Tenta cache genérico por código
         if codigo_documento in self._cache:
             return self._cache[codigo_documento]
 

@@ -1126,12 +1126,14 @@ class AgenteTJMS:
         formato_saida: str = "json",  # 'json' ou 'md'
         db_session = None,  # Sessão do banco para buscar formatos JSON
         codigos_permitidos: set = None,  # Códigos de documento a analisar (None = usa filtro legado)
-        codigos_primeiro_doc: set = None  # Códigos que devem pegar só o primeiro documento cronológico
+        codigos_primeiro_doc: set = None,  # Códigos que devem pegar só o primeiro documento cronológico
+        group_id: int = None,  # ID do grupo de prompts (ex: DETRAN=3) para filtrar categorias JSON
     ):
         self.modelo = modelo
         self.max_workers = max_workers
         self.formato_saida = formato_saida
         self.db_session = db_session
+        self.group_id = group_id
         self.codigos_permitidos = codigos_permitidos  # None = usa CATEGORIAS_EXCLUIDAS
         self.codigos_primeiro_doc = codigos_primeiro_doc or set()  # Códigos especiais (ex: Petição Inicial)
         self.codigos_texto_integral = set(CODIGOS_TEXTO_INTEGRAL)
@@ -1382,7 +1384,7 @@ RESUMOS DOS DOCUMENTOS PARA ANÁLISE:
         """Obtém o gerenciador de formatos JSON (cria se necessário)"""
         if self._gerenciador_json is None and self.db_session is not None:
             from sistemas.gerador_pecas.extrator_resumo_json import GerenciadorFormatosJSON
-            self._gerenciador_json = GerenciadorFormatosJSON(self.db_session)
+            self._gerenciador_json = GerenciadorFormatosJSON(self.db_session, group_id=self.group_id)
         return self._gerenciador_json
 
     def _deve_usar_json(self) -> bool:

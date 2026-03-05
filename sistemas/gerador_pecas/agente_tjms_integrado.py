@@ -64,17 +64,18 @@ class AgenteTJMSIntegrado:
     """
     
     def __init__(
-        self, 
-        modelo: str = None, 
-        db_session = None, 
+        self,
+        modelo: str = None,
+        db_session = None,
         formato_saida: str = "json",
         codigos_permitidos: set = None,  # Códigos de documento a analisar (None = usa filtro legado)
         codigos_primeiro_doc: set = None,  # Códigos que devem pegar só o primeiro documento cronológico
-        max_workers: int = 30  # Número máximo de chamadas paralelas à IA
+        max_workers: int = 30,  # Número máximo de chamadas paralelas à IA
+        group_id: int = None,  # ID do grupo de prompts para filtrar categorias JSON
     ):
         """
         Inicializa o agente.
-        
+
         Args:
             modelo: Modelo LLM a usar (padrão: gemini-3-flash-preview)
             db_session: Sessão do banco de dados para buscar formatos JSON
@@ -82,6 +83,7 @@ class AgenteTJMSIntegrado:
             codigos_permitidos: Conjunto de códigos de documento a analisar (None = usa filtro legado)
             codigos_primeiro_doc: Códigos que devem pegar só o primeiro documento (ex: Petição Inicial)
             max_workers: Número máximo de chamadas paralelas à IA (padrão: 30)
+            group_id: ID do grupo de prompts (ex: DETRAN=3) para filtrar categorias de extração JSON
         """
         self.modelo = modelo or MODELO_PADRAO
         self.db_session = db_session
@@ -95,7 +97,8 @@ class AgenteTJMSIntegrado:
             db_session=db_session,
             codigos_permitidos=codigos_permitidos,
             codigos_primeiro_doc=codigos_primeiro_doc,
-            max_workers=max_workers
+            max_workers=max_workers,
+            group_id=group_id,
         )
     
     def atualizar_codigos_permitidos(self, codigos: set, codigos_primeiro_doc: set = None):

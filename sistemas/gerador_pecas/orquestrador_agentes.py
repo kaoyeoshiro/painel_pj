@@ -668,7 +668,8 @@ class OrquestradorAgentes:
             db_session=db,
             formato_saida="json",  # Usa formato JSON para resumos
             codigos_permitidos=codigos_permitidos,
-            codigos_primeiro_doc=codigos_primeiro_doc
+            codigos_primeiro_doc=codigos_primeiro_doc,
+            group_id=self.group_id,
         )
         self.agente2 = DetectorModulosIA(db=db, modelo=self.modelo_agente2)
     
