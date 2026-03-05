@@ -2,9 +2,9 @@
   "_meta": {
     "grupo": "DETRAN",
     "descricao": "Schema de extração de variáveis para processos do DETRAN/MS",
-    "total_variaveis": 59,
+    "total_variaveis": 65,
     "formato": "AplicarJsonRequest — aplicar via POST /admin/api/gerador-pecas-admin/categorias/{id}/aplicar-json",
-    "versao": "2.0",
+    "versao": "3.0",
     "data_criacao": "2026-03-05",
     "nota_in_list": "O operador 'in_list' neste sistema avalia: valor_do_campo IN lista_esperada. Para o campo 'detran_tipo_acao' (tipo list/multiselect), verificar compatibilidade com o avaliador antes de usar em regras determinísticas."
   },
@@ -21,8 +21,15 @@
       "pontuacao_cnh",
       "bloqueio_renajud",
       "ear_cnh",
-      "exame_toxicologico"
+      "exame_toxicologico",
+      "responsabilidade_civil",
+      "isencao_ipva"
     ]
+  },
+
+  "detran_subtipo_acao": {
+    "type": "text",
+    "description": "Descreva brevemente o subtipo específico da ação (ex: 'dupla autuação mesma infração', 'suspensão por pontuação excessiva'). Retorne null se não há subtipo."
   },
 
   "detran_agravo": {
@@ -411,5 +418,46 @@
   "detran_fato_gerador_dano": {
     "type": "text",
     "description": "Qual o fato gerador do dano alegado pelo autor (ex: apreensão indevida do veículo, cassação irregular da CNH)?"
+  },
+
+  "detran_resp_civil_inventario": {
+    "type": "boolean",
+    "description": "Há inventário ou termo de vistoria vinculado ao pedido de responsabilidade civil?",
+    "depends_on": "detran_tipo_acao",
+    "dependency_operator": "in_list",
+    "dependency_value": "responsabilidade_civil"
+  },
+
+  "detran_resp_civil_bo": {
+    "type": "boolean",
+    "description": "Há boletim de ocorrência (BO) vinculado ao fato gerador da responsabilidade civil?",
+    "depends_on": "detran_tipo_acao",
+    "dependency_operator": "in_list",
+    "dependency_value": "responsabilidade_civil"
+  },
+
+  "detran_resp_civil_fato_gerador": {
+    "type": "text",
+    "description": "Qual o fato gerador da responsabilidade civil alegada contra o DETRAN/MS (ex: veículo apreendido danificado, demora na devolução, extravio de documentos)?",
+    "depends_on": "detran_tipo_acao",
+    "dependency_operator": "in_list",
+    "dependency_value": "responsabilidade_civil"
+  },
+
+  "detran_isencao_ipva_tipo": {
+    "type": "choice",
+    "description": "Qual o tipo de isenção de IPVA pleiteada pelo autor?",
+    "options": ["deficiencia", "taxi", "transporte_escolar", "veiculo_antigo", "outro"],
+    "depends_on": "detran_tipo_acao",
+    "dependency_operator": "in_list",
+    "dependency_value": "isencao_ipva"
+  },
+
+  "detran_isencao_ipva_exercicios": {
+    "type": "text",
+    "description": "Quais exercícios fiscais (anos) de IPVA são discutidos na ação?",
+    "depends_on": "detran_tipo_acao",
+    "dependency_operator": "in_list",
+    "dependency_value": "isencao_ipva"
   }
 }

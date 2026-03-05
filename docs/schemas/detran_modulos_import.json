@@ -1,8 +1,8 @@
 {
-  "versao": "3.0",
+  "versao": "3.1",
   "exportado_em": "2026-03-05",
-  "descricao": "94 módulos de defesa do DETRAN/MS: todos determinísticos. v3.1 — fusão de módulos complementares, correção de categorias e variável FAT_012.",
-  "total": 94,
+  "descricao": "98 módulos de defesa do DETRAN/MS: todos determinísticos. v3.1 — repertório argumentativo com filtros tipo_acao, módulos de responsabilidade civil e isenção IPVA.",
+  "total": 98,
   "modulos": [
     {
       "tipo": "conteudo",
@@ -431,6 +431,15 @@
         "conditions": [
           {
             "type": "condition",
+            "variable": "detran_tipo_acao",
+            "operator": "in_list",
+            "value": [
+              "transferencia_registro",
+              "isencao_ipva"
+            ]
+          },
+          {
+            "type": "condition",
             "variable": "detran_alega_ilegitimidade",
             "operator": "equals",
             "value": true
@@ -728,10 +737,23 @@
       "ordem": 19,
       "modo_ativacao": "deterministic",
       "regra_deterministica": {
-        "type": "condition",
-        "variable": "detran_alega_ilegitimidade",
-        "operator": "equals",
-        "value": true
+        "type": "and",
+        "conditions": [
+          {
+            "type": "condition",
+            "variable": "detran_tipo_acao",
+            "operator": "in_list",
+            "value": [
+              "bloqueio_renajud"
+            ]
+          },
+          {
+            "type": "condition",
+            "variable": "detran_alega_ilegitimidade",
+            "operator": "equals",
+            "value": true
+          }
+        ]
       },
       "regra_texto_original": "Quando a petição inicial trouxer pedido de baixa de veículo leiloado por órgão judicial sem demonstrar solicitação pelo órgão leiloante.",
       "fallback_habilitado": false,
@@ -1185,10 +1207,26 @@
       "ordem": 31,
       "modo_ativacao": "deterministic",
       "regra_deterministica": {
-        "type": "condition",
-        "variable": "detran_alega_nulidade_processo_adm",
-        "operator": "equals",
-        "value": true
+        "type": "and",
+        "conditions": [
+          {
+            "type": "condition",
+            "variable": "detran_tipo_acao",
+            "operator": "in_list",
+            "value": [
+              "multa",
+              "suspensao_cnh",
+              "cassacao_cnh",
+              "pontuacao_cnh"
+            ]
+          },
+          {
+            "type": "condition",
+            "variable": "detran_alega_nulidade_processo_adm",
+            "operator": "equals",
+            "value": true
+          }
+        ]
       },
       "regra_texto_original": "Quando a petição inicial alegar cerceamento de defesa, violação ao contraditório, ausência de ampla defesa, irregularidade procedimental genérica ou vícios sem especificação concreta.",
       "fallback_habilitado": false,
@@ -1221,10 +1259,23 @@
       "ordem": 32,
       "modo_ativacao": "deterministic",
       "regra_deterministica": {
-        "type": "condition",
-        "variable": "detran_contesta_validade_notificacao",
-        "operator": "equals",
-        "value": true
+        "type": "and",
+        "conditions": [
+          {
+            "type": "condition",
+            "variable": "detran_tipo_acao",
+            "operator": "in_list",
+            "value": [
+              "multa"
+            ]
+          },
+          {
+            "type": "condition",
+            "variable": "detran_contesta_validade_notificacao",
+            "operator": "equals",
+            "value": true
+          }
+        ]
       },
       "regra_texto_original": "Quando a petição inicial alegar nulidade por ausência de AR, questionar validade de notificações por carta simples, alegar ausência de dupla notificação ou necessidade de notificação pessoal.",
       "fallback_habilitado": false,
@@ -1377,10 +1428,23 @@
       "ordem": 36,
       "modo_ativacao": "deterministic",
       "regra_deterministica": {
-        "type": "condition",
-        "variable": "detran_alega_nao_era_condutor",
-        "operator": "equals",
-        "value": true
+        "type": "and",
+        "conditions": [
+          {
+            "type": "condition",
+            "variable": "detran_tipo_acao",
+            "operator": "in_list",
+            "value": [
+              "multa"
+            ]
+          },
+          {
+            "type": "condition",
+            "variable": "detran_alega_nao_era_condutor",
+            "operator": "equals",
+            "value": true
+          }
+        ]
       },
       "regra_texto_original": "Quando não houver indicação tempestiva na via administrativa, quando apresentar apenas declaração simples de terceiro, ou requerer transferência de ofício.",
       "fallback_habilitado": false,
@@ -1410,10 +1474,23 @@
       "ordem": 37,
       "modo_ativacao": "deterministic",
       "regra_deterministica": {
-        "type": "condition",
-        "variable": "detran_alega_irregularidade_recurso_adm",
-        "operator": "equals",
-        "value": true
+        "type": "and",
+        "conditions": [
+          {
+            "type": "condition",
+            "variable": "detran_tipo_acao",
+            "operator": "in_list",
+            "value": [
+              "multa"
+            ]
+          },
+          {
+            "type": "condition",
+            "variable": "detran_alega_irregularidade_recurso_adm",
+            "operator": "equals",
+            "value": true
+          }
+        ]
       },
       "regra_texto_original": "Quando a petição inicial alegar irregularidade em recurso administrativo, decisões genéricas ou supressão de instância.",
       "fallback_habilitado": false,
@@ -1795,10 +1872,24 @@
       "ordem": 49,
       "modo_ativacao": "deterministic",
       "regra_deterministica": {
-        "type": "condition",
-        "variable": "detran_alega_nao_era_condutor",
-        "operator": "equals",
-        "value": true
+        "type": "and",
+        "conditions": [
+          {
+            "type": "condition",
+            "variable": "detran_tipo_acao",
+            "operator": "in_list",
+            "value": [
+              "suspensao_cnh",
+              "cassacao_cnh"
+            ]
+          },
+          {
+            "type": "condition",
+            "variable": "detran_alega_nao_era_condutor",
+            "operator": "equals",
+            "value": true
+          }
+        ]
       },
       "regra_texto_original": "Quando o proprietário alegar que não era o condutor mas não indicou o real condutor no prazo administrativo.",
       "fallback_habilitado": false,
@@ -1901,10 +1992,24 @@
       "ordem": 52,
       "modo_ativacao": "deterministic",
       "regra_deterministica": {
-        "type": "condition",
-        "variable": "detran_veiculo_furtado_roubado",
-        "operator": "equals",
-        "value": true
+        "type": "and",
+        "conditions": [
+          {
+            "type": "condition",
+            "variable": "detran_tipo_acao",
+            "operator": "in_list",
+            "value": [
+              "multa",
+              "transferencia_registro"
+            ]
+          },
+          {
+            "type": "condition",
+            "variable": "detran_veiculo_furtado_roubado",
+            "operator": "equals",
+            "value": true
+          }
+        ]
       },
       "regra_texto_original": "Quando a petição inicial alegar clonagem ou furto/roubo sem provas robustas como BO tempestivo, perícia ou procedimento administrativo.",
       "fallback_habilitado": false,
@@ -1970,10 +2075,23 @@
       "ordem": 54,
       "modo_ativacao": "deterministic",
       "regra_deterministica": {
-        "type": "condition",
-        "variable": "detran_alega_comunicou_venda",
-        "operator": "equals",
-        "value": true
+        "type": "and",
+        "conditions": [
+          {
+            "type": "condition",
+            "variable": "detran_tipo_acao",
+            "operator": "in_list",
+            "value": [
+              "transferencia_registro"
+            ]
+          },
+          {
+            "type": "condition",
+            "variable": "detran_alega_comunicou_venda",
+            "operator": "equals",
+            "value": true
+          }
+        ]
       },
       "regra_texto_original": "Quando o sistema demonstrar inexistência de comunicação de venda registrada pelo autor.",
       "fallback_habilitado": false,
@@ -2128,6 +2246,14 @@
         "conditions": [
           {
             "type": "condition",
+            "variable": "detran_tipo_acao",
+            "operator": "in_list",
+            "value": [
+              "multa"
+            ]
+          },
+          {
+            "type": "condition",
             "variable": "detran_alega_equipamento_invalido",
             "operator": "equals",
             "value": true
@@ -2168,10 +2294,24 @@
       "ordem": 59,
       "modo_ativacao": "deterministic",
       "regra_deterministica": {
-        "type": "condition",
-        "variable": "detran_dano_material",
-        "operator": "equals",
-        "value": true
+        "type": "and",
+        "conditions": [
+          {
+            "type": "condition",
+            "variable": "detran_tipo_acao",
+            "operator": "in_list",
+            "value": [
+              "transferencia_registro",
+              "baixa_veiculo"
+            ]
+          },
+          {
+            "type": "condition",
+            "variable": "detran_dano_material",
+            "operator": "equals",
+            "value": true
+          }
+        ]
       },
       "regra_texto_original": "Quando o autor pleitear indenização por deterioração ou perda total do veículo durante apreensão pelo DETRAN/MS.",
       "fallback_habilitado": false,
@@ -2236,6 +2376,14 @@
       "regra_deterministica": {
         "type": "and",
         "conditions": [
+          {
+            "type": "condition",
+            "variable": "detran_tipo_acao",
+            "operator": "in_list",
+            "value": [
+              "transferencia_registro"
+            ]
+          },
           {
             "type": "condition",
             "variable": "detran_alega_comunicou_venda",
@@ -2313,10 +2461,23 @@
       "ordem": 63,
       "modo_ativacao": "deterministic",
       "regra_deterministica": {
-        "type": "condition",
-        "variable": "detran_alega_bis_in_idem",
-        "operator": "equals",
-        "value": true
+        "type": "and",
+        "conditions": [
+          {
+            "type": "condition",
+            "variable": "detran_tipo_acao",
+            "operator": "in_list",
+            "value": [
+              "pontuacao_cnh"
+            ]
+          },
+          {
+            "type": "condition",
+            "variable": "detran_alega_bis_in_idem",
+            "operator": "equals",
+            "value": true
+          }
+        ]
       },
       "regra_texto_original": "Quando o autor questionar pontuação, alegar duplicidade (bis in idem) ou erro na classificação.",
       "fallback_habilitado": false,
@@ -2496,10 +2657,25 @@
       "ordem": 68,
       "modo_ativacao": "deterministic",
       "regra_deterministica": {
-        "type": "condition",
-        "variable": "detran_invoca_proporcionalidade",
-        "operator": "equals",
-        "value": true
+        "type": "and",
+        "conditions": [
+          {
+            "type": "condition",
+            "variable": "detran_tipo_acao",
+            "operator": "in_list",
+            "value": [
+              "multa",
+              "suspensao_cnh",
+              "cassacao_cnh"
+            ]
+          },
+          {
+            "type": "condition",
+            "variable": "detran_invoca_proporcionalidade",
+            "operator": "equals",
+            "value": true
+          }
+        ]
       },
       "regra_texto_original": "Quando a petição invocar princípios da razoabilidade e proporcionalidade para reduzir ou anular penalidade.",
       "fallback_habilitado": false,
@@ -2530,6 +2706,14 @@
       "regra_deterministica": {
         "type": "and",
         "conditions": [
+          {
+            "type": "condition",
+            "variable": "detran_tipo_acao",
+            "operator": "in_list",
+            "value": [
+              "transferencia_registro"
+            ]
+          },
           {
             "type": "condition",
             "variable": "detran_contesta_validade_notificacao",
@@ -2775,10 +2959,24 @@
       "ordem": 76,
       "modo_ativacao": "deterministic",
       "regra_deterministica": {
-        "type": "condition",
-        "variable": "detran_ipva_pendente",
-        "operator": "equals",
-        "value": true
+        "type": "and",
+        "conditions": [
+          {
+            "type": "condition",
+            "variable": "detran_tipo_acao",
+            "operator": "in_list",
+            "value": [
+              "transferencia_registro",
+              "isencao_ipva"
+            ]
+          },
+          {
+            "type": "condition",
+            "variable": "detran_ipva_pendente",
+            "operator": "equals",
+            "value": true
+          }
+        ]
       },
       "regra_texto_original": "Quando a petição requerer isenção ou inexigibilidade de IPVA, licenciamento ou taxas sem enquadramento em hipótese legal.",
       "fallback_habilitado": false,
@@ -2875,6 +3073,15 @@
       "regra_deterministica": {
         "type": "and",
         "conditions": [
+          {
+            "type": "condition",
+            "variable": "detran_tipo_acao",
+            "operator": "in_list",
+            "value": [
+              "transferencia_registro",
+              "isencao_ipva"
+            ]
+          },
           {
             "type": "condition",
             "variable": "detran_alega_comunicou_venda",
@@ -3187,10 +3394,23 @@
       "ordem": 87,
       "modo_ativacao": "deterministic",
       "regra_deterministica": {
-        "type": "condition",
-        "variable": "detran_veiculo_clonado",
-        "operator": "equals",
-        "value": true
+        "type": "and",
+        "conditions": [
+          {
+            "type": "condition",
+            "variable": "detran_tipo_acao",
+            "operator": "in_list",
+            "value": [
+              "transferencia_registro"
+            ]
+          },
+          {
+            "type": "condition",
+            "variable": "detran_veiculo_clonado",
+            "operator": "equals",
+            "value": true
+          }
+        ]
       },
       "regra_texto_original": "Quando a petição trouxer pedido de substituição de placas por clonagem sem instrução adequada, requerendo gratuidade ou dispensa de débitos.",
       "fallback_habilitado": false,
@@ -3219,10 +3439,23 @@
       "ordem": 88,
       "modo_ativacao": "deterministic",
       "regra_deterministica": {
-        "type": "condition",
-        "variable": "detran_alienacao_fiduciaria",
-        "operator": "equals",
-        "value": true
+        "type": "and",
+        "conditions": [
+          {
+            "type": "condition",
+            "variable": "detran_tipo_acao",
+            "operator": "in_list",
+            "value": [
+              "transferencia_registro"
+            ]
+          },
+          {
+            "type": "condition",
+            "variable": "detran_alienacao_fiduciaria",
+            "operator": "equals",
+            "value": true
+          }
+        ]
       },
       "regra_texto_original": "Quando a petição requerer que o DETRAN providencie baixa de gravame ou quando o autor alegar venda de veículo financiado sem quitação.",
       "fallback_habilitado": false,
@@ -3305,10 +3538,25 @@
       "ordem": 91,
       "modo_ativacao": "deterministic",
       "regra_deterministica": {
-        "type": "condition",
-        "variable": "detran_impugna_remocao",
-        "operator": "equals",
-        "value": true
+        "type": "and",
+        "conditions": [
+          {
+            "type": "condition",
+            "variable": "detran_tipo_acao",
+            "operator": "in_list",
+            "value": [
+              "multa",
+              "transferencia_registro",
+              "baixa_veiculo"
+            ]
+          },
+          {
+            "type": "condition",
+            "variable": "detran_impugna_remocao",
+            "operator": "equals",
+            "value": true
+          }
+        ]
       },
       "regra_texto_original": "Quando o autor impugna remoção/apreensão, questiona valores de guincho/estadia, ou quando arrematante pretende transferir responsabilidades.",
       "fallback_habilitado": false,
@@ -3526,10 +3774,23 @@
       "ordem": 99,
       "modo_ativacao": "deterministic",
       "regra_deterministica": {
-        "type": "condition",
-        "variable": "detran_dano_material",
-        "operator": "equals",
-        "value": true
+        "type": "and",
+        "conditions": [
+          {
+            "type": "condition",
+            "variable": "detran_tipo_acao",
+            "operator": "in_list",
+            "value": [
+              "multa"
+            ]
+          },
+          {
+            "type": "condition",
+            "variable": "detran_dano_material",
+            "operator": "equals",
+            "value": true
+          }
+        ]
       },
       "regra_texto_original": "Quando houver pedido de devolução de valores pagos referentes a multas objeto de ação anulatória.",
       "fallback_habilitado": false,
@@ -3658,6 +3919,154 @@
         ]
       },
       "regra_texto_original": "Quando houver pedido de tutela para suspender efeitos de infração não registrada ou para trava preventiva de pontuação.",
+      "fallback_habilitado": false,
+      "regra_deterministica_secundaria": null,
+      "regra_secundaria_texto_original": null
+    },
+    {
+      "tipo": "conteudo",
+      "categoria": "Mérito",
+      "subcategoria": "Mérito",
+      "group_slug": "detran",
+      "group_name": "DETRAN/MS",
+      "nome": "detran_resp_001_095",
+      "titulo": "RESP_001 — Alegue excludente de responsabilidade civil do Estado por culpa exclusiva do autor",
+      "condicao_ativacao": "Quando a ação pleitear indenização por responsabilidade civil do DETRAN/MS e houver indicativos de culpa exclusiva ou concorrente do autor.",
+      "conteudo": "Alegue a excludente de responsabilidade civil do Estado de Mato Grosso do Sul, demonstrando a culpa exclusiva ou concorrente do autor no evento danoso. Sustente que, nos termos do art. 37, §6º da Constituição Federal, a responsabilidade objetiva do Estado exige nexo causal entre a conduta administrativa e o dano, sendo afastada quando o particular concorre decisivamente para o resultado lesivo. Demonstre que o autor contribuiu para o dano por sua própria inércia, negligência ou descumprimento de obrigações legais (como não regularizar documentação, não retirar veículo no prazo, não comunicar venda). Argumente que a teoria do risco administrativo, adotada pelo ordenamento brasileiro, admite excludentes de responsabilidade, diferentemente da teoria do risco integral.\n\n**Fundamentação Legal:** Art. 37, §6º da CF; Art. 945 do CC (culpa concorrente); Art. 186 e 927 do CC; Arts. 123, 124 e 134 do CTB; Jurisprudência STJ e TJMS.",
+      "palavras_chave": [
+        "mérito",
+        "responsabilidade civil",
+        "culpa exclusiva",
+        "excludente",
+        "dano"
+      ],
+      "tags": [
+        "detran",
+        "merito",
+        "resp_001"
+      ],
+      "ordem": 95,
+      "modo_ativacao": "deterministic",
+      "regra_deterministica": {
+        "type": "condition",
+        "variable": "detran_tipo_acao",
+        "operator": "in_list",
+        "value": [
+          "responsabilidade_civil"
+        ]
+      },
+      "regra_texto_original": "Quando a ação pleitear indenização por responsabilidade civil do DETRAN/MS.",
+      "fallback_habilitado": false,
+      "regra_deterministica_secundaria": null,
+      "regra_secundaria_texto_original": null
+    },
+    {
+      "tipo": "conteudo",
+      "categoria": "Mérito",
+      "subcategoria": "Mérito",
+      "group_slug": "detran",
+      "group_name": "DETRAN/MS",
+      "nome": "detran_resp_002_096",
+      "titulo": "RESP_002 — Alegue ausência de nexo causal entre a conduta do DETRAN/MS e o dano alegado",
+      "condicao_ativacao": "Quando a ação pleitear indenização por responsabilidade civil e não houver demonstração do nexo causal.",
+      "conteudo": "Alegue a ausência de nexo de causalidade entre a conduta do DETRAN/MS e o suposto dano sofrido pelo autor. Sustente que a responsabilidade civil objetiva do Estado (art. 37, §6º da CF) exige a demonstração inequívoca de três elementos: conduta administrativa, dano efetivo e nexo causal. Demonstre que o autor não logrou comprovar que o dano alegado decorreu diretamente de ação ou omissão do DETRAN/MS. Argumente que eventuais danos podem ter origem em causas alheias à atuação administrativa, como ato de terceiro, caso fortuito, força maior ou fato exclusivo da vítima. Ressalte que o ônus de provar o nexo causal recai sobre o autor, nos termos do art. 373, I do CPC.\n\n**Fundamentação Legal:** Art. 37, §6º da CF; Arts. 186, 393 e 927 do CC; Art. 373, I do CPC; Arts. 262 e 271 do CTB; Jurisprudência STJ e TJMS.",
+      "palavras_chave": [
+        "mérito",
+        "responsabilidade civil",
+        "nexo causal",
+        "ausência",
+        "dano"
+      ],
+      "tags": [
+        "detran",
+        "merito",
+        "resp_002"
+      ],
+      "ordem": 96,
+      "modo_ativacao": "deterministic",
+      "regra_deterministica": {
+        "type": "condition",
+        "variable": "detran_tipo_acao",
+        "operator": "in_list",
+        "value": [
+          "responsabilidade_civil"
+        ]
+      },
+      "regra_texto_original": "Quando a ação pleitear indenização por responsabilidade civil e não houver demonstração do nexo causal.",
+      "fallback_habilitado": false,
+      "regra_deterministica_secundaria": null,
+      "regra_secundaria_texto_original": null
+    },
+    {
+      "tipo": "conteudo",
+      "categoria": "Mérito",
+      "subcategoria": "Mérito",
+      "group_slug": "detran",
+      "group_name": "DETRAN/MS",
+      "nome": "detran_ipva_001_097",
+      "titulo": "IPVA_001 — Sustente que os requisitos legais para isenção de IPVA não foram preenchidos pelo autor",
+      "condicao_ativacao": "Quando a ação pleitear isenção ou revisão de IPVA e o autor não preencher os requisitos legais.",
+      "conteudo": "Sustente que o autor não demonstrou o preenchimento dos requisitos legais para a concessão de isenção de IPVA, conforme legislação estadual aplicável. Argumente que as isenções tributárias são de interpretação literal e restritiva, nos termos do art. 111, II do CTN, não comportando ampliação por analogia ou equidade. Demonstre que o requerimento administrativo foi corretamente indeferido pelo DETRAN/MS por ausência de documentação comprobatória adequada ou por não enquadramento nas hipóteses legais taxativas. Ressalte que o benefício fiscal exige comprovação documental robusta e que o ônus da prova recai sobre quem pleiteia a isenção.\n\n**Fundamentação Legal:** Art. 111, II do CTN; Art. 176 do CTN; Lei Estadual de IPVA/MS; Art. 150, §6º da CF; Art. 373, I do CPC; Jurisprudência STJ e TJMS.",
+      "palavras_chave": [
+        "mérito",
+        "IPVA",
+        "isenção",
+        "requisitos",
+        "tributário"
+      ],
+      "tags": [
+        "detran",
+        "merito",
+        "ipva_001"
+      ],
+      "ordem": 97,
+      "modo_ativacao": "deterministic",
+      "regra_deterministica": {
+        "type": "condition",
+        "variable": "detran_tipo_acao",
+        "operator": "in_list",
+        "value": [
+          "isencao_ipva"
+        ]
+      },
+      "regra_texto_original": "Quando a ação pleitear isenção ou revisão de IPVA.",
+      "fallback_habilitado": false,
+      "regra_deterministica_secundaria": null,
+      "regra_secundaria_texto_original": null
+    },
+    {
+      "tipo": "conteudo",
+      "categoria": "Mérito",
+      "subcategoria": "Mérito",
+      "group_slug": "detran",
+      "group_name": "DETRAN/MS",
+      "nome": "detran_ipva_002_098",
+      "titulo": "IPVA_002 — Sustente a competência tributária estadual e os limites de atuação do DETRAN em matéria de IPVA",
+      "condicao_ativacao": "Quando a ação questionar a competência do DETRAN/MS para cobrar ou condicionar serviços ao pagamento de IPVA.",
+      "conteudo": "Sustente a competência tributária do Estado de Mato Grosso do Sul para instituir e cobrar o IPVA, nos termos do art. 155, III da Constituição Federal, e a legitimidade do DETRAN/MS para condicionar a prestação de serviços de registro e licenciamento à regularidade tributária do veículo. Demonstre que o IPVA é tributo estadual cuja arrecadação compete ao Estado, e que o DETRAN/MS, como órgão executor do Sistema Nacional de Trânsito, atua em conformidade com o art. 131 do CTB ao exigir quitação de débitos para expedição de CRLV. Argumente que não se trata de sanção política, mas de requisito legal para a circulação regular do veículo, conforme entendimento consolidado do STJ. Ressalte a distinção entre cobrança coercitiva (vedada) e condicionamento de serviço público à regularidade fiscal (permitida).\n\n**Fundamentação Legal:** Art. 155, III da CF; Art. 131 do CTB; Art. 230, V do CTB; Lei Estadual de IPVA/MS; Súmulas STJ; Art. 3º do CTN; Jurisprudência STJ e TJMS.",
+      "palavras_chave": [
+        "mérito",
+        "IPVA",
+        "competência tributária",
+        "licenciamento",
+        "DETRAN"
+      ],
+      "tags": [
+        "detran",
+        "merito",
+        "ipva_002"
+      ],
+      "ordem": 98,
+      "modo_ativacao": "deterministic",
+      "regra_deterministica": {
+        "type": "condition",
+        "variable": "detran_tipo_acao",
+        "operator": "in_list",
+        "value": [
+          "isencao_ipva"
+        ]
+      },
+      "regra_texto_original": "Quando a ação questionar a competência do DETRAN/MS para cobrar ou condicionar serviços ao pagamento de IPVA.",
       "fallback_habilitado": false,
       "regra_deterministica_secundaria": null,
       "regra_secundaria_texto_original": null
