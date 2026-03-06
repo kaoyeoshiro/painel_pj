@@ -135,21 +135,21 @@ class CategoriaResumoJSONResponse(BaseModel):
     # Fonte de verdade
     fonte_verdade_tipo: Optional[str] = None
     fonte_verdade_codigo: Optional[str] = None
-    requer_classificacao: bool = False
+    requer_classificacao: bool | None = False
     tem_fonte_verdade: bool = False  # Propriedade calculada
     # Fonte especial
     source_type: str = "code"
     source_special_type: Optional[str] = None
     usa_fonte_especial: bool = False  # Propriedade calculada
     # Origem do JSON
-    json_gerado_por_ia: bool = False  # Se JSON foi gerado por IA
+    json_gerado_por_ia: bool | None = False  # Se JSON foi gerado por IA
     json_gerado_em: Optional[datetime] = None
     json_gerado_por: Optional[int] = None
     # Obrigatoriedade (generico)
     obrigatoriedade: Optional[Dict[str, Any]] = None
     # Auditoria
     criado_por: Optional[int]
-    criado_em: datetime
+    criado_em: datetime | None = None
     atualizado_por: Optional[int]
     atualizado_em: Optional[datetime]
 

@@ -26,6 +26,10 @@ dumps/
 # Logs
 *.log
 
+# Benchmark data (cache de processos TJ-MS — não versionar)
+scripts/benchmark/data/
+scripts/benchmark/output/
+
 # Uploads (opcional - pode querer versionar estrutura vazia)
 sistemas/matriculas_confrontantes/uploads/*
 !sistemas/matriculas_confrontantes/uploads/.gitkeep

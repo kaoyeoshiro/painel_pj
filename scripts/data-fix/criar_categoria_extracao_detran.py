@@ -57,11 +57,21 @@ TIPO_ACAO_OPCOES = [
     "bloqueio_renajud", "exame_toxicologico",
 ]
 
-# Monta formato_json
-formato = {}
+# Monta formato_json — resumo analítico primeiro, depois booleanos
+formato = {
+    "detran_resumo_peticao": {
+        "type": "text",
+        "description": (
+            "Elabore um resumo completo e analítico da petição inicial, abrangendo: "
+            "(1) FATOS — o que aconteceu, qual a infração ou penalidade aplicada, data, local; "
+            "(2) FUNDAMENTOS JURÍDICOS — os argumentos legais invocados pelo autor; "
+            "(3) PEDIDOS — o que o autor requer ao juízo. "
+            "Seja objetivo e preciso, sem emitir juízo de valor."
+        ),
+    }
+}
 for slug, descricao in VARIAVEIS_BOOL:
-    campo = slug  # slug já tem prefixo detran_
-    formato[campo] = {
+    formato[slug] = {
         "type": "boolean",
         "description": descricao,
     }
@@ -113,7 +123,7 @@ with engine.begin() as conn:
                 INSERT INTO categorias_resumo_json (
                     nome, titulo, descricao, codigos_documento, formato_json,
                     instrucoes_extracao, namespace_prefix, source_type,
-                    is_residual, ativo, group_id, criado_em, atualizado_em
+                    is_residual, ativo, ordem, group_id, criado_em, atualizado_em
                 ) VALUES (
                     'peticao_detran',
                     'Petição Inicial — DETRAN/MS',
@@ -125,6 +135,7 @@ with engine.begin() as conn:
                     'code',
                     false,
                     true,
+                    0,
                     3,
                     NOW(),
                     NOW()
