@@ -445,7 +445,8 @@ class TestGerenciadorFormatosJSONFontesEspeciais(unittest.TestCase):
             'is_residual': False,
             'codigos_documento': [],
             'source_type': 'code',
-            'source_special_type': None
+            'source_special_type': None,
+            'group_id': 1,
         }
         defaults.update(kwargs)
         for key, value in defaults.items():
@@ -472,6 +473,7 @@ class TestGerenciadorFormatosJSONFontesEspeciais(unittest.TestCase):
         from unittest.mock import patch
 
         db_mock = MagicMock()
+        db_mock.query.return_value.filter.return_value.first.return_value = None
 
         # Categorias: uma especial (petição inicial) e uma por código (petições)
         cat_especial = self._criar_categoria_mock(
@@ -499,7 +501,7 @@ class TestGerenciadorFormatosJSONFontesEspeciais(unittest.TestCase):
             self._criar_documento_mock("doc3", 9500, datetime(2024, 3, 1)),
         ]
 
-        gerenciador = GerenciadorFormatosJSON(db_mock)
+        gerenciador = GerenciadorFormatosJSON(db_mock, group_id=1)
         gerenciador.preparar_lote(docs)
 
         # doc1 deve estar no cache de fonte especial
@@ -515,6 +517,7 @@ class TestGerenciadorFormatosJSONFontesEspeciais(unittest.TestCase):
         from sistemas.gerador_pecas.extrator_resumo_json import GerenciadorFormatosJSON, FormatoResumo
 
         db_mock = MagicMock()
+        db_mock.query.return_value.filter.return_value.first.return_value = None
 
         cat_especial = self._criar_categoria_mock(
             id=1,
@@ -539,7 +542,7 @@ class TestGerenciadorFormatosJSONFontesEspeciais(unittest.TestCase):
             self._criar_documento_mock("doc2", 9500, datetime(2024, 2, 1)),
         ]
 
-        gerenciador = GerenciadorFormatosJSON(db_mock)
+        gerenciador = GerenciadorFormatosJSON(db_mock, group_id=1)
         gerenciador.preparar_lote(docs)
 
         # doc1 (petição inicial) deve retornar categoria especial
@@ -557,6 +560,7 @@ class TestGerenciadorFormatosJSONFontesEspeciais(unittest.TestCase):
         from sistemas.gerador_pecas.extrator_resumo_json import GerenciadorFormatosJSON
 
         db_mock = MagicMock()
+        db_mock.query.return_value.filter.return_value.first.return_value = None
 
         cat_codigo = self._criar_categoria_mock(
             id=1,
@@ -568,7 +572,7 @@ class TestGerenciadorFormatosJSONFontesEspeciais(unittest.TestCase):
 
         db_mock.query.return_value.filter.return_value.all.return_value = [cat_codigo]
 
-        gerenciador = GerenciadorFormatosJSON(db_mock)
+        gerenciador = GerenciadorFormatosJSON(db_mock, group_id=1)
 
         # Sem preparar_lote, usa apenas código
         formato = gerenciador.obter_formato(9500, doc_id="doc1")
@@ -580,6 +584,7 @@ class TestGerenciadorFormatosJSONFontesEspeciais(unittest.TestCase):
         from sistemas.gerador_pecas.extrator_resumo_json import GerenciadorFormatosJSON
 
         db_mock = MagicMock()
+        db_mock.query.return_value.filter.return_value.first.return_value = None
 
         # Apenas categoria especial, sem categoria por código para 9500
         cat_especial = self._criar_categoria_mock(
@@ -605,7 +610,7 @@ class TestGerenciadorFormatosJSONFontesEspeciais(unittest.TestCase):
             self._criar_documento_mock("doc2", 9500, datetime(2024, 2, 1)),
         ]
 
-        gerenciador = GerenciadorFormatosJSON(db_mock)
+        gerenciador = GerenciadorFormatosJSON(db_mock, group_id=1)
         gerenciador.preparar_lote(docs)
 
         # doc1 tem categoria especial

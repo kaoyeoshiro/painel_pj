@@ -836,8 +836,8 @@ class GerenciadorFormatosJSON:
         self._residual: Optional[FormatoResumo] = None
         self._carregado = False
 
-        # Fontes especiais
-        self._fontes_especiais: Dict[str, Tuple[FormatoResumo, List[int]]] = {}  # key -> (formato, códigos)
+        # Fontes especiais — chave (source_type, group_id | None) para suportar grupos distintos
+        self._fontes_especiais: Dict[tuple, Tuple[FormatoResumo, List[int]]] = {}
         self._doc_fonte_especial: Dict[str, FormatoResumo] = {}  # doc_id -> formato (para docs de fonte especial)
         self._docs_excluir_codigo: set = set()  # doc_ids que devem ser excluídos de categorias por código
         self._lote_preparado = False
@@ -886,12 +886,12 @@ class GerenciadorFormatosJSON:
             if cat.is_residual:
                 self._residual = formato
             elif cat.usa_fonte_especial:
-                # Categoria com fonte especial - armazena separadamente
+                # Categoria com fonte especial — chave (source_type, group_id) para isolar grupos
                 from sistemas.gerador_pecas.services_source_resolver import get_source_resolver
                 resolver = get_source_resolver(self.db)
                 source_info = resolver.get_source_info(cat.source_special_type)
                 codigos = source_info["codigos_validos"] if source_info else []
-                self._fontes_especiais[cat.source_special_type] = (formato, codigos)
+                self._fontes_especiais[(cat.source_special_type, cat.group_id)] = (formato, codigos)
             else:
                 # Categoria por código normal
                 for codigo in (cat.codigos_documento or []):
@@ -949,16 +949,22 @@ class GerenciadorFormatosJSON:
                 ordem=i
             ))
 
-        # Resolve cada fonte especial
+        # Resolve cada fonte especial, filtrando pelo group_id deste gerenciador
         resolver = get_source_resolver(self.db)
-        for source_type, (formato, codigos) in self._fontes_especiais.items():
+        for (source_type, grp_id), (formato, codigos) in self._fontes_especiais.items():
+            # Usa a versão de grupo quando disponível; ignora versões de outros grupos
+            if grp_id is not None and grp_id != self.group_id:
+                continue
+            # Se existe versão específica do grupo, pula a genérica (grp_id=None)
+            if grp_id is None and (source_type, self.group_id) in self._fontes_especiais:
+                continue
+
             result = resolver.resolve(source_type, docs_info)
 
             if result.sucesso and result.documento_id:
-                # Documento encontrado para fonte especial
                 self._doc_fonte_especial[result.documento_id] = formato
                 self._docs_excluir_codigo.add(result.documento_id)
-                print(f"[FONTE ESPECIAL] {source_type}: doc_id={result.documento_id} (categoria: {formato.categoria_nome})")
+                print(f"[FONTE ESPECIAL] {source_type} (group={grp_id}): doc_id={result.documento_id} (categoria: {formato.categoria_nome})")
 
     def obter_formato(self, codigo_documento: int, doc_id: str = None) -> Optional[FormatoResumo]:
         """
