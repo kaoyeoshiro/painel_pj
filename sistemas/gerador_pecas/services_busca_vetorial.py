@@ -51,7 +51,8 @@ async def buscar_argumentos_vetorial(
     query: str,
     tipo_peca: Optional[str] = None,
     limit: int = 5,
-    threshold: float = 0.3
+    threshold: float = 0.3,
+    group_id: Optional[int] = None
 ) -> List[Dict]:
     """
     Busca módulos de conteúdo usando similaridade vetorial.
@@ -62,12 +63,14 @@ async def buscar_argumentos_vetorial(
         tipo_peca: Tipo de peça atual (para contexto, não filtro)
         limit: Número máximo de resultados
         threshold: Similaridade mínima (0-1)
+        group_id: ID do grupo para isolar busca (None = todos)
 
     Returns:
         Lista de módulos relevantes com score de similaridade
     """
     print(f"\n[BUSCA-VETORIAL] Query: '{query}'")
     print(f"[BUSCA-VETORIAL] Tipo de peca: {tipo_peca or 'nao especificado'}")
+    print(f"[BUSCA-VETORIAL] group_id: {group_id or 'todos'}")
     print(f"[BUSCA-VETORIAL] pgvector disponivel: {PGVECTOR_AVAILABLE}")
 
     # Gera embedding da query
@@ -82,9 +85,9 @@ async def buscar_argumentos_vetorial(
 
     # Busca usando pgvector ou fallback
     if PGVECTOR_AVAILABLE:
-        resultados = _buscar_com_pgvector(db, query_embedding, limit, threshold)
+        resultados = _buscar_com_pgvector(db, query_embedding, limit, threshold, group_id=group_id)
     else:
-        resultados = _buscar_com_numpy(db, query_embedding, limit, threshold)
+        resultados = _buscar_com_numpy(db, query_embedding, limit, threshold, group_id=group_id)
 
     print(f"[BUSCA-VETORIAL] Resultados encontrados: {len(resultados)}")
 
@@ -117,17 +120,29 @@ def _buscar_com_pgvector(
     db: Session,
     query_embedding: List[float],
     limit: int,
-    threshold: float
+    threshold: float,
+    group_id: Optional[int] = None
 ) -> List[Dict]:
     """Busca usando operador de distância do pgvector."""
     try:
         # Converte embedding para formato pgvector
         embedding_str = "[" + ",".join(str(v) for v in query_embedding) + "]"
 
+        # Clausula condicional de group_id
+        group_filter = "AND pm.group_id = :group_id" if group_id is not None else ""
+
         # Busca usando operador de distância de cosseno (<=>)
         # Menor distância = maior similaridade
         # Similaridade = 1 - distância
-        result = db.execute(text("""
+        params = {
+            "query_vec": embedding_str,
+            "threshold": threshold,
+            "limit": limit
+        }
+        if group_id is not None:
+            params["group_id"] = group_id
+
+        result = db.execute(text(f"""
             SELECT
                 me.modulo_id,
                 1 - (me.embedding_vector <=> :query_vec::vector) as similarity
@@ -136,40 +151,41 @@ def _buscar_com_pgvector(
             WHERE me.ativo = true
               AND pm.ativo = true
               AND pm.tipo = 'conteudo'
+              {group_filter}
               AND (1 - (me.embedding_vector <=> :query_vec::vector)) >= :threshold
             ORDER BY me.embedding_vector <=> :query_vec::vector
             LIMIT :limit
-        """), {
-            "query_vec": embedding_str,
-            "threshold": threshold,
-            "limit": limit
-        })
+        """), params)
 
         return [{"modulo_id": row[0], "score": float(row[1])} for row in result]
 
     except Exception as e:
         logger.error(f"Erro na busca pgvector: {e}")
         # Fallback para numpy se pgvector falhar
-        return _buscar_com_numpy(db, query_embedding, limit, threshold)
+        return _buscar_com_numpy(db, query_embedding, limit, threshold, group_id=group_id)
 
 
 def _buscar_com_numpy(
     db: Session,
     query_embedding: List[float],
     limit: int,
-    threshold: float
+    threshold: float,
+    group_id: Optional[int] = None
 ) -> List[Dict]:
     """Busca usando numpy para calcular similaridade de cosseno."""
     print(f"[BUSCA-VETORIAL] Usando fallback numpy...")
 
     # Busca todos os embeddings ativos
-    embeddings = db.query(ModuloEmbedding).join(
+    query = db.query(ModuloEmbedding).join(
         PromptModulo, ModuloEmbedding.modulo_id == PromptModulo.id
     ).filter(
         ModuloEmbedding.ativo == True,
         PromptModulo.ativo == True,
         PromptModulo.tipo == 'conteudo'
-    ).all()
+    )
+    if group_id is not None:
+        query = query.filter(PromptModulo.group_id == group_id)
+    embeddings = query.all()
 
     if not embeddings:
         logger.warning("Nenhum embedding encontrado no banco")
@@ -201,7 +217,8 @@ async def buscar_argumentos_hibrido(
     db: Session,
     query: str,
     tipo_peca: Optional[str] = None,
-    limit: int = 5
+    limit: int = 5,
+    group_id: Optional[int] = None
 ) -> List[Dict]:
     """
     Busca híbrida combinando busca vetorial com busca por palavras-chave.
@@ -213,6 +230,7 @@ async def buscar_argumentos_hibrido(
         query: Texto de busca do usuário
         tipo_peca: Tipo de peça atual
         limit: Número máximo de resultados
+        group_id: ID do grupo para isolar busca (None = todos)
 
     Returns:
         Lista combinada e deduplicada de resultados
@@ -220,14 +238,15 @@ async def buscar_argumentos_hibrido(
     from sistemas.gerador_pecas.services_busca_argumentos import buscar_argumentos_relevantes
 
     print(f"\n[BUSCA-HIBRIDA] Query: '{query}'")
+    print(f"[BUSCA-HIBRIDA] group_id: {group_id or 'todos'}")
 
     # Executa ambas as buscas
     resultados_vetorial = await buscar_argumentos_vetorial(
-        db, query, tipo_peca, limit=limit, threshold=0.35
+        db, query, tipo_peca, limit=limit, threshold=0.35, group_id=group_id
     )
 
     resultados_keyword = buscar_argumentos_relevantes(
-        db, query, tipo_peca, limit=limit
+        db, query, tipo_peca, limit=limit, group_id=group_id
     )
 
     # Combina resultados, priorizando vetorial

@@ -700,7 +700,8 @@ OAB/MS nº [NÚMERO]
         self,
         minuta_atual: str,
         mensagem_usuario: str,
-        historico: List[Dict] = None
+        historico: List[Dict] = None,
+        group_id: int = None
     ) -> Dict:
         """
         Processa pedido de edição da minuta via chat usando IA.
@@ -795,7 +796,8 @@ OAB/MS nº [NÚMERO]
         minuta_atual: str,
         mensagem_usuario: str,
         historico: List[Dict] = None,
-        tipo_peca: str = None
+        tipo_peca: str = None,
+        group_id: int = None
     ):
         """
         Processa edição da minuta com streaming real.
@@ -831,6 +833,7 @@ OAB/MS nº [NÚMERO]
         print(f"\n{'='*60}")
         print(f"[EDITAR STREAM] Iniciando edicao de minuta")
         print(f"[EDITAR STREAM] Tipo de peca: {tipo_peca or 'nao especificado'}")
+        print(f"[EDITAR STREAM] group_id: {group_id or 'todos'}")
         print(f"[EDITAR STREAM] Mensagem: {mensagem_usuario[:100]}...")
         print(f"{'='*60}")
 
@@ -864,7 +867,8 @@ OAB/MS nº [NÚMERO]
                     query=mensagem_usuario,
                     tipo_peca=tipo_peca,
                     limit=limit,
-                    threshold=threshold
+                    threshold=threshold,
+                    group_id=group_id
                 )
                 if argumentos:
                     contexto_argumentos = formatar_contexto_argumentos_vetorial(argumentos)
@@ -874,7 +878,8 @@ OAB/MS nº [NÚMERO]
                     db=self.db,
                     query=mensagem_usuario,
                     tipo_peca=tipo_peca,
-                    limit=limit
+                    limit=limit,
+                    group_id=group_id
                 )
                 if argumentos:
                     contexto_argumentos = formatar_contexto_argumentos(argumentos)

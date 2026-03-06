@@ -2113,7 +2113,8 @@ async def editar_minuta(
         resultado = await service.editar_minuta(
             minuta_atual=req.minuta_atual,
             mensagem_usuario=req.mensagem,
-            historico=req.historico
+            historico=req.historico,
+            group_id=req.group_id
         )
         
         return resultado
@@ -2185,7 +2186,8 @@ async def editar_minuta_stream(
             minuta_atual=req.minuta_atual,
             mensagem_usuario=req.mensagem,
             historico=req.historico,
-            tipo_peca=tipo_peca
+            tipo_peca=tipo_peca,
+            group_id=req.group_id
         )
 
         # Converte para SSE com heartbeats

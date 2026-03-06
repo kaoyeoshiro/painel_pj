@@ -56,6 +56,7 @@ class EditarMinutaRequest(BaseModel):
     mensagem: str  # Pedido de alteracao do usuario
     historico: Optional[List[Dict]] = None  # Historico de mensagens anteriores
     tipo_peca: Optional[str] = None  # Tipo de peca atual (para busca de argumentos)
+    group_id: Optional[int] = None  # Grupo para isolar busca vetorial/keyword
 
 
 class BuscarArgumentosRequest(BaseModel):
@@ -63,6 +64,7 @@ class BuscarArgumentosRequest(BaseModel):
     query: str  # Texto de busca
     tipo_peca: Optional[str] = None  # Tipo de peca para filtrar regras especificas
     limit: int = 5  # Numero maximo de resultados
+    group_id: Optional[int] = None  # Grupo para isolar busca
 
 
 class SalvarMinutaRequest(BaseModel):

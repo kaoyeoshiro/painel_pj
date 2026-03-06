@@ -620,6 +620,7 @@ export function useGeradorPecas() {
           mensagem: mensagem,
           historico: chatMessages.map((m) => ({ role: m.role, content: m.content })),
           tipo_peca: tipoPecaResultado || tipoPeca || undefined,
+          group_id: selectedGroupId || undefined,
         }),
         headers: {
           'Content-Type': 'application/json',
@@ -666,7 +667,7 @@ export function useGeradorPecas() {
     } finally {
       setIsSendingChat(false)
     }
-  }, [chatInput, isSendingChat, chatMessages, minutaMarkdown, tipoPecaResultado, tipoPeca, geracaoId, toast])
+  }, [chatInput, isSendingChat, chatMessages, minutaMarkdown, tipoPecaResultado, tipoPeca, geracaoId, toast, selectedGroupId])
 
   // ==========================================================================
   // Export DOCX

@@ -17,7 +17,8 @@ def buscar_argumentos_relevantes(
     db: Session,
     query: str,
     tipo_peca: Optional[str] = None,
-    limit: int = 5
+    limit: int = 5,
+    group_id: Optional[int] = None
 ) -> List[Dict]:
     """
     Busca módulos de conteúdo relevantes para a query do usuário.
@@ -34,12 +35,14 @@ def buscar_argumentos_relevantes(
         query: Texto de busca do usuário
         tipo_peca: Tipo de peça atual (para filtrar regras específicas)
         limit: Número máximo de resultados
+        group_id: ID do grupo para isolar busca (None = todos)
 
     Returns:
         Lista de módulos relevantes com suas condições de ativação
     """
     print(f"\n[BUSCA-ARGUMENTOS] Query: '{query}'")
     print(f"[BUSCA-ARGUMENTOS] Tipo de peca: {tipo_peca or 'nao especificado'}")
+    print(f"[BUSCA-ARGUMENTOS] group_id: {group_id or 'todos'}")
 
     # Normaliza a query para busca
     query_normalizada = query.lower().strip()
@@ -73,11 +76,14 @@ def buscar_argumentos_relevantes(
         )
 
     # Busca módulos de conteúdo ativos que correspondem aos filtros
-    modulos = db.query(PromptModulo).filter(
+    query_orm = db.query(PromptModulo).filter(
         PromptModulo.tipo == 'conteudo',
         PromptModulo.ativo == True,
         or_(*filtros)  # Qualquer palavra encontrada
-    ).order_by(PromptModulo.ordem).limit(limit * 2).all()  # Pega mais para rankear
+    )
+    if group_id is not None:
+        query_orm = query_orm.filter(PromptModulo.group_id == group_id)
+    modulos = query_orm.order_by(PromptModulo.ordem).limit(limit * 2).all()  # Pega mais para rankear
 
     print(f"[BUSCA-ARGUMENTOS] Modulos encontrados: {len(modulos)}")
 
