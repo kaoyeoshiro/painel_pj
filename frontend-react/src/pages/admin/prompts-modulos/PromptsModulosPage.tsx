@@ -53,17 +53,10 @@ export function PromptsModulosPage() {
               <Download className="h-4 w-4" />
               Exportar
             </Button>
-            <Button variant="outline" size="sm" onClick={() => vm.fileInputRef.current?.click()} className="gap-1.5">
+            <Button variant="outline" size="sm" onClick={() => vm.setDialogImportar(true)} className="gap-1.5">
               <Upload className="h-4 w-4" />
               Importar
             </Button>
-            <input
-              ref={vm.fileInputRef}
-              type="file"
-              accept=".json"
-              className="hidden"
-              onChange={vm.handleFileImport}
-            />
             <Button onClick={vm.abrirDialogNovo} disabled={vm.grupoSelecionado === null} className="gap-1.5" style={{ background: C.navy950, color: 'white' }}>
               <Plus className="h-4 w-4" />
               Novo Modulo

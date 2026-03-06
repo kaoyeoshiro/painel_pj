@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Checkbox } from '@/components/ui/checkbox'
 import { C } from '@/lib/designTokens'
-import { RotateCcw, Plus } from 'lucide-react'
+import { RotateCcw, Plus, Upload } from 'lucide-react'
 import { RuleEditorPanel, PieceTypeRulesSection } from './rules'
 import type { RuleNode } from './rules'
 import type {
@@ -451,6 +451,16 @@ export function ImportDialog({
   onImportar,
 }: ImportDialogProps) {
   const [sobrescrever, setSobrescrever] = useState(false)
+  const fileRef = useRef<HTMLInputElement>(null)
+
+  function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0]
+    if (!file) return
+    const reader = new FileReader()
+    reader.onload = (ev) => setImportData(ev.target?.result as string)
+    reader.readAsText(file)
+    e.target.value = ''
+  }
 
   return (
     <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) setSobrescrever(false) }}>
@@ -458,9 +468,16 @@ export function ImportDialog({
         <DialogHeader>
           <DialogTitle>Importar Módulos</DialogTitle>
           <DialogDescription>
-            Cole ou carregue um arquivo JSON exportado anteriormente
+            Cole o JSON abaixo ou carregue um arquivo .json
           </DialogDescription>
         </DialogHeader>
+        <div className="flex gap-2">
+          <Button variant="outline" size="sm" onClick={() => fileRef.current?.click()} className="gap-1.5">
+            <Upload className="h-4 w-4" />
+            Carregar arquivo .json
+          </Button>
+          <input ref={fileRef} type="file" accept=".json" className="hidden" onChange={handleFile} />
+        </div>
         <Textarea
           value={importData}
           onChange={(e) => setImportData(e.target.value)}

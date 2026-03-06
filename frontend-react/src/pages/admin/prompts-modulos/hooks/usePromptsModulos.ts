@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { adminApi } from '@/lib/api'
 import { useToast } from '@/components/ui/toast'
 import type {
@@ -60,9 +60,6 @@ export function usePromptsModulos() {
 
   // Estado de subcategorias (assuntos)
   const [subcategorias, setSubcategorias] = useState<Subcategoria[]>([])
-
-  // Ref para input de arquivo (importacao)
-  const fileInputRef = useRef<HTMLInputElement>(null)
 
   // Estado do formulario
   const [formData, setFormData] = useState<ModuloFormData>({
@@ -509,17 +506,6 @@ export function usePromptsModulos() {
     }
   }
 
-  function handleFileImport(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0]
-    if (!file) return
-    const reader = new FileReader()
-    reader.onload = (ev) => {
-      setImportData(ev.target?.result as string)
-      setDialogImportar(true)
-    }
-    reader.readAsText(file)
-    e.target.value = ''
-  }
 
   // ========== Gestao de Grupos ==========
 
@@ -728,8 +714,6 @@ export function usePromptsModulos() {
     importando,
     exportarTodos,
     importarModulos,
-    handleFileImport,
-    fileInputRef,
 
     // Gestao de grupos
     dialogGrupos,
