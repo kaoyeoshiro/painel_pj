@@ -709,10 +709,29 @@ def migrate_per_group_prompts(db: Session):
     ).all()
 
     if modulos_sem_grupo:
+        # Busca modulos que ja existem no grupo PS para evitar UniqueViolation
+        existentes_ps = db.query(PromptModulo.tipo, PromptModulo.nome).filter(
+            PromptModulo.tipo.in_(["base", "peca"]),
+            PromptModulo.group_id == grupo_ps.id
+        ).all()
+        chaves_ps = {(t, n) for t, n in existentes_ps}
+
+        vinculados = 0
+        removidos = 0
         for modulo in modulos_sem_grupo:
-            modulo.group_id = grupo_ps.id
+            if (modulo.tipo, modulo.nome) in chaves_ps:
+                # Ja existe no PS — remove o orfao para evitar duplicata
+                db.delete(modulo)
+                removidos += 1
+            else:
+                modulo.group_id = grupo_ps.id
+                vinculados += 1
+
         db.commit()
-        print(f"[OK] Migracao: {len(modulos_sem_grupo)} modulos base/peca vinculados ao PS")
+        if vinculados:
+            print(f"[OK] Migracao: {vinculados} modulos base/peca vinculados ao PS")
+        if removidos:
+            print(f"[OK] Migracao: {removidos} modulos orfaos removidos (ja existiam no PS)")
 
     # --- 2. Duplicar modulos base/peca do PS para PP e DETRAN ---
     modulos_ps = db.query(PromptModulo).filter(
