@@ -76,7 +76,18 @@ _INSTRUCOES = (
 
 
 def _montar_formato_json() -> str:
-    formato = {}
+    formato = {
+        "detran_resumo_peticao": {
+            "type": "text",
+            "description": (
+                "Elabore um resumo completo e analítico da petição inicial, abrangendo: "
+                "(1) FATOS — o que aconteceu, qual a infração ou penalidade aplicada, data, local; "
+                "(2) FUNDAMENTOS JURÍDICOS — os argumentos legais invocados pelo autor; "
+                "(3) PEDIDOS — o que o autor requer ao juízo. "
+                "Seja objetivo e preciso, sem emitir juízo de valor."
+            ),
+        }
+    }
     for slug, descricao in _VARIAVEIS_BOOL:
         formato[slug] = {"type": "boolean", "description": descricao}
     formato["detran_tipo_acao"] = {
@@ -91,9 +102,11 @@ def upgrade() -> None:
     conn = op.get_bind()
 
     # Busca group_id do grupo DETRAN
+    # No CI, prompt_groups pode estar vazio (seeds rodam via init_db, não via migrations)
     r = conn.execute(text("SELECT id FROM prompt_groups WHERE slug = 'detran'")).fetchone()
     if not r:
-        raise RuntimeError("Grupo 'detran' não encontrado. Execute a migration de seed de grupos primeiro.")
+        print("[WARN] Grupo 'detran' não encontrado — pulando seed de categoria DETRAN (OK no CI).")
+        return
     detran_group_id = r[0]
 
     formato_json = _montar_formato_json()
@@ -104,7 +117,7 @@ def upgrade() -> None:
         INSERT INTO categorias_resumo_json (
             nome, titulo, descricao, codigos_documento, formato_json,
             instrucoes_extracao, namespace_prefix, source_type,
-            is_residual, ativo, group_id, criado_em, atualizado_em
+            is_residual, ativo, ordem, group_id, criado_em, atualizado_em
         ) VALUES (
             'peticao_detran',
             'Petição Inicial — DETRAN/MS',
@@ -116,6 +129,7 @@ def upgrade() -> None:
             'code',
             false,
             true,
+            0,
             :gid,
             NOW(),
             NOW()
@@ -129,8 +143,23 @@ def upgrade() -> None:
     """), {"codigos": codigos, "fj": formato_json, "inst": _INSTRUCOES, "gid": detran_group_id})
     cat_id = r.fetchone()[0]
 
+    # Garante que detran_resumo_peticao existe na tabela de variáveis
+    conn.execute(text("""
+        INSERT INTO extraction_variables (slug, label, descricao, tipo, ativo, criado_em, atualizado_em)
+        VALUES (
+            'detran_resumo_peticao',
+            'Resumo analítico da petição inicial DETRAN',
+            'Resumo completo com fatos, fundamentos jurídicos e pedidos da petição inicial em ações contra o DETRAN/MS',
+            'text',
+            true,
+            NOW(),
+            NOW()
+        )
+        ON CONFLICT (slug) DO NOTHING
+    """))
+
     # Vincula variáveis DETRAN à categoria
-    slugs = [s for s, _ in _VARIAVEIS_BOOL] + ["detran_tipo_acao"]
+    slugs = ["detran_resumo_peticao"] + [s for s, _ in _VARIAVEIS_BOOL] + ["detran_tipo_acao"]
     for slug in slugs:
         conn.execute(
             text("UPDATE extraction_variables SET categoria_id = :cid WHERE slug = :slug"),
@@ -142,7 +171,7 @@ def downgrade() -> None:
     conn = op.get_bind()
 
     # Remove vínculo das variáveis
-    slugs = [s for s, _ in _VARIAVEIS_BOOL] + ["detran_tipo_acao"]
+    slugs = ["detran_resumo_peticao"] + [s for s, _ in _VARIAVEIS_BOOL] + ["detran_tipo_acao"]
     for slug in slugs:
         conn.execute(
             text("UPDATE extraction_variables SET categoria_id = NULL WHERE slug = :slug"),
