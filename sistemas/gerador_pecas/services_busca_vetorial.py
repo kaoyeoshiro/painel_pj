@@ -128,9 +128,6 @@ def _buscar_com_pgvector(
         # Converte embedding para formato pgvector
         embedding_str = "[" + ",".join(str(v) for v in query_embedding) + "]"
 
-        # Clausula condicional de group_id
-        group_filter = "AND pm.group_id = :group_id" if group_id is not None else ""
-
         # Busca usando operador de distância de cosseno (<=>)
         # Menor distância = maior similaridade
         # Similaridade = 1 - distância
@@ -139,23 +136,40 @@ def _buscar_com_pgvector(
             "threshold": threshold,
             "limit": limit
         }
+
+        # Queries separadas para evitar interpolação de string em SQL
         if group_id is not None:
             params["group_id"] = group_id
+            sql = text("""
+                SELECT
+                    me.modulo_id,
+                    1 - (me.embedding_vector <=> :query_vec::vector) as similarity
+                FROM modulo_embeddings me
+                JOIN prompt_modulos pm ON pm.id = me.modulo_id
+                WHERE me.ativo = true
+                  AND pm.ativo = true
+                  AND pm.tipo = 'conteudo'
+                  AND pm.group_id = :group_id
+                  AND (1 - (me.embedding_vector <=> :query_vec::vector)) >= :threshold
+                ORDER BY me.embedding_vector <=> :query_vec::vector
+                LIMIT :limit
+            """)
+        else:
+            sql = text("""
+                SELECT
+                    me.modulo_id,
+                    1 - (me.embedding_vector <=> :query_vec::vector) as similarity
+                FROM modulo_embeddings me
+                JOIN prompt_modulos pm ON pm.id = me.modulo_id
+                WHERE me.ativo = true
+                  AND pm.ativo = true
+                  AND pm.tipo = 'conteudo'
+                  AND (1 - (me.embedding_vector <=> :query_vec::vector)) >= :threshold
+                ORDER BY me.embedding_vector <=> :query_vec::vector
+                LIMIT :limit
+            """)
 
-        result = db.execute(text(f"""
-            SELECT
-                me.modulo_id,
-                1 - (me.embedding_vector <=> :query_vec::vector) as similarity
-            FROM modulo_embeddings me
-            JOIN prompt_modulos pm ON pm.id = me.modulo_id
-            WHERE me.ativo = true
-              AND pm.ativo = true
-              AND pm.tipo = 'conteudo'
-              {group_filter}
-              AND (1 - (me.embedding_vector <=> :query_vec::vector)) >= :threshold
-            ORDER BY me.embedding_vector <=> :query_vec::vector
-            LIMIT :limit
-        """), params)
+        result = db.execute(sql, params)
 
         return [{"modulo_id": row[0], "score": float(row[1])} for row in result]
 
