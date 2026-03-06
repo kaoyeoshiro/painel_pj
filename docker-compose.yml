@@ -42,8 +42,8 @@ services:
       - /app/__pycache__                    # Nao sobrescrever cache do container
       - /app/frontend-react/node_modules    # Protege node_modules do container
     environment:
-      # Banco — aponta ao container db (sobrescreve .env localhost)
-      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@db:5432/portal_pge
+      # Banco — aponta ao Postgres local do host (via host.docker.internal)
+      DATABASE_URL: postgresql://postgres:${POSTGRES_PASSWORD:-postgres}@host.docker.internal:5432/portal_pge
       # JWT
       SECRET_KEY: "${SECRET_KEY:-dev-docker-secret-key-fallback}"
       ALGORITHM: "${ALGORITHM:-HS256}"
