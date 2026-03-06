@@ -567,11 +567,10 @@ if react_index.exists():
                 "Pragma": "no-cache",
             }
         )
+    print(f"[+] Frontend React SPA ativado (build: {REACT_DIST_DIR})")
 else:
-    print(f"[WARN] React build nao encontrado em {REACT_DIST_DIR}")
-    print("[WARN] Execute 'cd frontend-react && npm run build' primeiro")
-
-print(f"[+] Frontend React SPA ativado (build: {REACT_DIST_DIR})")
+    print(f"[ERRO] React build nao encontrado em {REACT_DIST_DIR}")
+    print("[ERRO] Rotas frontend retornarao 404! Verifique se dist/ esta no deploy.")
 
 
 # ==================================================
