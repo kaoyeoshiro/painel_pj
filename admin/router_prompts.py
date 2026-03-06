@@ -1444,11 +1444,15 @@ async def comparar_versoes(
 
 @router.get("/exportar/todos")
 async def exportar_todos(
+    group_id: int | None = None,
     current_user: User = Depends(get_current_active_user),
     modulo_repo: PromptModuloRepository = Depends(get_prompt_modulo_repo),
 ):
-    """Exporta todos os módulos em formato JSON"""
-    modulos = modulo_repo.query().filter(PromptModulo.ativo == True).all()
+    """Exporta módulos em formato JSON, filtrados por grupo quando informado."""
+    query = modulo_repo.query().filter(PromptModulo.ativo == True)
+    if group_id is not None:
+        query = query.filter(PromptModulo.group_id == group_id)
+    modulos = query.all()
 
     export_data = {
         "versao": "2.1",
@@ -1676,6 +1680,13 @@ async def importar_modulos(
     """
     verificar_permissao_prompts(current_user, "criar")
 
+    # Se group_id informado, resolve o grupo-alvo e força todos os módulos nele
+    grupo_alvo = None
+    if dados.group_id is not None:
+        grupo_alvo = group_repo.get_by_id(dados.group_id)
+        if not grupo_alvo:
+            raise HTTPException(status_code=404, detail=f"Grupo {dados.group_id} não encontrado")
+
     criados = 0
     atualizados = 0
     ignorados = 0
@@ -1760,8 +1771,12 @@ async def importar_modulos(
             grupo = None
             subgrupo = None
 
+            # Se grupo_alvo definido, força todos os módulos nele
+            if grupo_alvo:
+                grupo = grupo_alvo
+                grupos_cache[grupo_alvo.slug] = grupo_alvo
             # Resolve grupo para TODOS os tipos (base, peca, conteudo)
-            if grupo_slug:
+            elif grupo_slug:
                 cache_key = grupo_slug.lower()
                 if cache_key in grupos_cache:
                     grupo = grupos_cache[cache_key]

@@ -262,6 +262,7 @@ class ImportarModulosRequest(BaseModel):
     modulos: List[dict]
     sobrescrever_existentes: bool = False
     desativar_ausentes_do_grupo: bool = False
+    group_id: int | None = None
 
 
 class ImportarModulosResponse(BaseModel):

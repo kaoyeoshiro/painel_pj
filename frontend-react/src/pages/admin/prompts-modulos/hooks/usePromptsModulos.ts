@@ -458,13 +458,19 @@ export function usePromptsModulos() {
   // ========== Import/Export ==========
 
   async function exportarTodos() {
+    if (grupoSelecionado === null) {
+      toast({ title: 'Selecione um grupo', description: 'Escolha um grupo antes de exportar', variant: 'destructive' })
+      return
+    }
     try {
-      const data = await adminApi.get<unknown>('/admin/api/prompts-modulos/exportar/todos')
+      const params = new URLSearchParams({ group_id: grupoSelecionado.toString() })
+      const data = await adminApi.get<unknown>(`/admin/api/prompts-modulos/exportar/todos?${params}`)
+      const grupoNome = grupos.find(g => g.id === grupoSelecionado)?.slug || 'grupo'
       const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
       const url = URL.createObjectURL(blob)
       const a = document.createElement('a')
       a.href = url
-      a.download = `prompts-modulos-export-${new Date().toISOString().slice(0, 10)}.json`
+      a.download = `prompts-modulos-${grupoNome}-export-${new Date().toISOString().slice(0, 10)}.json`
       a.click()
       URL.revokeObjectURL(url)
       toast({
@@ -482,11 +488,16 @@ export function usePromptsModulos() {
 
   async function importarModulos(sobrescrever: boolean = false, desativarAusentes: boolean = false) {
     if (!importData.trim()) return
+    if (grupoSelecionado === null) {
+      toast({ title: 'Selecione um grupo', description: 'Escolha um grupo antes de importar', variant: 'destructive' })
+      return
+    }
     setImportando(true)
     try {
       const parsed = JSON.parse(importData)
       parsed.sobrescrever_existentes = sobrescrever
       parsed.desativar_ausentes_do_grupo = desativarAusentes
+      parsed.group_id = grupoSelecionado
       await adminApi.post('/admin/api/prompts-modulos/importar', parsed)
       toast({
         title: 'Importação concluída',

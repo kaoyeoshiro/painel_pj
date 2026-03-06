@@ -49,11 +49,11 @@ export function PromptsModulosPage() {
               <Settings className="h-4 w-4" />
               Grupos
             </Button>
-            <Button variant="outline" size="sm" onClick={vm.exportarTodos} className="gap-1.5">
+            <Button variant="outline" size="sm" onClick={vm.exportarTodos} disabled={vm.grupoSelecionado === null} className="gap-1.5">
               <Download className="h-4 w-4" />
               Exportar
             </Button>
-            <Button variant="outline" size="sm" onClick={() => vm.setDialogImportar(true)} className="gap-1.5">
+            <Button variant="outline" size="sm" onClick={() => vm.setDialogImportar(true)} disabled={vm.grupoSelecionado === null} className="gap-1.5">
               <Upload className="h-4 w-4" />
               Importar
             </Button>
