@@ -226,7 +226,7 @@ export function usePromptsModulos() {
       categoria: modulo.categoria,
       group_id: modulo.group_id,
       subgroup_id: modulo.subgroup_id,
-      tags: modulo.tags.join(', '),
+      tags: (modulo.tags || []).join(', '),
       tipo: modulo.tipo,
       ordem: modulo.ordem,
       ativo: modulo.ativo,
