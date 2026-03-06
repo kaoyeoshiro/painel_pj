@@ -483,11 +483,12 @@ export function usePromptsModulos() {
     }
   }
 
-  async function importarModulos() {
+  async function importarModulos(sobrescrever: boolean = false) {
     if (!importData.trim()) return
     setImportando(true)
     try {
       const parsed = JSON.parse(importData)
+      parsed.sobrescrever_existentes = sobrescrever
       await adminApi.post('/admin/api/prompts-modulos/importar', parsed)
       toast({
         title: 'Importação concluída',

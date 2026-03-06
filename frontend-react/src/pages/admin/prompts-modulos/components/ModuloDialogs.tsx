@@ -1,10 +1,11 @@
-import { useCallback, useEffect, useRef } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { Checkbox } from '@/components/ui/checkbox'
 import { C } from '@/lib/designTokens'
 import { RotateCcw, Plus } from 'lucide-react'
 import { RuleEditorPanel, PieceTypeRulesSection } from './rules'
@@ -438,7 +439,7 @@ interface ImportDialogProps {
   importData: string
   setImportData: (value: string) => void
   importando: boolean
-  onImportar: () => void
+  onImportar: (sobrescrever: boolean) => void
 }
 
 export function ImportDialog({
@@ -449,8 +450,10 @@ export function ImportDialog({
   importando,
   onImportar,
 }: ImportDialogProps) {
+  const [sobrescrever, setSobrescrever] = useState(false)
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) setSobrescrever(false) }}>
       <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Importar Módulos</DialogTitle>
@@ -464,18 +467,29 @@ export function ImportDialog({
           className="font-mono text-xs min-h-[300px]"
           placeholder='{"version": "2.0", "modulos": [...]}'
         />
+        <div className="flex items-center gap-2">
+          <Checkbox
+            id="sobrescrever"
+            checked={sobrescrever}
+            onCheckedChange={(v) => setSobrescrever(v === true)}
+          />
+          <Label htmlFor="sobrescrever" className="text-sm cursor-pointer">
+            Sobrescrever módulos existentes (atualiza título, conteúdo e regras)
+          </Label>
+        </div>
         <DialogFooter>
           <Button
             variant="outline"
             onClick={() => {
               onOpenChange(false)
               setImportData('')
+              setSobrescrever(false)
             }}
           >
             Cancelar
           </Button>
           <Button
-            onClick={onImportar}
+            onClick={() => onImportar(sobrescrever)}
             disabled={importando || !importData.trim()}
             style={{ background: C.navy950, color: 'white' }}
           >
