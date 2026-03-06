@@ -261,6 +261,7 @@ class ImportarModulosRequest(BaseModel):
     """Schema para importacao de modulos"""
     modulos: List[dict]
     sobrescrever_existentes: bool = False
+    desativar_ausentes_do_grupo: bool = False
 
 
 class ImportarModulosResponse(BaseModel):
@@ -269,6 +270,7 @@ class ImportarModulosResponse(BaseModel):
     criados: int
     atualizados: int
     ignorados: int
+    desativados: int = 0
     grupos_criados: int = 0
     subgrupos_criados: int = 0
     subcategorias_criadas: int = 0

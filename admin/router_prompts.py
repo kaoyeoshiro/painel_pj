@@ -1802,11 +1802,8 @@ async def importar_modulos(
                         if not subgrupo_existia:
                             subgrupos_criados += 1
 
-            # Verifica se já existe
+            # Verifica se já existe (busca por nome, que é único)
             existente = modulo_repo.query().filter(
-                PromptModulo.tipo == tipo,
-                PromptModulo.categoria == categoria,
-                PromptModulo.subcategoria == subcategoria,
                 PromptModulo.nome == nome
             ).first()
 
@@ -1831,7 +1828,10 @@ async def importar_modulos(
                     )
                     historico_repo.add(historico)
 
-                    # Atualiza módulo existente
+                    # Atualiza módulo existente (inclui tipo/categoria que podem mudar)
+                    existente.tipo = tipo
+                    existente.categoria = categoria
+                    existente.subcategoria = subcategoria
                     existente.titulo = titulo
                     existente.condicao_ativacao = condicao_ativacao
                     existente.conteudo = conteudo
@@ -1933,6 +1933,27 @@ async def importar_modulos(
         except Exception as e:
             erros.append(f"Módulo {i+1}: {str(e)}")
 
+    # Desativa modulos do grupo que nao estao no JSON importado
+    desativados = 0
+    if dados.desativar_ausentes_do_grupo and grupos_cache:
+        nomes_importados = {
+            item.get('nome_unico') or item.get('nome')
+            for item in dados.modulos
+            if item.get('nome_unico') or item.get('nome')
+        }
+        for grupo_obj in grupos_cache.values():
+            modulos_do_grupo = modulo_repo.query().filter(
+                PromptModulo.group_id == grupo_obj.id,
+                PromptModulo.tipo == 'conteudo',
+                PromptModulo.ativo == True,
+            ).all()
+            for mod in modulos_do_grupo:
+                if mod.nome not in nomes_importados:
+                    mod.ativo = False
+                    mod.atualizado_por = current_user.id
+                    mod.atualizado_em = get_utc_now()
+                    desativados += 1
+
     modulo_repo.commit()
 
     return ImportarModulosResponse(
@@ -1940,6 +1961,7 @@ async def importar_modulos(
         criados=criados,
         atualizados=atualizados,
         ignorados=ignorados,
+        desativados=desativados,
         grupos_criados=grupos_criados,
         subgrupos_criados=subgrupos_criados,
         subcategorias_criadas=subcategorias_criadas,

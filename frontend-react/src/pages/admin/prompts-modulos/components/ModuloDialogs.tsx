@@ -439,7 +439,7 @@ interface ImportDialogProps {
   importData: string
   setImportData: (value: string) => void
   importando: boolean
-  onImportar: (sobrescrever: boolean) => void
+  onImportar: (sobrescrever: boolean, desativarAusentes: boolean) => void
 }
 
 export function ImportDialog({
@@ -451,6 +451,7 @@ export function ImportDialog({
   onImportar,
 }: ImportDialogProps) {
   const [sobrescrever, setSobrescrever] = useState(false)
+  const [desativarAusentes, setDesativarAusentes] = useState(false)
   const fileRef = useRef<HTMLInputElement>(null)
 
   function handleFile(e: React.ChangeEvent<HTMLInputElement>) {
@@ -463,7 +464,7 @@ export function ImportDialog({
   }
 
   return (
-    <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) setSobrescrever(false) }}>
+    <Dialog open={open} onOpenChange={(v) => { onOpenChange(v); if (!v) { setSobrescrever(false); setDesativarAusentes(false) } }}>
       <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Importar Módulos</DialogTitle>
@@ -484,15 +485,27 @@ export function ImportDialog({
           className="font-mono text-xs min-h-[300px]"
           placeholder='{"version": "2.0", "modulos": [...]}'
         />
-        <div className="flex items-center gap-2">
-          <Checkbox
-            id="sobrescrever"
-            checked={sobrescrever}
-            onCheckedChange={(v) => setSobrescrever(v === true)}
-          />
-          <Label htmlFor="sobrescrever" className="text-sm cursor-pointer">
-            Sobrescrever módulos existentes (atualiza título, conteúdo e regras)
-          </Label>
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="sobrescrever"
+              checked={sobrescrever}
+              onCheckedChange={(v) => setSobrescrever(v === true)}
+            />
+            <Label htmlFor="sobrescrever" className="text-sm cursor-pointer">
+              Sobrescrever módulos existentes (atualiza título, conteúdo e regras)
+            </Label>
+          </div>
+          <div className="flex items-center gap-2">
+            <Checkbox
+              id="desativarAusentes"
+              checked={desativarAusentes}
+              onCheckedChange={(v) => setDesativarAusentes(v === true)}
+            />
+            <Label htmlFor="desativarAusentes" className="text-sm cursor-pointer">
+              Desativar módulos do grupo ausentes no JSON (remove módulos fundidos)
+            </Label>
+          </div>
         </div>
         <DialogFooter>
           <Button
@@ -501,12 +514,13 @@ export function ImportDialog({
               onOpenChange(false)
               setImportData('')
               setSobrescrever(false)
+              setDesativarAusentes(false)
             }}
           >
             Cancelar
           </Button>
           <Button
-            onClick={() => onImportar(sobrescrever)}
+            onClick={() => onImportar(sobrescrever, desativarAusentes)}
             disabled={importando || !importData.trim()}
             style={{ background: C.navy950, color: 'white' }}
           >

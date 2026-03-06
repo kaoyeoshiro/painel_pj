@@ -1,8 +1,8 @@
 {
-  "versao": "3.1",
+  "versao": "3.2",
   "exportado_em": "2026-03-05",
-  "descricao": "98 módulos de defesa do DETRAN/MS: todos determinísticos. v3.1 — repertório argumentativo com filtros tipo_acao, módulos de responsabilidade civil e isenção IPVA.",
-  "total": 97,
+  "descricao": "90 módulos de defesa do DETRAN/MS: todos determinísticos. v3.2 — corrige 7 categorias erradas, 11 bugs em regras, 7 fusões (97→90 módulos).",
+  "total": 90,
   "modulos": [
     {
       "tipo": "conteudo",
@@ -59,9 +59,9 @@
       "group_slug": "detran",
       "group_name": "DETRAN/MS",
       "nome": "detran_prel_011_002",
-      "titulo": "Incompetência do Juízo em Razão da Matéria, Território ou Valor",
-      "condicao_ativacao": "Quando a ação for ajuizada perante juízo incompetente.",
-      "conteudo": "Alegue a incompetência do juízo para processar e julgar a demanda, seja em razão da matéria, do território ou do valor da causa.\n\n**Fundamentação Legal:** Arts. 42 a 69 do CPC; Art. 337, II do CPC; Art. 485, IV do CPC; Arts. 20, 21, 22 e 24 do CTB.",
+      "titulo": "Incompetência do Juízo em Razão da Matéria, Território, Valor ou Remessa ao JEFP",
+      "condicao_ativacao": "Quando houver alegação de incompetência do juízo, incluindo remessa ao Juizado Especial da Fazenda Pública.",
+      "conteudo": "Alegue a incompetência do juízo para processar e julgar a demanda, seja em razão da matéria, do território ou do valor da causa.\n\n**Fundamentação Legal:** Arts. 42 a 69 do CPC; Art. 337, II do CPC; Art. 485, IV do CPC; Arts. 20, 21, 22 e 24 do CTB.\n\n---\n\nAlegue a incompetência absoluta do juízo comum e requeira remessa ao Juizado Especial da Fazenda Pública quando o valor da causa for inferior a 60 salários mínimos (Lei 12.153/2009).\n\n**Fundamentação Legal:** Art. 2º, §4º da Lei 12.153/2009; Resolução TJMS 42/2010; IAC 10 do STJ.",
       "palavras_chave": [
         "preliminar",
         "processual",
@@ -70,7 +70,8 @@
       "tags": [
         "detran",
         "preliminar",
-        "prel_011"
+        "prel_011",
+        "prel_013"
       ],
       "ordem": 2,
       "modo_ativacao": "deterministic",
@@ -264,14 +265,7 @@
             "variable": "detran_tipo_acao",
             "operator": "in_list",
             "value": [
-              "pontuacao_cnh"
-            ]
-          },
-          {
-            "type": "condition",
-            "variable": "detran_tipo_acao",
-            "operator": "in_list",
-            "value": [
+              "pontuacao_cnh",
               "ear_cnh"
             ]
           },
@@ -810,71 +804,6 @@
       "subcategoria": "Preliminar",
       "group_slug": "detran",
       "group_name": "DETRAN/MS",
-      "nome": "detran_prel_013_021",
-      "titulo": "Incompetência Absoluta do Juízo Comum - Remessa ao JEFP",
-      "condicao_ativacao": "Quando a ação contra o DETRAN/MS tiver valor da causa inferior a 60 salários mínimos e for proposta no juízo comum, havendo Juizado Especial instalado.",
-      "conteudo": "Alegue a incompetência absoluta do juízo comum e requeira remessa ao Juizado Especial da Fazenda Pública quando o valor da causa for inferior a 60 salários mínimos (Lei 12.153/2009).\n\n**Fundamentação Legal:** Art. 2º, §4º da Lei 12.153/2009; Resolução TJMS 42/2010; IAC 10 do STJ.",
-      "palavras_chave": [
-        "preliminar",
-        "processual",
-        "incompetência"
-      ],
-      "tags": [
-        "detran",
-        "preliminar",
-        "prel_013"
-      ],
-      "ordem": 21,
-      "modo_ativacao": "deterministic",
-      "regra_deterministica": {
-        "type": "condition",
-        "variable": "detran_alega_incompetencia",
-        "operator": "equals",
-        "value": true
-      },
-      "regra_texto_original": "Quando a ação contra o DETRAN/MS tiver valor da causa inferior a 60 salários mínimos e for proposta no juízo comum, havendo Juizado Especial instalado.",
-      "fallback_habilitado": false,
-      "regra_deterministica_secundaria": null,
-      "regra_secundaria_texto_original": null
-    },
-    {
-      "tipo": "conteudo",
-      "categoria": "Preliminar",
-      "subcategoria": "Preliminar",
-      "group_slug": "detran",
-      "group_name": "DETRAN/MS",
-      "nome": "detran_prel_027_022",
-      "titulo": "Princípio da Causalidade - Honorários e Custas",
-      "condicao_ativacao": "Quando o DETRAN for incluído no polo passivo por atos de outros órgãos ou relações entre particulares.",
-      "conteudo": "Alegue a aplicação do princípio da causalidade para afastar a condenação do DETRAN/MS em honorários e custas, sustentando que o DETRAN não praticou ato que ensejasse a demanda.\n\n**Fundamentação Legal:** Art. 8º c/c art. 260 do CTB; Art. 85 do CPC; Princípio da causalidade.",
-      "palavras_chave": [
-        "preliminar",
-        "processual"
-      ],
-      "tags": [
-        "detran",
-        "preliminar",
-        "prel_027"
-      ],
-      "ordem": 22,
-      "modo_ativacao": "deterministic",
-      "regra_deterministica": {
-        "type": "condition",
-        "variable": "detran_alega_ilegitimidade",
-        "operator": "equals",
-        "value": true
-      },
-      "regra_texto_original": "Quando o DETRAN for incluído no polo passivo por atos de outros órgãos ou relações entre particulares.",
-      "fallback_habilitado": false,
-      "regra_deterministica_secundaria": null,
-      "regra_secundaria_texto_original": null
-    },
-    {
-      "tipo": "conteudo",
-      "categoria": "Preliminar",
-      "subcategoria": "Preliminar",
-      "group_slug": "detran",
-      "group_name": "DETRAN/MS",
       "nome": "detran_prel_028_023",
       "titulo": "Impugnação ao Valor da Causa",
       "condicao_ativacao": "Quando o valor atribuído à causa é manifestamente incompatível com o proveito econômico pretendido.",
@@ -888,7 +817,7 @@
         "preliminar",
         "prel_028"
       ],
-      "ordem": 23,
+      "ordem": 21,
       "modo_ativacao": "deterministic",
       "regra_deterministica": {
         "type": "condition",
@@ -920,7 +849,7 @@
         "preliminar",
         "prel_029"
       ],
-      "ordem": 24,
+      "ordem": 22,
       "modo_ativacao": "deterministic",
       "regra_deterministica": {
         "type": "condition",
@@ -929,38 +858,6 @@
         "value": true
       },
       "regra_texto_original": "Quando há outro processo com mesma causa de pedir e pedidos similares envolvendo a mesma portaria ou ato administrativo.",
-      "fallback_habilitado": false,
-      "regra_deterministica_secundaria": null,
-      "regra_secundaria_texto_original": null
-    },
-    {
-      "tipo": "conteudo",
-      "categoria": "Preliminar",
-      "subcategoria": "Preliminar",
-      "group_slug": "detran",
-      "group_name": "DETRAN/MS",
-      "nome": "detran_prel_031_025",
-      "titulo": "Impugnação de Documentos do Autor",
-      "condicao_ativacao": "Quando o autor apresenta documentos cuja autenticidade ou validade é duvidosa.",
-      "conteudo": "Impugne os documentos apresentados pelo autor, contestando validade, autenticidade ou força probante, especialmente declarações unilaterais e documentos sem reconhecimento de firma.\n\n**Fundamentação Legal:** Art. 344 do CPC; Art. 373 do CPC; Presunção de legitimidade dos atos administrativos.",
-      "palavras_chave": [
-        "preliminar",
-        "processual"
-      ],
-      "tags": [
-        "detran",
-        "preliminar",
-        "prel_031"
-      ],
-      "ordem": 25,
-      "modo_ativacao": "deterministic",
-      "regra_deterministica": {
-        "type": "condition",
-        "variable": "detran_documentos_duvidosos",
-        "operator": "equals",
-        "value": true
-      },
-      "regra_texto_original": "Quando o autor apresenta documentos cuja autenticidade ou validade é duvidosa.",
       "fallback_habilitado": false,
       "regra_deterministica_secundaria": null,
       "regra_secundaria_texto_original": null
@@ -986,7 +883,7 @@
         "preliminar",
         "prel_014"
       ],
-      "ordem": 26,
+      "ordem": 23,
       "modo_ativacao": "deterministic",
       "regra_deterministica": {
         "type": "and",
@@ -1033,7 +930,7 @@
         "preliminar",
         "prel_008"
       ],
-      "ordem": 27,
+      "ordem": 24,
       "modo_ativacao": "deterministic",
       "regra_deterministica": {
         "type": "and",
@@ -1044,22 +941,8 @@
             "operator": "in_list",
             "value": [
               "suspensao_cnh",
-              "cassacao_cnh"
-            ]
-          },
-          {
-            "type": "condition",
-            "variable": "detran_tipo_acao",
-            "operator": "in_list",
-            "value": [
-              "pontuacao_cnh"
-            ]
-          },
-          {
-            "type": "condition",
-            "variable": "detran_tipo_acao",
-            "operator": "in_list",
-            "value": [
+              "cassacao_cnh",
+              "pontuacao_cnh",
               "ear_cnh"
             ]
           },
@@ -1101,7 +984,7 @@
         "preliminar",
         "prel_019"
       ],
-      "ordem": 28,
+      "ordem": 25,
       "modo_ativacao": "deterministic",
       "regra_deterministica": {
         "type": "and",
@@ -1145,7 +1028,7 @@
         "preliminar",
         "prel_026"
       ],
-      "ordem": 29,
+      "ordem": 26,
       "modo_ativacao": "deterministic",
       "regra_deterministica": {
         "type": "and",
@@ -1185,6 +1068,144 @@
     },
     {
       "tipo": "conteudo",
+      "categoria": "Preliminar",
+      "subcategoria": "Preliminar",
+      "group_slug": "detran",
+      "group_name": "DETRAN/MS",
+      "nome": "detran_adm_008_039",
+      "titulo": "Decadência do Direito de Punir no Processo de Suspensão/Cassação",
+      "condicao_ativacao": "Quando a petição inicial alegar decadência pela demora na instauração do processo de suspensão/cassação.",
+      "conteudo": "Refute alegação de decadência do direito de punir, sustentando que o prazo decadencial para notificação de suspensão/cassação conta-se a partir da conclusão do processo administrativo respectivo, não da lavratura do AIT.\n\n**Fundamentação Legal:** Art. 282, §6º, II do CTB (Lei 14.229/2021); Art. 24 da Resolução CONTRAN 723/2018; Art. 290, parágrafo único do CTB.",
+      "palavras_chave": [
+        "preliminar",
+        "decadência",
+        "suspensão",
+        "cassação",
+        "prazo"
+      ],
+      "tags": [
+        "detran",
+        "preliminar",
+        "adm_008"
+      ],
+      "ordem": 27,
+      "modo_ativacao": "deterministic",
+      "regra_deterministica": {
+        "type": "and",
+        "conditions": [
+          {
+            "type": "condition",
+            "variable": "detran_tipo_acao",
+            "operator": "in_list",
+            "value": [
+              "suspensao_cnh",
+              "cassacao_cnh"
+            ]
+          },
+          {
+            "type": "condition",
+            "variable": "detran_alega_prescricao_decadencia",
+            "operator": "equals",
+            "value": true
+          }
+        ]
+      },
+      "regra_texto_original": "Quando a petição inicial alegar decadência pela demora na instauração do processo de suspensão/cassação.",
+      "fallback_habilitado": false,
+      "regra_deterministica_secundaria": null,
+      "regra_secundaria_texto_original": null
+    },
+    {
+      "tipo": "conteudo",
+      "categoria": "Preliminar",
+      "subcategoria": "Preliminar",
+      "group_slug": "detran",
+      "group_name": "DETRAN/MS",
+      "nome": "detran_adm_015_047",
+      "titulo": "Ilegitimidade do Município Autuador para Transferência de Pontuação",
+      "condicao_ativacao": "Quando a petição trouxer pedido de transferência de pontos incluindo município autuador no polo passivo.",
+      "conteudo": "Alegue ilegitimidade passiva do município autuador para exclusão/transferência de pontuação, pois a gestão do prontuário é competência exclusiva do DETRAN (art. 22, II do CTB).\n\n**Fundamentação Legal:** Art. 21, VI do CTB; Art. 22, II do CTB; Art. 485, VI do CPC.",
+      "palavras_chave": [
+        "preliminar",
+        "ilegitimidade",
+        "pontuação",
+        "município"
+      ],
+      "tags": [
+        "detran",
+        "preliminar",
+        "adm_015"
+      ],
+      "ordem": 28,
+      "modo_ativacao": "deterministic",
+      "regra_deterministica": {
+        "type": "and",
+        "conditions": [
+          {
+            "type": "condition",
+            "variable": "detran_tipo_acao",
+            "operator": "in_list",
+            "value": [
+              "pontuacao_cnh"
+            ]
+          },
+          {
+            "type": "condition",
+            "variable": "detran_alega_ilegitimidade",
+            "operator": "equals",
+            "value": true
+          },
+          {
+            "type": "condition",
+            "variable": "detran_pede_transferencia_pontos",
+            "operator": "equals",
+            "value": true
+          }
+        ]
+      },
+      "regra_texto_original": "Quando a petição trouxer pedido de transferência de pontos incluindo município autuador no polo passivo.",
+      "fallback_habilitado": false,
+      "regra_deterministica_secundaria": null,
+      "regra_secundaria_texto_original": null
+    },
+    {
+      "tipo": "conteudo",
+      "categoria": "Preliminar",
+      "subcategoria": "Preliminar",
+      "group_slug": "detran",
+      "group_name": "DETRAN/MS",
+      "nome": "detran_jur_026_086",
+      "titulo": "Inexistência de Relação de Consumo e Inaplicabilidade do CDC",
+      "condicao_ativacao": "Quando a petição invocar o CDC, requerer inversão do ônus da prova ou alegar relação de consumo com o DETRAN.",
+      "conteudo": "Alegue a inexistência de relação de consumo entre o autor e o DETRAN/MS, sustentando que o órgão exerce atividade típica de Estado remunerada por taxa (tributo).\n\n**Fundamentação Legal:** Art. 22 do CTB; Art. 3º, §2º do CDC; Natureza tributária das taxas.\n\n---\n\nConteste a inversão do ônus da prova requerida pelo autor, sustentando inaplicabilidade do CDC à relação de direito público-administrativo com o DETRAN/MS.\n\n**Fundamentação Legal:** Art. 373, I e II do CPC; Inaplicabilidade do CDC às relações de direito administrativo.",
+      "palavras_chave": [
+        "mérito",
+        "jurídico",
+        "preliminar",
+        "processual"
+      ],
+      "tags": [
+        "detran",
+        "mérito_jurídico",
+        "jur_026",
+        "preliminar",
+        "prel_030"
+      ],
+      "ordem": 29,
+      "modo_ativacao": "deterministic",
+      "regra_deterministica": {
+        "type": "condition",
+        "variable": "detran_invoca_cdc",
+        "operator": "equals",
+        "value": true
+      },
+      "regra_texto_original": "Quando a petição invocar o CDC, requerer inversão do ônus da prova ou alegar relação de consumo com o DETRAN.",
+      "fallback_habilitado": false,
+      "regra_deterministica_secundaria": null,
+      "regra_secundaria_texto_original": null
+    },
+    {
+      "tipo": "conteudo",
       "categoria": "Mérito",
       "subcategoria": "Mérito Administrativo",
       "group_slug": "detran",
@@ -1204,7 +1225,7 @@
         "mérito_administrativo",
         "adm_001"
       ],
-      "ordem": 31,
+      "ordem": 30,
       "modo_ativacao": "deterministic",
       "regra_deterministica": {
         "type": "and",
@@ -1256,7 +1277,7 @@
         "adm_003",
         "adm_004"
       ],
-      "ordem": 32,
+      "ordem": 31,
       "modo_ativacao": "deterministic",
       "regra_deterministica": {
         "type": "and",
@@ -1303,7 +1324,7 @@
         "mérito_administrativo",
         "adm_011"
       ],
-      "ordem": 33,
+      "ordem": 32,
       "modo_ativacao": "deterministic",
       "regra_deterministica": {
         "type": "and",
@@ -1350,7 +1371,7 @@
         "mérito_administrativo",
         "adm_005"
       ],
-      "ordem": 34,
+      "ordem": 33,
       "modo_ativacao": "deterministic",
       "regra_deterministica": {
         "type": "condition",
@@ -1387,7 +1408,7 @@
         "mérito_administrativo",
         "adm_012"
       ],
-      "ordem": 35,
+      "ordem": 34,
       "modo_ativacao": "deterministic",
       "regra_deterministica": {
         "type": "condition",
@@ -1425,7 +1446,7 @@
         "adm_009",
         "adm_010"
       ],
-      "ordem": 36,
+      "ordem": 35,
       "modo_ativacao": "deterministic",
       "regra_deterministica": {
         "type": "and",
@@ -1471,7 +1492,7 @@
         "mérito_administrativo",
         "adm_014"
       ],
-      "ordem": 37,
+      "ordem": 36,
       "modo_ativacao": "deterministic",
       "regra_deterministica": {
         "type": "and",
@@ -1503,63 +1524,6 @@
       "subcategoria": "Mérito Administrativo",
       "group_slug": "detran",
       "group_name": "DETRAN/MS",
-      "nome": "detran_adm_008_039",
-      "titulo": "Decadência do Direito de Punir no Processo de Suspensão/Cassação",
-      "condicao_ativacao": "Quando a petição inicial alegar decadência pela demora na instauração do processo de suspensão/cassação.",
-      "conteudo": "Refute alegação de decadência do direito de punir, sustentando que o prazo decadencial para notificação de suspensão/cassação conta-se a partir da conclusão do processo administrativo respectivo, não da lavratura do AIT.\n\n**Fundamentação Legal:** Art. 282, §6º, II do CTB (Lei 14.229/2021); Art. 24 da Resolução CONTRAN 723/2018; Art. 290, parágrafo único do CTB.",
-      "palavras_chave": [
-        "mérito",
-        "administrativo",
-        "processo administrativo",
-        "decadência",
-        "notificação"
-      ],
-      "tags": [
-        "detran",
-        "mérito_administrativo",
-        "adm_008"
-      ],
-      "ordem": 39,
-      "modo_ativacao": "deterministic",
-      "regra_deterministica": {
-        "type": "and",
-        "conditions": [
-          {
-            "type": "condition",
-            "variable": "detran_tipo_acao",
-            "operator": "in_list",
-            "value": [
-              "multa"
-            ]
-          },
-          {
-            "type": "condition",
-            "variable": "detran_tipo_acao",
-            "operator": "in_list",
-            "value": [
-              "suspensao_cnh",
-              "cassacao_cnh"
-            ]
-          },
-          {
-            "type": "condition",
-            "variable": "detran_alega_prescricao_decadencia",
-            "operator": "equals",
-            "value": true
-          }
-        ]
-      },
-      "regra_texto_original": "Quando a petição inicial alegar decadência pela demora na instauração do processo de suspensão/cassação.",
-      "fallback_habilitado": false,
-      "regra_deterministica_secundaria": null,
-      "regra_secundaria_texto_original": null
-    },
-    {
-      "tipo": "conteudo",
-      "categoria": "Mérito",
-      "subcategoria": "Mérito Administrativo",
-      "group_slug": "detran",
-      "group_name": "DETRAN/MS",
       "nome": "detran_adm_007_040",
       "titulo": "Ausência de Processo Concomitante de Multa e Suspensão",
       "condicao_ativacao": "Quando a petição inicial alegar nulidade por ausência de processo concomitante conforme art. 261, §10 do CTB.",
@@ -1575,7 +1539,7 @@
         "mérito_administrativo",
         "adm_007"
       ],
-      "ordem": 40,
+      "ordem": 37,
       "modo_ativacao": "deterministic",
       "regra_deterministica": {
         "type": "condition",
@@ -1611,7 +1575,7 @@
         "mérito_administrativo",
         "adm_017"
       ],
-      "ordem": 43,
+      "ordem": 38,
       "modo_ativacao": "deterministic",
       "regra_deterministica": {
         "type": "condition",
@@ -1647,7 +1611,7 @@
         "mérito_administrativo",
         "adm_006"
       ],
-      "ordem": 44,
+      "ordem": 39,
       "modo_ativacao": "deterministic",
       "regra_deterministica": {
         "type": "and",
@@ -1657,17 +1621,16 @@
             "variable": "detran_tipo_acao",
             "operator": "in_list",
             "value": [
-              "multa"
+              "multa",
+              "suspensao_cnh",
+              "cassacao_cnh"
             ]
           },
           {
             "type": "condition",
-            "variable": "detran_tipo_acao",
-            "operator": "in_list",
-            "value": [
-              "suspensao_cnh",
-              "cassacao_cnh"
-            ]
+            "variable": "detran_alega_nulidade_processo_adm",
+            "operator": "equals",
+            "value": true
           }
         ]
       },
@@ -1698,7 +1661,7 @@
         "mérito_administrativo",
         "adm_013"
       ],
-      "ordem": 45,
+      "ordem": 40,
       "modo_ativacao": "deterministic",
       "regra_deterministica": {
         "type": "and",
@@ -1744,7 +1707,7 @@
         "mérito_administrativo",
         "adm_016"
       ],
-      "ordem": 46,
+      "ordem": 41,
       "modo_ativacao": "deterministic",
       "regra_deterministica": {
         "type": "condition",
@@ -1762,53 +1725,32 @@
     {
       "tipo": "conteudo",
       "categoria": "Mérito",
-      "subcategoria": "Mérito Administrativo",
+      "subcategoria": "Mérito Fático-Probatório",
       "group_slug": "detran",
       "group_name": "DETRAN/MS",
-      "nome": "detran_adm_015_047",
-      "titulo": "Ilegitimidade do Município Autuador para Transferência de Pontuação",
-      "condicao_ativacao": "Quando a petição trouxer pedido de transferência de pontos incluindo município autuador no polo passivo.",
-      "conteudo": "Alegue ilegitimidade passiva do município autuador para exclusão/transferência de pontuação, pois a gestão do prontuário é competência exclusiva do DETRAN (art. 22, II do CTB).\n\n**Fundamentação Legal:** Art. 21, VI do CTB; Art. 22, II do CTB; Art. 485, VI do CPC.",
+      "nome": "detran_prel_031_025",
+      "titulo": "Impugnação de Documentos do Autor",
+      "condicao_ativacao": "Quando o autor apresenta documentos cuja autenticidade ou validade é duvidosa.",
+      "conteudo": "Impugne os documentos apresentados pelo autor, contestando validade, autenticidade ou força probante, especialmente declarações unilaterais e documentos sem reconhecimento de firma.\n\n**Fundamentação Legal:** Art. 344 do CPC; Art. 373 do CPC; Presunção de legitimidade dos atos administrativos.",
       "palavras_chave": [
-        "mérito",
-        "administrativo",
-        "processo administrativo",
-        "ilegitimidade",
-        "veículo"
+        "preliminar",
+        "processual"
       ],
       "tags": [
         "detran",
-        "mérito_administrativo",
-        "adm_015"
+        "merito_fatico",
+        "impugnacao_documentos",
+        "prel_031"
       ],
-      "ordem": 47,
+      "ordem": 42,
       "modo_ativacao": "deterministic",
       "regra_deterministica": {
-        "type": "and",
-        "conditions": [
-          {
-            "type": "condition",
-            "variable": "detran_tipo_acao",
-            "operator": "in_list",
-            "value": [
-              "pontuacao_cnh"
-            ]
-          },
-          {
-            "type": "condition",
-            "variable": "detran_alega_ilegitimidade",
-            "operator": "equals",
-            "value": true
-          },
-          {
-            "type": "condition",
-            "variable": "detran_pede_transferencia_pontos",
-            "operator": "equals",
-            "value": true
-          }
-        ]
+        "type": "condition",
+        "variable": "detran_documentos_duvidosos",
+        "operator": "equals",
+        "value": true
       },
-      "regra_texto_original": "Quando a petição trouxer pedido de transferência de pontos incluindo município autuador no polo passivo.",
+      "regra_texto_original": "Quando o autor apresenta documentos cuja autenticidade ou validade é duvidosa.",
       "fallback_habilitado": false,
       "regra_deterministica_secundaria": null,
       "regra_secundaria_texto_original": null
@@ -1820,9 +1762,9 @@
       "group_slug": "detran",
       "group_name": "DETRAN/MS",
       "nome": "detran_fat_001_048",
-      "titulo": "Ausência ou Insuficiência de Provas do Autor",
-      "condicao_ativacao": "Quando a petição inicial apresentar alegações desacompanhadas de provas documentais suficientes, ou quando as provas forem contraditórias ou insuficientes.",
-      "conteudo": "Argua a ausência ou insuficiência de provas do autor (art. 373, I do CPC). Invoque a presunção de legitimidade e fé pública do auto de infração (art. 280, §2º do CTB). Demonstre que meras alegações genéricas são insuficientes para afastar a presunção de legitimidade.\n\n**Fundamentação Legal:** Art. 373, I e II do CPC; Art. 280, §2º do CTB; Art. 37 da CF/88; Portaria SENATRAN 997/2022.",
+      "titulo": "Ausência ou Insuficiência de Provas do Autor e de Nexo Causal",
+      "condicao_ativacao": "Quando o tipo de ação for multa de trânsito.",
+      "conteudo": "Argua a ausência ou insuficiência de provas do autor (art. 373, I do CPC). Invoque a presunção de legitimidade e fé pública do auto de infração (art. 280, §2º do CTB). Demonstre que meras alegações genéricas são insuficientes para afastar a presunção de legitimidade.\n\n**Fundamentação Legal:** Art. 373, I e II do CPC; Art. 280, §2º do CTB; Art. 37 da CF/88; Portaria SENATRAN 997/2022.\n\n---\n\nAlegue ausência de nexo causal entre a conduta do DETRAN/MS e os danos, sustentando que o órgão agiu nos limites da legalidade. Demonstre culpa exclusiva do autor ou impossibilidade de defesa de mérito sobre AIT de outro órgão.\n\n**Fundamentação Legal:** Art. 186 do CC; Art. 37, §6º da CF/88; Art. 230 do CTB; Art. 8º c/c art. 260 do CTB.",
       "palavras_chave": [
         "mérito",
         "prova",
@@ -1832,9 +1774,10 @@
       "tags": [
         "detran",
         "mérito_fático-probatório",
-        "fat_001"
+        "fat_001",
+        "fat_010"
       ],
-      "ordem": 48,
+      "ordem": 43,
       "modo_ativacao": "deterministic",
       "regra_deterministica": {
         "type": "condition",
@@ -1869,7 +1812,7 @@
         "mérito_fático-probatório",
         "fat_006"
       ],
-      "ordem": 49,
+      "ordem": 44,
       "modo_ativacao": "deterministic",
       "regra_deterministica": {
         "type": "and",
@@ -1917,7 +1860,7 @@
         "mérito_fático-probatório",
         "fat_003"
       ],
-      "ordem": 50,
+      "ordem": 45,
       "modo_ativacao": "deterministic",
       "regra_deterministica": {
         "type": "condition",
@@ -1954,7 +1897,7 @@
         "mérito_fático-probatório",
         "fat_005"
       ],
-      "ordem": 51,
+      "ordem": 46,
       "modo_ativacao": "deterministic",
       "regra_deterministica": {
         "type": "condition",
@@ -1989,7 +1932,7 @@
         "mérito_fático-probatório",
         "fat_002"
       ],
-      "ordem": 52,
+      "ordem": 47,
       "modo_ativacao": "deterministic",
       "regra_deterministica": {
         "type": "and",
@@ -2022,42 +1965,6 @@
       "subcategoria": "Mérito Fático-Probatório",
       "group_slug": "detran",
       "group_name": "DETRAN/MS",
-      "nome": "detran_fat_010_053",
-      "titulo": "Ausência de Nexo Causal entre a Conduta do DETRAN/MS e os Danos",
-      "condicao_ativacao": "Quando o nexo causal for inexistente, a apreensão decorrer de irregularidade do próprio autor, ou quando questionar AIT de outro órgão.",
-      "conteudo": "Alegue ausência de nexo causal entre a conduta do DETRAN/MS e os danos, sustentando que o órgão agiu nos limites da legalidade. Demonstre culpa exclusiva do autor ou impossibilidade de defesa de mérito sobre AIT de outro órgão.\n\n**Fundamentação Legal:** Art. 186 do CC; Art. 37, §6º da CF/88; Art. 230 do CTB; Art. 8º c/c art. 260 do CTB.",
-      "palavras_chave": [
-        "mérito",
-        "prova",
-        "fático",
-        "multa"
-      ],
-      "tags": [
-        "detran",
-        "mérito_fático-probatório",
-        "fat_010"
-      ],
-      "ordem": 53,
-      "modo_ativacao": "deterministic",
-      "regra_deterministica": {
-        "type": "condition",
-        "variable": "detran_tipo_acao",
-        "operator": "in_list",
-        "value": [
-          "multa"
-        ]
-      },
-      "regra_texto_original": "Quando o nexo causal for inexistente, a apreensão decorrer de irregularidade do próprio autor, ou quando questionar AIT de outro órgão.",
-      "fallback_habilitado": false,
-      "regra_deterministica_secundaria": null,
-      "regra_secundaria_texto_original": null
-    },
-    {
-      "tipo": "conteudo",
-      "categoria": "Mérito",
-      "subcategoria": "Mérito Fático-Probatório",
-      "group_slug": "detran",
-      "group_name": "DETRAN/MS",
       "nome": "detran_fat_004_054",
       "titulo": "Inexistência de Comunicação de Venda Registrada no Sistema",
       "condicao_ativacao": "Quando o sistema demonstrar inexistência de comunicação de venda registrada pelo autor.",
@@ -2072,7 +1979,7 @@
         "mérito_fático-probatório",
         "fat_004"
       ],
-      "ordem": 54,
+      "ordem": 48,
       "modo_ativacao": "deterministic",
       "regra_deterministica": {
         "type": "and",
@@ -2118,7 +2025,7 @@
         "mérito_fático-probatório",
         "fat_009"
       ],
-      "ordem": 55,
+      "ordem": 49,
       "modo_ativacao": "deterministic",
       "regra_deterministica": {
         "type": "and",
@@ -2132,16 +2039,21 @@
             ]
           },
           {
-            "type": "condition",
-            "variable": "detran_alega_equipamento_invalido",
-            "operator": "equals",
-            "value": true
-          },
-          {
-            "type": "condition",
-            "variable": "detran_recusa_etilometro",
-            "operator": "equals",
-            "value": true
+            "type": "or",
+            "conditions": [
+              {
+                "type": "condition",
+                "variable": "detran_alega_equipamento_invalido",
+                "operator": "equals",
+                "value": true
+              },
+              {
+                "type": "condition",
+                "variable": "detran_alega_recusa_etilometro",
+                "operator": "equals",
+                "value": true
+              }
+            ]
           }
         ]
       },
@@ -2170,7 +2082,7 @@
         "mérito_fático-probatório",
         "fat_011"
       ],
-      "ordem": 56,
+      "ordem": 50,
       "modo_ativacao": "deterministic",
       "regra_deterministica": {
         "type": "condition",
@@ -2206,7 +2118,7 @@
         "mérito_jurídico",
         "jur_029"
       ],
-      "ordem": 57,
+      "ordem": 51,
       "modo_ativacao": "deterministic",
       "regra_deterministica": {
         "type": "condition",
@@ -2239,7 +2151,7 @@
         "mérito_fático-probatório",
         "fat_007"
       ],
-      "ordem": 58,
+      "ordem": 52,
       "modo_ativacao": "deterministic",
       "regra_deterministica": {
         "type": "and",
@@ -2251,12 +2163,6 @@
             "value": [
               "multa"
             ]
-          },
-          {
-            "type": "condition",
-            "variable": "detran_alega_equipamento_invalido",
-            "operator": "equals",
-            "value": true
           },
           {
             "type": "condition",
@@ -2274,7 +2180,7 @@
     {
       "tipo": "conteudo",
       "categoria": "Mérito",
-      "subcategoria": "Indenização",
+      "subcategoria": "Mérito Fático-Probatório",
       "group_slug": "detran",
       "group_name": "DETRAN/MS",
       "nome": "detran_fat_012_059",
@@ -2291,7 +2197,7 @@
         "mérito_fático-probatório",
         "fat_012"
       ],
-      "ordem": 59,
+      "ordem": 53,
       "modo_ativacao": "deterministic",
       "regra_deterministica": {
         "type": "and",
@@ -2324,6 +2230,39 @@
       "subcategoria": "Mérito Jurídico",
       "group_slug": "detran",
       "group_name": "DETRAN/MS",
+      "nome": "detran_prel_027_022",
+      "titulo": "Princípio da Causalidade - Honorários e Custas",
+      "condicao_ativacao": "Quando o DETRAN for incluído no polo passivo por atos de outros órgãos ou relações entre particulares.",
+      "conteudo": "Alegue a aplicação do princípio da causalidade para afastar a condenação do DETRAN/MS em honorários e custas, sustentando que o DETRAN não praticou ato que ensejasse a demanda.\n\n**Fundamentação Legal:** Art. 8º c/c art. 260 do CTB; Art. 85 do CPC; Princípio da causalidade.",
+      "palavras_chave": [
+        "preliminar",
+        "processual"
+      ],
+      "tags": [
+        "detran",
+        "merito_juridico",
+        "honorarios",
+        "prel_027"
+      ],
+      "ordem": 54,
+      "modo_ativacao": "deterministic",
+      "regra_deterministica": {
+        "type": "condition",
+        "variable": "detran_alega_ilegitimidade",
+        "operator": "equals",
+        "value": true
+      },
+      "regra_texto_original": "Quando o DETRAN for incluído no polo passivo por atos de outros órgãos ou relações entre particulares.",
+      "fallback_habilitado": false,
+      "regra_deterministica_secundaria": null,
+      "regra_secundaria_texto_original": null
+    },
+    {
+      "tipo": "conteudo",
+      "categoria": "Mérito",
+      "subcategoria": "Mérito Jurídico",
+      "group_slug": "detran",
+      "group_name": "DETRAN/MS",
       "nome": "detran_jur_003_060",
       "titulo": "Legalidade da Multa e Tipificação Correta da Penalidade",
       "condicao_ativacao": "Quando o autor questionar legalidade formal de multa, tipificação, valor ou aplicação da sanção.",
@@ -2337,7 +2276,7 @@
         "mérito_jurídico",
         "jur_003"
       ],
-      "ordem": 60,
+      "ordem": 55,
       "modo_ativacao": "deterministic",
       "regra_deterministica": {
         "type": "condition",
@@ -2359,9 +2298,9 @@
       "group_slug": "detran",
       "group_name": "DETRAN/MS",
       "nome": "detran_jur_008_061",
-      "titulo": "Responsabilidade Solidária do Alienante sem Comunicação de Venda",
-      "condicao_ativacao": "Quando a petição alegar venda de veículo sem comunicação ao DETRAN, buscando eximir-se de débitos, multas ou penalidades posteriores.",
-      "conteudo": "Alegue a responsabilidade solidária do alienante que não comunicou a venda no prazo do art. 134 do CTB. A comunicação tardia produz efeitos apenas ex nunc. Em MS, há lei estadual específica para IPVA (art. 160, II, b da Lei 1.810/97).\n\n**Fundamentação Legal:** Art. 134 do CTB; Súmula 585 do STJ; Tema Repetitivo 1.118 do STJ; Art. 160, II, b da Lei Estadual 1.810/97.",
+      "titulo": "Responsabilidade Solidária do Alienante sem Comunicação de Venda (Débitos e IPVA)",
+      "condicao_ativacao": "Quando o autor alegar ter comunicado a venda e houver IPVA/débitos pendentes, em ação de transferência de registro ou isenção de IPVA.",
+      "conteudo": "Alegue a responsabilidade solidária do alienante que não comunicou a venda no prazo do art. 134 do CTB. A comunicação tardia produz efeitos apenas ex nunc. Em MS, há lei estadual específica para IPVA (art. 160, II, b da Lei 1.810/97).\n\n**Fundamentação Legal:** Art. 134 do CTB; Súmula 585 do STJ; Tema Repetitivo 1.118 do STJ; Art. 160, II, b da Lei Estadual 1.810/97.\n\n---\n\nArgumente a responsabilidade solidária do vendedor pelo IPVA sem comunicação de venda, com fundamento na Lei Estadual 1.810/97, art. 160, II, b.\n\n**Fundamentação Legal:** Art. 160, II, b da Lei Estadual/MS 1.810/97; Súmula 585 do STJ; Tema Repetitivo 1.118 do STJ.",
       "palavras_chave": [
         "mérito",
         "jurídico"
@@ -2369,9 +2308,10 @@
       "tags": [
         "detran",
         "mérito_jurídico",
-        "jur_008"
+        "jur_008",
+        "jur_011"
       ],
-      "ordem": 61,
+      "ordem": 56,
       "modo_ativacao": "deterministic",
       "regra_deterministica": {
         "type": "and",
@@ -2381,7 +2321,8 @@
             "variable": "detran_tipo_acao",
             "operator": "in_list",
             "value": [
-              "transferencia_registro"
+              "transferencia_registro",
+              "isencao_ipva"
             ]
           },
           {
@@ -2423,7 +2364,7 @@
         "mérito_jurídico",
         "jur_001"
       ],
-      "ordem": 62,
+      "ordem": 57,
       "modo_ativacao": "deterministic",
       "regra_deterministica": {
         "type": "condition",
@@ -2458,7 +2399,7 @@
         "mérito_jurídico",
         "jur_004"
       ],
-      "ordem": 63,
+      "ordem": 58,
       "modo_ativacao": "deterministic",
       "regra_deterministica": {
         "type": "and",
@@ -2504,7 +2445,7 @@
         "mérito_jurídico",
         "jur_005"
       ],
-      "ordem": 64,
+      "ordem": 59,
       "modo_ativacao": "deterministic",
       "regra_deterministica": {
         "type": "and",
@@ -2550,7 +2491,7 @@
         "mérito_jurídico",
         "jur_009"
       ],
-      "ordem": 65,
+      "ordem": 60,
       "modo_ativacao": "deterministic",
       "regra_deterministica": {
         "type": "condition",
@@ -2584,7 +2525,7 @@
         "mérito_jurídico",
         "jur_007"
       ],
-      "ordem": 66,
+      "ordem": 61,
       "modo_ativacao": "deterministic",
       "regra_deterministica": {
         "type": "condition",
@@ -2620,7 +2561,7 @@
         "mérito_jurídico",
         "jur_014"
       ],
-      "ordem": 67,
+      "ordem": 62,
       "modo_ativacao": "deterministic",
       "regra_deterministica": {
         "type": "condition",
@@ -2654,7 +2595,7 @@
         "mérito_jurídico",
         "jur_006"
       ],
-      "ordem": 68,
+      "ordem": 63,
       "modo_ativacao": "deterministic",
       "regra_deterministica": {
         "type": "and",
@@ -2701,7 +2642,7 @@
         "mérito_jurídico",
         "jur_032"
       ],
-      "ordem": 69,
+      "ordem": 64,
       "modo_ativacao": "deterministic",
       "regra_deterministica": {
         "type": "and",
@@ -2753,7 +2694,7 @@
         "mérito_jurídico",
         "jur_010"
       ],
-      "ordem": 70,
+      "ordem": 65,
       "modo_ativacao": "deterministic",
       "regra_deterministica": {
         "type": "condition",
@@ -2789,7 +2730,7 @@
         "mérito_jurídico",
         "jur_015"
       ],
-      "ordem": 71,
+      "ordem": 66,
       "modo_ativacao": "deterministic",
       "regra_deterministica": {
         "type": "and",
@@ -2834,7 +2775,7 @@
         "mérito_jurídico",
         "jur_019"
       ],
-      "ordem": 72,
+      "ordem": 67,
       "modo_ativacao": "deterministic",
       "regra_deterministica": {
         "type": "or",
@@ -2877,7 +2818,7 @@
         "mérito_jurídico",
         "jur_022"
       ],
-      "ordem": 73,
+      "ordem": 68,
       "modo_ativacao": "deterministic",
       "regra_deterministica": {
         "type": "and",
@@ -2923,7 +2864,7 @@
         "mérito_jurídico",
         "jur_021"
       ],
-      "ordem": 74,
+      "ordem": 69,
       "modo_ativacao": "deterministic",
       "regra_deterministica": {
         "type": "condition",
@@ -2956,7 +2897,7 @@
         "jur_024",
         "jur_025"
       ],
-      "ordem": 76,
+      "ordem": 70,
       "modo_ativacao": "deterministic",
       "regra_deterministica": {
         "type": "and",
@@ -2990,9 +2931,9 @@
       "group_slug": "detran",
       "group_name": "DETRAN/MS",
       "nome": "detran_jur_012_077",
-      "titulo": "Inaplicabilidade da Renúncia de Propriedade de Veículo Automotor",
-      "condicao_ativacao": "Quando a petição buscar renunciar à propriedade do veículo ou invocar o art. 1.275, II do CC.",
-      "conteudo": "Alegue a inaplicabilidade da renúncia de propriedade de veículo automotor. Sustente que o CTB é lei especial com hipóteses taxativas de baixa e que a renúncia não pode ser usada para evadir obrigações.\n\n**Fundamentação Legal:** Arts. 120, 123, 126 e 134 do CTB; Resolução CONTRAN 967/2022; Art. 1.275, II do CC (inaplicável); Art. 884 do CC.",
+      "titulo": "Inaplicabilidade da Renúncia de Propriedade e Impossibilidade de Baixa sem Requisitos Legais",
+      "condicao_ativacao": "Quando o tipo de ação for baixa de veículo.",
+      "conteudo": "Alegue a inaplicabilidade da renúncia de propriedade de veículo automotor. Sustente que o CTB é lei especial com hipóteses taxativas de baixa e que a renúncia não pode ser usada para evadir obrigações.\n\n**Fundamentação Legal:** Arts. 120, 123, 126 e 134 do CTB; Resolução CONTRAN 967/2022; Art. 1.275, II do CC (inaplicável); Art. 884 do CC.\n\n---\n\nSustente a impossibilidade de baixa do veículo sem preenchimento dos requisitos do art. 126 do CTB e Resolução CONTRAN 967/2022 (veículo irrecuperável, desmontado, sinistrado com laudo).\n\n**Fundamentação Legal:** Art. 126 e 127 do CTB; Resolução CONTRAN 967/2022; Art. 37 da CF/88.",
       "palavras_chave": [
         "mérito",
         "jurídico"
@@ -3000,9 +2941,10 @@
       "tags": [
         "detran",
         "mérito_jurídico",
-        "jur_012"
+        "jur_012",
+        "jur_013"
       ],
-      "ordem": 77,
+      "ordem": 71,
       "modo_ativacao": "deterministic",
       "regra_deterministica": {
         "type": "condition",
@@ -3036,7 +2978,7 @@
         "mérito_jurídico",
         "jur_020"
       ],
-      "ordem": 78,
+      "ordem": 72,
       "modo_ativacao": "deterministic",
       "regra_deterministica": {
         "type": "condition",
@@ -3045,92 +2987,6 @@
         "value": true
       },
       "regra_texto_original": "Quando o autor não cumpriu obrigações básicas e permaneceu inerte por longo período.",
-      "fallback_habilitado": false,
-      "regra_deterministica_secundaria": null,
-      "regra_secundaria_texto_original": null
-    },
-    {
-      "tipo": "conteudo",
-      "categoria": "Mérito",
-      "subcategoria": "Mérito Jurídico",
-      "group_slug": "detran",
-      "group_name": "DETRAN/MS",
-      "nome": "detran_jur_011_079",
-      "titulo": "Responsabilidade Solidária do Vendedor pelo IPVA sem Comunicação de Venda",
-      "condicao_ativacao": "Quando não houver comunicação de venda e houver pedido de afastamento de responsabilidade por IPVA em MS.",
-      "conteudo": "Argumente a responsabilidade solidária do vendedor pelo IPVA sem comunicação de venda, com fundamento na Lei Estadual 1.810/97, art. 160, II, b.\n\n**Fundamentação Legal:** Art. 160, II, b da Lei Estadual/MS 1.810/97; Súmula 585 do STJ; Tema Repetitivo 1.118 do STJ.",
-      "palavras_chave": [
-        "mérito",
-        "jurídico"
-      ],
-      "tags": [
-        "detran",
-        "mérito_jurídico",
-        "jur_011"
-      ],
-      "ordem": 79,
-      "modo_ativacao": "deterministic",
-      "regra_deterministica": {
-        "type": "and",
-        "conditions": [
-          {
-            "type": "condition",
-            "variable": "detran_tipo_acao",
-            "operator": "in_list",
-            "value": [
-              "transferencia_registro",
-              "isencao_ipva"
-            ]
-          },
-          {
-            "type": "condition",
-            "variable": "detran_alega_comunicou_venda",
-            "operator": "equals",
-            "value": true
-          },
-          {
-            "type": "condition",
-            "variable": "detran_ipva_pendente",
-            "operator": "equals",
-            "value": true
-          }
-        ]
-      },
-      "regra_texto_original": "Quando não houver comunicação de venda e houver pedido de afastamento de responsabilidade por IPVA em MS.",
-      "fallback_habilitado": false,
-      "regra_deterministica_secundaria": null,
-      "regra_secundaria_texto_original": null
-    },
-    {
-      "tipo": "conteudo",
-      "categoria": "Mérito",
-      "subcategoria": "Mérito Jurídico",
-      "group_slug": "detran",
-      "group_name": "DETRAN/MS",
-      "nome": "detran_jur_013_080",
-      "titulo": "Impossibilidade de Baixa do Veículo sem Requisitos Legais",
-      "condicao_ativacao": "Quando a petição requerer baixa sem comprovar os requisitos legais, sem documentação mínima ou sem quitação de débitos.",
-      "conteudo": "Sustente a impossibilidade de baixa do veículo sem preenchimento dos requisitos do art. 126 do CTB e Resolução CONTRAN 967/2022 (veículo irrecuperável, desmontado, sinistrado com laudo).\n\n**Fundamentação Legal:** Art. 126 e 127 do CTB; Resolução CONTRAN 967/2022; Art. 37 da CF/88.",
-      "palavras_chave": [
-        "mérito",
-        "jurídico"
-      ],
-      "tags": [
-        "detran",
-        "mérito_jurídico",
-        "jur_013"
-      ],
-      "ordem": 80,
-      "modo_ativacao": "deterministic",
-      "regra_deterministica": {
-        "type": "condition",
-        "variable": "detran_tipo_acao",
-        "operator": "in_list",
-        "value": [
-          "baixa_veiculo"
-        ]
-      },
-      "regra_texto_original": "Quando a petição requerer baixa sem comprovar os requisitos legais, sem documentação mínima ou sem quitação de débitos.",
       "fallback_habilitado": false,
       "regra_deterministica_secundaria": null,
       "regra_secundaria_texto_original": null
@@ -3154,7 +3010,7 @@
         "mérito_jurídico",
         "jur_028"
       ],
-      "ordem": 81,
+      "ordem": 73,
       "modo_ativacao": "deterministic",
       "regra_deterministica": {
         "type": "condition",
@@ -3189,7 +3045,7 @@
         "mérito_jurídico",
         "jur_027"
       ],
-      "ordem": 82,
+      "ordem": 74,
       "modo_ativacao": "deterministic",
       "regra_deterministica": {
         "type": "and",
@@ -3241,7 +3097,7 @@
         "mérito_jurídico",
         "jur_023"
       ],
-      "ordem": 83,
+      "ordem": 75,
       "modo_ativacao": "deterministic",
       "regra_deterministica": {
         "type": "condition",
@@ -3275,7 +3131,7 @@
         "mérito_jurídico",
         "jur_034"
       ],
-      "ordem": 84,
+      "ordem": 76,
       "modo_ativacao": "deterministic",
       "regra_deterministica": {
         "type": "condition",
@@ -3310,7 +3166,7 @@
         "mérito_jurídico",
         "jur_016"
       ],
-      "ordem": 85,
+      "ordem": 77,
       "modo_ativacao": "deterministic",
       "regra_deterministica": {
         "type": "and",
@@ -3342,42 +3198,6 @@
       "subcategoria": "Mérito Jurídico",
       "group_slug": "detran",
       "group_name": "DETRAN/MS",
-      "nome": "detran_jur_026_086",
-      "titulo": "Inexistência de Relação de Consumo e Inaplicabilidade do CDC",
-      "condicao_ativacao": "Quando a petição invocar o CDC, requerer inversão do ônus da prova ou alegar relação de consumo com o DETRAN.",
-      "conteudo": "Alegue a inexistência de relação de consumo entre o autor e o DETRAN/MS, sustentando que o órgão exerce atividade típica de Estado remunerada por taxa (tributo).\n\n**Fundamentação Legal:** Art. 22 do CTB; Art. 3º, §2º do CDC; Natureza tributária das taxas.\n\n---\n\nConteste a inversão do ônus da prova requerida pelo autor, sustentando inaplicabilidade do CDC à relação de direito público-administrativo com o DETRAN/MS.\n\n**Fundamentação Legal:** Art. 373, I e II do CPC; Inaplicabilidade do CDC às relações de direito administrativo.",
-      "palavras_chave": [
-        "mérito",
-        "jurídico",
-        "preliminar",
-        "processual"
-      ],
-      "tags": [
-        "detran",
-        "mérito_jurídico",
-        "jur_026",
-        "preliminar",
-        "prel_030"
-      ],
-      "ordem": 86,
-      "modo_ativacao": "deterministic",
-      "regra_deterministica": {
-        "type": "condition",
-        "variable": "detran_invoca_cdc",
-        "operator": "equals",
-        "value": true
-      },
-      "regra_texto_original": "Quando a petição invocar o CDC, requerer inversão do ônus da prova ou alegar relação de consumo com o DETRAN.",
-      "fallback_habilitado": false,
-      "regra_deterministica_secundaria": null,
-      "regra_secundaria_texto_original": null
-    },
-    {
-      "tipo": "conteudo",
-      "categoria": "Mérito",
-      "subcategoria": "Mérito Jurídico",
-      "group_slug": "detran",
-      "group_name": "DETRAN/MS",
       "nome": "detran_jur_030_087",
       "titulo": "Procedimento de Substituição de Placas por Clonagem",
       "condicao_ativacao": "Quando a petição trouxer pedido de substituição de placas por clonagem sem instrução adequada, requerendo gratuidade ou dispensa de débitos.",
@@ -3391,7 +3211,7 @@
         "mérito_jurídico",
         "jur_030"
       ],
-      "ordem": 87,
+      "ordem": 78,
       "modo_ativacao": "deterministic",
       "regra_deterministica": {
         "type": "and",
@@ -3436,7 +3256,7 @@
         "mérito_jurídico",
         "jur_031"
       ],
-      "ordem": 88,
+      "ordem": 79,
       "modo_ativacao": "deterministic",
       "regra_deterministica": {
         "type": "and",
@@ -3481,7 +3301,7 @@
         "mérito_jurídico",
         "jur_033"
       ],
-      "ordem": 89,
+      "ordem": 80,
       "modo_ativacao": "deterministic",
       "regra_deterministica": {
         "type": "and",
@@ -3491,14 +3311,7 @@
             "variable": "detran_tipo_acao",
             "operator": "in_list",
             "value": [
-              "multa"
-            ]
-          },
-          {
-            "type": "condition",
-            "variable": "detran_tipo_acao",
-            "operator": "in_list",
-            "value": [
+              "multa",
               "exame_toxicologico"
             ]
           },
@@ -3535,7 +3348,7 @@
         "mérito_jurídico",
         "jur_035"
       ],
-      "ordem": 91,
+      "ordem": 81,
       "modo_ativacao": "deterministic",
       "regra_deterministica": {
         "type": "and",
@@ -3570,20 +3383,22 @@
       "group_slug": "detran",
       "group_name": "DETRAN/MS",
       "nome": "detran_dm_001_092",
-      "titulo": "Improcedência dos Danos Morais e Redução Subsidiária do Quantum",
-      "condicao_ativacao": "Quando a petição contiver pedido de indenização por danos morais contra o DETRAN/MS em razão de qualquer ato administrativo.",
-      "conteudo": "Refute o pedido de indenização por danos morais, demonstrando ausência de ato ilícito (exercício regular do poder de polícia), ausência de nexo causal, e não comprovação de dano que ultrapasse mero dissabor. Suspensão regular da CNH não viola direito de ir e vir. Invoque excludentes (culpa exclusiva da vítima, ato de terceiro).\n\n**Fundamentação Legal:** Art. 5º, V e X da CF/88; Arts. 186 e 927 do CC; Art. 37, §6º da CF/88; Art. 188, I do CC; Art. 945 do CC; Art. 373, I do CPC; Jurisprudência STJ.\n\n---\n\nSubsidiariamente, requeira redução do quantum indenizatório para patamar razoável, aplicando o método bifásico do STJ e considerando circunstâncias do caso, extensão do dano, gravidade da conduta e vedação ao enriquecimento sem causa.\n\n**Fundamentação Legal:** Art. 944, parágrafo único do CC; Art. 884 do CC; Método bifásico do STJ; Princípios da razoabilidade e proporcionalidade.",
+      "titulo": "Improcedência dos Danos Morais, Inaplicabilidade do Dano In Re Ipsa e Redução Subsidiária",
+      "condicao_ativacao": "Quando houver pedido de dano moral em qualquer tipo de ação de trânsito.",
+      "conteudo": "Refute o pedido de indenização por danos morais, demonstrando ausência de ato ilícito (exercício regular do poder de polícia), ausência de nexo causal, e não comprovação de dano que ultrapasse mero dissabor. Suspensão regular da CNH não viola direito de ir e vir. Invoque excludentes (culpa exclusiva da vítima, ato de terceiro).\n\n**Fundamentação Legal:** Art. 5º, V e X da CF/88; Arts. 186 e 927 do CC; Art. 37, §6º da CF/88; Art. 188, I do CC; Art. 945 do CC; Art. 373, I do CPC; Jurisprudência STJ.\n\n---\n\nSubsidiariamente, requeira redução do quantum indenizatório para patamar razoável, aplicando o método bifásico do STJ e considerando circunstâncias do caso, extensão do dano, gravidade da conduta e vedação ao enriquecimento sem causa.\n\n**Fundamentação Legal:** Art. 944, parágrafo único do CC; Art. 884 do CC; Método bifásico do STJ; Princípios da razoabilidade e proporcionalidade.\n\n---\n\nRefute o dano moral in re ipsa, argumentando que mera anulação de ato, existência de processo administrativo ou suspensão da CNH não geram automaticamente dever de indenizar.\n\n**Fundamentação Legal:** Art. 5º, V e X da CF/88; Arts. 186 e 927 do CC; Art. 373, I do CPC; Jurisprudência STJ.",
       "palavras_chave": [
         "dano moral",
-        "indenização"
+        "indenização",
+        "cnh"
       ],
       "tags": [
         "detran",
         "dano_moral",
         "dm_001",
-        "dm_003"
+        "dm_003",
+        "dm_002"
       ],
-      "ordem": 92,
+      "ordem": 82,
       "modo_ativacao": "deterministic",
       "regra_deterministica": {
         "type": "condition",
@@ -3602,56 +3417,10 @@
       "subcategoria": "Indenização",
       "group_slug": "detran",
       "group_name": "DETRAN/MS",
-      "nome": "detran_dm_002_093",
-      "titulo": "Inaplicabilidade do Dano Moral In Re Ipsa em Atos de Trânsito",
-      "condicao_ativacao": "Quando a petição alegar dano moral presumido por atos administrativos de trânsito.",
-      "conteudo": "Refute o dano moral in re ipsa, argumentando que mera anulação de ato, existência de processo administrativo ou suspensão da CNH não geram automaticamente dever de indenizar.\n\n**Fundamentação Legal:** Art. 5º, V e X da CF/88; Arts. 186 e 927 do CC; Art. 373, I do CPC; Jurisprudência STJ.",
-      "palavras_chave": [
-        "dano moral",
-        "indenização",
-        "cnh"
-      ],
-      "tags": [
-        "detran",
-        "dano_moral",
-        "dm_002"
-      ],
-      "ordem": 93,
-      "modo_ativacao": "deterministic",
-      "regra_deterministica": {
-        "type": "and",
-        "conditions": [
-          {
-            "type": "condition",
-            "variable": "detran_tipo_acao",
-            "operator": "in_list",
-            "value": [
-              "suspensao_cnh"
-            ]
-          },
-          {
-            "type": "condition",
-            "variable": "detran_dano_moral",
-            "operator": "equals",
-            "value": true
-          }
-        ]
-      },
-      "regra_texto_original": "Quando a petição alegar dano moral presumido por atos administrativos de trânsito.",
-      "fallback_habilitado": false,
-      "regra_deterministica_secundaria": null,
-      "regra_secundaria_texto_original": null
-    },
-    {
-      "tipo": "conteudo",
-      "categoria": "Mérito",
-      "subcategoria": "Indenização",
-      "group_slug": "detran",
-      "group_name": "DETRAN/MS",
       "nome": "detran_dmat_001_095",
-      "titulo": "Improcedência dos Danos Materiais e Danos ao Veículo durante Apreensão",
-      "condicao_ativacao": "Quando o autor pleiteia danos materiais sem demonstrar documentalmente os danos.",
-      "conteudo": "Conteste o pedido de indenização por danos materiais por inexistência de ato ilícito, ausência de nexo causal e não comprovação do prejuízo patrimonial com documentos (recibos, notas fiscais, extratos).\n\n**Fundamentação Legal:** Art. 37, §6º da CF/88; Arts. 186, 402, 927 e 944 do CC; Art. 373, I do CPC; Art. 188, I do CC.\n\n---\n\nRefute o pedido de ressarcimento de danos materiais no veículo durante apreensão, demonstrando que o termo de liberação atesta ausência de danos.\n\n**Fundamentação Legal:** Art. 373, I do CPC; Art. 186 do CC; Art. 37, §6º da CF/88; Art. 262 do CTB.",
+      "titulo": "Improcedência dos Danos Materiais, Lucros Cessantes e Danos ao Veículo",
+      "condicao_ativacao": "Quando houver pedido de dano material em qualquer tipo de ação de trânsito.",
+      "conteudo": "Conteste o pedido de indenização por danos materiais por inexistência de ato ilícito, ausência de nexo causal e não comprovação do prejuízo patrimonial com documentos (recibos, notas fiscais, extratos).\n\n**Fundamentação Legal:** Art. 37, §6º da CF/88; Arts. 186, 402, 927 e 944 do CC; Art. 373, I do CPC; Art. 188, I do CC.\n\n---\n\nRefute o pedido de ressarcimento de danos materiais no veículo durante apreensão, demonstrando que o termo de liberação atesta ausência de danos.\n\n**Fundamentação Legal:** Art. 373, I do CPC; Art. 186 do CC; Art. 37, §6º da CF/88; Art. 262 do CTB.\n\n---\n\nRefute a pretensão de lucros cessantes por ausência de comprovação concreta da perda econômica. Alegue ruptura do nexo causal pela decisão autônoma do empregador em caso de demissão.\n\n**Fundamentação Legal:** Art. 402 do CC; Art. 403 do CC; Art. 37, §6º da CF/88; Teoria da causalidade adequada.",
       "palavras_chave": [
         "dano material",
         "indenização"
@@ -3660,9 +3429,10 @@
         "detran",
         "dano_material",
         "dmat_001",
-        "dmat_004"
+        "dmat_004",
+        "dmat_002"
       ],
-      "ordem": 95,
+      "ordem": 83,
       "modo_ativacao": "deterministic",
       "regra_deterministica": {
         "type": "condition",
@@ -3671,38 +3441,6 @@
         "value": true
       },
       "regra_texto_original": "Quando o autor pleiteia danos materiais sem demonstrar documentalmente os danos.",
-      "fallback_habilitado": false,
-      "regra_deterministica_secundaria": null,
-      "regra_secundaria_texto_original": null
-    },
-    {
-      "tipo": "conteudo",
-      "categoria": "Mérito",
-      "subcategoria": "Indenização",
-      "group_slug": "detran",
-      "group_name": "DETRAN/MS",
-      "nome": "detran_dmat_002_096",
-      "titulo": "Improcedência dos Lucros Cessantes por Ausência de Comprovação",
-      "condicao_ativacao": "Quando o autor pleiteia lucros cessantes baseado em valores especulativos ou decorrentes de perda de emprego.",
-      "conteudo": "Refute a pretensão de lucros cessantes por ausência de comprovação concreta da perda econômica. Alegue ruptura do nexo causal pela decisão autônoma do empregador em caso de demissão.\n\n**Fundamentação Legal:** Art. 402 do CC; Art. 403 do CC; Art. 37, §6º da CF/88; Teoria da causalidade adequada.",
-      "palavras_chave": [
-        "dano material",
-        "indenização"
-      ],
-      "tags": [
-        "detran",
-        "dano_material",
-        "dmat_002"
-      ],
-      "ordem": 96,
-      "modo_ativacao": "deterministic",
-      "regra_deterministica": {
-        "type": "condition",
-        "variable": "detran_dano_material",
-        "operator": "equals",
-        "value": true
-      },
-      "regra_texto_original": "Quando o autor pleiteia lucros cessantes baseado em valores especulativos ou decorrentes de perda de emprego.",
       "fallback_habilitado": false,
       "regra_deterministica_secundaria": null,
       "regra_secundaria_texto_original": null
@@ -3726,7 +3464,7 @@
         "dano_material",
         "dmat_003"
       ],
-      "ordem": 97,
+      "ordem": 84,
       "modo_ativacao": "deterministic",
       "regra_deterministica": {
         "type": "and",
@@ -3736,7 +3474,8 @@
             "variable": "detran_tipo_acao",
             "operator": "in_list",
             "value": [
-              "ear_cnh"
+              "multa",
+              "apreensao_veiculo"
             ]
           },
           {
@@ -3754,8 +3493,8 @@
     },
     {
       "tipo": "conteudo",
-      "categoria": "Eventualidade",
-      "subcategoria": "Dano Material",
+      "categoria": "Mérito",
+      "subcategoria": "Indenização",
       "group_slug": "detran",
       "group_name": "DETRAN/MS",
       "nome": "detran_dmat_005_099",
@@ -3771,7 +3510,7 @@
         "dano_material",
         "dmat_005"
       ],
-      "ordem": 99,
+      "ordem": 85,
       "modo_ativacao": "deterministic",
       "regra_deterministica": {
         "type": "and",
@@ -3799,120 +3538,30 @@
     },
     {
       "tipo": "conteudo",
-      "categoria": "Tutela de Urgência",
-      "subcategoria": "Tutela de Urgência",
-      "group_slug": "detran",
-      "group_name": "DETRAN/MS",
-      "nome": "detran_tut_001_100",
-      "titulo": "Indeferimento da Tutela de Urgência por Ausência de Requisitos",
-      "condicao_ativacao": "Quando a petição requerer tutela provisória de urgência para suspender processo administrativo, impedir suspensão/cassação da CNH, suspender auto de infração, desvincular veículo ou suspender débitos.",
-      "conteudo": "Requeira o indeferimento da tutela de urgência por ausência dos requisitos do art. 300 do CPC: probabilidade do direito afastada pela presunção de legitimidade dos atos; inexistência de perigo de dano irreparável; risco de dano inverso à Administração e à segurança viária.\n\n**Fundamentação Legal:** Arts. 294, 296, 298 e 300 do CPC; Art. 134 do CTB; Art. 257 do CTB; Arts. 265 e ss. do CTB.",
-      "palavras_chave": [
-        "tutela",
-        "urgência",
-        "liminar",
-        "multa"
-      ],
-      "tags": [
-        "detran",
-        "tutela_de_urgência",
-        "tut_001"
-      ],
-      "ordem": 100,
-      "modo_ativacao": "deterministic",
-      "regra_deterministica": {
-        "type": "and",
-        "conditions": [
-          {
-            "type": "condition",
-            "variable": "detran_tipo_acao",
-            "operator": "in_list",
-            "value": [
-              "suspensao_cnh",
-              "cassacao_cnh"
-            ]
-          },
-          {
-            "type": "condition",
-            "variable": "detran_tutela_urgencia",
-            "operator": "equals",
-            "value": true
-          }
-        ]
-      },
-      "regra_texto_original": "Quando a petição requerer tutela provisória de urgência para suspender processo administrativo, impedir suspensão/cassação da CNH, suspender auto de infração, desvincular veículo ou suspender débitos.",
-      "fallback_habilitado": false,
-      "regra_deterministica_secundaria": null,
-      "regra_secundaria_texto_original": null
-    },
-    {
-      "tipo": "conteudo",
-      "categoria": "Tutela de Urgência",
-      "subcategoria": "Tutela de Urgência",
-      "group_slug": "detran",
-      "group_name": "DETRAN/MS",
-      "nome": "detran_tut_003_102",
-      "titulo": "Impossibilidade Técnica de Cumprimento de Tutela Preventiva",
-      "condicao_ativacao": "Quando houver pedido de tutela para suspender efeitos de infração não registrada ou para trava preventiva de pontuação.",
-      "conteudo": "Alegue a impossibilidade técnica de cumprimento da tutela que determina suspensão preventiva de efeitos de infração ainda não registrada no sistema informatizado.\n\n**Fundamentação Legal:** Art. 148, §3º do CTB; Limitações técnicas do sistema informatizado do DETRAN/MS.",
-      "palavras_chave": [
-        "tutela",
-        "urgência",
-        "liminar",
-        "pontos"
-      ],
-      "tags": [
-        "detran",
-        "tutela_de_urgência",
-        "tut_003"
-      ],
-      "ordem": 102,
-      "modo_ativacao": "deterministic",
-      "regra_deterministica": {
-        "type": "and",
-        "conditions": [
-          {
-            "type": "condition",
-            "variable": "detran_tutela_urgencia",
-            "operator": "equals",
-            "value": true
-          },
-          {
-            "type": "condition",
-            "variable": "detran_pagou_voluntariamente",
-            "operator": "equals",
-            "value": true
-          }
-        ]
-      },
-      "regra_texto_original": "Quando houver pedido de tutela para suspender efeitos de infração não registrada ou para trava preventiva de pontuação.",
-      "fallback_habilitado": false,
-      "regra_deterministica_secundaria": null,
-      "regra_secundaria_texto_original": null
-    },
-    {
-      "tipo": "conteudo",
       "categoria": "Mérito",
       "subcategoria": "Mérito",
       "group_slug": "detran",
       "group_name": "DETRAN/MS",
       "nome": "detran_resp_001_095",
-      "titulo": "Excludente de Responsabilidade Civil por Culpa Exclusiva do Autor",
-      "condicao_ativacao": "Quando a ação pleitear indenização por responsabilidade civil do DETRAN/MS e houver indicativos de culpa exclusiva ou concorrente do autor.",
-      "conteudo": "Alegue a excludente de responsabilidade civil do Estado de Mato Grosso do Sul, demonstrando a culpa exclusiva ou concorrente do autor no evento danoso. Sustente que, nos termos do art. 37, §6º da Constituição Federal, a responsabilidade objetiva do Estado exige nexo causal entre a conduta administrativa e o dano, sendo afastada quando o particular concorre decisivamente para o resultado lesivo. Demonstre que o autor contribuiu para o dano por sua própria inércia, negligência ou descumprimento de obrigações legais (como não regularizar documentação, não retirar veículo no prazo, não comunicar venda). Argumente que a teoria do risco administrativo, adotada pelo ordenamento brasileiro, admite excludentes de responsabilidade, diferentemente da teoria do risco integral.\n\n**Fundamentação Legal:** Art. 37, §6º da CF; Art. 945 do CC (culpa concorrente); Art. 186 e 927 do CC; Arts. 123, 124 e 134 do CTB; Jurisprudência STJ e TJMS.",
+      "titulo": "Excludentes de Responsabilidade Civil e Ausência de Nexo Causal",
+      "condicao_ativacao": "Quando o tipo de ação for responsabilidade civil contra o Estado/DETRAN.",
+      "conteudo": "Alegue a excludente de responsabilidade civil do Estado de Mato Grosso do Sul, demonstrando a culpa exclusiva ou concorrente do autor no evento danoso. Sustente que, nos termos do art. 37, §6º da Constituição Federal, a responsabilidade objetiva do Estado exige nexo causal entre a conduta administrativa e o dano, sendo afastada quando o particular concorre decisivamente para o resultado lesivo. Demonstre que o autor contribuiu para o dano por sua própria inércia, negligência ou descumprimento de obrigações legais (como não regularizar documentação, não retirar veículo no prazo, não comunicar venda). Argumente que a teoria do risco administrativo, adotada pelo ordenamento brasileiro, admite excludentes de responsabilidade, diferentemente da teoria do risco integral.\n\n**Fundamentação Legal:** Art. 37, §6º da CF; Art. 945 do CC (culpa concorrente); Art. 186 e 927 do CC; Arts. 123, 124 e 134 do CTB; Jurisprudência STJ e TJMS.\n\n---\n\nAlegue a ausência de nexo de causalidade entre a conduta do DETRAN/MS e o suposto dano sofrido pelo autor. Sustente que a responsabilidade civil objetiva do Estado (art. 37, §6º da CF) exige a demonstração inequívoca de três elementos: conduta administrativa, dano efetivo e nexo causal. Demonstre que o autor não logrou comprovar que o dano alegado decorreu diretamente de ação ou omissão do DETRAN/MS. Argumente que eventuais danos podem ter origem em causas alheias à atuação administrativa, como ato de terceiro, caso fortuito, força maior ou fato exclusivo da vítima. Ressalte que o ônus de provar o nexo causal recai sobre o autor, nos termos do art. 373, I do CPC.\n\n**Fundamentação Legal:** Art. 37, §6º da CF; Arts. 186, 393 e 927 do CC; Art. 373, I do CPC; Arts. 262 e 271 do CTB; Jurisprudência STJ e TJMS.",
       "palavras_chave": [
         "mérito",
         "responsabilidade civil",
         "culpa exclusiva",
         "excludente",
-        "dano"
+        "dano",
+        "nexo causal",
+        "ausência"
       ],
       "tags": [
         "detran",
         "merito",
-        "resp_001"
+        "resp_001",
+        "resp_002"
       ],
-      "ordem": 95,
+      "ordem": 86,
       "modo_ativacao": "deterministic",
       "regra_deterministica": {
         "type": "condition",
@@ -3923,43 +3572,6 @@
         ]
       },
       "regra_texto_original": "Quando a ação pleitear indenização por responsabilidade civil do DETRAN/MS.",
-      "fallback_habilitado": false,
-      "regra_deterministica_secundaria": null,
-      "regra_secundaria_texto_original": null
-    },
-    {
-      "tipo": "conteudo",
-      "categoria": "Mérito",
-      "subcategoria": "Mérito",
-      "group_slug": "detran",
-      "group_name": "DETRAN/MS",
-      "nome": "detran_resp_002_096",
-      "titulo": "Ausência de Nexo Causal na Responsabilidade Civil do Estado",
-      "condicao_ativacao": "Quando a ação pleitear indenização por responsabilidade civil e não houver demonstração do nexo causal.",
-      "conteudo": "Alegue a ausência de nexo de causalidade entre a conduta do DETRAN/MS e o suposto dano sofrido pelo autor. Sustente que a responsabilidade civil objetiva do Estado (art. 37, §6º da CF) exige a demonstração inequívoca de três elementos: conduta administrativa, dano efetivo e nexo causal. Demonstre que o autor não logrou comprovar que o dano alegado decorreu diretamente de ação ou omissão do DETRAN/MS. Argumente que eventuais danos podem ter origem em causas alheias à atuação administrativa, como ato de terceiro, caso fortuito, força maior ou fato exclusivo da vítima. Ressalte que o ônus de provar o nexo causal recai sobre o autor, nos termos do art. 373, I do CPC.\n\n**Fundamentação Legal:** Art. 37, §6º da CF; Arts. 186, 393 e 927 do CC; Art. 373, I do CPC; Arts. 262 e 271 do CTB; Jurisprudência STJ e TJMS.",
-      "palavras_chave": [
-        "mérito",
-        "responsabilidade civil",
-        "nexo causal",
-        "ausência",
-        "dano"
-      ],
-      "tags": [
-        "detran",
-        "merito",
-        "resp_002"
-      ],
-      "ordem": 96,
-      "modo_ativacao": "deterministic",
-      "regra_deterministica": {
-        "type": "condition",
-        "variable": "detran_tipo_acao",
-        "operator": "in_list",
-        "value": [
-          "responsabilidade_civil"
-        ]
-      },
-      "regra_texto_original": "Quando a ação pleitear indenização por responsabilidade civil e não houver demonstração do nexo causal.",
       "fallback_habilitado": false,
       "regra_deterministica_secundaria": null,
       "regra_secundaria_texto_original": null
@@ -3986,7 +3598,7 @@
         "merito",
         "ipva_001"
       ],
-      "ordem": 97,
+      "ordem": 87,
       "modo_ativacao": "deterministic",
       "regra_deterministica": {
         "type": "condition",
@@ -4023,7 +3635,7 @@
         "merito",
         "ipva_002"
       ],
-      "ordem": 98,
+      "ordem": 88,
       "modo_ativacao": "deterministic",
       "regra_deterministica": {
         "type": "condition",
@@ -4034,6 +3646,74 @@
         ]
       },
       "regra_texto_original": "Quando a ação questionar a competência do DETRAN/MS para cobrar ou condicionar serviços ao pagamento de IPVA.",
+      "fallback_habilitado": false,
+      "regra_deterministica_secundaria": null,
+      "regra_secundaria_texto_original": null
+    },
+    {
+      "tipo": "conteudo",
+      "categoria": "Tutela de Urgência",
+      "subcategoria": "Tutela de Urgência",
+      "group_slug": "detran",
+      "group_name": "DETRAN/MS",
+      "nome": "detran_tut_001_100",
+      "titulo": "Indeferimento da Tutela de Urgência por Ausência de Requisitos",
+      "condicao_ativacao": "Quando a petição requerer tutela provisória de urgência para suspender processo administrativo, impedir suspensão/cassação da CNH, suspender auto de infração, desvincular veículo ou suspender débitos.",
+      "conteudo": "Requeira o indeferimento da tutela de urgência por ausência dos requisitos do art. 300 do CPC: probabilidade do direito afastada pela presunção de legitimidade dos atos; inexistência de perigo de dano irreparável; risco de dano inverso à Administração e à segurança viária.\n\n**Fundamentação Legal:** Arts. 294, 296, 298 e 300 do CPC; Art. 134 do CTB; Art. 257 do CTB; Arts. 265 e ss. do CTB.",
+      "palavras_chave": [
+        "tutela",
+        "urgência",
+        "liminar",
+        "multa"
+      ],
+      "tags": [
+        "detran",
+        "tutela_de_urgência",
+        "tut_001"
+      ],
+      "ordem": 89,
+      "modo_ativacao": "deterministic",
+      "regra_deterministica": {
+        "type": "condition",
+        "variable": "detran_tutela_urgencia",
+        "operator": "equals",
+        "value": true
+      },
+      "regra_texto_original": "Quando a petição requerer tutela provisória de urgência para suspender processo administrativo, impedir suspensão/cassação da CNH, suspender auto de infração, desvincular veículo ou suspender débitos.",
+      "fallback_habilitado": false,
+      "regra_deterministica_secundaria": null,
+      "regra_secundaria_texto_original": null
+    },
+    {
+      "tipo": "conteudo",
+      "categoria": "Tutela de Urgência",
+      "subcategoria": "Tutela de Urgência",
+      "group_slug": "detran",
+      "group_name": "DETRAN/MS",
+      "nome": "detran_tut_003_102",
+      "titulo": "Impossibilidade Técnica de Cumprimento de Tutela Preventiva",
+      "condicao_ativacao": "Quando houver pedido de tutela para suspender efeitos de infração não registrada ou para trava preventiva de pontuação.",
+      "conteudo": "Alegue a impossibilidade técnica de cumprimento da tutela que determina suspensão preventiva de efeitos de infração ainda não registrada no sistema informatizado.\n\n**Fundamentação Legal:** Art. 148, §3º do CTB; Limitações técnicas do sistema informatizado do DETRAN/MS.",
+      "palavras_chave": [
+        "tutela",
+        "urgência",
+        "liminar",
+        "pontos"
+      ],
+      "tags": [
+        "detran",
+        "tutela_de_urgência",
+        "tut_003"
+      ],
+      "ordem": 90,
+      "modo_ativacao": "deterministic",
+      "regra_deterministica": {
+        "type": "condition",
+        "variable": "detran_tutela_urgencia",
+        "operator": "equals",
+        "value": true
+      },
+      "regra_texto_original": "Quando houver pedido de tutela para suspender efeitos de infração não registrada ou para trava preventiva de pontuação.",
       "fallback_habilitado": false,
       "regra_deterministica_secundaria": null,
       "regra_secundaria_texto_original": null
