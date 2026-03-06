@@ -1,0 +1,59 @@
+{
+  "_meta": {
+    "grupo": "DETRAN",
+    "descricao": "Schema de extracao — resumo analitico de recursos (apelacao, agravo, contrarrazoes, embargos)",
+    "total_variaveis": 10,
+    "versao": "1.0",
+    "data_criacao": "2026-03-06"
+  },
+
+  "detran_rec_tipo": {
+    "type": "text",
+    "description": "Qual o tipo de recurso? Ex: apelacao, agravo de instrumento, agravo interno, contrarrazoes, embargos de declaracao, recurso inominado, recurso especial, recurso extraordinario, etc."
+  },
+
+  "detran_rec_recorrente": {
+    "type": "text",
+    "description": "Quem interpôs o recurso? Informe nome e qualificacao (autor, reu, municipio, AGETRAN, etc.)."
+  },
+
+  "detran_rec_recorrido": {
+    "type": "text",
+    "description": "Quem e o recorrido?"
+  },
+
+  "detran_rec_decisao_recorrida": {
+    "type": "text",
+    "description": "Resuma a decisao recorrida em 2-3 frases: o que foi decidido, se foi procedente/improcedente, principais comandos (anulacao, condenacao, tutela, valores)."
+  },
+
+  "detran_rec_fundamentos": {
+    "type": "text",
+    "description": "Quais os fundamentos juridicos do recurso? Resuma as teses principais usadas pelo recorrente para pedir a reforma (ex: erro na valoracao da prova, violacao ao CTB, ausencia de requisitos da tutela)."
+  },
+
+  "detran_rec_preliminares": {
+    "type": "text",
+    "description": "O recurso levanta preliminares (nulidade, cerceamento de defesa, intempestividade, etc.)? Resuma. Retorne null se nao ha."
+  },
+
+  "detran_rec_pedido": {
+    "type": "text",
+    "description": "Qual o pedido recursal? O que o recorrente quer: reforma total, reforma parcial, anulacao, cassacao, majoracao de valores, etc."
+  },
+
+  "detran_rec_efeito_suspensivo": {
+    "type": "boolean",
+    "description": "O recorrente requereu efeito suspensivo ou tutela recursal?"
+  },
+
+  "detran_rec_valores_discutidos": {
+    "type": "text",
+    "description": "Ha valores em discussao no recurso (dano moral, dano material, honorarios, astreintes)? Informe quais e os montantes. Retorne null se nao ha."
+  },
+
+  "detran_rec_irrelevante": {
+    "type": "boolean",
+    "description": "O documento NAO contem recurso ou peca recursal identificavel?"
+  }
+}

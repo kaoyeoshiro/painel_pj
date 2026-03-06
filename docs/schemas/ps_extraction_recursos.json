@@ -1,0 +1,59 @@
+{
+  "_meta": {
+    "grupo": "PS",
+    "descricao": "Schema de extracao — resumo analitico de recursos para o grupo PS (Procuradoria do Estado)",
+    "total_variaveis": 10,
+    "versao": "1.0",
+    "data_criacao": "2026-03-06"
+  },
+
+  "ps_rec_tipo": {
+    "type": "text",
+    "description": "Qual o tipo de recurso? Ex: apelacao, agravo de instrumento, agravo interno, contrarrazoes, embargos de declaracao, recurso inominado, recurso especial, recurso extraordinario, etc."
+  },
+
+  "ps_rec_recorrente": {
+    "type": "text",
+    "description": "Quem interpôs o recurso? Informe nome e qualificacao (autor, reu, terceiro interessado, Ministerio Publico, etc.)."
+  },
+
+  "ps_rec_recorrido": {
+    "type": "text",
+    "description": "Quem e o recorrido?"
+  },
+
+  "ps_rec_decisao_recorrida": {
+    "type": "text",
+    "description": "Resuma a decisao recorrida em 2-3 frases: tipo (sentenca, decisao interlocutoria, acordao), resultado (procedente, improcedente, parcialmente procedente), principais comandos (condenacoes, anulacoes, tutelas, valores fixados)."
+  },
+
+  "ps_rec_fundamentos": {
+    "type": "text",
+    "description": "Quais os fundamentos juridicos do recurso? Resuma as teses principais usadas pelo recorrente para pedir a reforma."
+  },
+
+  "ps_rec_preliminares": {
+    "type": "text",
+    "description": "O recurso levanta preliminares (nulidade da sentenca, cerceamento de defesa, negativa de prestacao jurisdicional, etc.)? Resuma. Retorne null se nao ha."
+  },
+
+  "ps_rec_pedido": {
+    "type": "text",
+    "description": "Qual o pedido recursal? O que o recorrente quer: reforma total, reforma parcial, anulacao da sentenca, cassacao da decisao, majoracao de valores, etc."
+  },
+
+  "ps_rec_efeito_suspensivo": {
+    "type": "boolean",
+    "description": "O recorrente requereu efeito suspensivo ou tutela recursal?"
+  },
+
+  "ps_rec_valores_discutidos": {
+    "type": "text",
+    "description": "Ha valores em discussao no recurso (dano moral, dano material, honorarios, astreintes, verbas alimentares, indenizacoes)? Informe quais e os montantes. Retorne null se nao ha."
+  },
+
+  "ps_rec_irrelevante": {
+    "type": "boolean",
+    "description": "O documento NAO contem recurso ou peca recursal identificavel?"
+  }
+}
