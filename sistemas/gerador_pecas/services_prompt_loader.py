@@ -133,7 +133,7 @@ def listar_tipos_peca(db: Session, group_id: int | None = None) -> list[dict]:
         ).order_by(PromptModulo.ordem).all()
 
         if modulos:
-            return _formatar_tipos_peca(modulos)
+            return _formatar_tipos_peca(_deduplicar_modulos(modulos))
 
     # Fallback: global
     modulos = db.query(PromptModulo).filter(
@@ -142,7 +142,18 @@ def listar_tipos_peca(db: Session, group_id: int | None = None) -> list[dict]:
         PromptModulo.group_id.is_(None)
     ).order_by(PromptModulo.ordem).all()
 
-    return _formatar_tipos_peca(modulos)
+    return _formatar_tipos_peca(_deduplicar_modulos(modulos))
+
+
+def _deduplicar_modulos(modulos: list) -> list:
+    """Remove duplicatas de modulos por nome, mantendo a primeira ocorrencia."""
+    seen: set[str] = set()
+    unicos = []
+    for m in modulos:
+        if m.nome not in seen:
+            seen.add(m.nome)
+            unicos.append(m)
+    return unicos
 
 
 def _formatar_tipos_peca(modulos: list) -> list[dict]:

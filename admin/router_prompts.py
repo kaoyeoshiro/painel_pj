@@ -1760,52 +1760,58 @@ async def importar_modulos(
             grupo = None
             subgrupo = None
 
-            if tipo == "conteudo":
-                # Obtém ou cria o grupo
-                if grupo_slug:
-                    cache_key = grupo_slug.lower()
-                    if cache_key in grupos_cache:
-                        grupo = grupos_cache[cache_key]
-                    else:
-                        grupo_existia = group_repo.get_by_slug(grupo_slug.lower()) is not None
-
-                        grupo = _obter_ou_criar_grupo(group_repo, grupo_slug, grupo_name)
-                        grupos_cache[cache_key] = grupo
-
-                        if not grupo_existia:
-                            grupos_criados += 1
+            # Resolve grupo para TODOS os tipos (base, peca, conteudo)
+            if grupo_slug:
+                cache_key = grupo_slug.lower()
+                if cache_key in grupos_cache:
+                    grupo = grupos_cache[cache_key]
                 else:
-                    # Usa grupo padrão "ps" se não informado
-                    grupo = group_repo.get_by_slug("ps")
-                    if not grupo:
-                        grupo = _obter_ou_criar_grupo(group_repo, "ps", "Prestação de Saúde")
+                    grupo_existia = group_repo.get_by_slug(grupo_slug.lower()) is not None
+
+                    grupo = _obter_ou_criar_grupo(group_repo, grupo_slug, grupo_name)
+                    grupos_cache[cache_key] = grupo
+
+                    if not grupo_existia:
                         grupos_criados += 1
-
+            elif tipo == "conteudo":
+                # Conteúdo sem grupo informado → default PS
+                grupo = group_repo.get_by_slug("ps")
                 if not grupo:
-                    erros.append(f"Módulo {i+1} ({nome}): não foi possível obter/criar grupo")
-                    continue
+                    grupo = _obter_ou_criar_grupo(group_repo, "ps", "Prestação de Saúde")
+                    grupos_criados += 1
 
-                # Obtém ou cria o subgrupo operacional (se informado)
-                if subgrupo_slug and grupo:
-                    cache_key = f"{grupo.id}:{subgrupo_slug.lower()}"
-                    if cache_key in subgrupos_cache:
-                        subgrupo = subgrupos_cache[cache_key]
-                    else:
-                        subgrupo_existia = subgroup_repo.query().filter(
-                            PromptSubgroup.group_id == grupo.id,
-                            PromptSubgroup.slug == subgrupo_slug.lower()
-                        ).first() is not None
+            if tipo == "conteudo" and not grupo:
+                erros.append(f"Módulo {i+1} ({nome}): não foi possível obter/criar grupo")
+                continue
 
-                        subgrupo = _obter_ou_criar_subgrupo(subgroup_repo, grupo, subgrupo_slug, subgrupo_name)
-                        subgrupos_cache[cache_key] = subgrupo
+            # Obtém ou cria o subgrupo operacional (apenas conteúdo)
+            if tipo == "conteudo" and subgrupo_slug and grupo:
+                cache_key = f"{grupo.id}:{subgrupo_slug.lower()}"
+                if cache_key in subgrupos_cache:
+                    subgrupo = subgrupos_cache[cache_key]
+                else:
+                    subgrupo_existia = subgroup_repo.query().filter(
+                        PromptSubgroup.group_id == grupo.id,
+                        PromptSubgroup.slug == subgrupo_slug.lower()
+                    ).first() is not None
 
-                        if not subgrupo_existia:
-                            subgrupos_criados += 1
+                    subgrupo = _obter_ou_criar_subgrupo(subgroup_repo, grupo, subgrupo_slug, subgrupo_name)
+                    subgrupos_cache[cache_key] = subgrupo
 
-            # Verifica se já existe (busca por nome, que é único)
-            existente = modulo_repo.query().filter(
-                PromptModulo.nome == nome
-            ).first()
+                    if not subgrupo_existia:
+                        subgrupos_criados += 1
+
+            # Verifica se já existe (busca por nome + group_id para isolamento entre grupos)
+            if grupo:
+                existente = modulo_repo.query().filter(
+                    PromptModulo.nome == nome,
+                    PromptModulo.group_id == grupo.id
+                ).first()
+            else:
+                existente = modulo_repo.query().filter(
+                    PromptModulo.nome == nome,
+                    PromptModulo.group_id.is_(None)
+                ).first()
 
             modulo_para_associar = None
 
