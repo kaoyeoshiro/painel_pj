@@ -479,8 +479,41 @@ class JsonSyncService:
                 self.db.flush()
                 perguntas_criadas += 1
 
+                # Verifica se slug já existe globalmente (outra categoria)
+                slug_final = slug
+                variavel_global = self.db.query(ExtractionVariable).filter(
+                    ExtractionVariable.slug == slug
+                ).first()
+
+                if variavel_global:
+                    # Slug já existe em outra categoria — prefixa com namespace
+                    namespace = categoria.namespace or ""
+                    if namespace and not slug.startswith(namespace + "_"):
+                        slug_final = f"{namespace}_{slug}"
+                    else:
+                        # Sem namespace ou já prefixado — adiciona sufixo numérico
+                        sufixo = 2
+                        while self.db.query(ExtractionVariable).filter(
+                            ExtractionVariable.slug == f"{slug}_{sufixo}"
+                        ).first():
+                            sufixo += 1
+                        slug_final = f"{slug}_{sufixo}"
+
+                    # Verifica se o novo slug também já existe (segurança extra)
+                    while self.db.query(ExtractionVariable).filter(
+                        ExtractionVariable.slug == slug_final
+                    ).first():
+                        slug_final = f"{slug_final}_2"
+
+                    # Atualiza a pergunta com o slug renomeado
+                    nova_pergunta.nome_variavel_sugerido = slug_final
+                    logger.warning(
+                        f"[AplicarJSON] Slug '{slug}' já existe globalmente — "
+                        f"renomeado para '{slug_final}' (categoria={categoria_id})"
+                    )
+
                 nova_variavel = ExtractionVariable(
-                    slug=slug,
+                    slug=slug_final,
                     label=info["description"][:200] if len(info["description"]) > 200 else info["description"],
                     descricao=info["description"],
                     tipo=info["type"],
@@ -493,7 +526,7 @@ class JsonSyncService:
                 )
                 self.db.add(nova_variavel)
                 variaveis_criadas += 1
-                lista_criadas.append(slug)
+                lista_criadas.append(slug_final)
 
                 logger.info(f"[AplicarJSON] Criado: slug={slug}, tipo={info['type']}, ordem={ordem_json}")
 

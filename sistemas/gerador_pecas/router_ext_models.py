@@ -469,8 +469,47 @@ async def sincronizar_perguntas_com_json(
                 ).first()
                 source_question_id = pergunta_nova.id if pergunta_nova else None
 
+            # Verifica se slug já existe globalmente (outra categoria)
+            slug_final = slug
+            variavel_global = session_query(db, ExtractionVariable).filter(
+                ExtractionVariable.slug == slug
+            ).first()
+
+            if variavel_global:
+                # Slug já existe em outra categoria — prefixa com namespace
+                namespace = categoria.namespace or ""
+                if namespace and not slug.startswith(namespace + "_"):
+                    slug_final = f"{namespace}_{slug}"
+                else:
+                    sufixo = 2
+                    while session_query(db, ExtractionVariable).filter(
+                        ExtractionVariable.slug == f"{slug}_{sufixo}"
+                    ).first():
+                        sufixo += 1
+                    slug_final = f"{slug}_{sufixo}"
+
+                # Segurança extra: garante unicidade do novo slug
+                while session_query(db, ExtractionVariable).filter(
+                    ExtractionVariable.slug == slug_final
+                ).first():
+                    slug_final = f"{slug_final}_2"
+
+                # Atualiza pergunta com slug renomeado
+                pergunta_ref = session_query(db, ExtractionQuestion).filter(
+                    ExtractionQuestion.categoria_id == categoria_id,
+                    ExtractionQuestion.nome_variavel_sugerido == slug,
+                    ExtractionQuestion.ativo == True
+                ).first()
+                if pergunta_ref:
+                    pergunta_ref.nome_variavel_sugerido = slug_final
+
+                logger.warning(
+                    f"Slug '{slug}' já existe globalmente — "
+                    f"renomeado para '{slug_final}' (categoria={categoria_id})"
+                )
+
             nova_variavel = ExtractionVariable(
-                slug=slug,
+                slug=slug_final,
                 label=descricao[:200] if len(descricao) > 200 else descricao,
                 descricao=descricao,
                 tipo=tipo,
@@ -482,10 +521,11 @@ async def sincronizar_perguntas_com_json(
             db.add(nova_variavel)
             variaveis_criadas += 1
             detalhes.append({
-                "acao": "variavel_criada",
-                "slug": slug
+                "acao": "variavel_renomeada" if slug_final != slug else "variavel_criada",
+                "slug": slug_final,
+                "slug_original": slug if slug_final != slug else None
             })
-            logger.info(f"Variável criada: slug={slug}")
+            logger.info(f"Variável criada: slug={slug_final}")
 
     db.commit()
 
