@@ -41,6 +41,11 @@ export interface PendingItem {
   modo_ativacao?: string | null
 }
 
+export interface GrupoOption {
+  slug: string
+  name: string
+}
+
 export interface DashboardData {
   total_consultas: number
   total_feedbacks: number
@@ -53,10 +58,12 @@ export interface DashboardData {
   pendentes_feedback: PendingItem[]
   por_sistema: Record<string, SistemaStats>
   evolucao_por_sistema: Record<string, EvolucaoSemana[]>
+  grupos_disponiveis: GrupoOption[]
   filtro_aplicado: {
     mes: number | null
     ano: number | null
     sistema: string | null
+    grupo: string | null
   }
 }
 

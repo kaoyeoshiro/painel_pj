@@ -43,6 +43,7 @@ async def dashboard_feedbacks(
     mes: Optional[int] = None,
     ano: Optional[int] = None,
     sistema: Optional[str] = None,
+    grupo: Optional[str] = None,
     semanas_evolucao: int = 12,
     current_user: User = Depends(require_admin),
     feedback_repo: FeedbackRepository = Depends(get_feedback_repo)
@@ -78,6 +79,13 @@ async def dashboard_feedbacks(
 
         # Usuarios a excluir (admin e teste)
         ids_excluir = feedback_repo.get_excluded_user_ids()
+
+        # Filtro de grupo (somente para gerador_pecas)
+        # Quando grupo esta selecionado, restringe dados GP aos usuarios daquele grupo
+        if grupo and sistema == 'gerador_pecas':
+            group_user_ids = set(feedback_repo.get_user_ids_by_group(grupo))
+            all_user_ids = {u[0] for u in feedback_repo.db.query(User.id).all()}
+            ids_excluir = list(set(ids_excluir) | (all_user_ids - group_user_ids))
 
         # Flags para incluir cada sistema
         incluir_aj = sistema is None or sistema == 'assistencia_judiciaria'
@@ -503,8 +511,10 @@ async def dashboard_feedbacks(
             "filtro_aplicado": {
                 "mes": mes,
                 "ano": ano,
-                "sistema": sistema
+                "sistema": sistema,
+                "grupo": grupo
             },
+            "grupos_disponiveis": feedback_repo.list_active_groups() if incluir_gp else [],
             "por_sistema": {
                 "assistencia_judiciaria": {
                     "total": total_consultas_aj,
@@ -548,6 +558,7 @@ async def listar_feedbacks(
     ano: Optional[int] = None,
     nota_min: Optional[int] = None,
     nota_max: Optional[int] = None,
+    grupo: Optional[str] = None,
     current_user: User = Depends(require_admin),
     feedback_repo: FeedbackRepository = Depends(get_feedback_repo)
 ):
@@ -573,6 +584,12 @@ async def listar_feedbacks(
 
         # Usuarios a excluir (admin e teste)
         ids_excluir = feedback_repo.get_excluded_user_ids()
+
+        # Filtro de grupo (somente para gerador_pecas)
+        if grupo and sistema == 'gerador_pecas':
+            group_user_ids = set(feedback_repo.get_user_ids_by_group(grupo))
+            all_user_ids = {u[0] for u in feedback_repo.db.query(User.id).all()}
+            ids_excluir = list(set(ids_excluir) | (all_user_ids - group_user_ids))
 
         feedbacks_combinados = []
 

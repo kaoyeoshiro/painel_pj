@@ -30,6 +30,7 @@ from admin.models_prompt_groups import (
     PromptSubgroup,
     PromptSubcategoria,
     CategoriaOrdem,
+    user_prompt_groups,
 )
 from auth.models import User
 
@@ -687,6 +688,25 @@ class FeedbackRepository:
             .all()
         )
         return [u.id for u in usuarios_excluir]
+
+    def get_user_ids_by_group(self, group_slug: str) -> list[int]:
+        """Retorna IDs de usuarios pertencentes a um grupo de prompts."""
+        return [
+            r[0] for r in self.db.query(user_prompt_groups.c.user_id)
+            .join(PromptGroup, user_prompt_groups.c.group_id == PromptGroup.id)
+            .filter(PromptGroup.slug == group_slug, PromptGroup.active.is_(True))
+            .all()
+        ]
+
+    def list_active_groups(self) -> list[dict]:
+        """Lista grupos de prompts ativos (para filtro de feedbacks)."""
+        groups = (
+            self.db.query(PromptGroup)
+            .filter(PromptGroup.active.is_(True))
+            .order_by(PromptGroup.order)
+            .all()
+        )
+        return [{"slug": g.slug, "name": g.name} for g in groups]
 
     def count_consultas_aj(
         self,

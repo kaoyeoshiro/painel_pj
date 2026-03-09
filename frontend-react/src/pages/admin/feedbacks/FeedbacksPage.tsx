@@ -55,6 +55,7 @@ export function FeedbacksPage() {
   const [mes, setMes] = useState('')
   const [ano, setAno] = useState(String(currentYear))
   const [sistema, setSistema] = useState('')
+  const [grupo, setGrupo] = useState('')
   const [semanasEvolucao, setSemanasEvolucao] = useState('12')
 
   // ---------------------------------------------------------------------------
@@ -71,6 +72,7 @@ export function FeedbacksPage() {
         mes: mes || undefined,
         ano: ano || undefined,
         sistema: sistema || undefined,
+        grupo: grupo || undefined,
         semanas_evolucao: semanasEvolucao,
       })
       setDashboard(data)
@@ -84,7 +86,7 @@ export function FeedbacksPage() {
     } finally {
       setLoading(false)
     }
-  }, [mes, ano, sistema, semanasEvolucao, toast])
+  }, [mes, ano, sistema, grupo, semanasEvolucao, toast])
 
   useEffect(() => {
     void loadDashboard()
@@ -148,6 +150,13 @@ export function FeedbacksPage() {
     setMes('')
     setAno(String(currentYear))
     setSistema('')
+    setGrupo('')
+  }
+
+  // Reset grupo ao mudar de sistema
+  const handleSistemaChange = (v: string) => {
+    setSistema(v === '__all_systems__' ? '' : v)
+    setGrupo('')
   }
 
   const filtroInfo = ano ? `Filtro: ${ano}` : 'Filtro: todos'
@@ -230,7 +239,7 @@ export function FeedbacksPage() {
 
             <div className="flex items-center gap-2">
               <label className="text-sm font-medium" style={{ color: C.text700 }}>Sistema:</label>
-              <Select value={sistema || '__all_systems__'} onValueChange={(v) => setSistema(v === '__all_systems__' ? '' : v)}>
+              <Select value={sistema || '__all_systems__'} onValueChange={handleSistemaChange}>
                 <SelectTrigger className="w-[220px] h-10"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="__all_systems__">Todos os sistemas</SelectItem>
@@ -240,6 +249,21 @@ export function FeedbacksPage() {
                 </SelectContent>
               </Select>
             </div>
+
+            {sistema === 'gerador_pecas' && (dashboard?.grupos_disponiveis?.length ?? 0) > 0 && (
+              <div className="flex items-center gap-2">
+                <label className="text-sm font-medium" style={{ color: C.text700 }}>Grupo:</label>
+                <Select value={grupo || '__all_groups__'} onValueChange={(v) => setGrupo(v === '__all_groups__' ? '' : v)}>
+                  <SelectTrigger className="w-[160px] h-10"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="__all_groups__">Todos os grupos</SelectItem>
+                    {dashboard?.grupos_disponiveis?.map((g) => (
+                      <SelectItem key={g.slug} value={g.slug}>{g.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             <button
               onClick={limparFiltros}
@@ -404,6 +428,7 @@ export function FeedbacksPage() {
         {/* ============================================================= */}
         <FeedbacksTable
           sistema={sistema}
+          grupo={grupo}
           mes={mes}
           ano={ano}
           onViewReport={handleViewReport}

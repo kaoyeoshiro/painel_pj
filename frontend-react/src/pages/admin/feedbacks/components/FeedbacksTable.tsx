@@ -43,13 +43,14 @@ const COL = {
 
 interface FeedbacksTableProps {
   sistema: string
+  grupo: string
   mes: string
   ano: string
   onViewReport: (consultaId: number, sistema: string) => void
   onViewComment: (feedback: FeedbackItem) => void
 }
 
-export function FeedbacksTable({ sistema, mes, ano, onViewReport, onViewComment }: FeedbacksTableProps) {
+export function FeedbacksTable({ sistema, grupo, mes, ano, onViewReport, onViewComment }: FeedbacksTableProps) {
   const [nota, setNota] = useState('')
   const [page, setPage] = useState(1)
   const [loading, setLoading] = useState(false)
@@ -63,6 +64,7 @@ export function FeedbacksTable({ sistema, mes, ano, onViewReport, onViewComment 
         per_page: 20,
         nota: nota || undefined,
         sistema: sistema || undefined,
+        grupo: grupo || undefined,
         mes: mes || undefined,
         ano: ano || undefined,
       })
@@ -72,7 +74,7 @@ export function FeedbacksTable({ sistema, mes, ano, onViewReport, onViewComment 
     } finally {
       setLoading(false)
     }
-  }, [page, nota, sistema, mes, ano])
+  }, [page, nota, sistema, grupo, mes, ano])
 
   useEffect(() => {
     void carregar()
@@ -80,7 +82,7 @@ export function FeedbacksTable({ sistema, mes, ano, onViewReport, onViewComment 
 
   useEffect(() => {
     setPage(1)
-  }, [sistema, mes, ano, nota])
+  }, [sistema, grupo, mes, ano, nota])
 
   const totalPages = data?.total_pages ?? 1
 

@@ -17,6 +17,7 @@ interface DashboardParams {
   mes?: string
   ano?: string
   sistema?: string
+  grupo?: string
   semanas_evolucao?: string
 }
 
@@ -25,6 +26,7 @@ export async function fetchDashboard(params: DashboardParams): Promise<Dashboard
   if (params.mes) qs.append('mes', params.mes)
   if (params.ano) qs.append('ano', params.ano)
   if (params.sistema) qs.append('sistema', params.sistema)
+  if (params.grupo) qs.append('grupo', params.grupo)
   if (params.semanas_evolucao) qs.append('semanas_evolucao', params.semanas_evolucao)
 
   return adminApi.get<DashboardData>(`/admin/api/feedbacks/dashboard?${qs.toString()}`)
@@ -41,6 +43,7 @@ interface FeedbackListParams {
   /** Nota exata (1-5) — envia nota_min=N&nota_max=N ao backend */
   nota?: string
   sistema?: string
+  grupo?: string
   mes?: string
   ano?: string
 }
@@ -55,6 +58,7 @@ export async function fetchFeedbackList(params: FeedbackListParams): Promise<Fee
     qs.append('nota_max', params.nota)
   }
   if (params.sistema) qs.append('sistema', params.sistema)
+  if (params.grupo) qs.append('grupo', params.grupo)
   if (params.mes) qs.append('mes', params.mes)
   if (params.ano) qs.append('ano', params.ano)
 
