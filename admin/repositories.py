@@ -238,6 +238,87 @@ class PromptModuloRepository(BaseRepository[PromptModulo]):
             .all()
         )
 
+    def get_activation_ranking(self, group_id: int) -> dict:
+        """
+        Retorna ranking de modulos de conteudo por total de ativacoes.
+
+        Usa activation_trace (JSONB) de geracoes_pecas para contar
+        quantas vezes cada modulo foi ativado (activated=true).
+        Inclui modulos ativos que nunca foram ativados (total=0).
+
+        Retorna dict com 'ranking' (lista ordenada) e 'metadata'.
+        """
+        try:
+            result = self.db.execute(sql_text("""
+                WITH ativacoes AS (
+                    SELECT
+                        (modulo->>'module_id')::int AS module_id,
+                        COUNT(*) FILTER (
+                            WHERE (modulo->>'activated')::boolean = true
+                        ) AS total_ativacoes
+                    FROM geracoes_pecas g
+                        CROSS JOIN jsonb_array_elements(
+                            g.activation_trace->'modulos'
+                        ) AS modulo
+                    WHERE g.activation_trace IS NOT NULL
+                    GROUP BY (modulo->>'module_id')::int
+                )
+                SELECT
+                    pm.id AS modulo_id,
+                    pm.nome,
+                    pm.titulo,
+                    pm.categoria,
+                    COALESCE(a.total_ativacoes, 0) AS total_ativacoes
+                FROM prompt_modulos pm
+                    LEFT JOIN ativacoes a ON a.module_id = pm.id
+                WHERE pm.ativo = true
+                    AND pm.group_id = :group_id
+                    AND pm.tipo = 'conteudo'
+                ORDER BY COALESCE(a.total_ativacoes, 0) DESC, pm.titulo ASC
+            """), {"group_id": group_id}).fetchall()
+
+            count_result = self.db.execute(sql_text(
+                "SELECT COUNT(*) FROM geracoes_pecas WHERE activation_trace IS NOT NULL"
+            )).scalar() or 0
+
+        except Exception:
+            logger.warning(
+                "Erro ao consultar activation_trace para ranking. "
+                "Coluna pode nao existir ainda."
+            )
+            return {
+                "ranking": [],
+                "metadata": {
+                    "total_modulos_ativos": 0,
+                    "total_geracoes_analisadas": 0,
+                    "modulos_nunca_ativados": 0,
+                },
+            }
+
+        ranking = []
+        for i, row in enumerate(result, 1):
+            total = row[4]
+            ranking.append({
+                "posicao": i,
+                "modulo_id": row[0],
+                "nome": row[1],
+                "titulo": row[2],
+                "categoria": row[3],
+                "total_ativacoes": total,
+                "nunca_ativado": total == 0,
+            })
+
+        nunca_ativados = sum(1 for r in ranking if r["nunca_ativado"])
+
+        return {
+            "ranking": ranking,
+            "metadata": {
+                "total_modulos_ativos": len(ranking),
+                "total_geracoes_analisadas": count_result,
+                "modulos_nunca_ativados": nunca_ativados,
+            },
+        }
+
     def get_conteudo_by_categoria(
         self, categoria: str, tipo_peca: Optional[str] = None
     ) -> list[PromptModulo]:

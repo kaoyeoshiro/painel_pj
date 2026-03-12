@@ -21,6 +21,8 @@ import {
   GruposDialog,
 } from './components/ModuloDialogs'
 
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
+import { RankingModulos } from './components/RankingModulos'
 import type { TipoFiltro, ModoFiltro } from './types'
 
 // ============================================================
@@ -67,6 +69,14 @@ export function PromptsModulosPage() {
 
       <ContentArea className="space-y-6">
       <AdminSubNav />
+
+      <Tabs defaultValue="modulos">
+        <TabsList>
+          <TabsTrigger value="modulos">Módulos</TabsTrigger>
+          <TabsTrigger value="ranking">Ranking de Ativações</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="modulos" className="mt-4 space-y-6">
 
       {/* Filtros */}
       <div className="bg-white rounded-2xl shadow-sm p-6" style={{ border: `1px solid ${C.gray200}` }}>
@@ -268,6 +278,19 @@ export function PromptsModulosPage() {
           )}
         </div>
       )}
+
+        </TabsContent>
+
+        <TabsContent value="ranking" className="mt-4">
+          {vm.grupoSelecionado ? (
+            <RankingModulos groupId={vm.grupoSelecionado} />
+          ) : (
+            <div className="text-center py-12" style={{ color: C.text400 }}>
+              Selecione um grupo para ver o ranking
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
 
       {/* Dialogs */}
       <ModuloFormDialog

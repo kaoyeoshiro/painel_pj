@@ -69,6 +69,31 @@ export type TipoPrompt = 'base' | 'peca' | 'conteudo'
 export type TipoFiltro = TipoPrompt | null
 export type ModoFiltro = 'llm' | 'deterministic' | null
 
+// ============================================================
+// Ranking de ativações
+// ============================================================
+
+export interface RankingItem {
+  posicao: number
+  modulo_id: number
+  nome: string
+  titulo: string
+  categoria: string
+  total_ativacoes: number
+  nunca_ativado: boolean
+}
+
+export interface RankingMetadata {
+  total_modulos_ativos: number
+  total_geracoes_analisadas: number
+  modulos_nunca_ativados: number
+}
+
+export interface RankingResponse {
+  ranking: RankingItem[]
+  metadata: RankingMetadata
+}
+
 export interface ModuloFormData {
   titulo: string
   nome: string
