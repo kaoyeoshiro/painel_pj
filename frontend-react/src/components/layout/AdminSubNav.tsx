@@ -2,7 +2,7 @@ import { Link, useRouterState } from '@tanstack/react-router'
 import { cn } from '@/lib/utils'
 import { C } from '@/lib/designTokens'
 import type { LucideIcon } from 'lucide-react'
-import { FileEdit, FileJson, Variable, Settings, Tags, Zap, FlaskConical, Filter } from 'lucide-react'
+import { FileEdit, FileJson, Variable, Settings, Tags, Zap, FlaskConical, Filter, GitBranch } from 'lucide-react'
 
 interface SubNavItem {
   to: string
@@ -19,6 +19,7 @@ const PROMPTS_ECOSYSTEM_ITEMS: SubNavItem[] = [
   { to: '/admin/filtro-documentos', label: 'Filtro Docs', icon: Filter },
   { to: '/admin/teste-ativacao', label: 'Teste Ativação', icon: Zap },
   { to: '/admin/teste-categorias', label: 'Teste Categorias', icon: FlaskConical },
+  { to: '/admin/arvore-decisao', label: 'Árvore Decisão', icon: GitBranch },
 ]
 
 interface AdminSubNavProps {

@@ -78,6 +78,7 @@ const TesteAtivacaoPage = lazyWithRetry(() => import('@/pages/admin/teste-ativac
 const TesteCategoriasPage = lazyWithRetry(() => import('@/pages/admin/teste-categorias/TesteCategoriasPage').then(m => ({ default: m.TesteCategoriasPage as ComponentType<unknown> })))
 const TjmsDocsPage = lazyWithRetry(() => import('@/pages/admin/tjms-docs/TjmsDocsPage').then(m => ({ default: m.TjmsDocsPage as ComponentType<unknown> })))
 const RestaurarSlugsPage = lazyWithRetry(() => import('@/pages/admin/restaurar-slugs/RestaurarSlugsPage').then(m => ({ default: m.RestaurarSlugsPage as ComponentType<unknown> })))
+const ArvoreDecisaoPage = lazyWithRetry(() => import('@/pages/admin/arvore-decisao/ArvoreDecisaoPage').then(m => ({ default: m.ArvoreDecisaoPage as ComponentType<unknown> })))
 
 // ---------------------------------------------------------------------------
 // Root route - renderiza apenas Outlet
@@ -356,6 +357,12 @@ const adminRestaurarSlugsRoute = createRoute({
   component: RestaurarSlugsPage,
 })
 
+const adminArvoreDecisaoRoute = createRoute({
+  getParentRoute: () => layoutRoute,
+  path: '/admin/arvore-decisao',
+  component: ArvoreDecisaoPage,
+})
+
 // ---------------------------------------------------------------------------
 // Arvore de rotas
 // ---------------------------------------------------------------------------
@@ -409,6 +416,7 @@ const routeTree = rootRoute.addChildren([
     adminTjmsDocsRoute,
     adminTjmsDocsPlanoRoute,
     adminRestaurarSlugsRoute,
+    adminArvoreDecisaoRoute,
   ]),
 ])
 
