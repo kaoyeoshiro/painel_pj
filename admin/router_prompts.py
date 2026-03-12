@@ -831,6 +831,27 @@ async def deletar_subcategoria(
     return {"message": "Subcategoria deletada com sucesso"}
 
 
+# ============================================================
+# Ranking de ativacoes de modulos
+# IMPORTANTE: deve ficar ANTES de /{modulo_id} para nao ser capturado
+# ============================================================
+
+@router.get("/ranking")
+async def ranking_modulos(
+    group_id: int = Query(..., description="ID do grupo para filtrar módulos"),
+    current_user: User = Depends(get_current_active_user),
+    modulo_repo: PromptModuloRepository = Depends(get_prompt_modulo_repo),
+):
+    """
+    Retorna ranking de módulos de conteúdo ordenados por total de ativações.
+
+    Usa o campo activation_trace de geracoes_pecas para contar ativações
+    históricas. Mostra apenas módulos ativos do grupo selecionado.
+    Módulos que nunca foram ativados aparecem no final com badge especial.
+    """
+    return modulo_repo.get_activation_ranking(group_id)
+
+
 @router.get("/{modulo_id}", response_model=PromptModuloResponse)
 async def obter_modulo(
     modulo_id: int,
@@ -2891,22 +2912,4 @@ async def verificar_modo_modulo(
     }
 
 
-# ============================================================
-# Ranking de ativacoes de modulos
-# ============================================================
-
-@router.get("/ranking")
-async def ranking_modulos(
-    group_id: int = Query(..., description="ID do grupo para filtrar módulos"),
-    current_user: User = Depends(get_current_active_user),
-    modulo_repo: PromptModuloRepository = Depends(get_prompt_modulo_repo),
-):
-    """
-    Retorna ranking de módulos de conteúdo ordenados por total de ativações.
-
-    Usa o campo activation_trace de geracoes_pecas para contar ativações
-    históricas. Mostra apenas módulos ativos do grupo selecionado.
-    Módulos que nunca foram ativados aparecem no final com badge especial.
-    """
-    return modulo_repo.get_activation_ranking(group_id)
 
