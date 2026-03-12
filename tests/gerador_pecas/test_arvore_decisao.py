@@ -175,3 +175,32 @@ class TestArvoreDecisaoService:
         preliminar = next(s for s in swimlanes if s.label == "Preliminar")
         assert preliminar.modulos_count == 1
         assert preliminar.pct_deterministico == 100.0
+
+
+class TestEndpointArvoreDecisao:
+    """Testes do endpoint de árvore de decisão."""
+
+    def test_service_retorna_response_valida(self):
+        """Deve retornar ArvoreDecisaoResponse com estrutura correta."""
+        resp = ArvoreDecisaoResponse(
+            swimlanes=[],
+            modulos=[],
+            variaveis=[],
+            stats=StatsDTO(total_modulos=0, total_variaveis=0, total_orfas=0, total_vinculos=0)
+        )
+        data = resp.model_dump()
+        assert "swimlanes" in data
+        assert "modulos" in data
+        assert "variaveis" in data
+        assert "stats" in data
+
+    def test_extrair_variaveis_regra_tipo_desconhecido(self):
+        """Deve ignorar tipos de regra desconhecidos."""
+        regra = {"type": "unknown_type", "data": "xyz"}
+        slugs = ArvoreDecisaoService._extrair_variaveis_regra(regra)
+        assert slugs == set()
+
+    def test_montar_swimlanes_vazio(self):
+        """Deve retornar lista vazia para zero módulos."""
+        swimlanes = ArvoreDecisaoService._montar_swimlanes([])
+        assert swimlanes == []

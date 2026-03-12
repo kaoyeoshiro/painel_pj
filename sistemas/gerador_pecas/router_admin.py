@@ -20,6 +20,8 @@ from utils.timezone import to_iso_utc
 from sistemas.gerador_pecas.models import GeracaoPeca, VersaoPeca
 from sistemas.gerador_pecas.services_curadoria import gerar_explicacao_modulo
 from sistemas.gerador_pecas.schemas import GeracaoDetalhadaResponse
+from sistemas.gerador_pecas.services_arvore_decisao import ArvoreDecisaoService
+from sistemas.gerador_pecas.schemas_arvore import ArvoreDecisaoResponse
 
 logger = logging.getLogger(__name__)
 
@@ -489,4 +491,30 @@ async def obter_activation_trace(
         "variaveis_snapshot": trace_data.get("variaveis_snapshot"),
         "modulos": modulos,
     }
+
+
+# ==========================================
+# Endpoint: Árvore de Decisão (BPMN)
+# ==========================================
+
+@router.get("/arvore-decisao", response_model=ArvoreDecisaoResponse)
+async def get_arvore_decisao(
+    grupo_id: int,
+    tipo_peca_id: int | None = None,
+    include_orphans: bool = True,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Retorna o grafo de árvore de decisão para visualização BPMN.
+
+    O grafo inclui módulos, variáveis, swimlanes e estatísticas.
+    Frontend gera nós de condição (losangos) a partir das regras AST.
+    """
+    service = ArvoreDecisaoService(db)
+    return service.montar_grafo(
+        grupo_id=grupo_id,
+        tipo_peca_id=tipo_peca_id,
+        include_orphans=include_orphans,
+    )
 
