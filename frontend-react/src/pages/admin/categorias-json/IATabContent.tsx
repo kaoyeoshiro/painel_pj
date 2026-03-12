@@ -751,7 +751,7 @@ export function IATabContent({ categoriaId, categoriaNome, onJsonChange }: IATab
 
                 {/* Conteudo */}
                 <div className="flex-1 min-w-0">
-                  <div className={`text-sm mb-1 ${p.ativo === false ? 'text-gray-500' : ''}`} style={{ color: p.ativo !== false ? C.text800 : undefined }}>
+                  <div className={`text-sm mb-1 ${p.ativo === false ? 'text-gray-500' : ''}`} style={{ color: p.ativo !== false ? C.text700 : undefined }}>
                     {p.pergunta}
                   </div>
                   <div className="flex flex-wrap items-center gap-1.5">

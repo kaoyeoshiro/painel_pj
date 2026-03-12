@@ -174,7 +174,7 @@ export function ImpactConfirmDialog({
                         </div>
                         <ul className="space-y-1 ml-2">
                           {items.map((item, i) => (
-                            <li key={i} className="text-sm flex items-start gap-1.5" style={{ color: C.text600 }}>
+                            <li key={i} className="text-sm flex items-start gap-1.5" style={{ color: C.text500 }}>
                               <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-gray-300 shrink-0" />
                               {item.descricao}
                             </li>
