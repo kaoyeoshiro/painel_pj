@@ -257,7 +257,7 @@ class PromptModuloRepository(BaseRepository[PromptModulo]):
                             WHERE (modulo->>'activated')::boolean = true
                         ) AS total_ativacoes
                     FROM geracoes_pecas g
-                        CROSS JOIN jsonb_array_elements(
+                        CROSS JOIN json_array_elements(
                             g.activation_trace->'modulos'
                         ) AS modulo
                     WHERE g.activation_trace IS NOT NULL
@@ -284,7 +284,8 @@ class PromptModuloRepository(BaseRepository[PromptModulo]):
         except Exception:
             logger.warning(
                 "Erro ao consultar activation_trace para ranking. "
-                "Coluna pode nao existir ainda."
+                "Coluna pode nao existir ainda.",
+                exc_info=True
             )
             return {
                 "ranking": [],
