@@ -545,6 +545,106 @@ async def listar_variaveis_processo(
     }
 
 
+@router.get("/variaveis/impacto")
+async def analise_impacto_variavel(
+    slug: str = Query(..., description="Slug da variavel para analisar impacto"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """
+    Analisa o impacto completo de alterar ou excluir uma variavel.
+
+    Retorna todos os locais que referenciam o slug:
+    - Modulos de prompt (regras deterministicas)
+    - Regras por tipo de peca
+    - JSON de categoria
+    - Variaveis que dependem desta
+    - Perguntas que dependem desta
+    """
+    from .services_slug_rename import SlugConsistencyChecker
+    from admin.models_prompts import PromptModulo, RegraDeterministicaTipoPeca
+
+    checker = SlugConsistencyChecker(db)
+    refs = checker.verificar_referencias_prompts(slug)
+
+    # JSON de categoria
+    variavel = session_query(db, ExtractionVariable).filter(
+        ExtractionVariable.slug == slug,
+        ExtractionVariable.ativo == True
+    ).first()
+
+    em_json = False
+    categoria_json_nome = None
+    if variavel and variavel.categoria_id:
+        categoria = session_query(db, CategoriaResumoJSON).filter(
+            CategoriaResumoJSON.id == variavel.categoria_id
+        ).first()
+        if categoria:
+            categoria_json_nome = categoria.nome
+            if categoria.formato_json:
+                try:
+                    schema = json.loads(categoria.formato_json)
+                    em_json = slug in schema
+                except json.JSONDecodeError:
+                    pass
+
+    # Variaveis dependentes
+    vars_dependentes = session_query(db, ExtractionVariable).filter(
+        ExtractionVariable.depends_on_variable == slug,
+        ExtractionVariable.ativo == True
+    ).all()
+
+    # Perguntas dependentes
+    pergs_dependentes = session_query(db, ExtractionQuestion).filter(
+        ExtractionQuestion.depends_on_variable == slug,
+        ExtractionQuestion.ativo == True
+    ).all()
+
+    # PromptVariableUsage (tracking)
+    usages = session_query(db, PromptVariableUsage).filter(
+        PromptVariableUsage.variable_slug == slug
+    ).count()
+
+    impactos = []
+
+    if em_json:
+        impactos.append({
+            "tipo": "json",
+            "descricao": f"JSON de extracao da categoria \"{categoria_json_nome}\"",
+        })
+
+    for p in refs["prompts"]:
+        impactos.append({
+            "tipo": "modulo",
+            "descricao": f"Regra do modulo \"{p['nome']}\" (id={p['id']})",
+        })
+
+    for r in refs["regras_tipo_peca"]:
+        impactos.append({
+            "tipo": "regra_tipo_peca",
+            "descricao": f"Regra para tipo \"{r['tipo_peca']}\" do modulo id={r['modulo_id']}",
+        })
+
+    for v in vars_dependentes:
+        impactos.append({
+            "tipo": "variavel_dependente",
+            "descricao": f"Variavel \"{v.slug}\" depende desta",
+        })
+
+    for p in pergs_dependentes:
+        impactos.append({
+            "tipo": "pergunta_dependente",
+            "descricao": f"Pergunta \"{p.pergunta[:60]}\" depende desta",
+        })
+
+    return {
+        "slug": slug,
+        "tem_impacto": len(impactos) > 0,
+        "total_impactos": len(impactos),
+        "impactos": impactos,
+    }
+
+
 @router.get("/variaveis/{variavel_id}", response_model=VariableDetailResponse)
 async def obter_variavel(
     variavel_id: int,
@@ -1141,106 +1241,6 @@ async def verificar_referencias_variavel(
         prompts=resultado["prompts"],
         regras_tipo_peca=resultado["regras_tipo_peca"]
     )
-
-
-@router.get("/variaveis/impacto")
-async def analise_impacto_variavel(
-    slug: str = Query(..., description="Slug da variavel para analisar impacto"),
-    db: Session = Depends(get_db),
-    current_user: User = Depends(get_current_active_user)
-):
-    """
-    Analisa o impacto completo de alterar ou excluir uma variavel.
-
-    Retorna todos os locais que referenciam o slug:
-    - Modulos de prompt (regras deterministicas)
-    - Regras por tipo de peca
-    - JSON de categoria
-    - Variaveis que dependem desta
-    - Perguntas que dependem desta
-    """
-    from .services_slug_rename import SlugConsistencyChecker
-    from admin.models_prompts import PromptModulo, RegraDeterministicaTipoPeca
-
-    checker = SlugConsistencyChecker(db)
-    refs = checker.verificar_referencias_prompts(slug)
-
-    # JSON de categoria
-    variavel = session_query(db, ExtractionVariable).filter(
-        ExtractionVariable.slug == slug,
-        ExtractionVariable.ativo == True
-    ).first()
-
-    em_json = False
-    categoria_json_nome = None
-    if variavel and variavel.categoria_id:
-        categoria = session_query(db, CategoriaResumoJSON).filter(
-            CategoriaResumoJSON.id == variavel.categoria_id
-        ).first()
-        if categoria:
-            categoria_json_nome = categoria.nome
-            if categoria.formato_json:
-                try:
-                    schema = json.loads(categoria.formato_json)
-                    em_json = slug in schema
-                except json.JSONDecodeError:
-                    pass
-
-    # Variaveis dependentes
-    vars_dependentes = session_query(db, ExtractionVariable).filter(
-        ExtractionVariable.depends_on_variable == slug,
-        ExtractionVariable.ativo == True
-    ).all()
-
-    # Perguntas dependentes
-    pergs_dependentes = session_query(db, ExtractionQuestion).filter(
-        ExtractionQuestion.depends_on_variable == slug,
-        ExtractionQuestion.ativo == True
-    ).all()
-
-    # PromptVariableUsage (tracking)
-    usages = session_query(db, PromptVariableUsage).filter(
-        PromptVariableUsage.variable_slug == slug
-    ).count()
-
-    impactos = []
-
-    if em_json:
-        impactos.append({
-            "tipo": "json",
-            "descricao": f"JSON de extracao da categoria \"{categoria_json_nome}\"",
-        })
-
-    for p in refs["prompts"]:
-        impactos.append({
-            "tipo": "modulo",
-            "descricao": f"Regra do modulo \"{p['nome']}\" (id={p['id']})",
-        })
-
-    for r in refs["regras_tipo_peca"]:
-        impactos.append({
-            "tipo": "regra_tipo_peca",
-            "descricao": f"Regra para tipo \"{r['tipo_peca']}\" do modulo id={r['modulo_id']}",
-        })
-
-    for v in vars_dependentes:
-        impactos.append({
-            "tipo": "variavel_dependente",
-            "descricao": f"Variavel \"{v.slug}\" depende desta",
-        })
-
-    for p in pergs_dependentes:
-        impactos.append({
-            "tipo": "pergunta_dependente",
-            "descricao": f"Pergunta \"{p.pergunta[:60]}\" depende desta",
-        })
-
-    return {
-        "slug": slug,
-        "tem_impacto": len(impactos) > 0,
-        "total_impactos": len(impactos),
-        "impactos": impactos,
-    }
 
 
 @router.delete("/variaveis/{variavel_id}/permanente")

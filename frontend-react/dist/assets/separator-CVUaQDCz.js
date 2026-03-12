@@ -1,1 +1,0 @@
-import{r as e,j as p}from"./vendor-tanstack-Bom8eY5S.js";import{l}from"./index-6GRMBFZX.js";const i=e.forwardRef(({className:a,orientation:r="horizontal",decorative:o=!0,...s},t)=>p.jsx("div",{ref:t,role:o?"none":"separator","aria-orientation":r,className:l("shrink-0 bg-border",r==="horizontal"?"h-[1px] w-full":"h-full w-[1px]",a),...s}));i.displayName="Separator";export{i as S};
