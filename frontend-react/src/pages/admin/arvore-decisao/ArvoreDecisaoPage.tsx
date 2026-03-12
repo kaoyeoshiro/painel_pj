@@ -6,6 +6,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import {
   ReactFlow,
+  ReactFlowProvider,
   MiniMap,
   Background,
   Controls,
@@ -57,7 +58,13 @@ interface TipoPeca {
 
 const promptsApi = createApiClient('/admin/api/prompts-modulos')
 
-export function ArvoreDecisaoPage() {
+/** Componente filho que usa useOnViewportChange — precisa estar dentro do ReactFlow */
+function SemanticZoomHandler() {
+  useSemanticZoom()
+  return null
+}
+
+function ArvoreDecisaoInner() {
   const canvasRef = useRef<HTMLDivElement>(null)
   const { loading, error, data } = useArvoreStore()
   const [tiposPeca, setTiposPeca] = useState<TipoPeca[]>([])
@@ -77,7 +84,6 @@ export function ArvoreDecisaoPage() {
 
   // Hooks
   useArvoreDecisaoData()
-  useSemanticZoom()
   const { nodes, edges } = useGraphLayout()
   const { onNodeClick, onNodeDoubleClick } = useNodeExpansion()
 
@@ -124,6 +130,7 @@ export function ArvoreDecisaoPage() {
             maxZoom={2}
             proOptions={{ hideAttribution: true }}
           >
+            <SemanticZoomHandler />
             <Background />
             <Controls />
             <MiniMap
@@ -148,5 +155,14 @@ export function ArvoreDecisaoPage() {
         .node-no-match { opacity: 0.2; }
       `}</style>
     </div>
+  )
+}
+
+/** Wrapper com ReactFlowProvider — necessário para hooks como useOnViewportChange */
+export function ArvoreDecisaoPage() {
+  return (
+    <ReactFlowProvider>
+      <ArvoreDecisaoInner />
+    </ReactFlowProvider>
   )
 }
