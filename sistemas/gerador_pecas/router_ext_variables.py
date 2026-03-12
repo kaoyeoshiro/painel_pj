@@ -44,6 +44,59 @@ router = APIRouter()
 
 
 # ============================================================================
+# FUNÇÕES AUXILIARES
+# ============================================================================
+
+def _remover_variavel_de_regra(regra: dict | None, slug: str) -> dict | None:
+    """
+    Remove todas as condições que referenciam o slug de uma regra AST.
+
+    Lógica de colapso:
+    - condition referenciando o slug → removida (retorna None)
+    - and/or com filhos removidos → colapsa:
+      - 0 filhos restantes → None (regra inteira vira None)
+      - 1 filho restante → promove o filho (remove o wrapper and/or)
+      - 2+ filhos → mantém normalmente
+    - not com filho removido → None
+    """
+    if not regra or not isinstance(regra, dict):
+        return regra
+
+    tipo = regra.get("type")
+
+    if tipo == "condition":
+        # Se a condição usa a variável sendo excluída, remove
+        if regra.get("variable") == slug:
+            return None
+        return regra
+
+    elif tipo in ("and", "or"):
+        conditions = regra.get("conditions", [])
+        novas = []
+        for cond in conditions:
+            resultado = _remover_variavel_de_regra(cond, slug)
+            if resultado is not None:
+                novas.append(resultado)
+
+        if len(novas) == 0:
+            return None
+        elif len(novas) == 1:
+            # Colapsa: promove o único filho
+            return novas[0]
+        else:
+            return {**regra, "conditions": novas}
+
+    elif tipo == "not":
+        filho = regra.get("condition")
+        resultado = _remover_variavel_de_regra(filho, slug)
+        if resultado is None:
+            return None
+        return {**regra, "condition": resultado}
+
+    return regra
+
+
+# ============================================================================
 # ENDPOINTS - VARIÁVEIS NORMALIZADAS
 # ============================================================================
 
@@ -760,6 +813,8 @@ async def excluir_variavel(
     limpezas_realizadas = {
         "json_atualizado": False,
         "prompts_removidos": 0,
+        "regras_limpas": 0,
+        "regras_tipo_peca_limpas": 0,
         "dependencias_perguntas_removidas": 0,
         "dependencias_variaveis_removidas": 0,
         "pergunta_origem_removida": False
@@ -794,6 +849,49 @@ async def excluir_variavel(
     limpezas_realizadas["prompts_removidos"] = len(usos_prompts)
     if usos_prompts:
         logger.info(f"Removidos {len(usos_prompts)} usos da variável '{slug}' em prompts")
+
+    # 2b. REMOVE VARIÁVEL DAS REGRAS DETERMINÍSTICAS DOS MÓDULOS
+    from admin.models_prompts import PromptModulo, RegraDeterministicaTipoPeca
+
+    prompts_ativos = session_query(db, PromptModulo).filter(
+        PromptModulo.ativo == True
+    ).all()
+
+    for prompt in prompts_ativos:
+        atualizado = False
+
+        if prompt.regra_deterministica:
+            nova_regra = _remover_variavel_de_regra(prompt.regra_deterministica, slug)
+            if nova_regra != prompt.regra_deterministica:
+                prompt.regra_deterministica = nova_regra
+                atualizado = True
+
+        if prompt.regra_deterministica_secundaria:
+            nova_regra = _remover_variavel_de_regra(prompt.regra_deterministica_secundaria, slug)
+            if nova_regra != prompt.regra_deterministica_secundaria:
+                prompt.regra_deterministica_secundaria = nova_regra
+                atualizado = True
+
+        if atualizado:
+            prompt.atualizado_em = get_utc_now()
+            limpezas_realizadas["regras_limpas"] += 1
+            logger.info(f"Regra do prompt '{prompt.nome}' (id={prompt.id}) limpa da variável '{slug}'")
+
+    regras_tipo_peca = session_query(db, RegraDeterministicaTipoPeca).filter(
+        RegraDeterministicaTipoPeca.ativo == True
+    ).all()
+
+    for regra in regras_tipo_peca:
+        if regra.regra_deterministica:
+            nova_regra = _remover_variavel_de_regra(regra.regra_deterministica, slug)
+            if nova_regra != regra.regra_deterministica:
+                regra.regra_deterministica = nova_regra
+                regra.atualizado_em = get_utc_now()
+                limpezas_realizadas["regras_tipo_peca_limpas"] += 1
+                logger.info(
+                    f"Regra tipo_peca '{regra.tipo_peca}' do módulo {regra.modulo_id} "
+                    f"limpa da variável '{slug}'"
+                )
 
     # 3. REMOVE DEPENDÊNCIAS DE OUTRAS VARIÁVEIS
     variaveis_dependentes = session_query(db, ExtractionVariable).filter(
@@ -840,6 +938,8 @@ async def excluir_variavel(
         f"Variável HARD DELETE: slug={slug}, "
         f"json={limpezas_realizadas['json_atualizado']}, "
         f"prompts={limpezas_realizadas['prompts_removidos']}, "
+        f"regras={limpezas_realizadas['regras_limpas']}, "
+        f"regras_tipo_peca={limpezas_realizadas['regras_tipo_peca_limpas']}, "
         f"deps_vars={limpezas_realizadas['dependencias_variaveis_removidas']}, "
         f"deps_pergs={limpezas_realizadas['dependencias_perguntas_removidas']}"
     )
@@ -852,6 +952,16 @@ async def excluir_variavel(
 
     if limpezas_realizadas["prompts_removidos"] > 0:
         message_parts.append(f"removida de {limpezas_realizadas['prompts_removidos']} prompt(s)")
+
+    if limpezas_realizadas["regras_limpas"] > 0:
+        message_parts.append(
+            f"regras determinísticas limpas em {limpezas_realizadas['regras_limpas']} módulo(s)"
+        )
+
+    if limpezas_realizadas["regras_tipo_peca_limpas"] > 0:
+        message_parts.append(
+            f"regras por tipo de peça limpas em {limpezas_realizadas['regras_tipo_peca_limpas']} entrada(s)"
+        )
 
     if limpezas_realizadas["dependencias_perguntas_removidas"] > 0:
         message_parts.append(
@@ -1031,6 +1141,106 @@ async def verificar_referencias_variavel(
         prompts=resultado["prompts"],
         regras_tipo_peca=resultado["regras_tipo_peca"]
     )
+
+
+@router.get("/variaveis/impacto")
+async def analise_impacto_variavel(
+    slug: str = Query(..., description="Slug da variavel para analisar impacto"),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_active_user)
+):
+    """
+    Analisa o impacto completo de alterar ou excluir uma variavel.
+
+    Retorna todos os locais que referenciam o slug:
+    - Modulos de prompt (regras deterministicas)
+    - Regras por tipo de peca
+    - JSON de categoria
+    - Variaveis que dependem desta
+    - Perguntas que dependem desta
+    """
+    from .services_slug_rename import SlugConsistencyChecker
+    from admin.models_prompts import PromptModulo, RegraDeterministicaTipoPeca
+
+    checker = SlugConsistencyChecker(db)
+    refs = checker.verificar_referencias_prompts(slug)
+
+    # JSON de categoria
+    variavel = session_query(db, ExtractionVariable).filter(
+        ExtractionVariable.slug == slug,
+        ExtractionVariable.ativo == True
+    ).first()
+
+    em_json = False
+    categoria_json_nome = None
+    if variavel and variavel.categoria_id:
+        categoria = session_query(db, CategoriaResumoJSON).filter(
+            CategoriaResumoJSON.id == variavel.categoria_id
+        ).first()
+        if categoria:
+            categoria_json_nome = categoria.nome
+            if categoria.formato_json:
+                try:
+                    schema = json.loads(categoria.formato_json)
+                    em_json = slug in schema
+                except json.JSONDecodeError:
+                    pass
+
+    # Variaveis dependentes
+    vars_dependentes = session_query(db, ExtractionVariable).filter(
+        ExtractionVariable.depends_on_variable == slug,
+        ExtractionVariable.ativo == True
+    ).all()
+
+    # Perguntas dependentes
+    pergs_dependentes = session_query(db, ExtractionQuestion).filter(
+        ExtractionQuestion.depends_on_variable == slug,
+        ExtractionQuestion.ativo == True
+    ).all()
+
+    # PromptVariableUsage (tracking)
+    usages = session_query(db, PromptVariableUsage).filter(
+        PromptVariableUsage.variable_slug == slug
+    ).count()
+
+    impactos = []
+
+    if em_json:
+        impactos.append({
+            "tipo": "json",
+            "descricao": f"JSON de extracao da categoria \"{categoria_json_nome}\"",
+        })
+
+    for p in refs["prompts"]:
+        impactos.append({
+            "tipo": "modulo",
+            "descricao": f"Regra do modulo \"{p['nome']}\" (id={p['id']})",
+        })
+
+    for r in refs["regras_tipo_peca"]:
+        impactos.append({
+            "tipo": "regra_tipo_peca",
+            "descricao": f"Regra para tipo \"{r['tipo_peca']}\" do modulo id={r['modulo_id']}",
+        })
+
+    for v in vars_dependentes:
+        impactos.append({
+            "tipo": "variavel_dependente",
+            "descricao": f"Variavel \"{v.slug}\" depende desta",
+        })
+
+    for p in pergs_dependentes:
+        impactos.append({
+            "tipo": "pergunta_dependente",
+            "descricao": f"Pergunta \"{p.pergunta[:60]}\" depende desta",
+        })
+
+    return {
+        "slug": slug,
+        "tem_impacto": len(impactos) > 0,
+        "total_impactos": len(impactos),
+        "impactos": impactos,
+    }
 
 
 @router.delete("/variaveis/{variavel_id}/permanente")

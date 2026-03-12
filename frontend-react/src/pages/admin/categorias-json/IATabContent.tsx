@@ -37,6 +37,7 @@ import type { PerguntaLocal, ExtractionQuestion, ConsistenciaResponse } from './
 import * as categoriasApi from './api'
 import { PerguntaEditorDialog } from './PerguntaEditorDialog'
 import { PerguntasLoteDialog } from './PerguntasLoteDialog'
+import { ImpactConfirmDialog } from './ImpactConfirmDialog'
 
 interface IATabContentProps {
   /** ID real da categoria (null se ainda nao foi salva) */
@@ -88,6 +89,15 @@ export function IATabContent({ categoriaId, categoriaNome, onJsonChange }: IATab
   const [inconsistencia, setInconsistencia] = useState<ConsistenciaResponse | null>(null)
   const [sincronizandoPerguntas, setSincronizandoPerguntas] = useState(false)
 
+  // Dialog de impacto
+  const [impactDialog, setImpactDialog] = useState<{
+    open: boolean
+    slug: string
+    acao: 'alterar' | 'excluir'
+    label?: string
+    onConfirm: () => void
+  }>({ open: false, slug: '', acao: 'alterar', onConfirm: () => {} })
+
   // Carrega perguntas ao montar ou quando categoriaId muda
   const carregarPerguntas = useCallback(async () => {
     if (!categoriaId) return
@@ -135,15 +145,10 @@ export function IATabContent({ categoriaId, categoriaNome, onJsonChange }: IATab
     setPerguntaEditorOpen(true)
   }
 
-  const handleSalvarPergunta = async (data: PerguntaLocal) => {
-    if (!categoriaId) {
-      toast({ title: 'Erro', description: 'Salve a categoria primeiro', variant: 'destructive' })
-      return
-    }
-
+  /** Executa o save real (chamado direto ou apos confirmacao de impacto) */
+  const executarSalvarPergunta = async (data: PerguntaLocal) => {
     try {
       if (data.id) {
-        // Atualizar
         await categoriasApi.atualizarPergunta(data.id, {
           pergunta: data.pergunta,
           nome_variavel_sugerido: data.nome_variavel_sugerido,
@@ -156,9 +161,8 @@ export function IATabContent({ categoriaId, categoriaNome, onJsonChange }: IATab
           ordem: data.ordem,
         })
       } else {
-        // Criar
         await categoriasApi.criarPergunta({
-          categoria_id: categoriaId,
+          categoria_id: categoriaId!,
           pergunta: data.pergunta,
           nome_variavel_sugerido: data.nome_variavel_sugerido,
           tipo_sugerido: data.tipo_sugerido,
@@ -179,27 +183,75 @@ export function IATabContent({ categoriaId, categoriaNome, onJsonChange }: IATab
     }
   }
 
-  const handleExcluirPergunta = async (index: number) => {
-    const pergunta = perguntas[index]
-
-    if (!pergunta.id) {
-      // Nao salva, apenas remove local
-      setPerguntas(prev => prev.filter((_, i) => i !== index))
+  const handleSalvarPergunta = async (data: PerguntaLocal) => {
+    if (!categoriaId) {
+      toast({ title: 'Erro', description: 'Salve a categoria primeiro', variant: 'destructive' })
       return
     }
 
-    if (!confirm(`Tem certeza que deseja excluir a pergunta:\n\n"${pergunta.pergunta}"?\n\nEsta acao nao pode ser desfeita.`)) {
-      return
+    // Se eh edicao e o slug mudou, mostra dialog de impacto antes de salvar
+    if (data.id && editandoPergunta?.nome_variavel_sugerido) {
+      const slugAntigo = editandoPergunta.nome_variavel_sugerido
+      const prefixo = categoriaNome ? `${categoriaNome}_` : ''
+      const novoSlugCompleto = data.nome_variavel_sugerido
+        ? (data.nome_variavel_sugerido.startsWith(prefixo) ? data.nome_variavel_sugerido : `${prefixo}${data.nome_variavel_sugerido}`)
+        : null
+
+      const slugMudou = novoSlugCompleto && slugAntigo !== novoSlugCompleto
+
+      if (slugMudou) {
+        setImpactDialog({
+          open: true,
+          slug: slugAntigo,
+          acao: 'alterar',
+          label: data.pergunta,
+          onConfirm: () => void executarSalvarPergunta(data),
+        })
+        return
+      }
     }
 
+    // Sem mudanca de slug ou pergunta nova -> salva direto
+    await executarSalvarPergunta(data)
+  }
+
+  /** Executa a exclusao real (chamado apos confirmacao de impacto) */
+  const executarExcluirPergunta = async (perguntaId: number) => {
     try {
-      await categoriasApi.excluirPergunta(pergunta.id)
+      await categoriasApi.excluirPergunta(perguntaId)
       setStatusIA({ text: 'Pergunta excluida com sucesso!', type: 'success' })
       setTimeout(() => setStatusIA({ text: '', type: 'info' }), 3000)
       await carregarPerguntas()
     } catch (error) {
       const msg = error instanceof Error ? error.message : 'Erro ao excluir pergunta'
       toast({ title: 'Erro', description: msg, variant: 'destructive' })
+    }
+  }
+
+  const handleExcluirPergunta = (index: number) => {
+    const pergunta = perguntas[index]
+
+    if (!pergunta.id) {
+      setPerguntas(prev => prev.filter((_, i) => i !== index))
+      return
+    }
+
+    const slug = pergunta.nome_variavel_sugerido
+
+    if (slug) {
+      // Tem variavel associada — mostra impacto
+      setImpactDialog({
+        open: true,
+        slug,
+        acao: 'excluir',
+        label: pergunta.pergunta,
+        onConfirm: () => void executarExcluirPergunta(pergunta.id!),
+      })
+    } else {
+      // Sem variavel — confirma simples
+      if (confirm(`Excluir a pergunta:\n\n"${pergunta.pergunta}"?\n\nEsta acao nao pode ser desfeita.`)) {
+        void executarExcluirPergunta(pergunta.id)
+      }
     }
   }
 
@@ -882,6 +934,15 @@ export function IATabContent({ categoriaId, categoriaNome, onJsonChange }: IATab
         onOpenChange={setLoteDialogOpen}
         categoriaId={categoriaId}
         onCriar={handleCriarLote}
+      />
+
+      <ImpactConfirmDialog
+        open={impactDialog.open}
+        onOpenChange={(open) => setImpactDialog(prev => ({ ...prev, open }))}
+        slug={impactDialog.slug}
+        acao={impactDialog.acao}
+        label={impactDialog.label}
+        onConfirm={impactDialog.onConfirm}
       />
     </div>
   )

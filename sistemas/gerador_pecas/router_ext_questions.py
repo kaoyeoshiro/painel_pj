@@ -719,10 +719,28 @@ async def atualizar_pergunta(
     variavel = None
 
     if slug_antigo and novo_slug_final and slug_antigo != novo_slug_final:
-        # Slug foi alterado pelo usuario - RENOMEAR a variavel
+        # Slug foi alterado pelo usuario - RENOMEAR a variavel existente
+        # Busca 1: por source_question_id (vinculo direto)
         variavel_existente = session_query(db, ExtractionVariable).filter(
             ExtractionVariable.source_question_id == pergunta.id
         ).first()
+
+        # Busca 2 (fallback): por slug antigo, caso source_question_id nao esteja setado
+        # Isso acontece com variaveis criadas por migrations, seeds ou sync JSON
+        if not variavel_existente:
+            variavel_existente = session_query(db, ExtractionVariable).filter(
+                ExtractionVariable.slug == slug_antigo,
+                ExtractionVariable.ativo == True
+            ).first()
+            if variavel_existente:
+                # Vincula a variavel a esta pergunta para evitar o problema no futuro
+                old_source = variavel_existente.source_question_id
+                variavel_existente.source_question_id = pergunta.id
+                logger.info(
+                    f"[SLUG-RENAME-PERGUNTA] Variavel '{slug_antigo}' encontrada por slug "
+                    f"(source_question_id era {old_source}). "
+                    f"Vinculada a pergunta_id={pergunta.id}"
+                )
 
         if variavel_existente:
             from .services_slug_rename import SlugRenameService
@@ -750,7 +768,8 @@ async def atualizar_pergunta(
                     detail=f"Erro ao renomear slug: {result.error}"
                 )
         else:
-            # Nao existe variavel vinculada - cria nova com o novo slug
+            # Nenhuma variavel encontrada (nem por source_question_id, nem por slug)
+            # Cria nova com o novo slug
             variavel = ensure_variable_for_question(db, pergunta, categoria) if categoria else None
     else:
         # Slug nao mudou - comportamento normal
