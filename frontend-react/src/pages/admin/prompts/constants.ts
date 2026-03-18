@@ -16,6 +16,7 @@ export const SISTEMAS = [
 export const TIPO_BADGES: Record<string, { label: string; variant: 'default' | 'secondary' | 'outline' }> = {
   system: { label: 'Sistema', variant: 'default' },
   analise: { label: 'Análise', variant: 'secondary' },
+  chat_edicao: { label: 'Chat de Edição', variant: 'secondary' },
   relatorio: { label: 'Relatório', variant: 'outline' },
   resumo: { label: 'Resumo', variant: 'outline' },
 }
