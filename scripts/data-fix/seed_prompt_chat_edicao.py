@@ -26,7 +26,26 @@ load_dotenv()
 
 from database.connection import get_db_context
 from admin.models import PromptConfig, ConfiguracaoIA
-from sistemas.gerador_pecas.services import PROMPT_CHAT_EDICAO_PADRAO
+
+# Importa a constante sem carregar toda a cadeia de imports do services.py
+# (evita problema com wrapt/slowapi no Python 3.13)
+import importlib.util
+_spec = importlib.util.spec_from_file_location(
+    "services_prompt",
+    os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))),
+                 "sistemas", "gerador_pecas", "services.py")
+)
+_mod = importlib.util.module_from_spec(_spec)
+# Extrair apenas a constante via AST para evitar executar imports
+import ast
+with open(_spec.origin, encoding="utf-8") as _f:
+    _tree = ast.parse(_f.read())
+for _node in ast.iter_child_nodes(_tree):
+    if isinstance(_node, ast.Assign):
+        for _target in _node.targets:
+            if isinstance(_target, ast.Name) and _target.id == "PROMPT_CHAT_EDICAO_PADRAO":
+                PROMPT_CHAT_EDICAO_PADRAO = ast.literal_eval(_node.value)
+                break
 
 
 def main():
