@@ -332,8 +332,8 @@ Conteúdo:
 
     partes.append("""
 **INSTRUÇÕES PARA USO DOS ARGUMENTOS:**
-1. Use o conteúdo acima como BASE, mas adapte ao caso concreto da minuta
-2. Mantenha a estrutura e os fundamentos jurídicos apresentados
+1. Use o conteúdo dos módulos acima como referência jurídica — as citações de jurisprudência e legislação presentes nestes módulos foram previamente curadas e podem ser utilizadas
+2. Você pode adaptar a REDAÇÃO ao contexto da minuta, mas NÃO substitua, invente ou complemente as citações jurisprudenciais (temas, súmulas, decisões, artigos de lei) por outras de sua memória
 3. Se houver variáveis como {{ nome }} ou {{ valor }}, substitua pelos dados do caso
 4. Integre o argumento de forma fluida na seção apropriada da minuta
 5. Os argumentos com maior similaridade (%) são mais relevantes semanticamente
