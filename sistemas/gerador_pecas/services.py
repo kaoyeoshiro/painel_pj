@@ -25,7 +25,7 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 from sistemas.gerador_pecas.models import GeracaoPeca
 from utils.timezone import now_local
 from admin.models_prompts import PromptModulo
-from admin.models import ConfiguracaoIA
+from admin.models import ConfiguracaoIA, PromptConfig
 from admin.models_prompt_groups import CategoriaOrdem
 from sistemas.gerador_pecas.detector_modulos import DetectorModulosIA
 
@@ -750,12 +750,13 @@ OAB/MS nº [NÚMERO]
             # Busca o prompt de sistema do banco de dados (ou usa o padrão)
             system_prompt = PROMPT_CHAT_EDICAO_PADRAO
             if self.db:
-                prompt_config = self.db.query(ConfiguracaoIA).filter(
-                    ConfiguracaoIA.sistema == "gerador_pecas",
-                    ConfiguracaoIA.chave == "prompt_chat_edicao"
+                prompt_cfg = self.db.query(PromptConfig).filter(
+                    PromptConfig.sistema == "gerador_pecas",
+                    PromptConfig.tipo == "chat_edicao",
+                    PromptConfig.is_active == True
                 ).first()
-                if prompt_config and prompt_config.valor:
-                    system_prompt = prompt_config.valor
+                if prompt_cfg and prompt_cfg.conteudo:
+                    system_prompt = prompt_cfg.conteudo
 
             # Monta o prompt do usuário com histórico
             prompt_parts = []
@@ -925,12 +926,13 @@ OAB/MS nº [NÚMERO]
         # Busca o prompt de sistema do banco de dados (ou usa o padrão)
         system_prompt = PROMPT_CHAT_EDICAO_PADRAO
         if self.db:
-            prompt_config = self.db.query(ConfiguracaoIA).filter(
-                ConfiguracaoIA.sistema == "gerador_pecas",
-                ConfiguracaoIA.chave == "prompt_chat_edicao"
+            prompt_cfg = self.db.query(PromptConfig).filter(
+                PromptConfig.sistema == "gerador_pecas",
+                PromptConfig.tipo == "chat_edicao",
+                PromptConfig.is_active == True
             ).first()
-            if prompt_config and prompt_config.valor:
-                system_prompt = prompt_config.valor
+            if prompt_cfg and prompt_cfg.conteudo:
+                system_prompt = prompt_cfg.conteudo
                 print(f"[EDITAR STREAM] Usando prompt customizado do banco ({len(system_prompt)} chars)")
             else:
                 print(f"[EDITAR STREAM] Usando prompt padrao ({len(system_prompt)} chars)")
