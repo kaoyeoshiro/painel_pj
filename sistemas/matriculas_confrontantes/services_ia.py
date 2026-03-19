@@ -557,14 +557,121 @@ def pdf_to_images(pdf_path: str, max_pages: Optional[int] = 10) -> List[Image.Im
 # API Gemini (usando serviço centralizado)
 # =========================
 
-async def call_gemini_vision_async(model: str, system_prompt: str, user_prompt: str, 
-                                   images_base64: List[str], temperature: float = 0.1, 
+async def _call_gemini_vision_direct(model: str, prompt: str, images_base64: List[str],
+                                      temperature: float, max_tokens: int) -> Dict:
+    """
+    Chama a API Gemini Vision diretamente com httpx client dedicado.
+
+    Necessário porque run_analysis_task roda em thread (BackgroundTasks) e cria
+    um event loop próprio via asyncio.run(). O httpx client singleton do
+    GeminiService foi criado no main event loop e trava quando usado de outro loop.
+    """
+    import httpx
+    import os
+    from services.gemini_service import GeminiService
+
+    api_key = os.getenv("GEMINI_KEY", "").strip()
+    if not api_key:
+        raise RuntimeError("GEMINI_KEY não configurada")
+
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
+
+    # Monta payload com imagens (mesmo formato do GeminiService._build_payload_with_images)
+    parts = []
+    for img_b64 in images_base64:
+        if img_b64.startswith("data:"):
+            header, data = img_b64.split(",", 1)
+            mime_type = header.split(":")[1].split(";")[0]
+        else:
+            mime_type = "image/jpeg"
+            data = img_b64
+        parts.append({"inline_data": {"mime_type": mime_type, "data": data}})
+    parts.append({"text": prompt})
+
+    payload: Dict = {
+        "contents": [{"role": "user", "parts": parts}],
+        "generationConfig": {"temperature": temperature},
+    }
+    if max_tokens is not None:
+        payload["generationConfig"]["maxOutputTokens"] = max_tokens
+
+    logger.info(f"   └─ Chamando Gemini API diretamente (modelo={model}, {len(images_base64)} imagens)...")
+
+    async with httpx.AsyncClient(
+        timeout=httpx.Timeout(connect=15.0, read=180.0, write=30.0, pool=10.0)
+    ) as client:
+        response = await client.post(url, json=payload)
+        response.raise_for_status()
+        data = response.json()
+
+    # Extrai conteúdo
+    content = ""
+    candidates = data.get("candidates", [])
+    if candidates:
+        parts_resp = candidates[0].get("content", {}).get("parts", [])
+        for part in parts_resp:
+            text = part.get("text", "")
+            if text:
+                content += text
+
+    if not content:
+        raise RuntimeError("Resposta vazia do Gemini (sem conteúdo gerado)")
+
+    return {"choices": [{"message": {"content": content}}]}
+
+
+async def _call_gemini_text_direct(model: str, system_prompt: str, user_prompt: str,
+                                    temperature: float, max_tokens: int) -> str:
+    """
+    Chama a API Gemini Text diretamente com httpx client dedicado.
+    Mesma razão de _call_gemini_vision_direct — evita singleton cross-loop.
+    """
+    import httpx
+    import os
+
+    api_key = os.getenv("GEMINI_KEY", "").strip()
+    if not api_key:
+        raise RuntimeError("GEMINI_KEY não configurada")
+
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/{model}:generateContent?key={api_key}"
+
+    payload: Dict = {
+        "contents": [{"role": "user", "parts": [{"text": user_prompt}]}],
+        "generationConfig": {"temperature": temperature},
+    }
+    if max_tokens is not None:
+        payload["generationConfig"]["maxOutputTokens"] = max_tokens
+    if system_prompt:
+        payload["systemInstruction"] = {"parts": [{"text": system_prompt}]}
+
+    async with httpx.AsyncClient(
+        timeout=httpx.Timeout(connect=15.0, read=180.0, write=30.0, pool=10.0)
+    ) as client:
+        response = await client.post(url, json=payload)
+        response.raise_for_status()
+        data = response.json()
+
+    content = ""
+    candidates = data.get("candidates", [])
+    if candidates:
+        parts_resp = candidates[0].get("content", {}).get("parts", [])
+        for part in parts_resp:
+            text = part.get("text", "")
+            if text:
+                content += text
+
+    if not content:
+        raise RuntimeError("Resposta vazia do Gemini (sem conteúdo gerado)")
+
+    return content
+
+
+async def call_gemini_vision_async(model: str, system_prompt: str, user_prompt: str,
+                                   images_base64: List[str], temperature: float = 0.1,
                                    max_tokens: int = 1500, api_key: str = None) -> Dict:
     """Chama a API Gemini com suporte a visão computacional (versão assíncrona)"""
-    from services.gemini_service import gemini_service
-    
     logger.info(f"   └─ Enviando {len(images_base64)} imagem(ns) para análise...")
-    
+
     # Prepara imagens no formato esperado (com prefixo data:)
     images_with_prefix = []
     for img_b64 in images_base64:
@@ -572,106 +679,70 @@ async def call_gemini_vision_async(model: str, system_prompt: str, user_prompt: 
             if not img_b64.startswith("data:"):
                 img_b64 = f"data:image/jpeg;base64,{img_b64}"
             images_with_prefix.append(img_b64)
-    
-    # Combina system_prompt e user_prompt
+
     prompt_completo = f"{system_prompt}\n\n{user_prompt}"
-    
+
     import time
     start_time = time.time()
-    
-    response = await gemini_service.generate_with_images(
+
+    # Usa client dedicado para evitar hang do singleton cross-event-loop
+    result = await _call_gemini_vision_direct(
+        model=model,
         prompt=prompt_completo,
         images_base64=images_with_prefix,
-        model=model,
-        max_tokens=max_tokens,
-        temperature=temperature
+        temperature=temperature,
+        max_tokens=max_tokens
     )
-    
+
     elapsed = time.time() - start_time
-    
-    if not response.success:
-        logger.error(f"   ❌ API retornou erro: {response.error}")
-        raise RuntimeError(f"Erro na API: {response.error}")
-    
     logger.info(f"   └─ Resposta recebida em {elapsed:.1f}s")
-    
-    # Retorna no formato esperado pelo código existente
-    return {
-        "choices": [{
-            "message": {
-                "content": response.content
-            }
-        }]
-    }
+    return result
 
 
-def call_gemini_vision(model: str, system_prompt: str, user_prompt: str, 
-                       images_base64: List[str], temperature: float = 0.1, 
+def call_gemini_vision(model: str, system_prompt: str, user_prompt: str,
+                       images_base64: List[str], temperature: float = 0.1,
                        max_tokens: int = 1500, api_key: str = None) -> Dict:
-    """Chama a API Gemini com suporte a visão computacional (detecta contexto)"""
+    """Chama a API Gemini com suporte a visão computacional (sync wrapper)"""
     import asyncio
-    
-    try:
-        loop = asyncio.get_running_loop()
-        import nest_asyncio
-        nest_asyncio.apply()
-        return loop.run_until_complete(
-            call_gemini_vision_async(model, system_prompt, user_prompt, 
-                                     images_base64, temperature, max_tokens, api_key)
-        )
-    except RuntimeError:
-        return asyncio.run(
-            call_gemini_vision_async(model, system_prompt, user_prompt, 
-                                     images_base64, temperature, max_tokens, api_key)
-        )
+
+    # BackgroundTasks roda em thread sem event loop — usa asyncio.run()
+    return asyncio.run(
+        call_gemini_vision_async(model, system_prompt, user_prompt,
+                                 images_base64, temperature, max_tokens, api_key)
+    )
 
 
 async def call_gemini_text_async(model: str, system_prompt: str, user_prompt: str,
-                                 temperature: float = 0.2, max_tokens: int = 2000, 
+                                 temperature: float = 0.2, max_tokens: int = 2000,
                                  api_key: str = None) -> str:
     """Chama a API Gemini para gerar texto (versão assíncrona)"""
-    from services.gemini_service import gemini_service
-    
     import time
     start_time = time.time()
-    
-    response = await gemini_service.generate(
-        prompt=user_prompt,
-        system_prompt=system_prompt,
+
+    # Usa client dedicado para evitar hang do singleton cross-event-loop
+    content = await _call_gemini_text_direct(
         model=model,
-        max_tokens=max_tokens,
-        temperature=temperature
+        system_prompt=system_prompt,
+        user_prompt=user_prompt,
+        temperature=temperature,
+        max_tokens=max_tokens
     )
-    
+
     elapsed = time.time() - start_time
-    
-    if not response.success:
-        raise RuntimeError(f"Erro na API: {response.error}")
-    
     logger.info(f"   └─ Relatório gerado em {elapsed:.1f}s")
-    
-    return response.content
+    return content
 
 
 def call_gemini_text(model: str, system_prompt: str, user_prompt: str,
-                     temperature: float = 0.2, max_tokens: int = 2000, 
+                     temperature: float = 0.2, max_tokens: int = 2000,
                      api_key: str = None) -> str:
-    """Chama a API Gemini para gerar texto (detecta contexto)"""
+    """Chama a API Gemini para gerar texto (sync wrapper)"""
     import asyncio
-    
-    try:
-        loop = asyncio.get_running_loop()
-        import nest_asyncio
-        nest_asyncio.apply()
-        return loop.run_until_complete(
-            call_gemini_text_async(model, system_prompt, user_prompt, 
-                                   temperature, max_tokens, api_key)
-        )
-    except RuntimeError:
-        return asyncio.run(
-            call_gemini_text_async(model, system_prompt, user_prompt, 
-                                   temperature, max_tokens, api_key)
-        )
+
+    return asyncio.run(
+        call_gemini_text_async(model, system_prompt, user_prompt,
+                               temperature, max_tokens, api_key)
+    )
 
 
 # Aliases para compatibilidade

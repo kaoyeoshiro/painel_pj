@@ -452,7 +452,12 @@ async def analisar_documento(
         raise HTTPException(status_code=400, detail="API Key não configurada. Solicite ao administrador.")
     
     if state.processing.get(file_id):
-        raise HTTPException(status_code=400, detail="Análise já em andamento")
+        if force:
+            # Força reset de análise travada
+            state.processing[file_id] = False
+            add_log(db, f"Reset forçado de análise travada: {file_id}", "warning")
+        else:
+            raise HTTPException(status_code=400, detail="Análise já em andamento. Use o botão de forçar reanálise.")
     
     state.processing[file_id] = True
     add_log(db, f"Iniciando análise: {file_id}", "info")
