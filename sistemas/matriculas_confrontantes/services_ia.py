@@ -702,10 +702,12 @@ async def call_gemini_vision_async(model: str, system_prompt: str, user_prompt: 
 def call_gemini_vision(model: str, system_prompt: str, user_prompt: str,
                        images_base64: List[str], temperature: float = 0.1,
                        max_tokens: int = 1500, api_key: str = None) -> Dict:
-    """Chama a API Gemini com suporte a visão computacional (sync wrapper)"""
+    """Chama a API Gemini com suporte a visão computacional (sync wrapper).
+
+    Sempre chamado de BackgroundTasks (thread sem event loop) — usa asyncio.run().
+    """
     import asyncio
 
-    # BackgroundTasks roda em thread sem event loop — usa asyncio.run()
     return asyncio.run(
         call_gemini_vision_async(model, system_prompt, user_prompt,
                                  images_base64, temperature, max_tokens, api_key)
@@ -736,13 +738,29 @@ async def call_gemini_text_async(model: str, system_prompt: str, user_prompt: st
 def call_gemini_text(model: str, system_prompt: str, user_prompt: str,
                      temperature: float = 0.2, max_tokens: int = 2000,
                      api_key: str = None) -> str:
-    """Chama a API Gemini para gerar texto (sync wrapper)"""
+    """Chama a API Gemini para gerar texto (detecta contexto).
+
+    Pode ser chamado de:
+    - Endpoint async (main event loop) → usa nest_asyncio
+    - BackgroundTasks (thread) → usa asyncio.run()
+    """
     import asyncio
 
-    return asyncio.run(
-        call_gemini_text_async(model, system_prompt, user_prompt,
-                               temperature, max_tokens, api_key)
-    )
+    try:
+        loop = asyncio.get_running_loop()
+        # Estamos no main event loop (ex: endpoint async de relatório)
+        import nest_asyncio
+        nest_asyncio.apply()
+        return loop.run_until_complete(
+            call_gemini_text_async(model, system_prompt, user_prompt,
+                                   temperature, max_tokens, api_key)
+        )
+    except RuntimeError:
+        # Estamos em thread sem event loop (BackgroundTasks)
+        return asyncio.run(
+            call_gemini_text_async(model, system_prompt, user_prompt,
+                                   temperature, max_tokens, api_key)
+        )
 
 
 # Aliases para compatibilidade
