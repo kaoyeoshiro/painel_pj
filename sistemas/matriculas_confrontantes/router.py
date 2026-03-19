@@ -595,33 +595,22 @@ async def resultado_grupo(
     return resultado
 
 
-def run_batch_analysis_task(grupo_id: int, file_ids: List[str], file_paths: List[str], 
+def run_batch_analysis_task(grupo_id: int, file_ids: List[str], file_paths: List[str],
                             model: str, api_key: str, user_id: int, matricula_hint: Optional[str] = None):
     """Task de análise em lote - processa múltiplos PDFs em uma única chamada à IA"""
     from database.connection import SessionLocal
-    from admin.models import ConfiguracaoIA
     from sistemas.matriculas_confrontantes.services_ia import (
-        pdf_to_images, image_to_base64, call_openrouter_vision, 
+        pdf_to_images, image_to_base64, call_openrouter_vision,
         get_system_prompt, get_analysis_prompt, clean_json_response,
         get_config_from_db
     )
     import logging
     logger = logging.getLogger("matriculas_batch_task")
-    
+
     logger.info(f"Iniciando análise em lote para grupo {grupo_id} com {len(file_ids)} arquivos")
-    
+
     db = SessionLocal()
     try:
-        # Verifica se há modelo configurado no banco
-        try:
-            config_model = session_query(db, ConfiguracaoIA).filter(
-                ConfiguracaoIA.sistema == "matriculas",
-                ConfiguracaoIA.chave == "modelo"
-            ).first()
-            if config_model and config_model.valor:
-                model = config_model.valor
-        except Exception as e:
-            logger.warning(f"Erro ao buscar modelo do banco: {e}")
         
         # Coleta todas as imagens de todos os PDFs
         all_images_b64 = []
@@ -686,11 +675,20 @@ INSTRUÇÕES ESPECIAIS PARA ANÁLISE EM LOTE:
 """
         vision_prompt = batch_instructions + base_prompt
         
-        # Obtém configurações do banco
-        temperatura = float(get_config_from_db("matriculas", "temperatura_analise") or "0.1")
-        max_tokens = int(get_config_from_db("matriculas", "max_tokens_analise") or "100000")
-        modelo_analise = get_config_from_db("matriculas", "modelo_analise") or model
-        
+        # Resolve parâmetros via hierarquia: agente > sistema > global > default
+        try:
+            from services.ia_params_resolver import get_ia_params
+            params = get_ia_params(db, "matriculas", "analise")
+            modelo_analise = params.modelo if params.modelo else model
+            temperatura = params.temperatura
+            max_tokens = params.max_tokens or 100000
+            logger.info(f"Modelo resolvido: {modelo_analise} (fonte: {params.modelo_source})")
+        except Exception as e:
+            logger.warning(f"Erro ao obter params, usando fallback: {e}")
+            temperatura = float(get_config_from_db("matriculas", "temperatura_analise") or "0.1")
+            max_tokens = int(get_config_from_db("matriculas", "max_tokens_analise") or "100000")
+            modelo_analise = get_config_from_db("matriculas", "modelo_analise") or model
+
         # Faz chamada à IA com todas as imagens
         data = call_openrouter_vision(
             model=modelo_analise,
@@ -780,7 +778,6 @@ INSTRUÇÕES ESPECIAIS PARA ANÁLISE EM LOTE:
 def run_analysis_task(file_id: str, file_path: str, model: str, api_key: str, user_id: int, matricula_hint: Optional[str] = None):
     """Task de análise executada em background - não armazena o PDF, apenas o JSON"""
     from database.connection import SessionLocal
-    from admin.models import ConfiguracaoIA
     
     file_name = os.path.basename(file_path)
     logger.info(f"📄 Iniciando análise: {file_name}")
@@ -789,23 +786,11 @@ def run_analysis_task(file_id: str, file_path: str, model: str, api_key: str, us
     
     db = SessionLocal()
     try:
-        # Verifica se há modelo configurado no banco
-        try:
-            config_model = session_query(db, ConfiguracaoIA).filter(
-                ConfiguracaoIA.sistema == "matriculas",
-                ConfiguracaoIA.chave == "modelo"
-            ).first()
-            if config_model and config_model.valor:
-                model = config_model.valor
-        except Exception as e:
-            logger.warning(f"   ⚠️ Erro ao buscar modelo do banco: {e}")
-        
-        logger.info(f"   └─ Modelo: {model}")
-        
-        # Importa função de análise
+        # O modelo é resolvido dentro de analyze_with_vision_llm via get_ia_params
+        # que segue a hierarquia: agente > sistema > global > default
         from sistemas.matriculas_confrontantes.services_ia import analyze_with_vision_llm
-        
-        logger.info(f"🤖 Enviando para IA...")
+
+        logger.info(f"🤖 Enviando para IA (modelo será resolvido pelo ia_params_resolver)...")
         result = analyze_with_vision_llm(model, file_path, api_key, matricula_hint)
         result_dict = result_to_dict(result)
         

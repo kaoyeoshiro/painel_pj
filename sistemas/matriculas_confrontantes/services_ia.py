@@ -763,7 +763,7 @@ def analyze_with_vision_llm(model: str, file_path: str, api_key: str = None, mat
             hint_text = f"\n\nATENÇÃO: A MATRÍCULA PRINCIPAL (OBJETO DA ANÁLISE) É: {matricula_hint}\nDê prioridade total a esta matrícula como sendo o imóvel central.\n"
             vision_prompt = hint_text + vision_prompt
 
-        # Usa resolver de parâmetros por agente
+        # Usa resolver de parâmetros por agente (hierarquia: agente > sistema > global > default)
         try:
             from database.connection import SessionLocal
             db = SessionLocal()
@@ -774,11 +774,14 @@ def analyze_with_vision_llm(model: str, file_path: str, api_key: str = None, mat
             modelo_analise = params.modelo if params.modelo else model
             temperatura = params.temperatura
             max_tokens = params.max_tokens or 100000
+            logger.info(f"   └─ Modelo resolvido: {modelo_analise} (fonte: {params.modelo_source})")
+            logger.info(f"   └─ Thinking level: {params.thinking_level} (fonte: {params.thinking_level_source})")
         except Exception as e:
             logger.warning(f"Erro ao obter params por resolver, usando fallback: {e}")
             temperatura = float(get_config_from_db("matriculas", "temperatura_analise") or "0.1")
             max_tokens = int(get_config_from_db("matriculas", "max_tokens_analise") or "100000")
             modelo_analise = get_config_from_db("matriculas", "modelo_analise") or model
+            logger.info(f"   └─ Modelo (fallback): {modelo_analise}")
 
         data = call_openrouter_vision(
             model=modelo_analise,

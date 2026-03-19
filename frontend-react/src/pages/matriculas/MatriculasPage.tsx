@@ -129,28 +129,44 @@ export default function MatriculasPage() {
     }
   }, [pdfViewerUrl])
 
-  // Carrega detalhes do documento
+  // Carrega PDF para visualizacao (independente da analise)
+  const loadPdfViewer = useCallback(
+    async (fileId: string) => {
+      try {
+        const blob = await matriculasApi.blob(`/files/${fileId}/view`)
+        const url = URL.createObjectURL(blob)
+        if (pdfViewerUrl) URL.revokeObjectURL(pdfViewerUrl)
+        setPdfViewerUrl(url)
+      } catch (error) {
+        console.error('Erro ao carregar PDF:', error)
+      }
+    },
+    [pdfViewerUrl]
+  )
+
+  // Carrega detalhes do documento (analise + PDF)
   const loadDocumentDetails = useCallback(
     async (fileId: string) => {
+      // Sempre carrega o PDF no visualizador
+      loadPdfViewer(fileId)
+
+      // Tenta carregar resultado da analise (pode nao existir ainda)
       try {
         const result = await matriculasApi.get<ResultadoAnalise>(`/resultado/${fileId}`)
         setDocumentDetails(result)
         setCurrentAnaliseId(result.analise_id || null)
 
-        // Carrega PDF via cliente centralizado
-        const blob = await matriculasApi.blob(`/files/${fileId}/view`)
-        const url = URL.createObjectURL(blob)
-        if (pdfViewerUrl) URL.revokeObjectURL(pdfViewerUrl)
-        setPdfViewerUrl(url)
-
-        // Gera relatorio
+        // Gera relatorio somente se ha resultado
         await generateReport()
-      } catch (error) {
-        console.error('Erro ao carregar documento:', error)
+      } catch {
+        // Arquivo ainda nao analisado — limpa dados anteriores
+        setDocumentDetails(null)
+        setCurrentAnaliseId(null)
+        setReportText(null)
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps -- generateReport é estável (não depende de estado reativo)
-    [pdfViewerUrl]
+    [loadPdfViewer]
   )
 
   // Seleciona arquivo
@@ -265,12 +281,18 @@ export default function MatriculasPage() {
 
   // Polling de analise individual
   const startPolling = (fileId: string) => {
+    // Pula as primeiras verificacoes para dar tempo da task iniciar
+    let pollCount = 0
+
     pollingIntervalRef.current = setInterval(async () => {
       try {
+        pollCount++
         const status = await matriculasApi.get<AnaliseStatusResponse>(`/analisar/${fileId}/status`)
 
         if (!status.processing && status.has_result) {
+          // Analise concluida com sucesso
           if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current)
+          if (pollingTimeoutRef.current) clearTimeout(pollingTimeoutRef.current)
           setIsAnalyzing(false)
           setShowProcessingModal(false)
 
@@ -279,6 +301,19 @@ export default function MatriculasPage() {
           refetchLogs()
 
           toast({ title: 'Sucesso', description: 'Analise concluida com sucesso!' })
+        } else if (!status.processing && !status.has_result && pollCount > 3) {
+          // Analise falhou — processing=false mas sem resultado (apos delay inicial)
+          if (pollingIntervalRef.current) clearInterval(pollingIntervalRef.current)
+          if (pollingTimeoutRef.current) clearTimeout(pollingTimeoutRef.current)
+          setIsAnalyzing(false)
+          setShowProcessingModal(false)
+
+          refetchLogs()
+          toast({
+            title: 'Erro na analise',
+            description: 'A analise falhou. Verifique os logs para mais detalhes.',
+            variant: 'destructive',
+          })
         }
       } catch (error) {
         console.error('Erro no polling:', error)
