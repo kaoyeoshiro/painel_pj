@@ -1166,35 +1166,44 @@ async def gerar_relatorio(
     
     try:
         from sistemas.matriculas_confrontantes.services_ia import (
-            call_openrouter_text, build_full_report_prompt, get_system_prompt
+            call_gemini_text_async, build_full_report_prompt, get_system_prompt,
+            get_config_from_db
         )
-        
+        from services.gemini_service import GeminiService
+
         # Monta payload
         payload = analise.resultado_json or {}
         payload["gerado_em"] = to_iso_utc(now_utc())
-        
-        # Obtém configurações do banco
-        from sistemas.matriculas_confrontantes.services_ia import get_config_from_db
-        
-        modelo_relatorio = get_config_from_db("matriculas", "modelo_relatorio") or FULL_REPORT_MODEL
-        temperatura = float(get_config_from_db("matriculas", "temperatura_relatorio") or "0.2")
-        max_tokens = int(get_config_from_db("matriculas", "max_tokens_relatorio") or "3200")
-        
+
+        # Resolve parâmetros do relatório via hierarquia
+        try:
+            from services.ia_params_resolver import get_ia_params
+            params = get_ia_params(db, "matriculas", "relatorio")
+            modelo_relatorio = params.modelo or FULL_REPORT_MODEL
+            temperatura = params.temperatura
+            max_tokens = params.max_tokens or 3200
+        except Exception:
+            modelo_relatorio = get_config_from_db("matriculas", "modelo_relatorio") or FULL_REPORT_MODEL
+            temperatura = float(get_config_from_db("matriculas", "temperatura_relatorio") or "0.2")
+            max_tokens = int(get_config_from_db("matriculas", "max_tokens_relatorio") or "3200")
+
+        # Normaliza modelo
+        modelo_relatorio = GeminiService.normalize_model(modelo_relatorio)
+
         payload["modelo_utilizado"] = modelo_relatorio
-        
+
         payload_json = json.dumps(payload, ensure_ascii=False, indent=2)
-        
-        # Gera relatório - usa prompt do banco se disponível
+
+        # Gera relatório — await direto (endpoint é async)
         prompt = build_full_report_prompt(payload_json)
         system_prompt = get_system_prompt()
-        
-        report_text = call_openrouter_text(
+
+        report_text = await call_gemini_text_async(
             model=modelo_relatorio,
             system_prompt=system_prompt,
             user_prompt=prompt,
             temperature=temperatura,
-            max_tokens=max_tokens,
-            api_key=state.api_key
+            max_tokens=max_tokens
         )
         
         report_text = report_text.strip()
@@ -1271,32 +1280,23 @@ async def download_relatorio_docx(
         # Gera relatório usando IA
         try:
             from sistemas.matriculas_confrontantes.services_ia import (
-                call_openrouter_text, build_full_report_prompt, get_system_prompt, get_config_from_db
+                call_gemini_text_async, build_full_report_prompt, get_system_prompt, get_config_from_db
             )
+            from services.gemini_service import GeminiService
 
-            # Verifica API key
-            api_key = state.api_key
-            if not api_key:
-                import os
-                from admin.models import ConfiguracaoIA
-                api_key = os.getenv("OPENROUTER_API_KEY", "")
-                if not api_key:
-                    config = session_query(db, ConfiguracaoIA).filter(
-                        ConfiguracaoIA.sistema == "global",
-                        ConfiguracaoIA.chave == "openrouter_api_key"
-                    ).first()
-                    api_key = config.valor if config else None
+            # Resolve parâmetros do relatório via hierarquia
+            try:
+                from services.ia_params_resolver import get_ia_params
+                params = get_ia_params(db, "matriculas", "relatorio")
+                modelo_relatorio = params.modelo or FULL_REPORT_MODEL
+                temperatura = params.temperatura
+                max_tokens = params.max_tokens or 3200
+            except Exception:
+                modelo_relatorio = get_config_from_db("matriculas", "modelo_relatorio") or FULL_REPORT_MODEL
+                temperatura = float(get_config_from_db("matriculas", "temperatura_relatorio") or "0.2")
+                max_tokens = int(get_config_from_db("matriculas", "max_tokens_relatorio") or "3200")
 
-            if not api_key:
-                raise HTTPException(
-                    status_code=500,
-                    detail="API Key não configurada. Configure no painel admin."
-                )
-
-            # Configurações
-            modelo_relatorio = get_config_from_db("matriculas", "modelo_relatorio") or FULL_REPORT_MODEL
-            temperatura = float(get_config_from_db("matriculas", "temperatura_relatorio") or "0.2")
-            max_tokens = int(get_config_from_db("matriculas", "max_tokens_relatorio") or "3200")
+            modelo_relatorio = GeminiService.normalize_model(modelo_relatorio)
 
             # Monta payload e gera relatório
             payload = analise.resultado_json.copy()
@@ -1307,14 +1307,13 @@ async def download_relatorio_docx(
             prompt = build_full_report_prompt(payload_json)
             system_prompt = get_system_prompt()
 
-            report_text = call_openrouter_text(
+            report_text = (await call_gemini_text_async(
                 model=modelo_relatorio,
                 system_prompt=system_prompt,
                 user_prompt=prompt,
                 temperature=temperatura,
-                max_tokens=max_tokens,
-                api_key=api_key
-            ).strip()
+                max_tokens=max_tokens
+            )).strip()
 
             # Salva no banco
             analise.relatorio_texto = report_text

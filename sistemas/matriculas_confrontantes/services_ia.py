@@ -738,29 +738,13 @@ async def call_gemini_text_async(model: str, system_prompt: str, user_prompt: st
 def call_gemini_text(model: str, system_prompt: str, user_prompt: str,
                      temperature: float = 0.2, max_tokens: int = 2000,
                      api_key: str = None) -> str:
-    """Chama a API Gemini para gerar texto (detecta contexto).
-
-    Pode ser chamado de:
-    - Endpoint async (main event loop) → usa nest_asyncio
-    - BackgroundTasks (thread) → usa asyncio.run()
-    """
+    """Chama a API Gemini para gerar texto (sync — apenas para BackgroundTasks)."""
     import asyncio
 
-    try:
-        loop = asyncio.get_running_loop()
-        # Estamos no main event loop (ex: endpoint async de relatório)
-        import nest_asyncio
-        nest_asyncio.apply()
-        return loop.run_until_complete(
-            call_gemini_text_async(model, system_prompt, user_prompt,
-                                   temperature, max_tokens, api_key)
-        )
-    except RuntimeError:
-        # Estamos em thread sem event loop (BackgroundTasks)
-        return asyncio.run(
-            call_gemini_text_async(model, system_prompt, user_prompt,
-                                   temperature, max_tokens, api_key)
-        )
+    return asyncio.run(
+        call_gemini_text_async(model, system_prompt, user_prompt,
+                               temperature, max_tokens, api_key)
+    )
 
 
 # Aliases para compatibilidade
