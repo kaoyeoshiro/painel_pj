@@ -218,7 +218,6 @@ export function UsersPage() {
       const missing: string[] = []
       if (!formData.username?.trim()) missing.push('Username')
       if (!formData.full_name?.trim()) missing.push('Nome Completo')
-      if (!formData.password?.trim()) missing.push('Senha')
       if (missing.length > 0) {
         toast({
           title: 'Campos obrigatorios',
@@ -227,21 +226,31 @@ export function UsersPage() {
         })
         return
       }
-      // Valida requisitos de senha antes de enviar
-      const pwd = formData.password ?? ''
-      const pwdErrors: string[] = []
-      if (pwd.length < 8) pwdErrors.push('mínimo 8 caracteres')
-      if (!/[A-Z]/.test(pwd)) pwdErrors.push('uma letra maiúscula')
-      if (!/[a-z]/.test(pwd)) pwdErrors.push('uma letra minúscula')
-      if (!/\d/.test(pwd)) pwdErrors.push('um número')
-      if (!/[!@#$%^&*(),.?":{}|<>_\-+=[\]\\\/~`';]/.test(pwd)) pwdErrors.push('um caractere especial (!@#$%^&*)')
-      if (pwdErrors.length > 0) {
-        toast({
-          title: 'Senha fraca',
-          description: `A senha deve conter: ${pwdErrors.join(', ')}`,
-          variant: 'destructive',
-        })
-        return
+      // Valida requisitos de senha apenas se o usuario digitou uma
+      const pwd = formData.password?.trim() ?? ''
+      if (pwd.length > 0) {
+        const pwdErrors: string[] = []
+        if (pwd.length < 8) pwdErrors.push('minimo 8 caracteres')
+        if (!/[A-Z]/.test(pwd)) pwdErrors.push('uma letra maiuscula')
+        if (!/[a-z]/.test(pwd)) pwdErrors.push('uma letra minuscula')
+        if (!/\d/.test(pwd)) pwdErrors.push('um numero')
+        if (!/[!@#$%^&*(),.?":{}|<>_\-+=[\]\\\/~`';]/.test(pwd)) pwdErrors.push('um caractere especial (!@#$%^&*)')
+        const forbiddenWords = ['password', 'senha', 'admin', 'user', 'login', 'root']
+        const pwdLower = pwd.toLowerCase()
+        for (const word of forbiddenWords) {
+          if (pwdLower.includes(word)) {
+            pwdErrors.push(`nao pode conter "${word}"`)
+            break
+          }
+        }
+        if (pwdErrors.length > 0) {
+          toast({
+            title: 'Senha fraca',
+            description: `A senha deve conter: ${pwdErrors.join(', ')}`,
+            variant: 'destructive',
+          })
+          return
+        }
       }
     } else {
       // Edicao — nome completo continua obrigatorio
@@ -678,15 +687,17 @@ export function UsersPage() {
 
             {!editingUser && (
               <div className="space-y-2">
-                <Label htmlFor="password">Senha *</Label>
+                <Label htmlFor="password">Senha</Label>
                 <Input
                   id="password"
                   type="password"
                   value={formData.password}
                   onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                  placeholder="Deixe vazio para senha padrao"
                 />
                 <p className="text-xs text-muted-foreground">
-                  Mínimo 8 caracteres com maiúscula, minúscula, número e caractere especial (!@#$%^&*)
+                  Se vazio, o usuario recebera a senha padrao e devera troca-la no primeiro acesso.
+                  Se informada: minimo 8 caracteres com maiuscula, minuscula, numero e caractere especial.
                 </p>
               </div>
             )}
