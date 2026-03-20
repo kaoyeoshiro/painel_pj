@@ -687,35 +687,38 @@ class OrquestradorAgentes:
     def _obter_codigos_permitidos(self, tipo_peca: str = None) -> tuple:
         """
         Obtém os códigos de documento permitidos para o tipo de peça.
-        
+
         Args:
             tipo_peca: Tipo de peça (ex: 'contestacao'). Se None, retorna None (modo legado).
-            
+
         Returns:
             Tupla (codigos_permitidos, codigos_primeiro_doc), ou (None, set()) para usar filtro legado.
         """
         filtro = self._obter_filtro_categorias()
-        
+
         if filtro is None or not filtro.tem_configuracao():
             # Sem configuração no banco, usa filtro legado
             return None, set()
-        
+
         if tipo_peca:
             # Modo manual: usa categorias do tipo de peça específico
-            codigos = filtro.get_codigos_permitidos(tipo_peca)
-            codigos_primeiro = filtro.get_codigos_primeiro_documento(tipo_peca)
+            # Passa group_id para buscar config específica do grupo
+            codigos = filtro.get_codigos_permitidos(tipo_peca, group_id=self.group_id)
+            codigos_primeiro = filtro.get_codigos_primeiro_documento(tipo_peca, group_id=self.group_id)
             if codigos:
-                print(f"[CONFIG] Usando {len(codigos)} códigos de documento para '{tipo_peca}'")
+                print(f"[CONFIG] Usando {len(codigos)} códigos de documento para '{tipo_peca}' (group_id={self.group_id}): {sorted(codigos)}")
                 if codigos_primeiro:
-                    print(f"[CONFIG] {len(codigos_primeiro)} códigos com filtro 'primeiro documento' (ex: Petição Inicial)")
+                    print(f"[CONFIG] {len(codigos_primeiro)} códigos com filtro 'primeiro documento' (ex: Petição Inicial): {sorted(codigos_primeiro)}")
                 return codigos, codigos_primeiro
-        
+            else:
+                print(f"[CONFIG] AVISO: Nenhum código encontrado para '{tipo_peca}' (group_id={self.group_id}) - usando modo automático")
+
         # Modo automático ou tipo não encontrado: usa todos os códigos configurados
         codigos = filtro.get_todos_codigos()
         if codigos:
             print(f"[CONFIG] Modo automático: usando {len(codigos)} códigos de documento")
             return codigos, set()  # No modo automático, não aplica filtro de primeiro documento
-        
+
         return None, set()
     
     async def processar_processo(

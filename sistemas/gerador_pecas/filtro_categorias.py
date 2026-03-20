@@ -111,13 +111,17 @@ class FiltroCategoriasDocumento:
         if group_id is not None:
             codigos = self._get_codigos_por_grupo(tipo_peca, group_id)
             if codigos:
+                print(f"[FILTRO] get_codigos_permitidos('{tipo_peca}', group_id={group_id}): {len(codigos)} códigos via tipo_peca_grupo_categorias")
                 return codigos
             # Fallback: se nao tem config por grupo, usa cache antigo
+            print(f"[FILTRO] get_codigos_permitidos('{tipo_peca}', group_id={group_id}): SEM config por grupo, usando fallback legado")
 
         tipo_lower = tipo_peca.lower() if tipo_peca else ""
 
         if tipo_lower in self._cache_tipos:
-            return self._cache_tipos[tipo_lower]["codigos"]
+            codigos_legado = self._cache_tipos[tipo_lower]["codigos"]
+            print(f"[FILTRO] get_codigos_permitidos('{tipo_peca}'): {len(codigos_legado)} códigos via TipoPeca legado")
+            return codigos_legado
 
         # Busca no banco se não estiver em cache
         tipo = self.db.query(TipoPeca).filter(

@@ -919,9 +919,14 @@ async def processar_processo_stream(
                         if filtro.tem_configuracao():
                             codigos = filtro.get_codigos_permitidos(tipo_peca_inicial, group_id=group_id)
                             codigos_primeiro = filtro.get_codigos_primeiro_documento(tipo_peca_inicial, group_id=group_id)
+                            print(f"[ROUTER] Filtro para '{tipo_peca_inicial}' (group_id={group_id}): codigos={sorted(codigos) if codigos else 'VAZIO'}, primeiro_doc={sorted(codigos_primeiro) if codigos_primeiro else 'VAZIO'}")
                             if codigos:
                                 orq.agente1.atualizar_codigos_permitidos(codigos, codigos_primeiro)
                                 yield stream_helper.format_info(f'Filtro ativado: {len(codigos)} categorias para {tipo_peca_inicial}')
+                            else:
+                                print(f"[ROUTER] AVISO: Nenhum código retornado pelo filtro para '{tipo_peca_inicial}' group_id={group_id} — agente usará códigos do modo automático")
+                        else:
+                            print(f"[ROUTER] AVISO: Filtro sem configuração (tem_configuracao=False) — agente usará filtro legado")
                     except Exception as e:
                         print(f"[ROUTER] ERRO ao carregar filtro de categorias: {e}")
                         print(f"[ROUTER] Traceback: {traceback.format_exc()}")

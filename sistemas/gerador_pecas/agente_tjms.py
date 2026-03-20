@@ -1503,6 +1503,7 @@ RESUMOS DOS DOCUMENTOS PARA ANÁLISE:
                     # Filtrar documentos usando códigos permitidos ou filtro legado
                     # Aplica também lógica especial de "primeiro documento" (ex: Petição Inicial)
                     docs_filtrados = []
+                    docs_excluidos = []  # Para diagnóstico
                     codigos_primeiro_lote = {}  # codigo -> data_key do primeiro lote encontrado
 
                     for d in docs_para_analisar:
@@ -1513,6 +1514,7 @@ RESUMOS DOS DOCUMENTOS PARA ANÁLISE:
 
                         # Verifica se o documento é permitido
                         if not documento_permitido(codigo, self.codigos_permitidos):
+                            docs_excluidos.append((codigo, d.descricao or '?', d.categoria_nome or '?'))
                             continue
 
                         # Verifica se é código de "primeiro documento" (ex: Petição Inicial)
@@ -1535,6 +1537,17 @@ RESUMOS DOS DOCUMENTOS PARA ANÁLISE:
                         if self.codigos_primeiro_doc:
                             msg_filtro += f" | {len(self.codigos_primeiro_doc)} codigos com filtro 'primeiro documento'"
                         print(f"      {msg_filtro}")
+                        if docs_excluidos:
+                            print(f"      [FILTRO] {len(docs_excluidos)} documentos EXCLUÍDOS pelo filtro de códigos:")
+                            for cod, desc, cat in docs_excluidos[:10]:
+                                print(f"         - código={cod} desc='{desc[:50]}' cat='{cat}'")
+                            if len(docs_excluidos) > 10:
+                                print(f"         ... e mais {len(docs_excluidos) - 10}")
+                        # Log dos documentos incluídos para diagnóstico
+                        print(f"      [FILTRO] {len(docs_para_analisar)} documentos INCLUÍDOS:")
+                        for d in docs_para_analisar:
+                            cod = int(d.tipo_documento) if d.tipo_documento else 0
+                            print(f"         + código={cod} desc='{(d.descricao or '?')[:50]}' cat='{d.categoria_nome or '?'}'")
                     else:
                         print(f"      Filtrado para {len(docs_para_analisar)} documentos (excluidas categorias administrativas)")
 
