@@ -18,6 +18,8 @@ import { BarraStatus } from './components/Revisao/BarraStatus'
 import { EncaminharDialog } from './components/Revisao/EncaminharDialog'
 import { RejeicaoForm } from './components/Revisao/RejeicaoForm'
 import { PainelDocumentos } from './components/Documentos/PainelDocumentos'
+import { EditorPeca } from './components/Revisao/EditorPeca'
+import { salvarConteudo } from './api'
 
 // ---------------------------------------------------------------------------
 // Componente principal
@@ -40,6 +42,9 @@ export function RevisaoItemPage() {
   const [showEncaminhar, setShowEncaminhar] = useState(false)
   const [showRejeicao, setShowRejeicao] = useState(false)
 
+  // Conteúdo atual do editor (atualizado a cada tecla pelo EditorPeca)
+  const [conteudoAtual, setConteudoAtual] = useState('')
+
   const {
     item,
     loading,
@@ -55,7 +60,8 @@ export function RevisaoItemPage() {
   // ---------------------------------------------------------------------------
 
   const handleAprovarClick = () => {
-    const conteudo = item?.conteudo_editado ?? item?.conteudo_peca ?? ''
+    // Usa conteúdo do editor se disponível; fallback para dados do servidor
+    const conteudo = conteudoAtual || item?.conteudo_editado || item?.conteudo_peca || ''
     void handleAprovar(conteudo)
   }
 
@@ -133,38 +139,23 @@ export function RevisaoItemPage() {
           style={{ borderColor: C.gray200 }}
         >
           {/* Área de conteúdo principal (editor ou detalhes) */}
-          <div className="flex-1 overflow-y-auto p-5">
+          <div className="flex-1 overflow-hidden flex flex-col p-5">
             {temPeca ? (
-              /* Placeholder para EditorPeca (Task 11) — exibe conteúdo como texto */
-              <div>
-                <p
-                  className="text-xs font-semibold uppercase tracking-wider mb-3"
-                  style={{ color: C.text400 }}
-                >
-                  Peça gerada
-                  {item.conteudo_editado && (
-                    <span
-                      className="ml-2 normal-case font-normal"
-                      style={{ color: C.navy600 }}
-                    >
-                      (editada)
-                    </span>
-                  )}
-                </p>
-                {/* TODO: Task 11 — substituir por <EditorPeca /> com TipTap */}
-                <div
-                  className="prose prose-sm max-w-none whitespace-pre-wrap text-sm leading-relaxed rounded-lg border p-4"
-                  style={{ color: C.text700, borderColor: C.gray200, background: C.gray50 }}
-                >
-                  {conteudoExibir}
-                </div>
-              </div>
+              /* EditorPeca com TipTap — edição rica com toolbar e auto-save */
+              <EditorPeca
+                conteudo={conteudoExibir ?? ''}
+                onContentChange={(html) => setConteudoAtual(html)}
+                onAutoSave={(html) => void salvarConteudo(item.id, html)}
+                readOnly={item.status !== 'em_revisao'}
+              />
             ) : (
               /* Sem peça: mostra detalhes da classificação e opção de rejeitar */
-              <DetalhesItemSemPeca
-                item={item}
-                onRejeitar={() => setShowRejeicao(true)}
-              />
+              <div className="overflow-y-auto flex-1">
+                <DetalhesItemSemPeca
+                  item={item}
+                  onRejeitar={() => setShowRejeicao(true)}
+                />
+              </div>
             )}
           </div>
 
