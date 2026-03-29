@@ -8,5 +8,5 @@ PORTAL_PASS = os.getenv("PORTAL_PGE_PASS", "")
 INTERVALO = int(os.getenv("WORKER_INTERVALO", "300"))
 BD_PGE_SCRIPT = os.getenv(
     "BD_PGE_SCRIPT",
-    r"E:\Projetos\Automacao_Total\BD_PGE.NET\scripts\inserir_observacao.py"
+    r"E:\Projetos\BD_PGE.NET\scripts\inserir_observacao.py"
 )

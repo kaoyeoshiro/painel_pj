@@ -41,18 +41,22 @@ def buscar_pendentes(token: str) -> list[dict]:
 
 
 def inserir_observacao(cdpendencia: int, texto: str) -> bool:
+    """Insere observacao no BD_PGE.NET via script externo."""
+    # Normalizar texto para ASCII seguro (Oracle/Windows cp1252)
+    texto_safe = texto.replace("\u2014", "-").replace("\u2013", "-").replace("\u2018", "'").replace("\u2019", "'")
     try:
         resultado = subprocess.run(
             [sys.executable, BD_PGE_SCRIPT,
              "--cdpendencia", str(cdpendencia),
-             "--texto", texto, "--sem-confirmacao"],
-            capture_output=True, text=True, timeout=60,
+             "--texto", texto_safe, "--sem-confirmacao"],
+            capture_output=True, timeout=120,
         )
         if resultado.returncode == 0:
             logger.info(f"Observacao inserida: cdpendencia={cdpendencia}")
             return True
         else:
-            logger.error(f"Erro ao inserir: {resultado.stderr}")
+            stderr = resultado.stderr.decode("utf-8", errors="replace")
+            logger.error(f"Erro ao inserir (rc={resultado.returncode}): {stderr[:500]}")
             return False
     except Exception as e:
         logger.error(f"Excecao ao inserir observacao: {e}")
