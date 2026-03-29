@@ -134,10 +134,18 @@ export interface ChatMensagem {
 
 export interface DocumentoTJMS {
   id: string
-  tipo: string
-  descricao: string
-  data: string
-  codigo: number
+  tipo_codigo: number | null
+  tipo_descricao: string | null
+  descricao: string | null
+  data_juntada: string | null
+  mimetype: string | null
+  nivel_sigilo: number
+  ordem: number
+}
+
+export interface DocumentosResponse {
+  numero_cnj: string
+  documentos: DocumentoTJMS[]
 }
 
 // ---------------------------------------------------------------------------
