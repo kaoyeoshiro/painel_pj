@@ -66,16 +66,11 @@ export function useFilaRevisao(): UseFilaRevisaoReturn {
     (filtrosState: FiltrosState, paginaAtual: number) => {
       const filtros: Record<string, string | number> = { pagina: paginaAtual }
 
-      // Tab-based status shortcuts
-      if (filtrosState.tab === 'pendentes') {
-        filtros.status = 'pendente'
-      } else if (filtrosState.tab === 'concluidos') {
-        filtros.status = 'concluido'
-      } else if (filtrosState.tab === 'para_revisar') {
-        filtros.status = 'em_revisao'
-      } else if (filtrosState.tab === 'para_inserir') {
-        filtros.status = 'aprovado'
-      } else if (filtrosState.status) {
+      // Envia o tab diretamente para o backend, que tem sua própria lógica de filtro por aba
+      if (filtrosState.tab) filtros.tab = filtrosState.tab
+
+      // Filtro de status manual (sem tab ativo)
+      if (!filtrosState.tab && filtrosState.status) {
         filtros.status = filtrosState.status
       }
 

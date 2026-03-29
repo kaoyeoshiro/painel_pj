@@ -23,6 +23,7 @@ const api = createApiClient('/revisao/api')
 /** Busca lista paginada de itens com filtros opcionais */
 export function fetchItens(filtros: FiltrosRevisao = {}): Promise<ItemRevisaoListResponse> {
   const params = new URLSearchParams()
+  if (filtros.tab) params.set('tab', filtros.tab)
   if (filtros.status) params.set('status', filtros.status)
   if (filtros.urgencia) params.set('urgencia', filtros.urgencia)
   if (filtros.tipo_peca) params.set('tipo_peca', filtros.tipo_peca)
@@ -92,6 +93,11 @@ export function encaminharLote(
 /** Marca item como inserido no sistema (concluido) */
 export function marcarInserido(id: number): Promise<ItemRevisao> {
   return api.post<ItemRevisao>(`/itens/${id}/marcar-inserido`)
+}
+
+/** Desfaz aprovação/rejeição, voltando o item para em_revisao */
+export function desfazerItem(id: number): Promise<ItemRevisao> {
+  return api.post<ItemRevisao>(`/itens/${id}/desfazer`)
 }
 
 /** Salva conteúdo editado da peça */
