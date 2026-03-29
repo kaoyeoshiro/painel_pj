@@ -125,3 +125,23 @@ def register_v1_routers(app):
     from app.api.v1.routers.text_normalizer import router as text_normalizer_router
 
     app.include_router(text_normalizer_router)
+
+    # ==================================================
+    # SISTEMA DE REVISÃO DE PEÇAS
+    # ==================================================
+    from sistemas.revisao_pecas.router import router as revisao_router
+
+    app.include_router(revisao_router, prefix="/revisao/api")
+
+    # router_chat e router_documentos são registrados quando existirem (Task 5)
+    try:
+        from sistemas.revisao_pecas.router_chat import router as revisao_chat_router
+        app.include_router(revisao_chat_router, prefix="/revisao/api")
+    except ImportError:
+        pass
+
+    try:
+        from sistemas.revisao_pecas.router_documentos import router as revisao_docs_router
+        app.include_router(revisao_docs_router, prefix="/revisao/api")
+    except ImportError:
+        pass
