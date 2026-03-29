@@ -115,7 +115,7 @@ export function EditorPeca({ conteudo, onContentChange, onAutoSave, readOnly = f
   // ---------------------------------------------------------------------------
 
   return (
-    <div className="flex flex-col h-full" style={{ fontFamily: FONT_DOC }}>
+    <div className="flex flex-col h-full">
       {/* ------------------------------------------------------------------ */}
       {/* Toolbar                                                              */}
       {/* ------------------------------------------------------------------ */}
