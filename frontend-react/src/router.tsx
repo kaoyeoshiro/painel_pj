@@ -80,6 +80,14 @@ const TjmsDocsPage = lazyWithRetry(() => import('@/pages/admin/tjms-docs/TjmsDoc
 const RestaurarSlugsPage = lazyWithRetry(() => import('@/pages/admin/restaurar-slugs/RestaurarSlugsPage').then(m => ({ default: m.RestaurarSlugsPage as ComponentType<unknown> })))
 const ArvoreDecisaoPage = lazyWithRetry(() => import('@/pages/admin/arvore-decisao/ArvoreDecisaoPage').then(m => ({ default: m.ArvoreDecisaoPage as ComponentType<unknown> })))
 
+// Revisao de Pecas
+const RevisaoPage = lazyWithRetry(() =>
+  import('@/pages/revisao/RevisaoPage').then(m => ({ default: m.RevisaoPage as ComponentType<unknown> }))
+)
+const RevisaoItemPage = lazyWithRetry(() =>
+  import('@/pages/revisao/RevisaoItemPage').then(m => ({ default: m.RevisaoItemPage as ComponentType<unknown> }))
+)
+
 // ---------------------------------------------------------------------------
 // Root route - renderiza apenas Outlet
 // ---------------------------------------------------------------------------
@@ -363,6 +371,18 @@ const adminArvoreDecisaoRoute = createRoute({
   component: ArvoreDecisaoPage,
 })
 
+const revisaoRoute = createRoute({
+  getParentRoute: () => layoutRoute,
+  path: '/revisao',
+  component: RevisaoPage,
+})
+
+const revisaoItemRoute = createRoute({
+  getParentRoute: () => layoutRoute,
+  path: '/revisao/$itemId',
+  component: RevisaoItemPage,
+})
+
 // ---------------------------------------------------------------------------
 // Arvore de rotas
 // ---------------------------------------------------------------------------
@@ -417,6 +437,10 @@ const routeTree = rootRoute.addChildren([
     adminTjmsDocsPlanoRoute,
     adminRestaurarSlugsRoute,
     adminArvoreDecisaoRoute,
+
+    // Revisao de Pecas
+    revisaoRoute,
+    revisaoItemRoute,
   ]),
 ])
 
