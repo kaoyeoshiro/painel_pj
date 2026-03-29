@@ -10,8 +10,11 @@ import 'react-pdf/dist/Page/TextLayer.css'
 import { Skeleton } from '@/components/ui/skeleton'
 import { getToken } from '@/lib/api'
 
-// Configura o worker do PDF.js via CDN para evitar problemas de build
-pdfjs.GlobalWorkerOptions.workerSrc = `//unpkg.com/pdfjs-dist@${pdfjs.version}/build/pdf.worker.min.mjs`
+// Configura o worker do PDF.js via import local (Vite resolve o path)
+pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+  'pdfjs-dist/build/pdf.worker.min.mjs',
+  import.meta.url,
+).toString()
 
 // ---------------------------------------------------------------------------
 // Constantes
