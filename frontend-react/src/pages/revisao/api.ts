@@ -10,7 +10,6 @@ import type {
   Estatisticas,
   Assessor,
   ChatMensagem,
-  DocumentoTJMS,
   DocumentosResponse,
   FiltrosRevisao,
 } from './types'
