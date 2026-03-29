@@ -18,6 +18,7 @@ import {
   FileCheck,
   FolderSearch,
   Map,
+  ClipboardCheck,
 } from 'lucide-react'
 import type { SystemCardConfig, AdminCardConfig } from './types'
 
@@ -64,6 +65,13 @@ export const systemCards: SystemCardConfig[] = [
     title: 'Relatório de Cumprimento',
     description: 'Geração de relatório inicial para cumprimento de sentença.',
     color: 'emerald',
+  },
+  {
+    to: '/revisao',
+    icon: ClipboardCheck,
+    title: 'Revisão de Peças',
+    description: 'Fila de revisão de peças geradas pelo sistema de automação.',
+    color: 'sky',
   },
   {
     to: '/extrator-autos',
