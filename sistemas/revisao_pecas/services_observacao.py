@@ -39,12 +39,12 @@ def gerar_texto_observacao(
         )
     elif cenario == "nada_a_fazer_confirmado":
         texto = (
-            f"[REVISADO] Orientacao da IA — Nada a Fazer — revisada e confirmada "
+            f"[REVISADO] Orientacao da IA - Nada a Fazer - revisada e confirmada "
             f"pelo(a) Proc. {nome_revisor}. Sem providencias necessarias."
         )
     elif cenario == "rejeitado":
         texto = (
-            f"[REJEITADO] Orientacao da IA — Nada a Fazer — REJEITADA "
+            f"[REJEITADO] Orientacao da IA - Nada a Fazer - REJEITADA "
             f"pelo(a) Proc. {nome_revisor}. "
             f"Acao correta: {acao_corrigida}. Motivo: {motivo}"
         )
