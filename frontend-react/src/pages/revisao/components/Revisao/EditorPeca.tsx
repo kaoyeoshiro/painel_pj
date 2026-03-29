@@ -3,11 +3,13 @@
  * Inclui toolbar de formatação e auto-save com debounce de 2 segundos.
  */
 
-import { useRef } from 'react'
+import { useRef, useMemo } from 'react'
 import { useEditor, EditorContent } from '@tiptap/react'
 import StarterKit from '@tiptap/starter-kit'
 import Placeholder from '@tiptap/extension-placeholder'
-import { C, FONT_DOC } from '@/lib/designTokens'
+import { marked } from 'marked'
+import { sanitizeHtml } from '@/hooks/useMarkdown'
+import { C } from '@/lib/designTokens'
 
 // ---------------------------------------------------------------------------
 // Tipos
@@ -77,12 +79,22 @@ function ToolbarSeparator() {
 export function EditorPeca({ conteudo, onContentChange, onAutoSave, readOnly = false }: EditorPecaProps) {
   const saveTimeoutRef = useRef<ReturnType<typeof setTimeout>>()
 
+  // Converte markdown→HTML na inicializacao (TipTap espera HTML, nao markdown)
+  const conteudoHtml = useMemo(() => {
+    if (!conteudo) return ''
+    // Detecta se ja e HTML (comeca com tag)
+    if (conteudo.trimStart().startsWith('<')) return conteudo
+    // Converte markdown para HTML sanitizado
+    const rawHtml = marked.parse(conteudo, { async: false }) as string
+    return sanitizeHtml(rawHtml)
+  }, [conteudo])
+
   const editor = useEditor({
     extensions: [
       StarterKit,
       Placeholder.configure({ placeholder: 'Conteúdo da peça...' }),
     ],
-    content: conteudo,
+    content: conteudoHtml,
     editable: !readOnly,
     onUpdate: ({ editor: e }) => {
       const html = e.getHTML()
