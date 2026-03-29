@@ -13,6 +13,7 @@ Endpoints:
 - POST  /itens/{id}/encaminhar             - Encaminha para assessor
 - POST  /encaminhar-lote                   - Distribui itens para assessores
 - POST  /itens/{id}/marcar-inserido        - Assessor marca DOCX como inserido
+- POST  /itens/{id}/desfazer              - Desfaz aprovacao/rejeicao, volta para em_revisao
 - PUT   /itens/{id}/conteudo               - Auto-save do conteudo editado
 - GET   /itens/{id}/chat-historico         - Historico de chat do item
 - GET   /assessores                        - Lista assessores disponiveis
@@ -413,6 +414,35 @@ async def encaminhar_lote(
     """
     resultado = distribuir_lote(db, current_user, payload)
     return resultado
+
+
+@router.post("/itens/{item_id}/desfazer", response_model=ItemRevisaoResponse)
+async def endpoint_desfazer(
+    item_id: int,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """Desfaz a aprovação/rejeição, voltando o item para em_revisao."""
+    item = _get_item_or_404(db, item_id)
+    if item.status not in ("aprovado", "rejeitado", "encaminhado"):
+        raise HTTPException(
+            status_code=400,
+            detail=f"Item com status '{item.status}' nao pode ser desfeito",
+        )
+    item.status = "em_revisao"
+    item.obs_status = "nao_aplicavel"
+    item.observacao_pge = None
+    item.revisado_em = None
+    item.motivo_rejeicao = None
+    item.acao_corrigida = None
+    item.usuario_encaminhado_id = None
+    db.commit()
+    db.refresh(item)
+    logger.info(
+        "Desfazer aprovacao/rejeicao: item_id=%d usuario_id=%d",
+        item.id, current_user.id,
+    )
+    return _item_to_response(item)
 
 
 @router.post("/itens/{item_id}/marcar-inserido", response_model=ItemRevisaoResponse)

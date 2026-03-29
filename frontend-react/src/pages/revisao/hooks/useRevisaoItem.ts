@@ -12,6 +12,7 @@ import {
   rejeitarItem,
   encaminharItem,
   marcarInserido,
+  desfazerItem,
 } from '../api'
 import type { ItemRevisao } from '../types'
 
@@ -28,6 +29,7 @@ interface UseRevisaoItemReturn {
   handleRejeitar: (motivo: string, acao: string) => Promise<void>
   handleEncaminhar: (assessorId: number) => Promise<void>
   handleMarcarInserido: () => Promise<void>
+  handleDesfazer: () => Promise<void>
 }
 
 // ---------------------------------------------------------------------------
@@ -165,6 +167,24 @@ export function useRevisaoItem(itemId: number): UseRevisaoItemReturn {
     }
   }, [itemId, toast])
 
+  const handleDesfazer = useCallback(async () => {
+    try {
+      const updated = await desfazerItem(itemId)
+      setItem(updated)
+      toast({
+        title: 'Aprovação desfeita',
+        description: 'O item voltou para revisão.',
+      })
+    } catch (err) {
+      console.error('Erro ao desfazer aprovação:', err)
+      toast({
+        title: 'Erro ao desfazer',
+        description: 'Não foi possível desfazer a ação. Tente novamente.',
+        variant: 'destructive',
+      })
+    }
+  }, [itemId, toast])
+
   return {
     item,
     loading,
@@ -174,5 +194,6 @@ export function useRevisaoItem(itemId: number): UseRevisaoItemReturn {
     handleRejeitar,
     handleEncaminhar,
     handleMarcarInserido,
+    handleDesfazer,
   }
 }

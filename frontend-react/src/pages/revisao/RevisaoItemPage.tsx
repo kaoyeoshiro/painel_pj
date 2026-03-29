@@ -5,12 +5,14 @@
  */
 
 import { useState } from 'react'
-import { useParams } from '@tanstack/react-router'
+import { useParams, useNavigate } from '@tanstack/react-router'
 import { ClipboardCheck } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { BreadcrumbBar } from '@/components/layout/BreadcrumbBar'
 import { useAuthStore } from '@/stores/auth-store'
+import { useToast } from '@/hooks/use-toast'
 import { C } from '@/lib/designTokens'
+import { getToken } from '@/lib/api'
 
 import { useRevisaoItem } from './hooks/useRevisaoItem'
 import { ResumoIA } from './components/Revisao/ResumoIA'
@@ -36,6 +38,8 @@ export function RevisaoItemPage() {
   const { itemId } = useParams({ strict: false }) as { itemId: string }
   const id = parseInt(itemId, 10)
 
+  const navigate = useNavigate()
+  const { toast } = useToast()
   const user = useAuthStore((s) => s.user)
   const isAdmin = user?.is_admin ?? false
 
@@ -54,6 +58,7 @@ export function RevisaoItemPage() {
     handleRejeitar,
     handleEncaminhar,
     handleMarcarInserido,
+    handleDesfazer,
   } = useRevisaoItem(id)
 
   // ---------------------------------------------------------------------------
@@ -72,6 +77,31 @@ export function RevisaoItemPage() {
 
   const handleRejeitarConfirm = (motivo: string, acao: string) => {
     void handleRejeitar(motivo, acao)
+  }
+
+  const handleMarcarInseridoClick = async () => {
+    await handleMarcarInserido()
+    void navigate({ to: '/revisao' })
+  }
+
+  const handleBaixarDocx = async () => {
+    if (!item) return
+    try {
+      const response = await fetch(`/revisao/api/itens/${item.id}/exportar-docx`, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${getToken()}` },
+      })
+      if (!response.ok) throw new Error('Erro ao exportar')
+      const blob = await response.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `peca_${item.numero_cnj}.docx`
+      a.click()
+      URL.revokeObjectURL(url)
+    } catch {
+      toast({ title: 'Erro', description: 'Falha ao baixar DOCX', variant: 'destructive' })
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -126,8 +156,10 @@ export function RevisaoItemPage() {
         onAprovar={handleAprovarClick}
         onRejeitar={() => setShowRejeicao(true)}
         onEncaminhar={() => setShowEncaminhar(true)}
-        onMarcarInserido={() => void handleMarcarInserido()}
+        onMarcarInserido={() => void handleMarcarInseridoClick()}
         onIniciarRevisao={() => void handleIniciarRevisao()}
+        onDesfazer={() => void handleDesfazer()}
+        onBaixarDocx={() => void handleBaixarDocx()}
       />
 
       {/* Corpo split-panel */}

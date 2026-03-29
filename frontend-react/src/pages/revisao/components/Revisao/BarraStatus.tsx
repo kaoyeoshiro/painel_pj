@@ -22,6 +22,7 @@ interface BarraStatusProps {
   onMarcarInserido: () => void
   onIniciarRevisao: () => void
   onBaixarDocx?: () => void
+  onDesfazer?: () => void
 }
 
 // ---------------------------------------------------------------------------
@@ -76,6 +77,7 @@ export function BarraStatus({
   onMarcarInserido,
   onIniciarRevisao,
   onBaixarDocx,
+  onDesfazer,
 }: BarraStatusProps) {
   const atribuidoNome = item.revisor_nome ?? item.encaminhado_nome
 
@@ -111,6 +113,7 @@ export function BarraStatus({
           onMarcarInserido={onMarcarInserido}
           onIniciarRevisao={onIniciarRevisao}
           onBaixarDocx={onBaixarDocx}
+          onDesfazer={onDesfazer}
         />
       </div>
     </div>
@@ -130,6 +133,7 @@ interface AcoesStatusProps {
   onMarcarInserido: () => void
   onIniciarRevisao: () => void
   onBaixarDocx?: () => void
+  onDesfazer?: () => void
 }
 
 function AcoesStatus({
@@ -141,6 +145,7 @@ function AcoesStatus({
   onMarcarInserido,
   onIniciarRevisao,
   onBaixarDocx,
+  onDesfazer,
 }: AcoesStatusProps) {
   if (status === 'pendente') {
     return (
@@ -195,14 +200,17 @@ function AcoesStatus({
   if (status === 'aprovado' || status === 'encaminhado') {
     return (
       <>
-        <Button
-          size="sm"
-          onClick={onMarcarInserido}
-          className="text-xs"
-          style={{ background: C.statusSuccess, color: 'white' }}
-        >
-          Marcar como Inserido
-        </Button>
+        {onDesfazer && (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={onDesfazer}
+            className="text-xs border"
+            style={{ borderColor: C.gray400, color: C.gray600 }}
+          >
+            Desfazer
+          </Button>
+        )}
 
         {onBaixarDocx && (
           <Button
@@ -213,6 +221,33 @@ function AcoesStatus({
             style={{ borderColor: C.navy600, color: C.navy600 }}
           >
             Baixar DOCX
+          </Button>
+        )}
+
+        <Button
+          size="sm"
+          onClick={onMarcarInserido}
+          className="text-xs"
+          style={{ background: C.statusSuccess, color: 'white' }}
+        >
+          Marcar como Inserido
+        </Button>
+      </>
+    )
+  }
+
+  if (status === 'rejeitado') {
+    return (
+      <>
+        {onDesfazer && (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={onDesfazer}
+            className="text-xs border"
+            style={{ borderColor: C.gray400, color: C.gray600 }}
+          >
+            Desfazer
           </Button>
         )}
       </>

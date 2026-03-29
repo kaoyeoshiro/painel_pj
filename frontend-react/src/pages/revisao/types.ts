@@ -164,6 +164,7 @@ export interface SSERevisaoEvent {
 // ---------------------------------------------------------------------------
 
 export interface FiltrosRevisao {
+  tab?: string
   status?: StatusRevisao
   urgencia?: Urgencia
   tipo_peca?: string
