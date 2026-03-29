@@ -140,7 +140,7 @@ export function RevisaoItemPage() {
           style={{ borderColor: C.gray200 }}
         >
           {/* Área de conteúdo principal (editor ou detalhes) */}
-          <div className="flex-1 overflow-hidden flex flex-col p-5">
+          <div className="flex-1 overflow-hidden flex flex-col px-5 pt-3 pb-0">
             {temPeca ? (
               /* EditorPeca com TipTap — edição rica com toolbar e auto-save */
               <EditorPeca

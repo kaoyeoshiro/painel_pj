@@ -235,20 +235,11 @@ export function EditorPeca({ conteudo, onContentChange, onAutoSave, readOnly = f
       >
         <EditorContent
           editor={editor}
-          className="h-full"
-          style={{
-            // Estilos para documentos jurídicos
-            fontSize: '14px',
-            lineHeight: '1.8',
-            color: C.text700,
-            padding: '1.25rem 1.5rem',
-            minHeight: '100%',
-            outline: 'none',
-          }}
+          className="h-full custom-scroll"
         />
       </div>
 
-      {/* Estilos injetados para TipTap: placeholder e estilos de documento */}
+      {/* Estilos do TipTap — reutiliza prose-legal do gerador de pecas */}
       <style>{`
         .tiptap p.is-editor-empty:first-child::before {
           content: attr(data-placeholder);
@@ -260,57 +251,52 @@ export function EditorPeca({ conteudo, onContentChange, onAutoSave, readOnly = f
         .tiptap {
           outline: none;
           min-height: 100%;
-          padding: 1.25rem 1.5rem;
-          font-size: 14px;
-          line-height: 1.8;
-          color: ${C.text700};
+          padding: 2.5rem 2.5rem 4rem;
+          font-family: 'Lora', 'Georgia', serif;
+          font-size: 1rem;
+          line-height: 2;
+          color: #475569;
+          text-align: justify;
         }
-        .tiptap p {
-          margin-bottom: 0.75rem;
-          text-indent: 2em;
-        }
-        .tiptap p:first-child {
-          text-indent: 0;
-        }
-        .tiptap h1 {
-          font-size: 1.25rem;
-          font-weight: 700;
-          margin-bottom: 0.75rem;
-          margin-top: 1.25rem;
-          text-transform: uppercase;
-          letter-spacing: 0.03em;
-          color: ${C.text900};
+        .tiptap h1, .tiptap h2, .tiptap h3, .tiptap h4 {
+          font-family: 'Plus Jakarta Sans', system-ui, sans-serif;
+          color: #1e293b;
+          text-align: left;
         }
         .tiptap h2 {
-          font-size: 1.1rem;
+          font-size: 1.125rem;
+          font-weight: 700;
+          letter-spacing: -0.01em;
+          margin-top: 2.5em;
+          margin-bottom: 1em;
+          padding-bottom: 0.6em;
+          border-bottom: 1px solid #e2e8f0;
+        }
+        .tiptap h3 {
+          font-size: 1rem;
           font-weight: 600;
-          margin-bottom: 0.5rem;
-          margin-top: 1rem;
-          color: ${C.text900};
+          margin-top: 1.75em;
+          margin-bottom: 0.75em;
         }
-        .tiptap blockquote {
-          border-left: 3px solid ${C.navy400};
-          padding-left: 1rem;
-          margin-left: 1rem;
-          color: ${C.text500};
-          font-style: italic;
-        }
-        .tiptap ul {
-          list-style: disc;
-          padding-left: 1.5rem;
-          margin-bottom: 0.75rem;
-        }
-        .tiptap ol {
-          list-style: decimal;
-          padding-left: 1.5rem;
-          margin-bottom: 0.75rem;
-        }
-        .tiptap li {
-          margin-bottom: 0.25rem;
+        .tiptap p {
+          margin-top: 0.75em;
+          margin-bottom: 0.75em;
         }
         .tiptap strong {
-          font-weight: 700;
-          color: ${C.text900};
+          font-weight: 600;
+          color: #1e293b;
+        }
+        .tiptap ul, .tiptap ol {
+          padding-left: 1.5em;
+          margin-top: 0.75em;
+          margin-bottom: 0.75em;
+        }
+        .tiptap blockquote {
+          border-left: 3px solid #0ea5e9;
+          padding: 0.75em 1.25em;
+          margin: 1.25em 0;
+          background: #f8fafc;
+          border-radius: 0 0.5rem 0.5rem 0;
         }
         .tiptap em {
           font-style: italic;

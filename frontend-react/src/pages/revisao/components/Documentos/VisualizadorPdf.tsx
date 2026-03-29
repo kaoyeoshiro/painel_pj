@@ -3,7 +3,7 @@
  * Busca o documento via proxy autenticado e renderiza todas as páginas.
  */
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef, useCallback } from 'react'
 import { Document, Page, pdfjs } from 'react-pdf'
 import 'react-pdf/dist/Page/AnnotationLayer.css'
 import 'react-pdf/dist/Page/TextLayer.css'
@@ -48,6 +48,8 @@ export function VisualizadorPdf({ processo, docId }: VisualizadorPdfProps) {
   const [escala, setEscala] = useState<number>(ESCALA_PADRAO)
   const [carregando, setCarregando] = useState(true)
   const [erro, setErro] = useState<string | null>(null)
+  const [containerWidth, setContainerWidth] = useState<number>(0)
+  const containerRef = useRef<HTMLDivElement>(null)
 
   // Monta o objeto de arquivo para o react-pdf a cada mudança de documento
   const token = getToken()
@@ -63,6 +65,19 @@ export function VisualizadorPdf({ processo, docId }: VisualizadorPdfProps) {
     setCarregando(true)
     setErro(null)
   }, [processo, docId])
+
+  // Mede a largura do container para auto-fit do PDF
+  const medirLargura = useCallback(() => {
+    if (containerRef.current) {
+      setContainerWidth(containerRef.current.clientWidth - 24) // 24px = padding
+    }
+  }, [])
+
+  useEffect(() => {
+    medirLargura()
+    window.addEventListener('resize', medirLargura)
+    return () => window.removeEventListener('resize', medirLargura)
+  }, [medirLargura])
 
   // ---------------------------------------------------------------------------
   // Handlers
@@ -116,7 +131,7 @@ export function VisualizadorPdf({ processo, docId }: VisualizadorPdfProps) {
       </div>
 
       {/* Área do documento */}
-      <div className="flex-1 overflow-auto p-3">
+      <div ref={containerRef} className="flex-1 overflow-auto p-3 pb-8">
         {erro ? (
           <div className="flex items-center justify-center h-full">
             <p className="text-sm text-red-500 text-center px-4">{erro}</p>
@@ -137,10 +152,10 @@ export function VisualizadorPdf({ processo, docId }: VisualizadorPdfProps) {
               loading={null}
             >
               {Array.from({ length: numPaginas }, (_, i) => (
-                <div key={i} className="mb-3">
+                <div key={i} className="mb-3 shadow-sm">
                   <Page
                     pageNumber={i + 1}
-                    scale={escala}
+                    width={containerWidth > 0 ? containerWidth * escala : undefined}
                     renderAnnotationLayer
                     renderTextLayer
                     loading={<Skeleton className="h-64 w-full rounded" />}
