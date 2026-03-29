@@ -11,6 +11,7 @@ import type {
   Assessor,
   ChatMensagem,
   DocumentoTJMS,
+  DocumentosResponse,
   FiltrosRevisao,
 } from './types'
 
@@ -109,8 +110,8 @@ export function fetchChatHistorico(itemId: number): Promise<ChatMensagem[]> {
 }
 
 /** Busca documentos do TJ-MS vinculados ao processo do item */
-export function fetchDocumentos(itemId: number): Promise<DocumentoTJMS[]> {
-  return api.get<DocumentoTJMS[]>(`/itens/${itemId}/documentos`)
+export function fetchDocumentos(itemId: number): Promise<DocumentosResponse> {
+  return api.get<DocumentosResponse>(`/itens/${itemId}/documentos`)
 }
 
 // ---------------------------------------------------------------------------
