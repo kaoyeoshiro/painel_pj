@@ -1,1 +1,0 @@
-import{r as e,j as t}from"./vendor-tanstack-mcI_os3D.js";import{l}from"./index-DFsqXKzU.js";const m=e.forwardRef(({className:r,children:a,...o},s)=>t.jsx("div",{ref:s,className:l("relative overflow-auto",r),...o,children:a}));m.displayName="ScrollArea";export{m as S};

@@ -15,6 +15,7 @@ import { C } from '@/lib/designTokens'
 import { useRevisaoItem } from './hooks/useRevisaoItem'
 import { ResumoIA } from './components/Revisao/ResumoIA'
 import { BarraStatus } from './components/Revisao/BarraStatus'
+import { ChatRevisao } from './components/Revisao/ChatRevisao'
 import { EncaminharDialog } from './components/Revisao/EncaminharDialog'
 import { RejeicaoForm } from './components/Revisao/RejeicaoForm'
 import { PainelDocumentos } from './components/Documentos/PainelDocumentos'
@@ -159,16 +160,15 @@ export function RevisaoItemPage() {
             )}
           </div>
 
-          {/* Placeholder para ChatRevisao (Task 12) */}
-          <div
-            className="flex-shrink-0 border-t p-3"
-            style={{ borderColor: C.gray200, background: C.gray50 }}
-          >
-            <p className="text-xs text-center" style={{ color: C.text400 }}>
-              {/* TODO: Task 12 — substituir por <ChatRevisao /> */}
-              Chat com a IA — disponível em breve
-            </p>
-          </div>
+          {/* ChatRevisao — chat colapsável de edição via IA (Task 12) */}
+          {temPeca && (
+            <ChatRevisao
+              itemId={item.id}
+              conteudoAtual={conteudoAtual}
+              onConteudoAtualizado={(conteudo) => setConteudoAtual(conteudo)}
+              disabled={item.status !== 'em_revisao'}
+            />
+          )}
         </div>
 
         {/* ---------------------------------------------------------------- */}
