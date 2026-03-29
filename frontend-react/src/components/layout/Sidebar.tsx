@@ -9,6 +9,7 @@ import {
   Tags,
   Calculator,
   ClipboardList,
+  ClipboardCheck,
   FileCheck,
   FlaskConical,
   Scale,
@@ -55,6 +56,7 @@ const systemItems: NavItem[] = [
   { to: '/cumprimento-beta', icon: FlaskConical, label: 'Cumprimento Beta' },
   { to: '/assistencia', icon: Scale, label: 'Assistência Judiciária' },
   { to: '/matriculas', icon: Map, label: 'Matrículas Confrontantes' },
+  { to: '/revisao', icon: ClipboardCheck, label: 'Revisão de Peças' },
   { to: '/bert-training', icon: Brain, label: 'BERT Training', adminOnly: true },
 ]
 
