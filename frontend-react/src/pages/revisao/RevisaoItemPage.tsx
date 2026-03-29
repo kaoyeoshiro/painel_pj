@@ -137,12 +137,11 @@ export function RevisaoItemPage() {
         {/* ---------------------------------------------------------------- */}
         <div
           className="flex flex-col flex-1 overflow-hidden border-r"
-          style={{ borderColor: C.gray200 }}
+          style={{ borderColor: C.gray200, minWidth: 0 }}
         >
-          {/* Área de conteúdo principal (editor ou detalhes) */}
-          <div className="flex-1 overflow-hidden flex flex-col px-5 pt-3 pb-0">
+          {/* Área de conteúdo principal (editor ou detalhes) — scroll interno */}
+          <div className="flex-1 overflow-hidden flex flex-col" style={{ minHeight: 0 }}>
             {temPeca ? (
-              /* EditorPeca com TipTap — edição rica com toolbar e auto-save */
               <EditorPeca
                 conteudo={conteudoExibir ?? ''}
                 onContentChange={(html) => setConteudoAtual(html)}
@@ -150,8 +149,7 @@ export function RevisaoItemPage() {
                 readOnly={item.status !== 'em_revisao'}
               />
             ) : (
-              /* Sem peça: mostra detalhes da classificação e opção de rejeitar */
-              <div className="overflow-y-auto flex-1">
+              <div className="overflow-y-auto flex-1 px-5 pt-3">
                 <DetalhesItemSemPeca
                   item={item}
                   onRejeitar={() => setShowRejeicao(true)}
@@ -160,14 +158,16 @@ export function RevisaoItemPage() {
             )}
           </div>
 
-          {/* ChatRevisao — chat colapsável de edição via IA (Task 12) */}
+          {/* ChatRevisao — fixo no bottom, nunca sai da tela */}
           {temPeca && (
-            <ChatRevisao
-              itemId={item.id}
-              conteudoAtual={conteudoAtual}
-              onConteudoAtualizado={(conteudo) => setConteudoAtual(conteudo)}
-              disabled={item.status !== 'em_revisao'}
-            />
+            <div className="flex-shrink-0">
+              <ChatRevisao
+                itemId={item.id}
+                conteudoAtual={conteudoAtual}
+                onConteudoAtualizado={(conteudo) => setConteudoAtual(conteudo)}
+                disabled={item.status !== 'em_revisao'}
+              />
+            </div>
           )}
         </div>
 

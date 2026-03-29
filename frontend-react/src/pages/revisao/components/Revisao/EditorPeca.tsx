@@ -115,7 +115,7 @@ export function EditorPeca({ conteudo, onContentChange, onAutoSave, readOnly = f
   // ---------------------------------------------------------------------------
 
   return (
-    <div className="flex flex-col h-full">
+    <div className="flex flex-col h-full" style={{ minHeight: 0 }}>
       {/* ------------------------------------------------------------------ */}
       {/* Toolbar                                                              */}
       {/* ------------------------------------------------------------------ */}
@@ -243,7 +243,7 @@ export function EditorPeca({ conteudo, onContentChange, onAutoSave, readOnly = f
       {/* ------------------------------------------------------------------ */}
       <div
         className="flex-1 overflow-y-auto rounded-b-lg border-x border-b"
-        style={{ borderColor: C.gray200, background: '#fff' }}
+        style={{ borderColor: C.gray200, background: '#fff', minHeight: 0 }}
       >
         <EditorContent
           editor={editor}
@@ -262,7 +262,6 @@ export function EditorPeca({ conteudo, onContentChange, onAutoSave, readOnly = f
         }
         .tiptap {
           outline: none;
-          min-height: 100%;
           padding: 2.5rem 2.5rem 4rem;
           font-family: 'Lora', 'Georgia', serif;
           font-size: 1rem;
