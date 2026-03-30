@@ -3,14 +3,10 @@
  * Exibe totais por status em cards visuais com ícones.
  */
 
-import { ClipboardList, Clock, Eye, CheckCircle, BookCheck } from 'lucide-react'
+import { Clock, Send, AlertCircle, BookCheck } from 'lucide-react'
 import { Card, CardContent } from '@/components/ui/card'
 import { C } from '@/lib/designTokens'
 import type { Estatisticas } from '../../types'
-
-// ---------------------------------------------------------------------------
-// Tipos
-// ---------------------------------------------------------------------------
 
 interface EstatisticasCardsProps {
   stats: Estatisticas
@@ -26,56 +22,44 @@ interface CardConfig {
   valueColor: string
 }
 
-// ---------------------------------------------------------------------------
-// Componente
-// ---------------------------------------------------------------------------
-
 export function EstatisticasCards({ stats, loading }: EstatisticasCardsProps) {
   const cards: CardConfig[] = [
     {
-      label: 'Total de Itens',
-      value: stats.total,
-      icon: <ClipboardList className="h-6 w-6" />,
-      iconBg: C.navy100,
-      iconColor: C.navy700,
-      valueColor: C.text900,
-    },
-    {
       label: 'Pendentes',
-      value: stats.pendentes,
+      value: stats.pendentes + stats.em_revisao,
       icon: <Clock className="h-6 w-6" />,
       iconBg: C.gray100,
       iconColor: C.gray600,
       valueColor: C.gray700,
     },
     {
-      label: 'Em Revisão',
-      value: stats.em_revisao,
-      icon: <Eye className="h-6 w-6" />,
-      iconBg: C.navy50,
-      iconColor: C.navy600,
-      valueColor: C.navy700,
+      label: 'Com Assessores',
+      value: stats.encaminhados,
+      icon: <Send className="h-6 w-6" />,
+      iconBg: '#fffbeb',
+      iconColor: '#92400e',
+      valueColor: '#92400e',
     },
     {
-      label: 'Aprovados / Encaminhados',
-      value: stats.aprovados + stats.encaminhados,
-      icon: <CheckCircle className="h-6 w-6" />,
-      iconBg: C.successBg,
-      iconColor: C.successText,
-      valueColor: C.successText,
+      label: 'Aguardando Inserção',
+      value: stats.aguardando_insercao,
+      icon: <AlertCircle className="h-6 w-6" />,
+      iconBg: '#fffbeb',
+      iconColor: C.statusWarning,
+      valueColor: C.statusWarning,
     },
     {
-      label: 'Concluídos',
-      value: stats.concluidos,
+      label: 'Concluídos (7 dias)',
+      value: stats.concluidos_7d,
       icon: <BookCheck className="h-6 w-6" />,
-      iconBg: '#eef2ff', // indigo-50
-      iconColor: '#3730a3', // indigo-800
+      iconBg: '#eef2ff',
+      iconColor: '#3730a3',
       valueColor: '#3730a3',
     },
   ]
 
   return (
-    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
       {cards.map((card) => (
         <Card key={card.label} className="border" style={{ borderColor: C.gray200 }}>
           <CardContent className="p-5">

@@ -101,7 +101,7 @@ function ColorDotBadge({
 function TabelaPlaceholder({ loading }: { loading: boolean }) {
   return (
     <TableRow>
-      <TableCell colSpan={8} className="text-center py-12" style={{ color: C.text400 }}>
+      <TableCell colSpan={7} className="text-center py-12" style={{ color: C.text400 }}>
         {loading ? 'Carregando...' : 'Nenhum item encontrado para os filtros selecionados.'}
       </TableCell>
     </TableRow>
@@ -127,7 +127,6 @@ export function TabelaItens({ itens, loading, onItemClick }: TabelaItensProps) {
             <TableHead>Urgência</TableHead>
             <TableHead>Confiança IA</TableHead>
             <TableHead>Status</TableHead>
-            <TableHead>Atribuído a</TableHead>
             <TableHead>Recebido em</TableHead>
           </TableRow>
         </TableHeader>
@@ -183,13 +182,6 @@ export function TabelaItens({ itens, loading, onItemClick }: TabelaItensProps) {
                 {/* Status */}
                 <TableCell>
                   <ConfigBadge value={item.status} config={STATUS_CONFIG} />
-                </TableCell>
-
-                {/* Atribuído a */}
-                <TableCell>
-                  <span className="text-sm" style={{ color: C.text500 }}>
-                    {item.revisor_nome ?? '—'}
-                  </span>
                 </TableCell>
 
                 {/* Recebido em */}
