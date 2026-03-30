@@ -37,28 +37,28 @@ def extract_token_from_sources(
     """
     SECURITY: Extrai token de múltiplas fontes em ordem de prioridade.
 
-    Prioridade:
-    1. Cookie HttpOnly (mais seguro)
-    2. Header Authorization
+    Prioridade (alterada em Mar/2026 para corrigir bug de sessao cruzada):
+    1. Header Authorization (token explicito do frontend, sempre atualizado no login)
+    2. Cookie HttpOnly (fallback seguro, pode estar stale se logout nao limpou)
     3. Query string (menos seguro, usar apenas quando necessário)
 
     Returns:
         Token JWT limpo (sem prefixo "Bearer ") ou None
     """
-    # 1. Tenta cookie primeiro (mais seguro contra XSS)
-    if cookie_token:
-        # Cookie pode ter prefixo "Bearer " ou não
-        if cookie_token.startswith("Bearer "):
-            return cookie_token[7:]
-        return cookie_token
-
-    # 2. Tenta header Authorization
+    # 1. Header Authorization — token explicito enviado pelo frontend
+    # Prioridade sobre cookie pois o frontend SEMPRE envia o token mais recente
     if authorization_header:
         if authorization_header.startswith("Bearer "):
             return authorization_header[7:]
         return authorization_header
 
-    # 3. Tenta query string (menos seguro)
+    # 2. Cookie HttpOnly — fallback para requests sem header (ex: navegacao direta)
+    if cookie_token:
+        if cookie_token.startswith("Bearer "):
+            return cookie_token[7:]
+        return cookie_token
+
+    # 3. Query string (menos seguro)
     if query_token:
         if query_token.startswith("Bearer "):
             return query_token[7:]
@@ -129,8 +129,15 @@ async def get_current_user(
     if username is None:
         raise credentials_exception
 
-    # Busca usuário no banco
-    user = db.query(User).filter(User.username == username).first()
+    # SECURITY: Busca por user_id (imutavel) e valida username para evitar
+    # troca de identidade se username for alterado apos emissao do token
+    if user_id is not None:
+        user = db.query(User).filter(User.id == user_id).first()
+        if user is not None and user.username != username:
+            raise credentials_exception
+    else:
+        # Fallback para tokens antigos sem user_id
+        user = db.query(User).filter(User.username == username).first()
 
     if user is None:
         raise credentials_exception
@@ -187,10 +194,18 @@ async def get_current_user_from_token_or_query(
         raise credentials_exception
 
     username: str = payload.get("sub")
+    user_id: int = payload.get("user_id")
     if username is None:
         raise credentials_exception
 
-    user = db.query(User).filter(User.username == username).first()
+    # SECURITY: Busca por user_id (imutavel) com validacao de username
+    if user_id is not None:
+        user = db.query(User).filter(User.id == user_id).first()
+        if user is not None and user.username != username:
+            raise credentials_exception
+    else:
+        user = db.query(User).filter(User.username == username).first()
+
     if user is None:
         raise credentials_exception
 
@@ -269,8 +284,16 @@ async def get_optional_user(
         return None
 
     username: str = payload.get("sub")
+    user_id: int = payload.get("user_id")
     if username is None:
         return None
 
-    user = db.query(User).filter(User.username == username).first()
+    # SECURITY: Busca por user_id (imutavel) com validacao de username
+    if user_id is not None:
+        user = db.query(User).filter(User.id == user_id).first()
+        if user is not None and user.username != username:
+            return None
+    else:
+        user = db.query(User).filter(User.username == username).first()
+
     return user

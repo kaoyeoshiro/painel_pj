@@ -1,1 +1,0 @@
-import{j as x}from"./vendor-tanstack-mcI_os3D.js";import{m as o}from"./index-C9Ck4uaW.js";function n({children:t,className:p,noPaddingY:r,noPadding:m,maxWidthClass:s}){return x.jsx("div",{className:o(`mx-auto w-full ${s||"max-w-pge"}`,!m&&"px-4 sm:px-6 lg:px-10",!m&&!r&&"py-8",p),children:t})}export{n as C};
