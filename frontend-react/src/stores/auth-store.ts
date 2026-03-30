@@ -17,6 +17,7 @@ interface User {
   role: string
   is_admin: boolean
   sistemas_permitidos: string[] | null
+  permissoes_especiais: string[] | null
 }
 
 /** Mapa rota frontend → slug do sistema no backend */
@@ -41,6 +42,7 @@ interface AuthState {
 
   // Derivados
   podeAcessarSistema: (slug: string) => boolean
+  temPermissao: (permissao: string) => boolean
 
   // Acoes
   login: (username: string, password: string) => Promise<void>
@@ -81,6 +83,14 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     return user.sistemas_permitidos.includes(slug)
   },
 
+  temPermissao: (permissao: string) => {
+    const user = get().user
+    if (!user) return false
+    if (user.is_admin) return true
+    if (!user.permissoes_especiais) return false
+    return user.permissoes_especiais.includes(permissao)
+  },
+
   /** Faz login com username e senha */
   login: async (username: string, password: string) => {
     set({ status: 'unknown', error: null, ...deriveFromStatus('unknown') })
@@ -109,8 +119,10 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     }
   },
 
-  /** Faz logout, limpa estado e redireciona */
+  /** Faz logout: revoga token no backend, limpa cookie HttpOnly e estado local */
   logout: () => {
+    const token = getToken()
+    // Limpa estado local imediatamente (UX responsiva)
     clearToken()
     _initialized = false
     set({
@@ -120,13 +132,21 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       error: null,
       ...deriveFromStatus('unauthenticated'),
     })
+    // Chama backend para revogar token e limpar cookie HttpOnly
+    // Fire-and-forget: mesmo se falhar, o estado local ja foi limpo
+    if (token) {
+      fetch('/auth/logout', {
+        method: 'POST',
+        headers: { 'Authorization': `Bearer ${token}` },
+      }).catch(() => { /* ignora erros de rede no logout */ })
+    }
     window.location.href = '/login'
   },
 
   /** Carrega dados do usuario a partir do token */
   loadUser: async () => {
     try {
-      const data = await apiRequest<{ id: number; username: string; full_name: string; role: string; sistemas_permitidos?: string[] | null }>('/auth/me', { method: 'GET' })
+      const data = await apiRequest<{ id: number; username: string; full_name: string; role: string; sistemas_permitidos?: string[] | null; permissoes_especiais?: string[] | null }>('/auth/me', { method: 'GET' })
 
       // Validacao runtime — garante shape esperado da resposta de usuario
       assertSchema(data, UserMeSchema, 'GET /auth/me')
@@ -136,6 +156,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
           ...data,
           is_admin: data.role === 'admin',
           sistemas_permitidos: data.sistemas_permitidos ?? null,
+          permissoes_especiais: data.permissoes_especiais ?? null,
         },
         status: 'authenticated',
         error: null,

@@ -79,6 +79,16 @@ async def login(
     - Bloqueia username após 5 tentativas falhas
     - Bloqueio dura 5 minutos
     """
+    # SECURITY: Limpa cookie antigo antes de processar login
+    # Garante que um cookie stale de sessao anterior nao interfira
+    response.delete_cookie(
+        key=AUTH_COOKIE_NAME,
+        httponly=True,
+        secure=IS_PRODUCTION,
+        samesite="lax",
+        path="/"
+    )
+
     # SECURITY: Verifica proteção contra brute force
     client_ip = get_client_ip(request)
     bf_status = check_brute_force(client_ip, form_data.username)
@@ -161,10 +171,17 @@ async def login(
 
 
 @router.get("/me", response_model=UserMe)
-async def get_me(current_user: User = Depends(get_current_active_user)):
+async def get_me(
+    response: Response,
+    current_user: User = Depends(get_current_active_user)
+):
     """
     Retorna os dados do usuário autenticado.
+
+    SECURITY: Cache-Control no-store impede que o browser cache dados de outro usuario.
     """
+    response.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+    response.headers["Pragma"] = "no-cache"
     return current_user
 
 
