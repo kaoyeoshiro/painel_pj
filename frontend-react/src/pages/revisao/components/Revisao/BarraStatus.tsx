@@ -16,11 +16,11 @@ import type { ItemRevisao } from '../../types'
 interface BarraStatusProps {
   item: ItemRevisao
   isAdmin: boolean
+  currentUserId: number | null
   onAprovar: () => void
   onRejeitar: () => void
   onEncaminhar: () => void
   onMarcarInserido: () => void
-  onIniciarRevisao: () => void
   onBaixarDocx?: () => void
   onDesfazer?: () => void
 }
@@ -71,15 +71,22 @@ function ObsStatusBadge({ obsStatus }: { obsStatus: string | null }) {
 export function BarraStatus({
   item,
   isAdmin,
+  currentUserId,
   onAprovar,
   onRejeitar,
   onEncaminhar,
   onMarcarInserido,
-  onIniciarRevisao,
   onBaixarDocx,
   onDesfazer,
 }: BarraStatusProps) {
-  const atribuidoNome = item.revisor_nome ?? item.encaminhado_nome
+  // Quando encaminhado, mostra o assessor; caso contrário, o revisor
+  const isEncaminhado = item.status === 'encaminhado'
+  const atribuidoLabel = isEncaminhado ? 'Encaminhado a' : 'Atribuído a'
+  const atribuidoNome = isEncaminhado
+    ? item.encaminhado_nome
+    : (item.revisor_nome ?? item.encaminhado_nome)
+
+  const isAssessorDesignado = currentUserId != null && item.usuario_encaminhado_id === currentUserId
 
   return (
     <div
@@ -92,7 +99,7 @@ export function BarraStatus({
 
         {atribuidoNome && (
           <span className="text-sm" style={{ color: C.text500 }}>
-            Atribuído a:{' '}
+            {atribuidoLabel}:{' '}
             <span className="font-medium" style={{ color: C.text700 }}>
               {atribuidoNome}
             </span>
@@ -107,11 +114,11 @@ export function BarraStatus({
         <AcoesStatus
           status={item.status}
           isAdmin={isAdmin}
+          isAssessorDesignado={isAssessorDesignado}
           onAprovar={onAprovar}
           onRejeitar={onRejeitar}
           onEncaminhar={onEncaminhar}
           onMarcarInserido={onMarcarInserido}
-          onIniciarRevisao={onIniciarRevisao}
           onBaixarDocx={onBaixarDocx}
           onDesfazer={onDesfazer}
         />
@@ -127,11 +134,11 @@ export function BarraStatus({
 interface AcoesStatusProps {
   status: string
   isAdmin: boolean
+  isAssessorDesignado: boolean
   onAprovar: () => void
   onRejeitar: () => void
   onEncaminhar: () => void
   onMarcarInserido: () => void
-  onIniciarRevisao: () => void
   onBaixarDocx?: () => void
   onDesfazer?: () => void
 }
@@ -139,28 +146,16 @@ interface AcoesStatusProps {
 function AcoesStatus({
   status,
   isAdmin,
+  isAssessorDesignado,
   onAprovar,
   onRejeitar,
   onEncaminhar,
   onMarcarInserido,
-  onIniciarRevisao,
   onBaixarDocx,
   onDesfazer,
 }: AcoesStatusProps) {
-  if (status === 'pendente') {
-    return (
-      <Button
-        size="sm"
-        onClick={onIniciarRevisao}
-        className="text-xs"
-        style={{ background: C.navy700, color: 'white' }}
-      >
-        Iniciar Revisão
-      </Button>
-    )
-  }
-
-  if (status === 'em_revisao') {
+  // Pendente e em_revisao (legado): botoes de acao direto
+  if (status === 'pendente' || status === 'em_revisao') {
     return (
       <>
         <Button
@@ -197,7 +192,7 @@ function AcoesStatus({
     )
   }
 
-  if (status === 'aprovado' || status === 'encaminhado') {
+  if (status === 'aprovado') {
     return (
       <>
         {onDesfazer && (
@@ -232,6 +227,47 @@ function AcoesStatus({
         >
           Marcar como Inserido
         </Button>
+      </>
+    )
+  }
+
+  if (status === 'encaminhado') {
+    return (
+      <>
+        {isAdmin && onDesfazer && (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={onDesfazer}
+            className="text-xs border"
+            style={{ borderColor: C.gray400, color: C.gray600 }}
+          >
+            Desfazer
+          </Button>
+        )}
+
+        {isAssessorDesignado && onBaixarDocx && (
+          <Button
+            size="sm"
+            variant="outline"
+            onClick={onBaixarDocx}
+            className="text-xs border"
+            style={{ borderColor: C.navy600, color: C.navy600 }}
+          >
+            Baixar DOCX
+          </Button>
+        )}
+
+        {isAssessorDesignado && (
+          <Button
+            size="sm"
+            onClick={onMarcarInserido}
+            className="text-xs"
+            style={{ background: C.statusSuccess, color: 'white' }}
+          >
+            Marcar como Inserido
+          </Button>
+        )}
       </>
     )
   }

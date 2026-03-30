@@ -102,6 +102,7 @@ export interface Estatisticas {
   rejeitados: number
   concluidos: number
   aguardando_insercao: number
+  concluidos_7d: number
 }
 
 // ---------------------------------------------------------------------------

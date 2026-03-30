@@ -153,11 +153,11 @@ export function RevisaoItemPage() {
       <BarraStatus
         item={item}
         isAdmin={isAdmin}
+        currentUserId={user?.id ?? null}
         onAprovar={handleAprovarClick}
         onRejeitar={() => setShowRejeicao(true)}
         onEncaminhar={() => setShowEncaminhar(true)}
         onMarcarInserido={() => void handleMarcarInseridoClick()}
-        onIniciarRevisao={() => void handleIniciarRevisao()}
         onDesfazer={() => void handleDesfazer()}
         onBaixarDocx={() => void handleBaixarDocx()}
       />
@@ -178,7 +178,7 @@ export function RevisaoItemPage() {
                 conteudo={conteudoExibir ?? ''}
                 onContentChange={(html) => setConteudoAtual(html)}
                 onAutoSave={(html) => void salvarConteudo(item.id, html)}
-                readOnly={item.status !== 'em_revisao'}
+                readOnly={item.status !== 'pendente' && item.status !== 'em_revisao'}
               />
             ) : (
               <div className="overflow-y-auto flex-1 px-5 pt-3">
@@ -197,7 +197,7 @@ export function RevisaoItemPage() {
                 itemId={item.id}
                 conteudoAtual={conteudoAtual}
                 onConteudoAtualizado={(conteudo) => setConteudoAtual(conteudo)}
-                disabled={item.status !== 'em_revisao'}
+                disabled={item.status !== 'pendente' && item.status !== 'em_revisao'}
               />
             </div>
           )}
@@ -312,7 +312,7 @@ function DetalhesItemSemPeca({ item, onRejeitar }: DetalhesItemSemPecaProps) {
       )}
 
       {/* Botão para rejeitar / definir ação */}
-      {item.status === 'em_revisao' && (
+      {(item.status === 'pendente' || item.status === 'em_revisao') && (
         <div className="pt-2">
           <Button
             size="sm"
