@@ -47,7 +47,7 @@ interface UseFilaRevisaoReturn {
 
 export function useFilaRevisao(): UseFilaRevisaoReturn {
   // Filtros
-  const [tab, setTab] = useState('')
+  const [tab, setTab] = useState('minha_fila')
   const [status, setStatus] = useState('')
   const [urgencia, setUrgencia] = useState('')
   const [acao, setAcao] = useState('')
@@ -69,8 +69,8 @@ export function useFilaRevisao(): UseFilaRevisaoReturn {
       // Envia o tab diretamente para o backend, que tem sua própria lógica de filtro por aba
       if (filtrosState.tab) filtros.tab = filtrosState.tab
 
-      // Filtro de status manual (sem tab ativo)
-      if (!filtrosState.tab && filtrosState.status) {
+      // Filtro de status — sempre enviado junto com tab
+      if (filtrosState.status) {
         filtros.status = filtrosState.status
       }
 

@@ -39,10 +39,8 @@ interface TabConfig {
 // ---------------------------------------------------------------------------
 
 const TABS_ADMIN: TabConfig[] = [
-  { value: '', label: 'Todos' },
-  { value: 'meus', label: 'Meus' },
-  { value: 'pendentes', label: 'Pendentes' },
-  { value: 'concluidos', label: 'Concluídos' },
+  { value: 'minha_fila', label: 'Minha Fila' },
+  { value: 'assessores', label: 'Assessores' },
 ]
 
 const TABS_ASSESSOR: TabConfig[] = [
@@ -95,8 +93,8 @@ export function FiltrosRevisao({
 
       <div className="flex-1" />
 
-      {/* Filtro de status (apenas se não há aba que já filtra por status) */}
-      {isAdmin && (
+      {/* Filtro de status (oculto na aba Assessores) */}
+      {isAdmin && tab !== 'assessores' && (
         <div className="flex items-center gap-2">
           <label className="text-sm font-medium whitespace-nowrap" style={{ color: C.text700 }}>
             Status:
@@ -110,11 +108,13 @@ export function FiltrosRevisao({
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="__all__">Todos</SelectItem>
-              {Object.entries(STATUS_CONFIG).map(([key, cfg]) => (
-                <SelectItem key={key} value={key}>
-                  {cfg.label}
-                </SelectItem>
-              ))}
+              {Object.entries(STATUS_CONFIG)
+                .filter(([key]) => key !== 'concluido' && key !== 'encaminhado')
+                .map(([key, cfg]) => (
+                  <SelectItem key={key} value={key}>
+                    {cfg.label}
+                  </SelectItem>
+                ))}
             </SelectContent>
           </Select>
         </div>
