@@ -16,6 +16,9 @@ interface FiltrosState {
   status: string
   urgencia: string
   acao: string
+  periodo: string
+  ordenarPor: string
+  ordem: string
 }
 
 interface UseFilaRevisaoReturn {
@@ -33,6 +36,12 @@ interface UseFilaRevisaoReturn {
   setUrgencia: (v: string) => void
   acao: string
   setAcao: (v: string) => void
+  periodo: string
+  setPeriodo: (v: string) => void
+  ordenarPor: string
+  setOrdenarPor: (v: string) => void
+  ordem: string
+  setOrdem: (v: string) => void
 
   // Paginação
   pagina: number
@@ -51,6 +60,9 @@ export function useFilaRevisao(): UseFilaRevisaoReturn {
   const [status, setStatus] = useState('')
   const [urgencia, setUrgencia] = useState('')
   const [acao, setAcao] = useState('')
+  const [periodo, setPeriodo] = useState('')
+  const [ordenarPor, setOrdenarPor] = useState('')
+  const [ordem, setOrdem] = useState('desc')
 
   // Paginação
   const [pagina, setPagina] = useState(1)
@@ -76,6 +88,9 @@ export function useFilaRevisao(): UseFilaRevisaoReturn {
 
       if (filtrosState.urgencia) filtros.urgencia = filtrosState.urgencia
       if (filtrosState.acao) filtros.acao_sugerida = filtrosState.acao
+      if (filtrosState.periodo) filtros.periodo = filtrosState.periodo
+      if (filtrosState.ordenarPor) filtros.ordenar_por = filtrosState.ordenarPor
+      if (filtrosState.ordem) filtros.ordem = filtrosState.ordem
 
       return filtros
     },
@@ -85,7 +100,7 @@ export function useFilaRevisao(): UseFilaRevisaoReturn {
   const loadData = useCallback(async () => {
     setLoading(true)
     try {
-      const filtros = buildFiltros({ tab, status, urgencia, acao }, pagina)
+      const filtros = buildFiltros({ tab, status, urgencia, acao, periodo, ordenarPor, ordem }, pagina)
       const [respItens, respStats] = await Promise.all([
         fetchItens(filtros),
         fetchEstatisticas(),
@@ -98,7 +113,7 @@ export function useFilaRevisao(): UseFilaRevisaoReturn {
     } finally {
       setLoading(false)
     }
-  }, [tab, status, urgencia, acao, pagina, buildFiltros])
+  }, [tab, status, urgencia, acao, periodo, ordenarPor, ordem, pagina, buildFiltros])
 
   useEffect(() => {
     void loadData()
@@ -118,6 +133,12 @@ export function useFilaRevisao(): UseFilaRevisaoReturn {
     setUrgencia,
     acao,
     setAcao,
+    periodo,
+    setPeriodo,
+    ordenarPor,
+    setOrdenarPor,
+    ordem,
+    setOrdem,
 
     pagina,
     setPagina,

@@ -30,7 +30,7 @@ import os
 import uuid
 
 from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
-from sqlalchemy import desc
+from sqlalchemy import asc, desc
 from sqlalchemy.orm import Session
 
 from auth.dependencies import get_current_active_user
@@ -210,11 +210,14 @@ async def ingerir_lote(
 
 @router.get("/itens", response_model=ItemRevisaoListResponse)
 async def listar_itens(
-    tab: str = Query("pendentes", description="Aba: meus, pendentes, concluidos, para_revisar, para_inserir"),
+    tab: str = Query("minha_fila", description="Aba: minha_fila, assessores, concluidos, meus, pendentes, para_revisar, para_inserir"),
     status: str | None = Query(None, description="Filtrar por status especifico"),
     urgencia: str | None = Query(None, description="Filtrar por urgencia: rotina, prazo_correndo, urgente"),
     categoria: str | None = Query(None, description="Filtrar por categoria"),
     numero_cnj: str | None = Query(None, description="Filtrar por numero CNJ (busca parcial)"),
+    periodo: str | None = Query(None, description="Periodo para concluidos: 24h, 7d, 30d"),
+    ordenar_por: str | None = Query(None, description="Campo para ordenar: numero_cnj, acao_sugerida, resultado, status, criado_em"),
+    ordem: str = Query("desc", description="Direcao: asc ou desc"),
     pagina: int = Query(1, ge=1),
     por_pagina: int = Query(20, ge=1, le=100),
     current_user: User = Depends(get_current_active_user),
@@ -268,6 +271,20 @@ async def listar_itens(
             ItemRevisao.status.in_(["aprovado", "encaminhado"]),
             ItemRevisao.usuario_encaminhado_id == current_user.id,
         )
+    elif tab == "minha_fila":
+        # Admin: pendentes + aprovados + rejeitados + em_revisao (legado), sem concluidos/encaminhados
+        if is_admin:
+            query = query.filter(
+                ItemRevisao.status.in_(["pendente", "em_revisao", "aprovado", "rejeitado"])
+            )
+        else:
+            query = query.filter(
+                ItemRevisao.status.in_(["pendente", "em_revisao", "aprovado", "rejeitado"]),
+                ItemRevisao.usuario_revisor_id == current_user.id,
+            )
+    elif tab == "assessores":
+        # Todos os itens encaminhados (admin ve todos)
+        query = query.filter(ItemRevisao.status == "encaminhado")
     else:
         # Tab nao reconhecida: retorna todos (admin) ou apenas do usuario
         if not is_admin:
@@ -288,9 +305,35 @@ async def listar_itens(
     if numero_cnj:
         query = query.filter(ItemRevisao.numero_cnj.ilike(f"%{numero_cnj}%"))
 
+    # Filtro de periodo (para aba concluidos)
+    if periodo:
+        from datetime import timedelta
+        from utils.timezone import get_utc_now as _utc_now
+        agora = _utc_now()
+        if periodo == "24h":
+            query = query.filter(ItemRevisao.concluido_em >= agora - timedelta(hours=24))
+        elif periodo == "7d":
+            query = query.filter(ItemRevisao.concluido_em >= agora - timedelta(days=7))
+        elif periodo == "30d":
+            query = query.filter(ItemRevisao.concluido_em >= agora - timedelta(days=30))
+
+    # Ordenacao
+    CAMPOS_ORDENACAO = {
+        "numero_cnj": ItemRevisao.numero_cnj,
+        "acao_sugerida": ItemRevisao.acao_sugerida,
+        "resultado": ItemRevisao.resultado,
+        "status": ItemRevisao.status,
+        "criado_em": ItemRevisao.criado_em,
+    }
+    coluna_ordem = CAMPOS_ORDENACAO.get(ordenar_por, ItemRevisao.criado_em)
+    if ordem == "asc":
+        query = query.order_by(asc(coluna_ordem))
+    else:
+        query = query.order_by(desc(coluna_ordem))
+
     total = query.count()
     offset = (pagina - 1) * por_pagina
-    itens_db = query.order_by(desc(ItemRevisao.criado_em)).offset(offset).limit(por_pagina).all()
+    itens_db = query.offset(offset).limit(por_pagina).all()
 
     itens_response = [_item_to_response(item) for item in itens_db]
 

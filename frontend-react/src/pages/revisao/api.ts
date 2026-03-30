@@ -29,6 +29,9 @@ export function fetchItens(filtros: FiltrosRevisao = {}): Promise<ItemRevisaoLis
   if (filtros.tipo_peca) params.set('tipo_peca', filtros.tipo_peca)
   if (filtros.acao_sugerida) params.set('acao_sugerida', filtros.acao_sugerida)
   if (filtros.busca) params.set('busca', filtros.busca)
+  if (filtros.periodo) params.set('periodo', filtros.periodo)
+  if (filtros.ordenar_por) params.set('ordenar_por', filtros.ordenar_por)
+  if (filtros.ordem) params.set('ordem', filtros.ordem)
   if (filtros.pagina !== undefined) params.set('pagina', String(filtros.pagina))
   if (filtros.por_pagina !== undefined) params.set('por_pagina', String(filtros.por_pagina))
 
