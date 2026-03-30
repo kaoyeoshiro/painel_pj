@@ -29,7 +29,7 @@ import logging
 import os
 import uuid
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException, Query
 from sqlalchemy import desc
 from sqlalchemy.orm import Session
 
@@ -71,6 +71,7 @@ from sistemas.revisao_pecas.services import (
     rejeitar_item,
     OBS_AGUARDANDO,
 )
+from sistemas.revisao_pecas.services_bridge import tentar_inserir_via_bridge
 
 logger = logging.getLogger(__name__)
 
@@ -353,10 +354,24 @@ async def iniciar_revisao_item(
     return _item_to_response(item)
 
 
+def _agendar_bridge(background_tasks: BackgroundTasks, item: ItemRevisao) -> None:
+    """Agenda insercao via bridge SAJ se o item tem observacao pendente."""
+    if (
+        item.obs_status == OBS_AGUARDANDO
+        and item.cdpendencia
+        and item.observacao_pge
+    ):
+        background_tasks.add_task(
+            tentar_inserir_via_bridge,
+            item.id, item.cdpendencia, item.observacao_pge,
+        )
+
+
 @router.post("/itens/{item_id}/aprovar", response_model=ItemRevisaoResponse)
 async def aprovar(
     item_id: int,
     payload: AprovarRequest,
+    background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
@@ -366,6 +381,7 @@ async def aprovar(
     """
     item = _get_item_or_404(db, item_id)
     item = aprovar_item(db, item, current_user, payload)
+    _agendar_bridge(background_tasks, item)
     return _item_to_response(item)
 
 
@@ -373,6 +389,7 @@ async def aprovar(
 async def rejeitar(
     item_id: int,
     payload: RejeitarRequest,
+    background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
@@ -382,6 +399,7 @@ async def rejeitar(
     """
     item = _get_item_or_404(db, item_id)
     item = rejeitar_item(db, item, current_user, payload)
+    _agendar_bridge(background_tasks, item)
     return _item_to_response(item)
 
 
@@ -389,6 +407,7 @@ async def rejeitar(
 async def encaminhar(
     item_id: int,
     payload: EncaminharRequest,
+    background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
 ):
@@ -398,6 +417,7 @@ async def encaminhar(
     """
     item = _get_item_or_404(db, item_id)
     item = encaminhar_item(db, item, current_user, payload.assessor_id)
+    _agendar_bridge(background_tasks, item)
     return _item_to_response(item)
 
 
