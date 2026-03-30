@@ -56,6 +56,12 @@ export function RevisaoPage() {
     setUrgencia,
     acao,
     setAcao,
+    periodo,
+    setPeriodo,
+    ordenarPor,
+    setOrdenarPor,
+    ordem,
+    setOrdem,
   } = useFilaRevisao()
 
   const [assessores, setAssessores] = useState<Assessor[]>([])
@@ -114,6 +120,8 @@ export function RevisaoPage() {
           setUrgencia={setUrgencia}
           acao={acao}
           setAcao={setAcao}
+          periodo={periodo}
+          setPeriodo={setPeriodo}
           isAdmin={isAdmin}
         />
 
@@ -145,6 +153,16 @@ export function RevisaoPage() {
             itens={itens}
             loading={loading}
             onItemClick={handleItemClick}
+            ordenarPor={ordenarPor}
+            ordem={ordem}
+            onSort={(campo) => {
+              if (ordenarPor === campo) {
+                setOrdem(ordem === 'asc' ? 'desc' : 'asc')
+              } else {
+                setOrdenarPor(campo)
+                setOrdem('asc')
+              }
+            }}
           />
         )}
       </ContentArea>

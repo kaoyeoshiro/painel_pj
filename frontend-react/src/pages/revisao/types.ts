@@ -171,6 +171,9 @@ export interface FiltrosRevisao {
   tipo_peca?: string
   acao_sugerida?: string
   busca?: string
+  periodo?: string
+  ordenar_por?: string
+  ordem?: string
   pagina?: number
   por_pagina?: number
 }

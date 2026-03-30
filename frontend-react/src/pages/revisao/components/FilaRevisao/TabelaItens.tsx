@@ -29,6 +29,9 @@ interface TabelaItensProps {
   itens: ItemRevisao[]
   loading: boolean
   onItemClick: (item: ItemRevisao) => void
+  ordenarPor?: string
+  ordem?: string
+  onSort?: (campo: string) => void
 }
 
 // ---------------------------------------------------------------------------
@@ -112,7 +115,21 @@ function TabelaPlaceholder({ loading }: { loading: boolean }) {
 // Componente principal
 // ---------------------------------------------------------------------------
 
-export function TabelaItens({ itens, loading, onItemClick }: TabelaItensProps) {
+export function TabelaItens({ itens, loading, onItemClick, ordenarPor, ordem, onSort }: TabelaItensProps) {
+  /** Renderiza header clicável com indicador de ordenação */
+  function SortableHead({ campo, children }: { campo: string; children: React.ReactNode }) {
+    const isActive = ordenarPor === campo
+    const arrow = isActive ? (ordem === 'asc' ? ' ▲' : ' ▼') : ''
+    return (
+      <TableHead
+        className="cursor-pointer select-none hover:bg-gray-50"
+        onClick={() => onSort?.(campo)}
+      >
+        {children}{arrow}
+      </TableHead>
+    )
+  }
+
   return (
     <div
       className="bg-white rounded-2xl shadow-sm border overflow-hidden"
@@ -121,13 +138,13 @@ export function TabelaItens({ itens, loading, onItemClick }: TabelaItensProps) {
       <Table>
         <TableHeader>
           <TableRow>
-            <TableHead>Processo</TableHead>
-            <TableHead>Ação</TableHead>
-            <TableHead>Resultado</TableHead>
+            <SortableHead campo="numero_cnj">Processo</SortableHead>
+            <SortableHead campo="acao_sugerida">Ação</SortableHead>
+            <SortableHead campo="resultado">Resultado</SortableHead>
             <TableHead>Urgência</TableHead>
             <TableHead>Confiança IA</TableHead>
-            <TableHead>Status</TableHead>
-            <TableHead>Recebido em</TableHead>
+            <SortableHead campo="status">Status</SortableHead>
+            <SortableHead campo="criado_em">Recebido em</SortableHead>
           </TableRow>
         </TableHeader>
         <TableBody>

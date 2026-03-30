@@ -26,6 +26,8 @@ interface FiltrosProps {
   setUrgencia: (v: string) => void
   acao: string
   setAcao: (v: string) => void
+  periodo: string
+  setPeriodo: (v: string) => void
   isAdmin: boolean
 }
 
@@ -41,6 +43,7 @@ interface TabConfig {
 const TABS_ADMIN: TabConfig[] = [
   { value: 'minha_fila', label: 'Minha Fila' },
   { value: 'assessores', label: 'Assessores' },
+  { value: 'concluidos', label: 'Concluídos' },
 ]
 
 const TABS_ASSESSOR: TabConfig[] = [
@@ -61,6 +64,8 @@ export function FiltrosRevisao({
   setUrgencia,
   acao,
   setAcao,
+  periodo,
+  setPeriodo,
   isAdmin,
 }: FiltrosProps) {
   const tabs = isAdmin ? TABS_ADMIN : TABS_ASSESSOR
@@ -93,8 +98,31 @@ export function FiltrosRevisao({
 
       <div className="flex-1" />
 
-      {/* Filtro de status (oculto na aba Assessores) */}
-      {isAdmin && tab !== 'assessores' && (
+      {/* Filtro de período (apenas na aba Concluídos) */}
+      {tab === 'concluidos' && (
+        <div className="flex items-center gap-2">
+          <label className="text-sm font-medium whitespace-nowrap" style={{ color: C.text700 }}>
+            Período:
+          </label>
+          <Select
+            value={periodo || '__all__'}
+            onValueChange={(v) => setPeriodo(v === '__all__' ? '' : v)}
+          >
+            <SelectTrigger className="w-[160px] h-9">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="__all__">Todos</SelectItem>
+              <SelectItem value="24h">Últimas 24h</SelectItem>
+              <SelectItem value="7d">Últimos 7 dias</SelectItem>
+              <SelectItem value="30d">Últimos 30 dias</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
+      {/* Filtro de status (oculto nas abas Assessores e Concluídos) */}
+      {isAdmin && tab !== 'assessores' && tab !== 'concluidos' && (
         <div className="flex items-center gap-2">
           <label className="text-sm font-medium whitespace-nowrap" style={{ color: C.text700 }}>
             Status:
