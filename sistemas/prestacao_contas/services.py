@@ -166,7 +166,12 @@ def verificar_estado_expirado(geracao: GeracaoAnalise) -> bool:
     """
     if not geracao.estado_expira_em:
         return True
-    return get_utc_now() > geracao.estado_expira_em
+    expira_em = geracao.estado_expira_em
+    # Garante comparação entre datetimes aware (registros antigos podem ser naive)
+    if expira_em.tzinfo is None:
+        from datetime import timezone
+        expira_em = expira_em.replace(tzinfo=timezone.utc)
+    return get_utc_now() > expira_em
 
 
 def converter_pdf_para_imagens(pdf_bytes: bytes, max_paginas: int = 10) -> List[str]:
