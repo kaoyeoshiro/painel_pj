@@ -211,8 +211,8 @@ class UserResponse(UserBase):
     setor: Optional[str] = None
     default_group_id: Optional[int] = None
     allowed_group_ids: Optional[List[int]] = None
-    created_at: datetime
-    updated_at: datetime
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
