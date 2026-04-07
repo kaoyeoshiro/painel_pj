@@ -1315,15 +1315,20 @@ class OrquestradorPrestacaoContas:
 
         except Exception as e:
             logger.exception(f"Erro no processamento: {e}")
-            # NÃO sobrescreve status se já está aguardando documentos (foi interrompido propositalmente)
+            # NÃO sobrescreve status no banco se já está aguardando documentos
             if geracao.status not in ("aguardando_documentos", "aguardando_nota_fiscal"):
                 geracao.status = "erro"
                 geracao.erro = str(e)
-                self.db.commit()
+                try:
+                    self.db.commit()
+                except Exception:
+                    logger.exception("Falha ao salvar erro no banco")
 
-                evt_erro, evt_fim = evento_erro_com_fim(f"Erro no processamento: {str(e)}")
-                yield evt_erro
-                yield evt_fim
+            # SEMPRE envia evento de erro ao cliente via SSE,
+            # mesmo se o status é "aguardando_*" — o cliente precisa saber que algo falhou
+            evt_erro, evt_fim = evento_erro_com_fim(f"Erro no processamento: {str(e)}")
+            yield evt_erro
+            yield evt_fim
 
     async def responder_duvida(
         self,
