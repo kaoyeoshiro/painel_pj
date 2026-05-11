@@ -1,0 +1,78 @@
+name: Deploy portal-pge para ECS Fargate (sa-east-1)
+
+# Dispara em push pra main ou execução manual via UI
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+# OIDC requer id-token: write
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: sa-east-1
+  AWS_ACCOUNT_ID: "729591921784"
+  ECR_REGISTRY: 729591921784.dkr.ecr.sa-east-1.amazonaws.com
+  ECR_REPO: portal-pge
+  ECS_CLUSTER: portal-pge-cluster
+  ECS_SERVICE: portal-pge
+
+jobs:
+  deploy:
+    name: Build, push e deploy
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Configurar credenciais AWS (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::729591921784:role/portal-pge-github-deploy
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login no ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Build, tag e push da imagem
+        id: build-image
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+        run: |
+          IMAGE_URI="${ECR_REGISTRY}/${ECR_REPO}"
+          docker build --target prod \
+            -t "${IMAGE_URI}:${IMAGE_TAG}" \
+            -t "${IMAGE_URI}:latest" \
+            .
+          docker push "${IMAGE_URI}:${IMAGE_TAG}"
+          docker push "${IMAGE_URI}:latest"
+          echo "image=${IMAGE_URI}:${IMAGE_TAG}" >> "$GITHUB_OUTPUT"
+
+      - name: Forçar novo deploy no ECS (puxa :latest)
+        run: |
+          aws ecs update-service \
+            --cluster "${ECS_CLUSTER}" \
+            --service "${ECS_SERVICE}" \
+            --force-new-deployment \
+            --no-cli-pager > /dev/null
+          echo "Update solicitado, aguardando estabilizar..."
+
+      - name: Aguardar serviço estabilizar
+        run: |
+          aws ecs wait services-stable \
+            --cluster "${ECS_CLUSTER}" \
+            --services "${ECS_SERVICE}"
+          echo "Serviço estável."
+
+      - name: Resumo do deploy
+        run: |
+          echo "## Deploy concluído :rocket:" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Imagem:** ${{ steps.build-image.outputs.image }}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Cluster:** ${ECS_CLUSTER}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **Service:** ${ECS_SERVICE}" >> "$GITHUB_STEP_SUMMARY"
+          echo "- **URL:** http://portal-pge-alb-275721605.sa-east-1.elb.amazonaws.com" >> "$GITHUB_STEP_SUMMARY"
