@@ -2,6 +2,8 @@
 
 > Sistema web para a Procuradoria-Geral do Estado de Mato Grosso do Sul que utiliza IA para automatizar tarefas juridicas.
 
+**Producao:** https://pgems.app — deploy automatico em ECS Fargate (sa-east-1) via GitHub Actions a cada `git push` na `main`. Veja [docs/operacoes/AWS_DEPLOY.md](docs/operacoes/AWS_DEPLOY.md).
+
 ## Inicio Rapido
 
 ```bash
@@ -32,6 +34,7 @@ scripts\run.bat
 | [.claude/CLAUDE.md](.claude/CLAUDE.md) | **LEIA PRIMEIRO** - Regras operacionais |
 | [docs/](docs/) | Documentacao tecnica completa |
 | [docs/sistemas/](docs/sistemas/) | Documentacao por sistema |
+| [docs/operacoes/AWS_DEPLOY.md](docs/operacoes/AWS_DEPLOY.md) | Infra AWS + pipeline CI/CD (deploy, rollback, troubleshooting) |
 
 ## Estrutura do Projeto
 
@@ -102,19 +105,25 @@ portal-pge/
 | Componente | Tecnologia |
 |------------|------------|
 | Backend | FastAPI + Uvicorn |
-| Banco de Dados | PostgreSQL (prod) / SQLite (dev) |
+| Banco de Dados | RDS PostgreSQL 17.9 (prod) / PostgreSQL local (dev) |
 | ORM | SQLAlchemy 2.0 |
-| IA | Google Gemini API |
-| Frontend | Vanilla JS + TailwindCSS |
-| Deploy | Railway |
+| IA | Google Gemini API + OpenRouter (fallback) |
+| Frontend | React 19 + Vite + TanStack Router + Tailwind (legado Jinja2 via `FRONTEND_MODE`) |
+| Infra | AWS ECS Fargate Spot (sa-east-1) atras de ALB + ACM + Route 53 |
+| CI/CD | GitHub Actions com OIDC → ECR → ECS Fargate |
 
 ## Variaveis de Ambiente
+
+**Desenvolvimento local:** veja [.env.example](.env.example).
+
+**Producao (AWS):** todas as vars ficam no AWS Secrets Manager (`portal-pge/app-config`) e sao injetadas como env vars pelo ECS no boot da task. Pra alterar uma var em producao, atualize o secret e force um redeploy — veja [docs/operacoes/AWS_DEPLOY.md](docs/operacoes/AWS_DEPLOY.md).
 
 ```env
 # Obrigatorias
 DATABASE_URL=postgresql://user:pass@host:5432/db
 SECRET_KEY=chave-secreta-jwt
 GEMINI_KEY=sua-api-key
+ALLOWED_ORIGINS=https://pgems.app,https://www.pgems.app  # CORS
 
 # TJ-MS
 TJ_WS_USER=usuario
