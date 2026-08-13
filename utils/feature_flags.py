@@ -400,12 +400,6 @@ def setup_default_flags():
 
     # Flags de beta/experimental
     store.register(
-        "beta_gemini_3_pro",
-        enabled=False,
-        description="Usa Gemini 3 Pro para todas as gerações"
-    )
-
-    store.register(
         "experimental_embeddings",
         enabled=False,
         description="Usa novo sistema de embeddings vetoriais"

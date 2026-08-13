@@ -46,7 +46,7 @@ def mock_user():
 def mock_service():
     """Mock do PedidoCalculoService."""
     service = Mock(spec=PedidoCalculoService)
-    service.modelo = "gemini-3-flash-preview"
+    service.modelo = "gemini-3.6-flash"
     return service
 
 

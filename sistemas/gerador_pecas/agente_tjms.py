@@ -76,7 +76,7 @@ if not WS_USER or not WS_PASS:
     print("[WARN] Credenciais TJ-MS não configuradas - verifique services/tjms/config.py")
 
 # Modelo padrão (sem prefixo google/)
-MODELO_PADRAO = "gemini-3-flash-preview"
+MODELO_PADRAO = "gemini-3.6-flash"
 
 # =========================
 # Categorias de documentos excluídas

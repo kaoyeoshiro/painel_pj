@@ -14,7 +14,7 @@ logger = logging.getLogger(__name__)
 
 
 # Modelo padrao (pode ser sobrescrito por config do banco)
-GEMINI_MODEL_DEFAULT = "gemini-3-flash-preview"
+GEMINI_MODEL_DEFAULT = "gemini-3.6-flash"
 
 
 class DeterministicRuleGenerator:

@@ -5,7 +5,7 @@ Orquestrador de Agentes para Geração de Peças Jurídicas
 Coordena os 3 agentes do fluxo:
 1. Agente 1 (Coletor): Baixa documentos do TJ-MS e gera resumo consolidado
 2. Agente 2 (Detector): Analisa resumo e ativa prompts modulares relevantes
-3. Agente 3 (Gerador): Gera a peça jurídica usando Gemini 3 Pro
+3. Agente 3 (Gerador): Gera a peça jurídica usando Gemini 3.6 Flash
 """
 
 import hashlib
@@ -352,8 +352,8 @@ def consolidar_dados_extracao(resultado_agente1: ResultadoAgente1) -> Dict[str, 
     return dados_consolidados
 
 
-MODELO_AGENTE2_PADRAO = "gemini-3-flash-preview"
-MODELO_AGENTE3_PADRAO = "gemini-3-pro-preview"
+MODELO_AGENTE2_PADRAO = "gemini-3.6-flash"
+MODELO_AGENTE3_PADRAO = "gemini-3.6-flash"
 
 
 def _limpar_resposta_markdown(content: str) -> str:
@@ -838,10 +838,10 @@ class OrquestradorAgentes:
             print(f"   Tempo Agente 2: {resultado.tempo_agente2:.1f}s")
             
             # ========================================
-            # AGENTE 3: Gerador de Peça (Gemini 3 Pro)
+            # AGENTE 3: Gerador de Peça (Gemini 3.6 Flash)
             # ========================================
             print("\n" + "=" * 60)
-            print("[AGENTE 3] GERADOR (Gemini 3 Pro)")
+            print("[AGENTE 3] GERADOR (Gemini 3.6 Flash)")
             print("=" * 60)
             
             inicio = datetime.now()
@@ -1246,7 +1246,7 @@ class OrquestradorAgentes:
         dados_processo: Optional[Dict[str, Any]] = None
     ) -> ResultadoAgente3:
         """
-        Executa o Agente 3 - Gerador de Peça (Gemini 3 Pro)
+        Executa o Agente 3 - Gerador de Peça (Gemini 3.6 Flash)
 
         Recebe:
         - Resumo consolidado (do Agente 1)

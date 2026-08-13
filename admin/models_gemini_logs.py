@@ -37,7 +37,7 @@ class GeminiApiLog(Base):
     route = Column(String(255), nullable=True)  # Rota HTTP que originou a chamada
 
     # Request info
-    model = Column(String(100), nullable=False, index=True)  # gemini-3-flash-preview, etc
+    model = Column(String(100), nullable=False, index=True)  # gemini-3.6-flash, etc
     prompt_chars = Column(Integer, nullable=False)  # Tamanho do prompt em caracteres
     prompt_tokens_estimated = Column(Integer, nullable=True)  # Estimativa de tokens (~4 chars/token)
     has_images = Column(Boolean, default=False)  # Se a chamada incluiu imagens

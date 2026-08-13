@@ -201,7 +201,7 @@ async def test_gemini_generate_simple() -> Tuple[bool, str, Dict]:
 
     response = await gemini_service.generate(
         prompt="Responda apenas 'OK' sem nenhum outro texto.",
-        model="gemini-3-flash-preview",
+        model="gemini-3.6-flash",
         temperature=0.0,
         max_tokens=10,
         thinking_level="minimal"
@@ -247,7 +247,7 @@ async def test_gemini_streaming() -> Tuple[bool, str, Dict]:
 
     async for chunk in gemini_service.generate_stream(
         prompt="Conte de 1 a 5, um numero por linha.",
-        model="gemini-3-flash-preview",
+        model="gemini-3.6-flash",
         temperature=0.0,
         thinking_level="minimal"
     ):
@@ -273,7 +273,7 @@ async def test_gemini_sla_fallback() -> Tuple[bool, str, Dict]:
     # Timeout muito curto (0.1s) para forcar fallback
     response = await gemini_service.generate_with_sla(
         prompt="Diga apenas 'teste'",
-        model_primary="gemini-3-flash-preview",
+        model_primary="gemini-3.6-flash",
         model_fallback="gemini-2.0-flash-lite",  # Modelo lite correto
         sla_timeout_seconds=0.1,  # Muito curto - deve usar fallback
         temperature=0.0,
@@ -297,7 +297,7 @@ async def test_gemini_cache() -> Tuple[bool, str, Dict]:
     # Primeira chamada - nao deve estar em cache
     response1 = await gemini_service.generate(
         prompt=prompt,
-        model="gemini-3-flash-preview",
+        model="gemini-3.6-flash",
         temperature=0.0,
         use_cache=True
     )
@@ -305,7 +305,7 @@ async def test_gemini_cache() -> Tuple[bool, str, Dict]:
     # Segunda chamada - deve vir do cache
     response2 = await gemini_service.generate(
         prompt=prompt,
-        model="gemini-3-flash-preview",
+        model="gemini-3.6-flash",
         temperature=0.0,
         use_cache=True
     )
@@ -356,7 +356,7 @@ async def test_gerador_service_init() -> Tuple[bool, str, Dict]:
         db = SessionLocal()
         try:
             service = GeradorPecasService(
-                modelo="gemini-3-flash-preview",
+                modelo="gemini-3.6-flash",
                 db=db
             )
             return True, "Servico inicializado", {"modelo": service.modelo}
@@ -376,7 +376,7 @@ async def test_gerador_editar_minuta() -> Tuple[bool, str, Dict]:
         db = SessionLocal()
         try:
             service = GeradorPecasService(
-                modelo="gemini-3-flash-preview",
+                modelo="gemini-3.6-flash",
                 db=db
             )
 
@@ -411,7 +411,7 @@ async def test_gerador_editar_minuta_stream() -> Tuple[bool, str, Dict]:
         # Teste direto do streaming para evitar timeout
         async for chunk in gemini_service.generate_stream(
             prompt="Diga apenas: TESTE OK",
-            model="gemini-3-flash-preview",
+            model="gemini-3.6-flash",
             temperature=0.0,
             thinking_level="minimal"
         ):

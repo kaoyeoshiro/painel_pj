@@ -78,6 +78,6 @@ MAX_MENSAGENS_CONTEXTO = 20
 MAX_TOKENS_RESPOSTA = 8192
 
 # Modelos padrão (fallback se não configurado no admin)
-MODELO_PADRAO_AGENTE1 = "gemini-3-flash-preview"
-MODELO_PADRAO_AGENTE2 = "gemini-3-pro-preview"
-MODELO_PADRAO_CHATBOT = "gemini-3-pro-preview"
+MODELO_PADRAO_AGENTE1 = "gemini-3.6-flash"
+MODELO_PADRAO_AGENTE2 = "gemini-3.6-flash"
+MODELO_PADRAO_CHATBOT = "gemini-3.6-flash"

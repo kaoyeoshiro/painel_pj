@@ -64,7 +64,7 @@ async def gerar_regra_deterministica(
     Este endpoint:
     1. Recebe a condição em texto
     2. Busca as variáveis disponíveis no sistema
-    3. Usa o Gemini 3 Flash Preview para converter em AST
+    3. Usa o Gemini 3.6 Flash para converter em AST
     4. Valida se todas as variáveis usadas existem
     5. Retorna a regra estruturada
     """

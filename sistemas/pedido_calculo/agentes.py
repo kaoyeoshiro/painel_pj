@@ -58,7 +58,7 @@ from .xml_parser import XMLParser, _primeiro_dia_util_posterior
 SISTEMA = "pedido_calculo"
 
 # Modelo padrão (fallback)
-MODELO_PADRAO = "gemini-3-flash-preview"
+MODELO_PADRAO = "gemini-3.6-flash"
 
 
 def _get_config(chave: str, default: str = None) -> str:
@@ -279,7 +279,7 @@ XML:
 
         response = await gemini_service.generate(
             prompt=prompt,
-            model="gemini-3-flash-preview",
+            model="gemini-3.6-flash",
             temperature=0.1,
             thinking_level=_get_pedido_calculo_thinking_level()
         )

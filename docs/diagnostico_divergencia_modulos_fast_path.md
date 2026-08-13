@@ -20,7 +20,7 @@
 | 217 | 2026-01-28 00:17:44 | fast_path | 4 | `equipamentos_materiais=True` |
 
 Todas as execuções usaram:
-- Modelo: `gemini-3-flash-preview`
+- Modelo: `gemini-3.6-flash`
 - Tipo de peça: `contestacao`
 - Modo: `fast_path` (100% determinístico)
 
@@ -132,14 +132,14 @@ FROM geracoes_pecas WHERE id = 217;
 ```python
 # Antes (linha 71)
 DEFAULTS = {
-    "modelo": "gemini-3-flash-preview",
+    "modelo": "gemini-3.6-flash",
     "temperatura": 0.3,  # Permite variação
     ...
 }
 
 # Depois
 DEFAULTS = {
-    "modelo": "gemini-3-flash-preview",
+    "modelo": "gemini-3.6-flash",
     "temperatura": 0.1,  # Reduz variação significativamente
     ...
 }

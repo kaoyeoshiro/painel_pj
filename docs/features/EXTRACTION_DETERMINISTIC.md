@@ -83,7 +83,7 @@ No modo legado, o administrador define manualmente o schema JSON de extração:
    - Tipo de dado (ex: `text`, `boolean`)
    - Opções para múltipla escolha
 
-3. **Geração Automática**: A IA (Gemini 3 Flash Preview) converte as perguntas em:
+3. **Geração Automática**: A IA (Gemini 3.6 Flash) converte as perguntas em:
    - Schema JSON estruturado
    - Variáveis normalizadas
    - Mapeamento pergunta → variável
@@ -307,7 +307,7 @@ python -m unittest tests.test_extraction_deterministic -v
 
 ## Modelo de IA
 
-O sistema usa obrigatoriamente o modelo `gemini-3-flash-preview` para:
+O sistema usa obrigatoriamente o modelo `gemini-3.6-flash` para:
 - Geração de schemas de extração
 - Geração de regras determinísticas
 

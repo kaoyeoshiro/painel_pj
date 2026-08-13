@@ -427,14 +427,14 @@ DEFAULT_CONFIG_IA = [
     {
         "sistema": "matriculas",
         "chave": "modelo_analise",
-        "valor": "google/gemini-3-pro-preview",
+        "valor": "google/gemini-3.6-flash",
         "tipo_valor": "string",
         "descricao": "Modelo de IA para análise visual de matrículas"
     },
     {
         "sistema": "matriculas",
         "chave": "modelo_relatorio",
-        "valor": "google/gemini-3-flash-preview",
+        "valor": "google/gemini-3.6-flash",
         "tipo_valor": "string",
         "descricao": "Modelo de IA para geração de relatórios"
     },
@@ -469,7 +469,7 @@ DEFAULT_CONFIG_IA = [
     {
         "sistema": "assistencia_judiciaria",
         "chave": "modelo_relatorio",
-        "valor": "google/gemini-3-pro-preview",
+        "valor": "google/gemini-3.6-flash",
         "tipo_valor": "string",
         "descricao": "Modelo de IA para geração de relatórios de assistência"
     },
@@ -614,7 +614,7 @@ DEFAULT_CONFIG_IA = [
     {
         "sistema": "gerador_pecas",
         "chave": "modelo_coletor",
-        "valor": "gemini-3-flash-preview",
+        "valor": "gemini-3.6-flash",
         "tipo_valor": "string",
         "descricao": "Modelo para Agent1/Coletor: coleta e resume documentos do TJ-MS"
     },
@@ -637,7 +637,7 @@ DEFAULT_CONFIG_IA = [
     {
         "sistema": "pedido_calculo",
         "chave": "modelo_extracao",
-        "valor": "gemini-3-flash-preview",
+        "valor": "gemini-3.6-flash",
         "tipo_valor": "string",
         "descricao": "Modelo para Agent2/Extração: extrai dados dos PDFs"
     },
@@ -660,7 +660,7 @@ DEFAULT_CONFIG_IA = [
     {
         "sistema": "pedido_calculo",
         "chave": "modelo_geracao",
-        "valor": "gemini-3-flash-preview",
+        "valor": "gemini-3.6-flash",
         "tipo_valor": "string",
         "descricao": "Modelo para Agent3/Geração: gera pedido de cálculo"
     },
@@ -683,7 +683,7 @@ DEFAULT_CONFIG_IA = [
     {
         "sistema": "pedido_calculo",
         "chave": "modelo_edicao",
-        "valor": "gemini-3-flash-preview",
+        "valor": "gemini-3.6-flash",
         "tipo_valor": "string",
         "descricao": "Modelo para Agent4/Edição: edita via chat interativo"
     },
@@ -715,7 +715,7 @@ DEFAULT_CONFIG_IA = [
     {
         "sistema": "prestacao_contas",
         "chave": "modelo_analise",
-        "valor": "gemini-3-flash-preview",
+        "valor": "gemini-3.6-flash",
         "tipo_valor": "string",
         "descricao": "Modelo para Agent2/Análise: análise final"
     },
@@ -731,7 +731,7 @@ DEFAULT_CONFIG_IA = [
     {
         "sistema": "matriculas",
         "chave": "modelo_relatorio",
-        "valor": "gemini-3-flash-preview",
+        "valor": "gemini-3.6-flash",
         "tipo_valor": "string",
         "descricao": "Modelo para Agent2/Relatório: gera relatório técnico"
     },
@@ -754,7 +754,7 @@ DEFAULT_CONFIG_IA = [
     {
         "sistema": "assistencia_judiciaria",
         "chave": "modelo_relatorio",
-        "valor": "gemini-3-pro-preview",
+        "valor": "gemini-3.6-flash",
         "tipo_valor": "string",
         "descricao": "Modelo para Agente/Relatório: gera relatório"
     },

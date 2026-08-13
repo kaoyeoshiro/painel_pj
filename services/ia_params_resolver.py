@@ -61,7 +61,7 @@ AGENTES_POR_SISTEMA: Dict[str, Dict[str, str]] = {
 
 # Defaults globais (fallback final)
 DEFAULTS = {
-    "modelo": "gemini-3-flash-preview",
+    "modelo": "gemini-3.6-flash",
     "temperatura": 0.3,
     "max_tokens": None,  # None = usa máximo do modelo
     "thinking_level": "low",  # "low" = reduz latência TTFT sem degradar qualidade significativamente

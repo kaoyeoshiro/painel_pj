@@ -115,7 +115,7 @@ async def _classificar_llm(
 
         response = await gemini_service.generate(
             prompt=prompt,
-            model="gemini-3-flash-preview",
+            model="gemini-3.6-flash",
             temperature=temperature,
             thinking_level="minimal",
             max_tokens=100,
@@ -421,7 +421,7 @@ async def comparar_cnj(
             "name": bert_run.name
         },
         llm={
-            "model": "gemini-3-flash-preview",
+            "model": "gemini-3.6-flash",
             "thinking": "minimal",
             "temperature": request.llm_temperature,
             "token_limit": request.llm_token_limit,

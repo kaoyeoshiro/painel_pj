@@ -52,12 +52,12 @@ class PedidoCalculoService:
     Orquestra todo o pipeline de processamento.
     """
 
-    def __init__(self, modelo: str = "gemini-3-flash-preview", logger=None):
+    def __init__(self, modelo: str = "gemini-3.6-flash", logger=None):
         """
         Inicializa o serviço.
 
         Args:
-            modelo: Modelo de IA a usar (padrão: gemini-3-flash-preview)
+            modelo: Modelo de IA a usar (padrão: gemini-3.6-flash)
             logger: Logger opcional para debug de chamadas de IA
         """
         self.modelo = modelo

@@ -26,7 +26,7 @@ CONFIGURACOES_PADRAO = [
     {
         "sistema": "prestacao_contas",
         "chave": "modelo_analise",
-        "valor": "gemini-3-flash-preview",
+        "valor": "gemini-3.6-flash",
         "tipo_valor": "string",
         "descricao": "Modelo usado para análise final da prestação de contas",
     },

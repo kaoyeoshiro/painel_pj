@@ -183,39 +183,49 @@ class TestBuildPayloadThinkingLevel:
             payload = build_payload(
                 prompt="test",
                 thinking_level=level,
-                model="gemini-3-flash-preview",
+                model="gemini-3.6-flash",
             )
             config = payload["generationConfig"]
             assert "thinkingConfig" in config, f"Level '{level}' should be valid for Flash"
             assert config["thinkingConfig"]["thinkingLevel"] == level
 
-    def test_gemini3_pro_only_low_high(self):
-        """Gemini 3 Pro aceita apenas low e high."""
+    def test_gemini3_flash_lite_all_levels_valid(self):
+        """Gemini 3.5 Flash Lite aceita minimal, low, medium, high."""
+        for level in ("minimal", "low", "medium", "high"):
+            payload = build_payload(
+                prompt="test",
+                thinking_level=level,
+                model="gemini-3.5-flash-lite",
+            )
+            config = payload["generationConfig"]
+            assert "thinkingConfig" in config, f"Level '{level}' should be valid for Flash Lite"
+            assert config["thinkingConfig"]["thinkingLevel"] == level
+
+    def test_gemini3_non_flash_only_low_high(self):
+        """Modelo Gemini 3 nao-flash aceita apenas low e high."""
         for level in ("low", "high"):
             payload = build_payload(
                 prompt="test",
                 thinking_level=level,
-                model="gemini-3-pro-preview",
+                model="gemini-3-ultra",
             )
             assert "thinkingConfig" in payload["generationConfig"]
 
-    def test_gemini3_pro_rejects_minimal_medium(self):
-        """Gemini 3 Pro NÃO aceita minimal e medium."""
         for level in ("minimal", "medium"):
             payload = build_payload(
                 prompt="test",
                 thinking_level=level,
-                model="gemini-3-pro-preview",
+                model="gemini-3-ultra",
             )
             assert "thinkingConfig" not in payload["generationConfig"], \
-                f"Level '{level}' should NOT be valid for Pro"
+                f"Level '{level}' should NOT be valid for non-flash"
 
     def test_none_thinking_level_no_config(self):
         """thinking_level=None não deve adicionar thinkingConfig."""
         payload = build_payload(
             prompt="test",
             thinking_level=None,
-            model="gemini-3-flash-preview",
+            model="gemini-3.6-flash",
         )
         assert "thinkingConfig" not in payload["generationConfig"]
 
@@ -224,7 +234,7 @@ class TestBuildPayloadThinkingLevel:
         payload = build_payload(
             prompt="test",
             thinking_level="",
-            model="gemini-3-flash-preview",
+            model="gemini-3.6-flash",
         )
         assert "thinkingConfig" not in payload["generationConfig"]
 
@@ -257,7 +267,7 @@ class TestBuildPayloadWithImagesThinkingLevel:
             prompt="test",
             images_base64=["data:image/png;base64,abc123"],
             thinking_level="low",
-            model="gemini-3-flash-preview",
+            model="gemini-3.6-flash",
         )
         assert "thinkingConfig" in payload["generationConfig"]
         assert payload["generationConfig"]["thinkingConfig"]["thinkingLevel"] == "low"

@@ -98,7 +98,7 @@ async def gerar_schema_ia(
 
     Este endpoint:
     1. Coleta todas as perguntas ativas da categoria
-    2. Envia para o Gemini 3 Flash Preview para gerar o schema
+    2. Envia para o Gemini 3.6 Flash para gerar o schema
     3. Cria variáveis normalizadas a partir do mapeamento
     4. Salva o modelo de extração
     """

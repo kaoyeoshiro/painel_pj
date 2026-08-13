@@ -356,7 +356,7 @@ class AgenteAnalise:
         else:
             # Fallback para valores padrão se não houver db
             self._params = IAParams(
-                modelo="gemini-3-flash-preview",
+                modelo="gemini-3.6-flash",
                 temperatura=0.3,
                 max_tokens=None,
                 sistema="prestacao_contas",
@@ -982,7 +982,7 @@ async def analisar_prestacao_contas(
     peticao_inicial: str,
     peticao_prestacao: str,
     documentos_anexos: List[Dict[str, str]],
-    modelo: str = "gemini-3-flash-preview",
+    modelo: str = "gemini-3.6-flash",
     temperatura: float = 0.3,
     ia_logger: Optional[IALogger] = None,
     db: Session = None,

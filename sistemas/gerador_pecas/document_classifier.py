@@ -256,8 +256,8 @@ class DocumentClassifier:
     CONFIDENCE_THRESHOLD = 0.5
 
     # Modelo padrão (configurável via admin)
-    # Usa gemini-3-flash-preview que é rápido e barato
-    DEFAULT_MODEL = "gemini-3-flash-preview"
+    # Usa gemini-3.6-flash que é rápido e barato
+    DEFAULT_MODEL = "gemini-3.6-flash"
 
     def __init__(
         self,

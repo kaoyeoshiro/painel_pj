@@ -495,7 +495,7 @@ async def classificar_documento_com_ia(
 
             response = await gemini_service.generate(
                 prompt=prompt,
-                model="gemini-3-flash-preview",
+                model="gemini-3.6-flash",
                 temperature=0.1,
                 max_tokens=8000,
                 thinking_level=thinking_level  # Configurável em /admin/prompts-config
@@ -520,7 +520,7 @@ async def classificar_documento_com_ia(
                 response = await gemini_service.generate_with_images(
                     prompt=prompt,
                     images_base64=imagens_base64,
-                    model="gemini-3-flash-preview",
+                    model="gemini-3.6-flash",
                     temperature=0.1,
                     max_tokens=8000,
                     thinking_level=thinking_level  # Configurável em /admin/prompts-config
@@ -562,7 +562,7 @@ async def classificar_documento_com_modelo(
     Args:
         pdf_base64: PDF em base64
         categoria: Categoria de resumo JSON
-        modelo: Nome do modelo (ex: "gemini-3-flash-preview", "gemini-2.5-flash-lite")
+        modelo: Nome do modelo (ex: "gemini-3.6-flash", "gemini-2.5-flash-lite")
         thinking_level: Nível de thinking ("low", "medium", "high", None)
         db: Sessão do banco de dados
 
@@ -1015,8 +1015,8 @@ async def classificar_com_comparacao(
     """
     Classifica um documento usando dois modelos de IA e compara resultados.
 
-    Modelo A: gemini-3-flash-preview com thinking="low"
-    Modelo B: gemini-3.1-flash-lite-preview com thinking=None (padrão)
+    Modelo A: gemini-3.6-flash com thinking="low"
+    Modelo B: gemini-3.5-flash-lite com thinking=None (padrão)
 
     Executa ambos em paralelo e retorna relatório de comparação.
     """
@@ -1033,11 +1033,11 @@ async def classificar_com_comparacao(
         raise HTTPException(status_code=404, detail="Categoria não encontrada")
 
     # Configurações dos modelos
-    MODELO_A = "gemini-3-flash-preview"
+    MODELO_A = "gemini-3.6-flash"
     THINKING_A = "low"
     CONFIG_A = "thinking: low"
 
-    MODELO_B = "gemini-3.1-flash-lite-preview"
+    MODELO_B = "gemini-3.5-flash-lite"
     THINKING_B = None
     CONFIG_B = "thinking: default"
 

@@ -59,14 +59,14 @@ describe('THINKING_LEVELS_DIRETO', () => {
 })
 
 describe('MODEL_THINKING_SUPPORT', () => {
-  it('Gemini 3 Flash suporta todos os 4 níveis', () => {
-    const flash = MODEL_THINKING_SUPPORT['gemini-3-flash']
+  it('Gemini 3.6 Flash suporta todos os 4 níveis', () => {
+    const flash = MODEL_THINKING_SUPPORT['gemini-3.6-flash']
     expect(flash).toEqual(['minimal', 'low', 'medium', 'high'])
   })
 
-  it('Gemini 3 Pro suporta apenas low e high', () => {
-    const pro = MODEL_THINKING_SUPPORT['gemini-3-pro']
-    expect(pro).toEqual(['low', 'high'])
+  it('Gemini 3.5 Flash Lite suporta todos os 4 níveis', () => {
+    const lite = MODEL_THINKING_SUPPORT['gemini-3.5-flash-lite']
+    expect(lite).toEqual(['minimal', 'low', 'medium', 'high'])
   })
 
   it('não lista modelos Gemini 2.x ou 1.5', () => {
@@ -104,18 +104,18 @@ describe('NORMALIZE_THINKING_LEVEL', () => {
 })
 
 describe('getSupportedLevels', () => {
-  it('retorna todos os níveis para gemini-3-flash-preview', () => {
-    expect(getSupportedLevels('gemini-3-flash-preview')).toEqual(
+  it('retorna todos os níveis para gemini-3.6-flash', () => {
+    expect(getSupportedLevels('gemini-3.6-flash')).toEqual(
       ['minimal', 'low', 'medium', 'high']
     )
   })
 
-  it('retorna low/high para gemini-3-pro-preview', () => {
-    expect(getSupportedLevels('gemini-3-pro-preview')).toEqual(['low', 'high'])
+  it('retorna array vazio para modelo descontinuado gemini-3-pro-preview', () => {
+    expect(getSupportedLevels('gemini-3-pro-preview')).toEqual([])
   })
 
-  it('retorna minimal/low/medium/high para gemini-3.1-flash-lite-preview', () => {
-    expect(getSupportedLevels('gemini-3.1-flash-lite-preview')).toEqual(['minimal', 'low', 'medium', 'high'])
+  it('retorna minimal/low/medium/high para gemini-3.5-flash-lite', () => {
+    expect(getSupportedLevels('gemini-3.5-flash-lite')).toEqual(['minimal', 'low', 'medium', 'high'])
   })
 
   it('retorna array vazio para string vazia', () => {

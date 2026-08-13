@@ -26,7 +26,7 @@ from .models_extraction import (
 logger = logging.getLogger(__name__)
 
 # Modelo obrigatório conforme especificação
-GEMINI_MODEL = "gemini-3-flash-preview"
+GEMINI_MODEL = "gemini-3.6-flash"
 
 
 class DependencyInferenceService:

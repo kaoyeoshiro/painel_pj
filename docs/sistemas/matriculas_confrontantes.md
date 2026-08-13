@@ -179,9 +179,9 @@ O sistema de Matriculas Confrontantes analisa documentos de matriculas imobiliar
 
 | Funcao | Modelo Default |
 |--------|----------------|
-| Extracao de dados | gemini-3-flash-preview |
-| Analise de confrontacao | gemini-3-flash-preview |
-| Relatorio consolidado | gemini-3-pro-preview |
+| Extracao de dados | gemini-3.6-flash |
+| Analise de confrontacao | gemini-3.6-flash |
+| Relatorio consolidado | gemini-3.6-flash |
 
 ### Armazenamento
 
