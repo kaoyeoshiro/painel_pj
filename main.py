@@ -260,18 +260,10 @@ if _allowed_origins_env:
     ALLOWED_ORIGINS = [origin.strip() for origin in _allowed_origins_env.split(",") if origin.strip()]
 else:
     if IS_PRODUCTION:
-        # Em produção, detecta automaticamente o domínio do Railway ou usa padrão
-        ALLOWED_ORIGINS = []
-
-        # Railway fornece o domínio público via variável de ambiente
-        railway_domain = os.getenv("RAILWAY_PUBLIC_DOMAIN", "").strip()
-        if railway_domain:
-            ALLOWED_ORIGINS.append(f"https://{railway_domain}")
-
-        # Adiciona domínio padrão da PGE se não configurado
-        if not ALLOWED_ORIGINS:
-            # Fallback para o domínio conhecido da aplicação
-            ALLOWED_ORIGINS = ["https://portal-pge-production.up.railway.app"]
+        # Fallback para o dominio conhecido da aplicacao (ECS Fargate + ALB).
+        # O valor real vem de ALLOWED_ORIGINS no secret portal-pge/app-config;
+        # isto so entra em cena se o secret nao tiver sido injetado.
+        ALLOWED_ORIGINS = ["https://pgems.app", "https://www.pgems.app"]
     else:
         # Desenvolvimento local - origens permissivas
         ALLOWED_ORIGINS = [

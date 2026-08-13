@@ -13,11 +13,10 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
-# Banco de producao
-DATABASE_URL = os.environ.get(
-    "DATABASE_URL_PROD",
-    "postgresql://postgres:dfDpTUMqyxdZAHAPMOEAhaRBkCVxuJws@yamanote.proxy.rlwy.net:48085/railway"
-)
+# Banco de producao - URL vem do ambiente, nunca hardcodada aqui.
+DATABASE_URL = os.environ.get("DATABASE_URL_PROD") or os.environ.get("DATABASE_URL")
+if not DATABASE_URL:
+    raise SystemExit("Defina DATABASE_URL_PROD (ou DATABASE_URL) antes de rodar.")
 
 PROCESSO = "08001042920268120101"
 MODULO_NOME = "orçamento_pacote"

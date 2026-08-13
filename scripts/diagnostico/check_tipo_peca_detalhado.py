@@ -1,5 +1,5 @@
 # Script para diagnóstico detalhado do tipo_peca em produção
-# Execute com: railway run python check_tipo_peca_detalhado.py
+# Execute com: python check_tipo_peca_detalhado.py
 
 from database.connection import get_db
 from sistemas.gerador_pecas.models import GeracaoPeca

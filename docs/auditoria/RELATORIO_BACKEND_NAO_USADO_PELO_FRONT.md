@@ -164,7 +164,7 @@ TesteCategoriasPage usa `categorias`, `validar-processos`, `classificar` e `expo
 
 | Endpoint | Metodo | O que faz | Motivo |
 |----------|--------|-----------|--------|
-| `/health` | GET | Health check basico | Load balancer / Railway |
+| `/health` | GET | Health check basico | ALB / ECS |
 | `/health/detailed` | GET | Health check detalhado | Admin (requer auth) |
 | `/health/live` | GET | Liveness probe | Kubernetes |
 | `/health/ready` | GET | Readiness probe | Kubernetes |

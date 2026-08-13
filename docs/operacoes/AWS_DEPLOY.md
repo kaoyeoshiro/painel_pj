@@ -405,22 +405,45 @@ Use o comando descrito em **Como rollback** acima. Tempo médio: 3 min do rollba
 
 ---
 
-## Recursos legados (Railway)
+## Recursos legados (Railway) — removidos do repositório
 
-O ambiente Railway foi pausado em 2026-05-11. Estado atual:
+O ambiente Railway foi pausado em 2026-05-11 e toda a referência a ele foi
+removida do código em 2026-08-13. Arquivos deletados:
 
-- `painel_pj`: deploy removido (sem container)
-- `Postgres`: sem deployment (sem container)
-- Código, vars e volume preservados pra recovery rápido se necessário
+- `railway.toml`, `nixpacks.toml`, `Procfile`, `scripts/railway_start.py`
 
-Pra religar (caso emergência):
+Também foram limpos: o fallback de CORS em `main.py` (apontava pro domínio
+`.up.railway.app`), a checagem `RAILWAY_ENVIRONMENT` em `config.py` e
+`database/connection.py` (agora só `ENV=production`), e o header
+`HTTP-Referer` enviado ao OpenRouter.
 
-```bash
-cd portal-pge && railway redeploy --service painel_pj
-cd portal-pge && railway redeploy --service Postgres
-```
+> **Pendência de segurança:** as credenciais do Postgres do Railway estavam
+> hardcoded em scripts versionados. Foram removidas do working tree, mas
+> **continuam no histórico do git**. Ver a seção abaixo.
 
-Plano: manter pausado 15 dias, depois deletar serviços. Não há dependência mais.
+---
+
+## Credenciais expostas no histórico do git
+
+Os seguintes scripts tinham a senha do Postgres de produção do Railway em
+texto puro e foram commitados:
+
+| Arquivo | Host |
+|---|---|
+| `scripts/auditoria/auditoria_producao.py` | `yamanote.proxy.rlwy.net:48085` |
+| `scripts/diagnostico/diagnostico_variaveis.py` | `yamanote.proxy.rlwy.net:48085` |
+| `scripts/data-fix/regenerar_embeddings_prod.py` | `yamanote.proxy.rlwy.net:48085` |
+| `scripts/debug/debug_orcamento_pacote.py` | `yamanote.proxy.rlwy.net:48085` |
+
+Todos passaram a ler a URL de `DATABASE_URL_PROD` / `DATABASE_URL`. Como o
+histórico do git não foi reescrito, a senha antiga deve ser considerada
+**comprometida**. Ações recomendadas:
+
+1. Confirmar que o projeto Railway (`pleasant-caring`) foi de fato deletado,
+   incluindo o serviço Postgres e seu volume.
+2. Se o projeto ainda existir, rotacionar a senha ou deletar o serviço.
+3. O RDS atual (`portal-pge-db`) usa credencial diferente, gerada na migração
+   e guardada em `portal-pge/rds-master` — não foi afetada.
 
 ---
 

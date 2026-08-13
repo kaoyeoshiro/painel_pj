@@ -305,7 +305,7 @@ logger.error("Erro!")
 | Ambiente | Branch | URL |
 |----------|--------|-----|
 | Desenvolvimento | local | http://localhost:8000 |
-| Producao | main | https://portal-pge.up.railway.app |
+| Producao | main | https://pgems.app |
 
 ### 7.3 Checklist Pre-Deploy
 

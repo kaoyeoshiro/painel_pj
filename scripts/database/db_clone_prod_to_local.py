@@ -178,7 +178,7 @@ def restore_to_dev(dump_file, dev_url):
     try:
         # Extrai nome do banco da URL
         db_match = re.search(r'/([^/?]+)(\?|$)', dev_url)
-        db_name = db_match.group(1) if db_match else 'railway'
+        db_name = db_match.group(1) if db_match else 'portal_pge'
 
         # URL base (sem o nome do banco) para conectar ao postgres
         base_url = re.sub(r'/[^/?]+(\?|$)', '/postgres', dev_url)

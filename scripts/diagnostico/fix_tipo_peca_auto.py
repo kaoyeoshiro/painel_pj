@@ -1,5 +1,5 @@
 # Script para corrigir registros com tipo_peca NULL ou inválido (AUTOMÁTICO)
-# Execute com: railway run python scripts/diagnostico/fix_tipo_peca_auto.py
+# Execute com: python scripts/diagnostico/fix_tipo_peca_auto.py
 #
 # ATENÇÃO: Este script aplica as correções automaticamente sem confirmação!
 

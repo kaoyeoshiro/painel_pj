@@ -3,13 +3,20 @@
 Auditoria completa do sistema de regras determinísticas em produção.
 """
 
+import os
 import sys
 sys.path.insert(0, '.')
 
 import psycopg2
 from psycopg2.extras import RealDictCursor
 
-DB_URL = 'postgresql://postgres:dfDpTUMqyxdZAHAPMOEAhaRBkCVxuJws@yamanote.proxy.rlwy.net:48085/railway'
+# Nunca hardcodar credencial aqui. Em producao (AWS) a URL vem do
+# Secrets Manager (portal-pge/app-config):
+#   aws secretsmanager get-secret-value --secret-id portal-pge/app-config \
+#     --profile pge-key --region sa-east-1 --query SecretString --output text
+DB_URL = os.environ.get("DATABASE_URL_PROD") or os.environ.get("DATABASE_URL")
+if not DB_URL:
+    raise SystemExit("Defina DATABASE_URL_PROD (ou DATABASE_URL) antes de rodar.")
 
 conn = psycopg2.connect(DB_URL)
 cur = conn.cursor(cursor_factory=RealDictCursor)

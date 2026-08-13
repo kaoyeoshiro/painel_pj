@@ -2,26 +2,20 @@
 # -*- coding: utf-8 -*-
 """Corrige tabelas que falharam no clone via COPY"""
 
+import os
 import psycopg2
 from psycopg2 import sql
 from psycopg2.extras import execute_values
 
-# URLs
-PROD = {
-    'host': 'yamanote.proxy.rlwy.net',
-    'port': 48085,
-    'dbname': 'railway',
-    'user': 'postgres',
-    'password': 'dfDpTUMqyxdZAHAPMOEAhaRBkCVxuJws'
-}
-
-DEV = {
-    'host': 'centerbeam.proxy.rlwy.net',
-    'port': 50662,
-    'dbname': 'railway',
-    'user': 'postgres',
-    'password': 'pGJBjuovHGUSyZHYsvHmJtNGAsezCOCg'
-}
+# Conexoes vem do ambiente - NUNCA hardcodar credencial neste arquivo.
+PROD = os.environ.get("DATABASE_URL_PROD")
+DEV = os.environ.get("DATABASE_URL_DEV")
+if not PROD or not DEV:
+    raise SystemExit(
+        "Defina DATABASE_URL_PROD e DATABASE_URL_DEV antes de rodar.\n"
+        "  export DATABASE_URL_PROD='postgresql://user:senha@host:5432/db'\n"
+        "  export DATABASE_URL_DEV='postgresql://user:senha@host:5432/db'"
+    )
 
 # Tabelas que falharam
 FAILED_TABLES = [
@@ -109,8 +103,8 @@ def main():
     print("CORRIGINDO TABELAS COM ERRO")
     print("=" * 60)
 
-    prod_conn = psycopg2.connect(**PROD)
-    dev_conn = psycopg2.connect(**DEV)
+    prod_conn = psycopg2.connect(PROD)
+    dev_conn = psycopg2.connect(DEV)
 
     # Desabilita FK
     dev_cur = dev_conn.cursor()

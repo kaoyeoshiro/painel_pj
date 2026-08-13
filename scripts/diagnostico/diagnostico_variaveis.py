@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
 """Diagnóstico completo do banco de dados para variáveis."""
+import os
 import psycopg2
 import json
 
-DATABASE_URL = "postgresql://postgres:dfDpTUMqyxdZAHAPMOEAhaRBkCVxuJws@yamanote.proxy.rlwy.net:48085/railway"
+# Nunca hardcodar credencial aqui - a URL vem do ambiente.
+DATABASE_URL = os.environ.get("DATABASE_URL_PROD") or os.environ.get("DATABASE_URL")
+if not DATABASE_URL:
+    raise SystemExit("Defina DATABASE_URL_PROD (ou DATABASE_URL) antes de rodar.")
 
 def main():
     conn = psycopg2.connect(DATABASE_URL)

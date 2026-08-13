@@ -1,5 +1,5 @@
 # Script para verificar tipo_peca null em produção
-# Execute com: railway run python scripts/diagnostico/check_tipo_peca.py
+# Execute com: python scripts/diagnostico/check_tipo_peca.py
 
 import sys
 sys.path.insert(0, '.')

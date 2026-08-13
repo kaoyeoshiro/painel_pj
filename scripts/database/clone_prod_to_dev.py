@@ -2,26 +2,23 @@
 # -*- coding: utf-8 -*-
 """Clone banco de producao para desenvolvimento/homologacao"""
 
+import os
 import psycopg2
 from psycopg2 import sql
 from io import StringIO
 
-# URLs
-PROD = {
-    'host': 'yamanote.proxy.rlwy.net',
-    'port': 48085,
-    'dbname': 'railway',
-    'user': 'postgres',
-    'password': 'dfDpTUMqyxdZAHAPMOEAhaRBkCVxuJws'
-}
-
-DEV = {
-    'host': 'centerbeam.proxy.rlwy.net',
-    'port': 50662,
-    'dbname': 'railway',
-    'user': 'postgres',
-    'password': 'pGJBjuovHGUSyZHYsvHmJtNGAsezCOCg'
-}
+# Conexoes vem do ambiente - NUNCA hardcodar credencial neste arquivo.
+#   DATABASE_URL_PROD: banco de origem (producao)
+#   DATABASE_URL_DEV:  banco de destino (dev/homologacao)
+# Em producao a URL esta no Secrets Manager (portal-pge/app-config).
+PROD = os.environ.get("DATABASE_URL_PROD")
+DEV = os.environ.get("DATABASE_URL_DEV")
+if not PROD or not DEV:
+    raise SystemExit(
+        "Defina DATABASE_URL_PROD e DATABASE_URL_DEV antes de rodar.\n"
+        "  export DATABASE_URL_PROD='postgresql://user:senha@host:5432/db'\n"
+        "  export DATABASE_URL_DEV='postgresql://user:senha@host:5432/db'"
+    )
 
 def get_tables(conn):
     """Lista tabelas do banco"""
@@ -73,8 +70,8 @@ def main():
 
     # Conecta
     print("\nConectando...")
-    prod_conn = psycopg2.connect(**PROD)
-    dev_conn = psycopg2.connect(**DEV)
+    prod_conn = psycopg2.connect(PROD)
+    dev_conn = psycopg2.connect(DEV)
     prod_conn.autocommit = False
     dev_conn.autocommit = False
 

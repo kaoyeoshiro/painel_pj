@@ -23,7 +23,7 @@ def main():
         print("ERROR: DATABASE_URL not set")
         sys.exit(1)
 
-    # Railway usa postgres:// mas SQLAlchemy 2.x exige postgresql://
+    # Alguns provedores entregam postgres:// mas SQLAlchemy 2.x exige postgresql://
     if url.startswith("postgres://"):
         url = url.replace("postgres://", "postgresql://", 1)
 

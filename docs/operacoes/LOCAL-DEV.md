@@ -1,6 +1,6 @@
 # Desenvolvimento Local com PostgreSQL
 
-Este documento descreve como configurar o ambiente de desenvolvimento local usando PostgreSQL no Railway.
+Este documento descreve como configurar o ambiente de desenvolvimento local.
 
 **IMPORTANTE:** PostgreSQL e obrigatorio. O sistema nao suporta mais SQLite.
 
@@ -28,19 +28,28 @@ python scripts/db_clone_prod_to_local.py
 
 ### Bancos de Dados
 
-Temos **dois bancos** no Railway:
+| Ambiente | Uso | Onde fica |
+|----------|-----|-----------|
+| **Desenvolvimento** | Testes locais | Postgres local (`docker-compose up db`) |
+| **Producao** | App em producao | RDS `portal-pge-db` (sa-east-1) |
 
-| Ambiente | Uso | URL |
-|----------|-----|-----|
-| **Desenvolvimento** | Testes locais | `centerbeam.proxy.rlwy.net:50662` |
-| **Producao** | App em producao | `yamanote.proxy.rlwy.net:48085` |
+A credencial de producao fica no Secrets Manager e **nao deve ser copiada para
+arquivo nenhum**:
+
+```bash
+aws secretsmanager get-secret-value --secret-id portal-pge/rds-master \
+  --profile pge-key --region sa-east-1 --query SecretString --output text
+```
+
+> O SG do RDS (`sg-0a7fa7431deb53a89`) so libera a porta 5432 para o SG da task
+> ECS e para IPs cadastrados. Acesso direto exige liberar seu IP temporariamente.
 
 ### Arquivo .env
 
 O `.env` local deve apontar para o banco de **desenvolvimento**:
 
 ```env
-DATABASE_URL=postgresql://postgres:SENHA@centerbeam.proxy.rlwy.net:50662/railway
+DATABASE_URL=postgresql://postgres:SENHA@localhost:5432/portal_pge
 ```
 
 **NUNCA** aponte o `.env` local para producao, a menos que seja para fazer dump (leitura).
@@ -121,7 +130,7 @@ pytest
 
 ```bash
 # Conectar ao banco de desenvolvimento
-psql "postgresql://postgres:SENHA@centerbeam.proxy.rlwy.net:50662/railway"
+psql "postgresql://postgres:SENHA@localhost:5432/portal_pge"
 
 # Listar tabelas
 \dt
@@ -141,7 +150,7 @@ psql "postgresql://postgres:SENHA@centerbeam.proxy.rlwy.net:50662/railway"
 
 - Verifique se a URL no `.env` esta correta
 - Verifique sua conexao com a internet
-- O Railway pode estar em manutencao (raro)
+- O RDS pode estar em janela de manutencao (raro)
 
 ### Erro: "database does not exist"
 

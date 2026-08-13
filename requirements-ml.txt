@@ -1,6 +1,6 @@
 # ==================================================
 # Dependências de Machine Learning (BERT Training)
-# Rodar APENAS localmente — NÃO incluir no Railway
+# Rodar APENAS localmente — NÃO incluir na imagem de deploy
 # ==================================================
 # pip install -r requirements-ml.txt
 

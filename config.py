@@ -8,7 +8,8 @@ import os
 from pathlib import Path
 from dotenv import load_dotenv
 
-# Carrega variáveis de ambiente (apenas se existir .env - não necessário no Railway)
+# Carrega variáveis de ambiente (apenas se existir .env - em produção o ECS
+# injeta tudo a partir do secret portal-pge/app-config)
 load_dotenv()
 
 # ==================================================
@@ -23,7 +24,7 @@ if not DATABASE_URL:
         "Exemplo: postgresql://user:password@localhost:5432/portal_pge"
     )
 
-# Railway usa postgres:// mas SQLAlchemy precisa de postgresql://
+# Alguns provedores entregam postgres:// mas SQLAlchemy precisa de postgresql://
 if DATABASE_URL.startswith("postgres://"):
     DATABASE_URL = DATABASE_URL.replace("postgres://", "postgresql://", 1)
 
@@ -40,7 +41,7 @@ if not DATABASE_URL.startswith("postgresql://"):
 # ==================================================
 
 # SECURITY: Detecta ambiente de produção
-IS_PRODUCTION = os.getenv("RAILWAY_ENVIRONMENT") == "production" or os.getenv("ENV") == "production"
+IS_PRODUCTION = os.getenv("ENV") == "production"
 
 # SECURITY: SECRET_KEY é OBRIGATÓRIA em produção
 SECRET_KEY = (os.getenv("SECRET_KEY") or "").strip() or None

@@ -605,7 +605,7 @@ def gerar_relatorio(analises: List[Dict], padroes: Dict, args) -> str:
     # ===== 2. METODOLOGIA =====
     w("## 2. Metodologia")
     w()
-    w("- **Fonte de dados**: Banco de producao PostgreSQL (Yamanote/Railway)")
+    w("- **Fonte de dados**: Banco de producao PostgreSQL (RDS)")
     w(f"- **Periodo**: Ultimos {args.dias} dias (desde {data_inicio})")
     w(f"- **Filtro**: `modo_ativacao_agente2 = 'semi_automatico'`")
     if args.tipo_peca:

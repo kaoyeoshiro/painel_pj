@@ -8,8 +8,10 @@ import sys
 import hashlib
 import httpx
 
-# Configura URL de produção
-PROD_DATABASE_URL = 'postgresql://postgres:dfDpTUMqyxdZAHAPMOEAhaRBkCVxuJws@yamanote.proxy.rlwy.net:48085/railway'
+# URL de producao vem do ambiente - nunca hardcodar credencial aqui.
+PROD_DATABASE_URL = os.environ.get("DATABASE_URL_PROD") or os.environ.get("DATABASE_URL")
+if not PROD_DATABASE_URL:
+    raise SystemExit("Defina DATABASE_URL_PROD (ou DATABASE_URL) antes de rodar.")
 
 # API Key do Gemini
 GOOGLE_API_KEY = os.getenv("GOOGLE_API_KEY") or os.getenv("GEMINI_API_KEY") or os.getenv("GEMINI_KEY")

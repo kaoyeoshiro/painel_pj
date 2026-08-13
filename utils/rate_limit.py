@@ -48,7 +48,7 @@ def get_real_ip(request: Request) -> str:
     2. X-Real-IP
     3. IP direto da conexão
     """
-    # Railway e outros proxies usam X-Forwarded-For
+    # O ALB (e proxies em geral) repassa o IP do cliente em X-Forwarded-For
     forwarded_for = request.headers.get("X-Forwarded-For")
     if forwarded_for:
         # Pega o primeiro IP (cliente original)

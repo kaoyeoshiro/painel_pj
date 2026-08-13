@@ -47,7 +47,7 @@ def wait_for_db(max_retries=10, delay=3):
 
 
 # REMOVIDO: create_tables() — Alembic é a fonte de verdade para schema.
-# Tabelas são criadas via: alembic upgrade head (Procfile, CI)
+# Tabelas são criadas via: alembic upgrade head (docker-entrypoint.sh, CI)
 # Ver: migrations/versions/ para todas as migrations.
 
 
@@ -803,7 +803,7 @@ def init_database():
     """Inicializa o banco de dados: aguarda conexao e roda seeds.
 
     NOTA: Criacao de tabelas e migrations sao feitas pelo Alembic
-    ANTES do app iniciar (via Procfile: alembic upgrade head).
+    ANTES do app iniciar (via docker-entrypoint.sh: alembic upgrade head).
     Esta funcao cuida apenas de seeds (dados iniciais idempotentes).
     """
     global _DB_INITIALIZED

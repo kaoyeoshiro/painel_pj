@@ -15,7 +15,7 @@ O Portal PGE-MS e uma plataforma de automacao juridica que utiliza IA para auxil
 | Frontend | JavaScript/TypeScript (em migracao) |
 | IA/LLM | Google Gemini (Vertex AI) |
 | Integracao | TJ-MS via SOAP/MNI (proxy Fly.io) |
-| Deploy | Railway (producao), Docker (local) |
+| Deploy | AWS ECS Fargate (producao), Docker (local) |
 | ML Local | PyTorch + Transformers (BERT) |
 
 ### Arquitetura de Alto Nivel
@@ -252,7 +252,7 @@ portal-pge/
 
 ### 5.2 Proxy TJ-MS no Fly.io
 
-- **Motivo**: Railway nao permite conexoes SOAP diretas, timeout de 60s
+- **Motivo**: a infra de nuvem nao permite conexoes SOAP diretas, timeout de 60s
 - **Solucao**: Proxy dedicado no Fly.io com timeout de 120s
 
 ### 5.3 Agentes em Pipeline (3 agentes)
@@ -267,7 +267,7 @@ portal-pge/
 
 ### 5.5 Worker Local para BERT Training
 
-- **Motivo**: GPU nao disponivel na nuvem (Railway), custo
+- **Motivo**: GPU nao disponivel na nuvem (Fargate), custo
 - **Arquitetura**: Cloud gerencia fila, worker local faz treinamento
 
 ## 6. Variaveis de Ambiente Principais
@@ -335,7 +335,7 @@ uvicorn main:app --reload
 - **Branches**: `feature/`, `fix/`, `refactor/`
 - **Commits**: Convencionais (`feat:`, `fix:`, `docs:`)
 - **PRs**: Requerem review + testes passando
-- **Deploy**: Automatico via Railway (main → producao)
+- **Deploy**: Automatico via GitHub Actions → ECS Fargate (main → producao)
 
 ## 8. Mapa de Documentacao
 

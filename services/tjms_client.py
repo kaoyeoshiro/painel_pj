@@ -7,7 +7,7 @@ Este módulo centraliza TODAS as configurações e funções de comunicação co
 - Subconta - extração de extratos via Playwright
 
 IMPORTANTE - Arquitetura de Proxy:
-- O TJ-MS bloqueia requisições de IPs de cloud providers (Railway, Fly.io, etc)
+- O TJ-MS bloqueia requisições de IPs de cloud providers (AWS, Fly.io, etc)
 - Por isso usamos proxies para todas as requisições
 
 Proxies disponíveis:

@@ -21,7 +21,7 @@ ENV DEBIAN_FRONTEND=noninteractive \
 
 # Dependencias de sistema:
 # - libpq-dev: psycopg2
-# - Demais: Playwright Chromium (mesmas deps do railway.toml)
+# - Demais: Playwright Chromium
 RUN apt-get update && apt-get install -y --no-install-recommends \
     libpq-dev \
     curl \

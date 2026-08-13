@@ -1,5 +1,5 @@
 # Script para verificar tipos de peça cadastrados
-# Execute com: railway run python scripts/diagnostico/check_tipos_peca.py
+# Execute com: python scripts/diagnostico/check_tipos_peca.py
 
 import sys
 sys.path.insert(0, '.')

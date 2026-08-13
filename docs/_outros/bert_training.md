@@ -6,7 +6,7 @@
 
 O sistema BERT Training permite treinar classificadores de texto usando modelos BERT, com arquitetura hibrida:
 
-- **Cloud (Railway)**: UI + API + BD + storage Excel + logs/metricas
+- **Cloud (AWS ECS Fargate)**: UI + API + BD + storage Excel + logs/metricas
 - **Worker Local (GPU)**: Executa treinamento na GPU do PC local
 
 ```
@@ -14,7 +14,7 @@ O sistema BERT Training permite treinar classificadores de texto usando modelos 
 │                    ARQUITETURA BERT TRAINING                     │
 ├─────────────────────────────────────────────────────────────────┤
 │                                                                  │
-│   [Browser] ──────► [Railway/Cloud]                              │
+│   [Browser] ──────► [AWS/Cloud]                                 │
 │       │             ┌──────────────────┐                         │
 │       │             │ FastAPI Server   │                         │
 │       │             │ - Upload Excel   │                         │
@@ -146,7 +146,7 @@ pip install transformers pandas openpyxl requests loguru scikit-learn
 ```bash
 cd portal-pge
 python -m sistemas.bert_training.worker.bert_worker \
-    --api-url https://portal-pge.up.railway.app \
+    --api-url https://pgems.app \
     --token SEU_TOKEN_AQUI \
     --models-dir ./bert_models
 ```

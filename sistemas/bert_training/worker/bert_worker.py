@@ -10,7 +10,7 @@ Este worker roda no PC local com GPU e:
 4. Envia métricas e logs para a cloud
 
 Uso:
-    python bert_worker.py --api-url https://portal-pge.up.railway.app --token SEU_TOKEN
+    python bert_worker.py --api-url https://pgems.app --token SEU_TOKEN
     python bert_worker.py --api-url http://localhost:8000 --token SEU_TOKEN --dry-run
 """
 
@@ -56,7 +56,7 @@ class BertWorker:
         Inicializa o worker.
 
         Args:
-            api_url: URL base da API (ex: https://portal-pge.up.railway.app)
+            api_url: URL base da API (ex: https://pgems.app)
             token: Token de autenticação do worker
             models_dir: Diretório para salvar modelos treinados
             poll_interval: Intervalo entre verificações de jobs (segundos)
@@ -569,7 +569,7 @@ def main():
     parser.add_argument(
         '--api-url',
         required=True,
-        help='URL base da API (ex: https://portal-pge.up.railway.app)'
+        help='URL base da API (ex: https://pgems.app)'
     )
 
     parser.add_argument(

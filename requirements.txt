@@ -52,7 +52,7 @@ numpy>=1.24.0
 pandas>=2.0.0
 openpyxl>=3.1.0
 
-# Machine Learning (BERT) — apenas local, NÃO deploy Railway
+# Machine Learning (BERT) — apenas local, NÃO vai para a imagem de deploy
 # Instalar separadamente: pip install -r requirements-ml.txt
 
 # Scrapper de Subconta (Prestação de Contas)

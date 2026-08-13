@@ -4,7 +4,7 @@
 
 ## A) Visao Geral
 
-O sistema BERT Training permite treinar classificadores de texto usando modelos BERT, com arquitetura hibrida cloud/local. O servidor (Railway) gerencia datasets, runs e metricas, enquanto workers locais com GPU executam o treinamento.
+O sistema BERT Training permite treinar classificadores de texto usando modelos BERT, com arquitetura hibrida cloud/local. O servidor (ECS Fargate) gerencia datasets, runs e metricas, enquanto workers locais com GPU executam o treinamento.
 
 **Usuarios**: Cientistas de dados e desenvolvedores da PGE-MS
 **Problema resolvido**: Treinar modelos de classificacao de documentos juridicos sem infraestrutura propria de GPU na nuvem
@@ -183,7 +183,7 @@ O sistema BERT Training permite treinar classificadores de texto usando modelos 
 
 | Configuracao | Descricao |
 |--------------|-----------|
-| API URL | URL do servidor Railway |
+| API URL | URL do servidor em producao (https://pgems.app) |
 | Token | Token de autenticacao do worker |
 | Models Dir | Diretorio local para salvar modelos |
 
@@ -207,7 +207,7 @@ O sistema BERT Training permite treinar classificadores de texto usando modelos 
 ### Como Rodar o Servidor
 
 ```bash
-# Servidor (Railway ou local)
+# Servidor (producao ou local)
 uvicorn main:app --reload
 
 # Acessar frontend
@@ -223,7 +223,7 @@ pip install transformers pandas openpyxl requests loguru scikit-learn
 
 # Executar worker
 python -m sistemas.bert_training.worker.bert_worker \
-    --api-url https://portal-pge.up.railway.app \
+    --api-url https://pgems.app \
     --token SEU_TOKEN_AQUI \
     --models-dir ./bert_models
 ```

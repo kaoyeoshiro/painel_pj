@@ -268,7 +268,7 @@ from .models import MeuModelo
 
 ### Build e Deploy do Frontend (REGRA CRITICA)
 
-O Railway **NAO** roda `npm run build` durante o deploy. O `frontend-react/dist/` e commitado no git (excecao explicita no `.gitignore`) e servido diretamente pelo FastAPI via catch-all route.
+O `Dockerfile` **NAO** roda `npm run build` durante o deploy — ele so faz `COPY . .` do repo (nao ha Node nem Vite na imagem). Por isso o `frontend-react/dist/` e commitado no git (excecao explicita no `.gitignore`) e servido diretamente pelo FastAPI via catch-all route.
 
 **Fluxo obrigatorio ao alterar qualquer arquivo em `frontend-react/src/`:**
 
@@ -282,7 +282,7 @@ git add frontend-react/src/<arquivos-alterados>
 git add -f frontend-react/dist/    # -f necessario por causa do gitignore
 git commit -m "feat(...): descricao"
 
-# 4. Push — Railway faz deploy automatico
+# 4. Push — GitHub Actions faz build da imagem e deploy no ECS Fargate
 git push
 ```
 
@@ -292,9 +292,11 @@ git push
 |------|---------|
 | `.gitignore` | `dist/` ignorado, `!frontend-react/dist/` excecao |
 | Build local | `node node_modules/vite/bin/vite.js build` (WSL) |
-| Railway build | Apenas Python (pip + playwright) — sem Node/Vite |
-| Railway projeto | `pleasant-caring`, servico `painel_pj` |
-| Railway CLI | `railway link --project pleasant-caring` + `railway service link painel_pj` |
+| Build da imagem | Apenas Python (pip + playwright) — sem Node/Vite |
+| Deploy | `.github/workflows/deploy.yml` → ECR + `ecs update-service --force-new-deployment` |
+| Infra | ECS Fargate `portal-pge-cluster` / servico `portal-pge`, regiao `sa-east-1` |
+| Producao | https://pgems.app (ALB + ACM) |
+| Documentacao | `docs/operacoes/AWS_DEPLOY.md` |
 | Servindo SPA | `main.py` catch-all `/{full_path:path}` via `FileResponse` |
 | Cache headers | `Cache-Control: no-cache` no `index.html` (reload = versao nova) |
 

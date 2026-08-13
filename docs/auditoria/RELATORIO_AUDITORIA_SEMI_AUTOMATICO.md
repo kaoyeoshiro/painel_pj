@@ -24,7 +24,7 @@
 
 ## 2. Metodologia
 
-- **Fonte de dados**: Banco de producao PostgreSQL (Yamanote/Railway)
+- **Fonte de dados**: Banco de producao PostgreSQL (RDS)
 - **Periodo**: Ultimos 7 dias (desde 2026-01-30)
 - **Filtro**: `modo_ativacao_agente2 = 'semi_automatico'`
 - **Re-avaliacao**: Regras deterministicas re-avaliadas com variaveis armazenadas em `dados_processo`

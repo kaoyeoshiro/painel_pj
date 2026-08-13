@@ -14,8 +14,10 @@ sys.path.insert(0, os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker
 
-# Conexão com banco de produção (Railway)
-DATABASE_URL = os.environ.get("DATABASE_URL_PROD", "postgresql://postgres:PASSWORD@yamanote.proxy.rlwy.net:48085/railway")
+# Conexao com banco de producao - URL vem do ambiente.
+DATABASE_URL = os.environ.get("DATABASE_URL_PROD") or os.environ.get("DATABASE_URL")
+if not DATABASE_URL:
+    raise SystemExit("Defina DATABASE_URL_PROD (ou DATABASE_URL) antes de rodar.")
 
 def debug_processo(numero_processo: str):
     """Examina dados de um processo no banco."""

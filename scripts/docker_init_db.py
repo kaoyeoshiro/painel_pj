@@ -32,7 +32,7 @@ def main():
         print("ERRO: DATABASE_URL nao definida")
         sys.exit(1)
 
-    # Railway usa postgres:// mas SQLAlchemy exige postgresql://
+    # Alguns provedores entregam postgres:// mas SQLAlchemy exige postgresql://
     if url.startswith("postgres://"):
         url = url.replace("postgres://", "postgresql://", 1)
 

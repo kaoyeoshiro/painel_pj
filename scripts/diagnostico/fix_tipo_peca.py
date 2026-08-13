@@ -1,5 +1,5 @@
 # Script para corrigir registros com tipo_peca NULL ou inválido
-# Execute com: railway run python scripts/diagnostico/fix_tipo_peca.py
+# Execute com: python scripts/diagnostico/fix_tipo_peca.py
 #
 # O script infere o tipo de peça a partir do conteúdo gerado ou prompt
 

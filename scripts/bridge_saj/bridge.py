@@ -1,7 +1,7 @@
 """Bridge SAJ — Mini-server local que conecta o portal-pge ao Oracle do SAJ.
 
 Roda na maquina do usuario (com VPN ativa) e expoe via Cloudflare Tunnel.
-O portal-pge no Railway chama este bridge para inserir observacoes no SAJ.
+O portal-pge (ECS Fargate) chama este bridge para inserir observacoes no SAJ.
 
 Uso:
     python bridge.py                    # Inicia na porta 8081

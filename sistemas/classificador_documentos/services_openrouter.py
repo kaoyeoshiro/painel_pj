@@ -92,7 +92,7 @@ class OpenRouterService:
         return {
             "Authorization": f"Bearer {self.config.api_key}",
             "Content-Type": "application/json; charset=utf-8",
-            "HTTP-Referer": "https://portal-pge.railway.app",
+            "HTTP-Referer": "https://pgems.app",
             "X-Title": "Portal PGE-MS - Classificador de Documentos"
         }
 

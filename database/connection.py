@@ -22,7 +22,7 @@ logger = logging.getLogger(__name__)
 # ==================================================
 
 # PERFORMANCE: Detecta ambiente para ajustar pool size
-IS_PRODUCTION = os.getenv("RAILWAY_ENVIRONMENT") == "production" or os.getenv("ENV") == "production"
+IS_PRODUCTION = os.getenv("ENV") == "production"
 
 # PERFORMANCE: Detecta se é localhost para otimizações mais agressivas
 IS_LOCALHOST = "localhost" in DATABASE_URL or "127.0.0.1" in DATABASE_URL
