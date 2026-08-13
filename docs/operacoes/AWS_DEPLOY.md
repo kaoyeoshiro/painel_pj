@@ -423,6 +423,32 @@ Também foram limpos: o fallback de CORS em `main.py` (apontava pro domínio
 
 ---
 
+## Segredos vazados em arquivo local (2026-08-13) — ROTAÇÃO PENDENTE
+
+Havia na raiz do repositório um despejo de `railway variables` em texto puro
+(nome corrompido: `CUsers...Temprvars.txt`, 9 KB, de 19/02/2026). O
+arquivo foi deletado, e o `.gitignore` passou a cobrir esse padrão.
+
+**Nunca foi commitado** — confirmado com `git log --all --diff-filter=A`. A
+exposição foi só em disco local. Mas comparando os valores com o secret de
+produção atual, **6 dos 8 segredos continuam em uso**:
+
+| Segredo | Situação |
+|---|---|
+| `SECRET_KEY` | **em uso** — assina os JWT; com ela é possível forjar token de qualquer usuário |
+| `ADMIN_PASSWORD` | **em uso** |
+| `ADMIN_USERNAME` | **em uso** |
+| `OPENROUTER_API_KEY` | **em uso** |
+| `TJ_WS_USER` / `TJ_WS_PASS` | **em uso** — credenciais do webservice do TJ-MS |
+| `GEMINI_KEY` | já rotacionada |
+| `DATABASE_URL` | já mudou (migração para o RDS) |
+
+Rotacionar via `portal-pge/app-config` (ver "Como atualizar uma variável").
+Prioridade para a `SECRET_KEY` — trocá-la invalida todos os JWT ativos, então
+os usuários precisarão logar de novo.
+
+---
+
 ## Credenciais expostas no histórico do git
 
 Os seguintes scripts tinham a senha do Postgres de produção do Railway em

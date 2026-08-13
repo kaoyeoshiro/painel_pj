@@ -124,3 +124,14 @@ frontend-react/prints/
 frontend-react/vitest-check.txt
 frontend-react/vitest-final.txt
 frontend-react/vitest-output*.txt
+
+
+# Dumps de banco e despejos de variaveis de ambiente.
+# Motivo: em 2026-08-13 um arquivo solto na raiz (despejo de "railway variables")
+# expunha SECRET_KEY, ADMIN_PASSWORD, OPENROUTER_API_KEY e TJ_WS_PASS em texto
+# puro. Nao estava ignorado - um "git add -A" teria commitado tudo.
+*.dump
+*.sql.gz
+dumps/
+*vars*.txt
+*variables*.txt
