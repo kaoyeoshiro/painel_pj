@@ -180,8 +180,8 @@ O sistema de Relatorio de Cumprimento automatiza a geracao de relatorios sobre p
 
 | Funcao | Modelo Default |
 |--------|----------------|
-| Analise de documentos | gemini-3.6-flash |
-| Geracao de relatorio | gemini-3.6-flash |
+| Analise de documentos | gemini-3.7-flash |
+| Geracao de relatorio | gemini-3.7-flash |
 
 ## G) Operacao e Validacao
 

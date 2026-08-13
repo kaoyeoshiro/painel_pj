@@ -1782,7 +1782,7 @@ class FeedbackRepository:
             ConfiguracaoIA.sistema == "matriculas",
             ConfiguracaoIA.chave == "modelo_relatorio"
         ).first()
-        return config.valor if config else "gemini-3.6-flash"
+        return config.valor if config else "gemini-3.7-flash"
 
     # =============================================
     # Listagem: curadoria metadata via SQL raw

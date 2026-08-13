@@ -179,8 +179,8 @@ O sistema de Pedido de Calculo automatiza a geracao de pedidos de calculo para p
 
 | Agente | Modelo Default |
 |--------|----------------|
-| Agente 2 (Extracao) | gemini-3.6-flash |
-| Agente 3 (Geracao) | gemini-3.6-flash |
+| Agente 2 (Extracao) | gemini-3.7-flash |
+| Agente 3 (Geracao) | gemini-3.7-flash |
 
 ## G) Operacao e Validacao
 

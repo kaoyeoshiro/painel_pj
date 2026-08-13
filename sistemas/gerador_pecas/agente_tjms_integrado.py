@@ -77,7 +77,7 @@ class AgenteTJMSIntegrado:
         Inicializa o agente.
 
         Args:
-            modelo: Modelo LLM a usar (padrão: gemini-3.6-flash)
+            modelo: Modelo LLM a usar (padrão: gemini-3.7-flash)
             db_session: Sessão do banco de dados para buscar formatos JSON
             formato_saida: 'json' ou 'md' - formato de saída dos resumos
             codigos_permitidos: Conjunto de códigos de documento a analisar (None = usa filtro legado)

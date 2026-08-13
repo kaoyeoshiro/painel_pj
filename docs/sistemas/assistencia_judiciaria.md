@@ -23,7 +23,7 @@ O sistema de Assistencia Judiciaria permite que procuradores consultem processos
 
 | Regra | Descricao | Fonte no Codigo |
 |-------|-----------|-----------------|
-| Modelo de IA | Usa Google Gemini (default: gemini-3.6-flash) para gerar relatorio | `sistemas/assistencia_judiciaria/core/logic.py:42-80` |
+| Modelo de IA | Usa Google Gemini (default: gemini-3.7-flash) para gerar relatorio | `sistemas/assistencia_judiciaria/core/logic.py:42-80` |
 | Dados do Processo | Extrai polo ativo, polo passivo, movimentos e dados basicos do XML | `sistemas/assistencia_judiciaria/core/logic.py:82-150` |
 | Formato Saida | Relatorio em texto estruturado, exportavel para DOCX/PDF | `sistemas/assistencia_judiciaria/core/document.py` |
 
@@ -81,7 +81,7 @@ O sistema de Assistencia Judiciaria permite que procuradores consultem processos
 ```json
 {
   "cnj": "0804330-09.2024.8.12.0017",
-  "model": "google/gemini-3.6-flash",
+  "model": "google/gemini-3.7-flash",
   "force": false
 }
 ```

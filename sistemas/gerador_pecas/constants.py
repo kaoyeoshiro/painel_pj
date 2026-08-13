@@ -33,13 +33,13 @@ TIMEOUT_DOCX: int = 60
 # =============================================================================
 
 # Modelo padrão para Agente 1 (Coletor)
-MODELO_AGENTE1_PADRAO: str = "gemini-3.6-flash"
+MODELO_AGENTE1_PADRAO: str = "gemini-3.7-flash"
 
 # Modelo padrão para Agente 2 (Detector)
-MODELO_AGENTE2_PADRAO: str = "gemini-3.6-flash"
+MODELO_AGENTE2_PADRAO: str = "gemini-3.7-flash"
 
 # Modelo padrão para Agente 3 (Gerador)
-MODELO_AGENTE3_PADRAO: str = "gemini-3.6-flash"
+MODELO_AGENTE3_PADRAO: str = "gemini-3.7-flash"
 
 
 # =============================================================================

@@ -400,7 +400,7 @@ async def ordenar_perguntas_ia(
 ):
     """
     Reordena todas as perguntas usando IA para determinar a ordem mais lógica.
-    Usa gemini-3.6-flash para análise semântica.
+    Usa gemini-3.7-flash para análise semântica.
     """
     from services.gemini_service import gemini_service, get_thinking_level
 
@@ -465,7 +465,7 @@ REGRAS DE RESPOSTA:
         response = await gemini_service.generate(
             prompt=prompt,
             system_prompt="Você reordena perguntas de extração de dados. Responda APENAS com JSON válido.",
-            model="gemini-3.6-flash",
+            model="gemini-3.7-flash",
             temperature=0.1,
             thinking_level=thinking_level  # Configurável em /admin/prompts-config
         )
@@ -528,7 +528,7 @@ async def posicionar_pergunta_ia(
 ):
     """
     Determina a melhor posição para uma nova pergunta usando IA.
-    Usa gemini-3.6-flash para análise semântica.
+    Usa gemini-3.7-flash para análise semântica.
     """
     from services.gemini_service import gemini_service, get_thinking_level
 
@@ -575,7 +575,7 @@ Se a posição sugerida estiver fora dos limites (0 a {len(data.perguntas_existe
         response = await gemini_service.generate(
             prompt=prompt,
             system_prompt="Você posiciona perguntas de extração. Responda APENAS com JSON válido.",
-            model="gemini-3.6-flash",
+            model="gemini-3.7-flash",
             temperature=0.1,
             thinking_level=thinking_level  # Configurável em /admin/prompts-config
         )

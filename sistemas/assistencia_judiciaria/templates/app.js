@@ -153,7 +153,7 @@
     ultimoResultado: null,
     config: {
       apiKey: "",
-      model: "google/gemini-3.6-flash"
+      model: "google/gemini-3.7-flash"
     }
   };
   function mostrarEstado(estado) {
@@ -483,7 +483,7 @@
     try {
       const config = await api.get("/settings");
       if (config) {
-        appState.config.model = config.default_model || "google/gemini-3.6-flash";
+        appState.config.model = config.default_model || "google/gemini-3.7-flash";
       }
     } catch (error) {
       console.error("Erro ao carregar settings:", error);

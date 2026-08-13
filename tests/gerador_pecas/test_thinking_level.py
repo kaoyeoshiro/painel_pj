@@ -183,7 +183,7 @@ class TestBuildPayloadThinkingLevel:
             payload = build_payload(
                 prompt="test",
                 thinking_level=level,
-                model="gemini-3.6-flash",
+                model="gemini-3.7-flash",
             )
             config = payload["generationConfig"]
             assert "thinkingConfig" in config, f"Level '{level}' should be valid for Flash"
@@ -225,7 +225,7 @@ class TestBuildPayloadThinkingLevel:
         payload = build_payload(
             prompt="test",
             thinking_level=None,
-            model="gemini-3.6-flash",
+            model="gemini-3.7-flash",
         )
         assert "thinkingConfig" not in payload["generationConfig"]
 
@@ -234,7 +234,7 @@ class TestBuildPayloadThinkingLevel:
         payload = build_payload(
             prompt="test",
             thinking_level="",
-            model="gemini-3.6-flash",
+            model="gemini-3.7-flash",
         )
         assert "thinkingConfig" not in payload["generationConfig"]
 
@@ -267,7 +267,7 @@ class TestBuildPayloadWithImagesThinkingLevel:
             prompt="test",
             images_base64=["data:image/png;base64,abc123"],
             thinking_level="low",
-            model="gemini-3.6-flash",
+            model="gemini-3.7-flash",
         )
         assert "thinkingConfig" in payload["generationConfig"]
         assert payload["generationConfig"]["thinkingConfig"]["thinkingLevel"] == "low"

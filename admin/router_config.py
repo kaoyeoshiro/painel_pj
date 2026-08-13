@@ -373,7 +373,7 @@ async def listar_modelos_ia(
     configs_gp = config_repo.get_config("gerador_pecas", "modelo_agente_final")
     configs_pc = config_repo.get_config("pedido_calculo", "modelo_agente_final")
 
-    default_model = "google/gemini-3.6-flash"
+    default_model = "google/gemini-3.7-flash"
 
     resultado = {
         "assistencia_judiciaria": {

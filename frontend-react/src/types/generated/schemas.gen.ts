@@ -3398,7 +3398,7 @@ export const ConsultationRequestSchema = {
         model: {
             type: 'string',
             title: 'Model',
-            default: 'google/gemini-3.6-flash'
+            default: 'google/gemini-3.7-flash'
         },
         force: {
             type: 'boolean',
@@ -12140,7 +12140,7 @@ export const SettingsRequestSchema = {
         default_model: {
             type: 'string',
             title: 'Default Model',
-            default: 'google/gemini-3.6-flash'
+            default: 'google/gemini-3.7-flash'
         }
     },
     type: 'object',

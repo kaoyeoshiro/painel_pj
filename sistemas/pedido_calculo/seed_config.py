@@ -244,19 +244,19 @@ Pedido atualizado:"""
 CONFIGURACOES = [
     {
         "chave": "modelo_extracao",
-        "valor": "gemini-3.6-flash",
+        "valor": "gemini-3.7-flash",
         "tipo_valor": "string",
         "descricao": "Modelo de IA para extração de informações dos PDFs (Agente 2)"
     },
     {
         "chave": "modelo_geracao",
-        "valor": "gemini-3.6-flash",
+        "valor": "gemini-3.7-flash",
         "tipo_valor": "string",
         "descricao": "Modelo de IA para geração do pedido de cálculo (Agente 3)"
     },
     {
         "chave": "modelo_edicao",
-        "valor": "gemini-3.6-flash",
+        "valor": "gemini-3.7-flash",
         "tipo_valor": "string",
         "descricao": "Modelo de IA para edição do pedido via chat"
     },

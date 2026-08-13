@@ -700,13 +700,13 @@ Se o principio ativo for o mesmo, os medicamentos sao EQUIVALENTES e AUTORIZADOS
 DELETE FROM configuracoes_ia WHERE sistema IN ('pedido_calculo', 'prestacao_contas');
 
 INSERT INTO configuracoes_ia (sistema, chave, valor, descricao)
-VALUES ('pedido_calculo', 'modelo_edicao', 'gemini-3.6-flash', 'Modelo de IA para edição do pedido via chat');
+VALUES ('pedido_calculo', 'modelo_edicao', 'gemini-3.7-flash', 'Modelo de IA para edição do pedido via chat');
 
 INSERT INTO configuracoes_ia (sistema, chave, valor, descricao)
-VALUES ('pedido_calculo', 'modelo_extracao', 'gemini-3.6-flash', 'Modelo de IA para extração de informações dos PDFs (Agente 2)');
+VALUES ('pedido_calculo', 'modelo_extracao', 'gemini-3.7-flash', 'Modelo de IA para extração de informações dos PDFs (Agente 2)');
 
 INSERT INTO configuracoes_ia (sistema, chave, valor, descricao)
-VALUES ('pedido_calculo', 'modelo_geracao', 'gemini-3.6-flash', 'Modelo de IA para geração do pedido de cálculo (Agente 3)');
+VALUES ('pedido_calculo', 'modelo_geracao', 'gemini-3.7-flash', 'Modelo de IA para geração do pedido de cálculo (Agente 3)');
 
 INSERT INTO configuracoes_ia (sistema, chave, valor, descricao)
 VALUES ('pedido_calculo', 'temperatura_extracao', '0.1', 'Temperatura para extração (baixa = mais preciso)');
@@ -715,7 +715,7 @@ INSERT INTO configuracoes_ia (sistema, chave, valor, descricao)
 VALUES ('pedido_calculo', 'temperatura_geracao', '0.3', 'Temperatura para geração de texto');
 
 INSERT INTO configuracoes_ia (sistema, chave, valor, descricao)
-VALUES ('prestacao_contas', 'modelo_analise', 'gemini-3.6-flash', '');
+VALUES ('prestacao_contas', 'modelo_analise', 'gemini-3.7-flash', '');
 
 INSERT INTO configuracoes_ia (sistema, chave, valor, descricao)
 VALUES ('prestacao_contas', 'modelo_identificacao', 'gemini-2.5-flash-lite', '');

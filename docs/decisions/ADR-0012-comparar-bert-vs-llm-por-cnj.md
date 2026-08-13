@@ -38,7 +38,7 @@ Implementar nova aba "Comparar com IA (CNJ)" no modulo BERT Training.
 | Decisao | Justificativa |
 |---------|---------------|
 | LLM como ground truth | Gemini e mais preciso para classificacao zero-shot |
-| Modelo fixo: `gemini-3.6-flash` | Requisito do usuario para consistencia |
+| Modelo fixo: `gemini-3.7-flash` | Requisito do usuario para consistencia |
 | Thinking level: `minimal` | Maxima velocidade, classificacao simples |
 | Token window: `fim` default | Documentos juridicos tem conclusoes no final |
 | Semaphore(3) concorrencia | Mesmo limite do classificador_documentos |
@@ -81,7 +81,7 @@ Implementar nova aba "Comparar com IA (CNJ)" no modulo BERT Training.
   "cnj": "0804330-09.2024.8.12.0017",
   "categoria": {"id": 1, "nome": "peticao", "titulo": "Peticao"},
   "bert_model": {"id": 5, "name": "Classificador Docs"},
-  "llm": {"model": "gemini-3.6-flash", "thinking": "minimal", ...},
+  "llm": {"model": "gemini-3.7-flash", "thinking": "minimal", ...},
   "summary": {"total": 10, "matches": 7, "accuracy": 0.7, "llm_failed": 0},
   "items": [...]
 }

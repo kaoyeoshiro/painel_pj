@@ -219,7 +219,7 @@ class TestSchemas:
             cnj="0804330-09.2024.8.12.0017",
             categoria={"id": 1, "nome": "peticao", "titulo": "Peticao"},
             bert_model={"id": 5, "name": "Modelo Teste"},
-            llm={"model": "gemini-3.6-flash", "thinking": "minimal", "temperature": 0.1, "token_limit": 8000, "token_window": "fim"},
+            llm={"model": "gemini-3.7-flash", "thinking": "minimal", "temperature": 0.1, "token_limit": 8000, "token_window": "fim"},
             summary={"total": 1, "matches": 1, "accuracy": 1.0, "llm_failed": 0},
             items=items
         )

@@ -6,7 +6,7 @@ Utiliza prompts modulares: BASE + PEÇA + CONTEÚDO
 Fluxo com 3 agentes:
 1. Agente TJ-MS: Baixa documentos e gera resumo consolidado
 2. Agente Detector: Analisa resumo e ativa módulos relevantes
-3. Agente Gerador (Gemini 3.6 Flash): Gera a peça final
+3. Agente Gerador (Gemini 3.7 Flash): Gera a peça final
 """
 
 import os
@@ -159,7 +159,7 @@ class GeradorPecasService:
     Utiliza sistema de 3 agentes:
     - Agente 1 (TJ-MS): Coleta documentos e gera resumo consolidado
     - Agente 2 (Detector): Analisa e ativa módulos de conteúdo relevantes
-    - Agente 3 (Gemini 3.6 Flash): Gera a peça jurídica final
+    - Agente 3 (Gemini 3.7 Flash): Gera a peça jurídica final
     
     Prompts modulares:
     - BASE: System prompt (sempre ativo)
@@ -169,7 +169,7 @@ class GeradorPecasService:
     
     def __init__(
         self,
-        modelo: str = "gemini-3.6-flash",
+        modelo: str = "gemini-3.7-flash",
         db: Session = None,
         group_id: Optional[int] = None,
         subcategoria_ids: Optional[List[int]] = None
@@ -219,7 +219,7 @@ class GeradorPecasService:
                 ConfiguracaoIA.chave == "cache_ttl_minutos"
             ).first()
 
-            modelo = modelo_config.valor if modelo_config else "gemini-3.6-flash"
+            modelo = modelo_config.valor if modelo_config else "gemini-3.7-flash"
             cache_ttl = int(cache_config.valor) if cache_config else 60
 
             return DetectorModulosIA(
@@ -439,7 +439,7 @@ Se você NÃO conseguir determinar com certeza qual peça gerar ou precisar de i
         Fluxo com agentes (usar_agentes=True):
         1. Agente 1 (TJ-MS): Baixa documentos e gera resumo consolidado
         2. Agente 2 (Detector): Analisa resumo e ativa módulos relevantes
-        3. Agente 3 (Gemini 3.6 Flash): Gera a peça jurídica final
+        3. Agente 3 (Gemini 3.7 Flash): Gera a peça jurídica final
 
         Args:
             numero_cnj: Número do processo sem formatação

@@ -43,7 +43,7 @@ async def testar_geracao_peca(numero_cnj: str):
             ConfiguracaoIA.sistema == "gerador_pecas",
             ConfiguracaoIA.chave == "modelo_geracao"
         ).first()
-        modelo = config_modelo.valor if config_modelo else "gemini-3.6-flash"
+        modelo = config_modelo.valor if config_modelo else "gemini-3.7-flash"
         print(f"[INFO] Modelo de geração: {modelo}")
 
         # Inicializa o serviço

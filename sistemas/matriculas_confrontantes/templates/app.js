@@ -39,7 +39,7 @@
     currentGrupoId: null,
     config: {
       version: "1.0.0",
-      model: "google/gemini-3.6-flash",
+      model: "google/gemini-3.7-flash",
       hasApiKey: false
     },
     pollingIntervals: {}

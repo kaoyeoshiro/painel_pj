@@ -18,10 +18,10 @@ interface SistemasAcessoriosValues {
 }
 
 const DEFAULTS: SistemasAcessoriosValues = {
-  gerador_regras_modelo: 'gemini-3.6-flash',
+  gerador_regras_modelo: 'gemini-3.7-flash',
   gerador_regras_thinking_level: 'low',
   gerador_regras_temperatura: '0.1',
-  classificador_documentos_modelo: 'gemini-3.6-flash',
+  classificador_documentos_modelo: 'gemini-3.7-flash',
   classificador_documentos_temperatura: '0.1',
   classificador_documentos_threshold: '0.5',
 }
@@ -81,7 +81,7 @@ export function SistemasAcessoriosSection({ values, onChange, onSave, isSaving }
             <Input
               value={get('gerador_regras_modelo')}
               onChange={(e) => onChange('gerador_regras_modelo', e.target.value)}
-              placeholder="gemini-3.6-flash"
+              placeholder="gemini-3.7-flash"
               className="bg-white"
             />
             <p className="text-xs" style={{ color: C.text400 }}>
@@ -215,11 +215,11 @@ export function SistemasAcessoriosSection({ values, onChange, onSave, isSaving }
             <Input
               value={get('classificador_documentos_modelo')}
               onChange={(e) => onChange('classificador_documentos_modelo', e.target.value)}
-              placeholder="gemini-3.6-flash"
+              placeholder="gemini-3.7-flash"
               className="bg-white"
             />
             <p className="text-xs text-orange-600">
-              <strong>Recomendado:</strong> gemini-3.6-flash (rapido e barato)
+              <strong>Recomendado:</strong> gemini-3.7-flash (rapido e barato)
             </p>
           </div>
 

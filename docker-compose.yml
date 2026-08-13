@@ -61,8 +61,8 @@ services:
       GEMINI_KEY: "${GEMINI_KEY:-}"
       # OpenRouter
       OPENROUTER_API_KEY: "${OPENROUTER_API_KEY:-}"
-      OPENROUTER_MODEL: "${OPENROUTER_MODEL:-google/gemini-3.6-flash}"
-      FULL_REPORT_MODEL: "${FULL_REPORT_MODEL:-google/gemini-3.6-flash}"
+      OPENROUTER_MODEL: "${OPENROUTER_MODEL:-google/gemini-3.7-flash}"
+      FULL_REPORT_MODEL: "${FULL_REPORT_MODEL:-google/gemini-3.7-flash}"
       # GitHub / SuperMemory
       GITHUB_PERSONAL_ACCESS_TOKEN: "${GITHUB_PERSONAL_ACCESS_TOKEN:-}"
       SUPERMEMORY_API_KEY: "${SUPERMEMORY_API_KEY:-}"
@@ -113,8 +113,8 @@ services:
       GEMINI_KEY: "${GEMINI_KEY:-}"
       # OpenRouter
       OPENROUTER_API_KEY: "${OPENROUTER_API_KEY:-}"
-      OPENROUTER_MODEL: "${OPENROUTER_MODEL:-google/gemini-3.6-flash}"
-      FULL_REPORT_MODEL: "${FULL_REPORT_MODEL:-google/gemini-3.6-flash}"
+      OPENROUTER_MODEL: "${OPENROUTER_MODEL:-google/gemini-3.7-flash}"
+      FULL_REPORT_MODEL: "${FULL_REPORT_MODEL:-google/gemini-3.7-flash}"
       # GitHub / SuperMemory
       GITHUB_PERSONAL_ACCESS_TOKEN: "${GITHUB_PERSONAL_ACCESS_TOKEN:-}"
       SUPERMEMORY_API_KEY: "${SUPERMEMORY_API_KEY:-}"

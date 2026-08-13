@@ -45,8 +45,8 @@ try:
     print()
 
     # Testa chamada simples
-    print("[TESTE] Testando chamada simples ao modelo gemini-3.6-flash...")
-    model = genai.GenerativeModel('gemini-3.6-flash')
+    print("[TESTE] Testando chamada simples ao modelo gemini-3.7-flash...")
+    model = genai.GenerativeModel('gemini-3.7-flash')
 
     response = model.generate_content("Responda apenas: OK")
 

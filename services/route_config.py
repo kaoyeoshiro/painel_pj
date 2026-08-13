@@ -69,7 +69,7 @@ class RouteConfig:
     profile: RouteProfile
 
     # Modelos
-    model_primary: str = "gemini-3.6-flash"
+    model_primary: str = "gemini-3.7-flash"
     model_fallback: str = "gemini-2.0-flash-lite"
 
     # Timeouts e SLA

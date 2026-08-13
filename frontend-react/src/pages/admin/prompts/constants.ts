@@ -64,13 +64,13 @@ export const THINKING_LEVELS = [
 /** Modelos de IA disponíveis para Select */
 export const MODELOS_IA = [
   { value: INHERIT_VALUE, label: 'Herdar' },
-  { value: 'gemini-3.6-flash', label: 'Gemini 3.6 Flash (padrão)' },
+  { value: 'gemini-3.7-flash', label: 'Gemini 3.7 Flash (padrão)' },
   { value: 'gemini-3.5-flash-lite', label: 'Gemini 3.5 Flash Lite' },
 ]
 
 /** Modelos de IA para selects diretos (sem opção "Herdar") */
 export const MODELOS_IA_DIRETO = [
-  { value: 'gemini-3.6-flash', label: 'Gemini 3.6 Flash (padrão)' },
+  { value: 'gemini-3.7-flash', label: 'Gemini 3.7 Flash (padrão)' },
   { value: 'gemini-3.5-flash-lite', label: 'Gemini 3.5 Flash Lite (econômico)' },
 ]
 
@@ -100,7 +100,7 @@ const AGENT_KEY_PATTERNS = [
 
 /** Mapa de suporte de thinking levels por modelo (apenas modelos compatíveis com thinkingLevel) */
 export const MODEL_THINKING_SUPPORT: Record<string, string[]> = {
-  'gemini-3.6-flash': ['minimal', 'low', 'medium', 'high'],
+  'gemini-3.7-flash': ['minimal', 'low', 'medium', 'high'],
   'gemini-3.5-flash-lite': ['minimal', 'low', 'medium', 'high'],
 }
 
@@ -117,7 +117,7 @@ export const NORMALIZE_THINKING_LEVEL: Record<string, string> = {
 
 /**
  * Retorna os níveis de thinking suportados por um modelo.
- * Faz matching por substring (ex: 'google/gemini-3.6-flash' → 'gemini-3.6-flash').
+ * Faz matching por substring (ex: 'google/gemini-3.7-flash' → 'gemini-3.7-flash').
  * Retorna array vazio se o modelo não suportar thinking levels.
  */
 export function getSupportedLevels(modelValue: string): string[] {

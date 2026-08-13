@@ -34,7 +34,7 @@ const mockPerAgentMatriculas = {
   agentes: {
     analise: {
       descricao: 'Agent1 - Análise visual de matrículas',
-      modelo: 'gemini-3.6-flash',
+      modelo: 'gemini-3.7-flash',
       modelo_fonte: 'default',
       temperatura: 0.3,
       temperatura_fonte: 'default',
@@ -45,7 +45,7 @@ const mockPerAgentMatriculas = {
     },
     relatorio: {
       descricao: 'Agent2 - Gera relatório técnico',
-      modelo: 'gemini-3.6-flash',
+      modelo: 'gemini-3.7-flash',
       modelo_fonte: 'system',
       temperatura: 0.7,
       temperatura_fonte: 'agent',
@@ -62,7 +62,7 @@ const mockPerAgentGerador = {
   agentes: {
     coletor: {
       descricao: 'Agent1 - Coleta e resume documentos do TJ-MS',
-      modelo: 'gemini-3.6-flash',
+      modelo: 'gemini-3.7-flash',
       modelo_fonte: 'default',
       temperatura: 0.3,
       temperatura_fonte: 'default',
@@ -73,7 +73,7 @@ const mockPerAgentGerador = {
     },
     deteccao: {
       descricao: 'Agent2 - Detecta módulos de conteúdo relevantes',
-      modelo: 'gemini-3.6-flash',
+      modelo: 'gemini-3.7-flash',
       modelo_fonte: 'system',
       temperatura: 0.1,
       temperatura_fonte: 'agent',
@@ -84,7 +84,7 @@ const mockPerAgentGerador = {
     },
     geracao: {
       descricao: 'Agent3 - Gera a peça jurídica final',
-      modelo: 'gemini-3.6-flash',
+      modelo: 'gemini-3.7-flash',
       modelo_fonte: 'system',
       temperatura: 0.3,
       temperatura_fonte: 'default',

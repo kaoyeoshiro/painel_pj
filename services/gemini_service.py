@@ -105,12 +105,12 @@ class GeminiService:
     # Modelos disponíveis
     MODELS = {
         # Modelos rápidos (baixo custo)
-        "flash": "gemini-3.6-flash",
-        "flash-lite": "gemini-3.6-flash",
+        "flash": "gemini-3.7-flash",
+        "flash-lite": "gemini-3.7-flash",
         
         # Modelos avançados
         "pro": "gemini-2.5-pro",
-        "flash-preview": "gemini-3.6-flash",
+        "flash-preview": "gemini-3.7-flash",
     }
 
     # Modelos descontinuados -> substituto atual.
@@ -118,18 +118,19 @@ class GeminiService:
     # (admin_configuracoes) e nas colunas de log; sem o redirect a chamada
     # iria para um modelo inexistente na API.
     LEGACY_MODELS = {
-        "gemini-3-pro-preview": "gemini-3.6-flash",
-        "gemini-3-flash-preview": "gemini-3.6-flash",
+        "gemini-3.6-flash": "gemini-3.7-flash",
+        "gemini-3-pro-preview": "gemini-3.7-flash",
+        "gemini-3-flash-preview": "gemini-3.7-flash",
         "gemini-3.1-flash-lite-preview": "gemini-3.5-flash-lite",
-        "pro-preview": "gemini-3.6-flash",
+        "pro-preview": "gemini-3.7-flash",
     }
 
     # Modelo padrão para cada tipo de tarefa
     DEFAULT_MODELS = {
-        "resumo": "gemini-3.6-flash",      # Resumir documentos
-        "analise": "gemini-3.6-flash",           # Analisar conteúdo
-        "geracao": "gemini-3.6-flash",       # Gerar peças/relatórios
-        "visao": "gemini-3.6-flash",             # Análise de imagens
+        "resumo": "gemini-3.7-flash",      # Resumir documentos
+        "analise": "gemini-3.7-flash",           # Analisar conteúdo
+        "geracao": "gemini-3.7-flash",       # Gerar peças/relatórios
+        "visao": "gemini-3.7-flash",             # Análise de imagens
     }
     
     def __init__(self, api_key: str = None):
@@ -165,9 +166,9 @@ class GeminiService:
         - Redireciona modelos descontinuados para o substituto atual
 
         Exemplos:
-            - google/gemini-3.6-flash -> gemini-3.6-flash
-            - flash -> gemini-3.6-flash
-            - gemini-3-pro-preview -> gemini-3.6-flash (descontinuado)
+            - google/gemini-3.7-flash -> gemini-3.7-flash
+            - flash -> gemini-3.7-flash
+            - gemini-3-pro-preview -> gemini-3.7-flash (descontinuado)
         """
         # Remove prefixo google/
         if model.startswith("google/"):
@@ -647,7 +648,7 @@ class GeminiService:
         self,
         prompt: str,
         system_prompt: str = "",
-        model_primary: str = "gemini-3.6-flash",
+        model_primary: str = "gemini-3.7-flash",
         model_fallback: str = "gemini-2.0-flash-lite",
         sla_timeout_seconds: float = 5.0,
         max_tokens: int = None,
@@ -676,7 +677,7 @@ class GeminiService:
             GeminiResponse com indicação de qual modelo foi usado
 
         Exemplo:
-            # Tenta gemini-3.6-flash, fallback para lite se > 5s
+            # Tenta gemini-3.7-flash, fallback para lite se > 5s
             response = await gemini_service.generate_with_sla(
                 prompt=prompt,
                 sla_timeout_seconds=5.0

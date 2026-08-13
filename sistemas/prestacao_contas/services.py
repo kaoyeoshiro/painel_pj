@@ -252,7 +252,7 @@ class OrquestradorPrestacaoContas:
 
         # Configurações
         self.modelo_identificacao = _get_config(db, "modelo_identificacao", "gemini-2.0-flash-lite")
-        self.modelo_analise = _get_config(db, "modelo_analise", "gemini-3.6-flash")
+        self.modelo_analise = _get_config(db, "modelo_analise", "gemini-3.7-flash")
         self.temperatura_identificacao = _get_config_float(db, "temperatura_identificacao", 0.1)
         self.temperatura_analise = _get_config_float(db, "temperatura_analise", 0.3)
 

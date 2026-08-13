@@ -39,7 +39,7 @@ logger = logging.getLogger(__name__)
 
 
 # Modelo obrigatório conforme especificação
-GEMINI_MODEL = "gemini-3.6-flash"
+GEMINI_MODEL = "gemini-3.7-flash"
 
 
 class ExtractionSchemaGenerator:

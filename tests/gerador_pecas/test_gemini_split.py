@@ -107,19 +107,19 @@ class TestGeminiSplitFuncionalidade:
         from services.gemini_service import GeminiMetrics
 
         metrics = GeminiMetrics(
-            model="gemini-3.6-flash",
+            model="gemini-3.7-flash",
             prompt_chars=100,
             response_tokens=50
         )
 
-        assert metrics.model == "gemini-3.6-flash"
+        assert metrics.model == "gemini-3.7-flash"
         assert metrics.prompt_chars == 100
         assert metrics.response_tokens == 50
 
         # Método to_dict deve funcionar
         metrics_dict = metrics.to_dict()
         assert isinstance(metrics_dict, dict)
-        assert metrics_dict["model"] == "gemini-3.6-flash"
+        assert metrics_dict["model"] == "gemini-3.7-flash"
 
     def test_build_payload_funciona(self):
         """Função build_payload retorna estrutura correta"""
@@ -192,7 +192,7 @@ class TestGeminiSplitFuncionalidade:
         from services.gemini_service import GeminiService
 
         # Remove prefixo google/
-        assert GeminiService.normalize_model("google/gemini-3.6-flash") == "gemini-3.6-flash"
+        assert GeminiService.normalize_model("google/gemini-3.7-flash") == "gemini-3.7-flash"
 
         # Converte aliases
         assert "gemini" in GeminiService.normalize_model("flash")

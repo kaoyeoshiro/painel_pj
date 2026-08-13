@@ -156,13 +156,13 @@ Relatório atualizado:"""
 CONFIGURACOES = [
     {
         "chave": "modelo_analise",
-        "valor": "gemini-3.6-flash",
+        "valor": "gemini-3.7-flash",
         "tipo_valor": "string",
         "descricao": "Modelo de IA para análise de documentos e geração do relatório"
     },
     {
         "chave": "modelo_edicao",
-        "valor": "gemini-3.6-flash",
+        "valor": "gemini-3.7-flash",
         "tipo_valor": "string",
         "descricao": "Modelo de IA para edição do relatório via chat"
     },

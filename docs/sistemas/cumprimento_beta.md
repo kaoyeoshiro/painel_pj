@@ -308,7 +308,7 @@ Para cada documento **relevante**, a IA extrai informacoes estruturadas:
 
 | Parametro | Chave | Default |
 |-----------|-------|---------|
-| Modelo | `modelo_agente1` | `gemini-3.6-flash` |
+| Modelo | `modelo_agente1` | `gemini-3.7-flash` |
 | Temperatura | `temperatura_agente1` | `0.1` |
 | Max Tokens | `max_tokens_agente1` | `2048` |
 
@@ -375,7 +375,7 @@ Com base no estado atual, sugira pecas juridicas que podem ser necessarias.
 
 | Parametro | Chave | Default |
 |-----------|-------|---------|
-| Modelo | `modelo_agente2` | `gemini-3.6-flash` |
+| Modelo | `modelo_agente2` | `gemini-3.7-flash` |
 | Temperatura | `temperatura_agente2` | `0.3` |
 | Max Tokens | `max_tokens_agente2` | `8192` |
 
@@ -420,7 +420,7 @@ trabalhando para a PGE-MS.
 
 | Parametro | Chave | Default |
 |-----------|-------|---------|
-| Modelo | `modelo_chatbot` | `gemini-3.6-flash` |
+| Modelo | `modelo_chatbot` | `gemini-3.7-flash` |
 | Temperatura | `temperatura_chatbot` | `0.5` |
 | Max Tokens | `max_tokens_chatbot` | `4096` |
 
@@ -478,7 +478,7 @@ Gere a peca em Markdown com a seguinte estrutura:
 
 | Parametro | Chave | Default |
 |-----------|-------|---------|
-| Modelo | `modelo_geracao_peca` | `gemini-3.6-flash` |
+| Modelo | `modelo_geracao_peca` | `gemini-3.7-flash` |
 | Temperatura | `temperatura_geracao_peca` | `0.4` |
 | Max Tokens | `max_tokens_geracao_peca` | `16384` |
 

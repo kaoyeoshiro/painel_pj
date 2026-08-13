@@ -16,7 +16,7 @@ class MockGeminiResponse:
     success: bool
     content: str
     error: Optional[str] = None
-    model: str = "gemini-3.6-flash"
+    model: str = "gemini-3.7-flash"
     tokens_used: int = 100
 
 
@@ -39,7 +39,7 @@ class MockGeminiService:
         self,
         prompt: str,
         system_prompt: str = "",
-        model: str = "gemini-3.6-flash",
+        model: str = "gemini-3.7-flash",
         temperature: float = 0.3
     ) -> MockGeminiResponse:
         """Simula geração de conteúdo."""
@@ -137,7 +137,7 @@ def criar_mock_schema_response() -> MockGeminiResponse:
     return MockGeminiResponse(
         success=True,
         content=json.dumps(schema_json, ensure_ascii=False),
-        model="gemini-3.6-flash"
+        model="gemini-3.7-flash"
     )
 
 
@@ -194,7 +194,7 @@ def criar_mock_regra_response(prompt: str = "") -> MockGeminiResponse:
     return MockGeminiResponse(
         success=True,
         content=json.dumps(regra, ensure_ascii=False),
-        model="gemini-3.6-flash"
+        model="gemini-3.7-flash"
     )
 
 
@@ -204,5 +204,5 @@ def criar_mock_erro_response(erro: str = "Erro simulado") -> MockGeminiResponse:
         success=False,
         content="",
         error=erro,
-        model="gemini-3.6-flash"
+        model="gemini-3.7-flash"
     )

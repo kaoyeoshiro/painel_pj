@@ -15,9 +15,9 @@ O Gerador de Pecas e o sistema principal do Portal PGE-MS. Ele automatiza a cria
 
 | Agente | Funcao | Modelo Default | Fonte no Codigo |
 |--------|--------|----------------|-----------------|
-| Agente 1 (Coletor) | Baixa documentos do TJ-MS e gera resumo consolidado em JSON | gemini-3.6-flash | `sistemas/gerador_pecas/agente_tjms_integrado.py` |
-| Agente 2 (Detector) | Analisa resumo e ativa prompts modulares relevantes | gemini-3.6-flash | `sistemas/gerador_pecas/detector_modulos.py` |
-| Agente 3 (Gerador) | Gera a peca juridica final em Markdown | gemini-3.6-flash | `sistemas/gerador_pecas/orquestrador_agentes.py` |
+| Agente 1 (Coletor) | Baixa documentos do TJ-MS e gera resumo consolidado em JSON | gemini-3.7-flash | `sistemas/gerador_pecas/agente_tjms_integrado.py` |
+| Agente 2 (Detector) | Analisa resumo e ativa prompts modulares relevantes | gemini-3.7-flash | `sistemas/gerador_pecas/detector_modulos.py` |
+| Agente 3 (Gerador) | Gera a peca juridica final em Markdown | gemini-3.7-flash | `sistemas/gerador_pecas/orquestrador_agentes.py` |
 
 ### B.2) Selecao de Documentos
 
@@ -103,7 +103,7 @@ O Gerador de Pecas e o sistema principal do Portal PGE-MS. Ele automatiza a cria
     +---> [AGENTE 3: Gerador]
               |
               +-> Recebe prompts + resumo + dados_processo
-              +-> Chama Gemini 3.6 Flash
+              +-> Chama Gemini 3.7 Flash
               +-> Retorna peca em Markdown (streaming)
     |
     v
@@ -228,9 +228,9 @@ O Gerador de Pecas e o sistema principal do Portal PGE-MS. Ele automatiza a cria
 | Configuracao | Variavel de Ambiente | Descricao |
 |--------------|---------------------|-----------|
 | API Key | `GEMINI_KEY` | Chave de acesso |
-| Modelo Agente 1 | Configuravel em admin | Default: gemini-3.6-flash |
-| Modelo Agente 2 | Configuravel em admin | Default: gemini-3.6-flash |
-| Modelo Agente 3 | Configuravel em admin | Default: gemini-3.6-flash |
+| Modelo Agente 1 | Configuravel em admin | Default: gemini-3.7-flash |
+| Modelo Agente 2 | Configuravel em admin | Default: gemini-3.7-flash |
+| Modelo Agente 3 | Configuravel em admin | Default: gemini-3.7-flash |
 
 ### Busca Vetorial (Embeddings)
 

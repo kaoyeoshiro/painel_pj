@@ -366,7 +366,7 @@ Responda APENAS com um JSON válido no seguinte formato:
 
         response = await gemini_service.generate(
             prompt=prompt,
-            model="gemini-3.6-flash",
+            model="gemini-3.7-flash",
             temperature=0.1,
             max_tokens=4000,
             thinking_level=thinking_level
@@ -1054,7 +1054,7 @@ Use formatação Markdown. Seja conciso mas completo. Evite jargão técnico des
         # Chama o Gemini
         response = await gemini_service.generate(
             prompt=prompt,
-            model="gemini-3.6-flash",
+            model="gemini-3.7-flash",
             temperature=0.3,
             max_tokens=2000,
             thinking_level="low"

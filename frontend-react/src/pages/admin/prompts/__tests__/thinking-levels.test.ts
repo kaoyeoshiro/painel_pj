@@ -59,8 +59,8 @@ describe('THINKING_LEVELS_DIRETO', () => {
 })
 
 describe('MODEL_THINKING_SUPPORT', () => {
-  it('Gemini 3.6 Flash suporta todos os 4 níveis', () => {
-    const flash = MODEL_THINKING_SUPPORT['gemini-3.6-flash']
+  it('Gemini 3.7 Flash suporta todos os 4 níveis', () => {
+    const flash = MODEL_THINKING_SUPPORT['gemini-3.7-flash']
     expect(flash).toEqual(['minimal', 'low', 'medium', 'high'])
   })
 
@@ -104,8 +104,8 @@ describe('NORMALIZE_THINKING_LEVEL', () => {
 })
 
 describe('getSupportedLevels', () => {
-  it('retorna todos os níveis para gemini-3.6-flash', () => {
-    expect(getSupportedLevels('gemini-3.6-flash')).toEqual(
+  it('retorna todos os níveis para gemini-3.7-flash', () => {
+    expect(getSupportedLevels('gemini-3.7-flash')).toEqual(
       ['minimal', 'low', 'medium', 'high']
     )
   })

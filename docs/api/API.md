@@ -344,7 +344,7 @@ Exemplo (consultar):
 ```json
 {
   "cnj": "0804330-09.2024.8.12.0017",
-  "model": "google/gemini-3.6-flash",
+  "model": "google/gemini-3.7-flash",
   "force": false
 }
 ```

@@ -60,7 +60,7 @@ async def list_logs(
 
     Filtros disponíveis:
     - sistema: Nome do sistema (gerador_pecas, pedido_calculo, etc)
-    - model: Nome do modelo (gemini-3.6-flash, etc)
+    - model: Nome do modelo (gemini-3.7-flash, etc)
     - success: true/false para filtrar por sucesso
     - user_id: ID do usuário
     - hours: Período em horas (padrão: 24h)

@@ -77,7 +77,7 @@ class TestResponseCache:
         cache.set(
             prompt="Olá mundo",
             system_prompt="Seja gentil",
-            model="gemini-3.6-flash",
+            model="gemini-3.7-flash",
             temperature=0.3,
             value=response
         )
@@ -86,7 +86,7 @@ class TestResponseCache:
         cached = cache.get(
             prompt="Olá mundo",
             system_prompt="Seja gentil",
-            model="gemini-3.6-flash",
+            model="gemini-3.7-flash",
             temperature=0.3
         )
 
@@ -159,7 +159,7 @@ class TestGeminiMetrics:
     def test_metrics_to_dict(self):
         """Testa conversão de métricas para dicionário."""
         metrics = GeminiMetrics(
-            model="gemini-3.6-flash",
+            model="gemini-3.7-flash",
             prompt_chars=1000,
             response_tokens=250,
             time_total_ms=1500.5,
@@ -168,7 +168,7 @@ class TestGeminiMetrics:
 
         d = metrics.to_dict()
 
-        assert d["model"] == "gemini-3.6-flash"
+        assert d["model"] == "gemini-3.7-flash"
         assert d["prompt_chars"] == 1000
         assert d["response_tokens"] == 250
         assert d["time_total_ms"] == 1500.5
@@ -177,7 +177,7 @@ class TestGeminiMetrics:
     def test_metrics_com_auditoria(self):
         """Testa métricas com informações de auditoria."""
         metrics = GeminiMetrics(
-            model="gemini-3.6-flash",
+            model="gemini-3.7-flash",
             sistema="gerador_pecas",
             agente="geracao",
             modelo_source="agent",
@@ -198,7 +198,7 @@ class TestGeminiMetrics:
         caplog.set_level(logging.INFO)
 
         metrics = GeminiMetrics(
-            model="gemini-3.6-flash",
+            model="gemini-3.7-flash",
             prompt_chars=500,
             response_tokens=100,
             time_total_ms=1000,
@@ -208,7 +208,7 @@ class TestGeminiMetrics:
         metrics.log()
 
         assert "[Gemini]" in caplog.text
-        assert "gemini-3.6-flash" in caplog.text
+        assert "gemini-3.7-flash" in caplog.text
 
     def test_metrics_log_failure(self, caplog):
         """Testa logging de métricas de falha."""
@@ -216,7 +216,7 @@ class TestGeminiMetrics:
         caplog.set_level(logging.WARNING)
 
         metrics = GeminiMetrics(
-            model="gemini-3.6-flash",
+            model="gemini-3.7-flash",
             time_total_ms=500,
             success=False,
             error="API Error",
@@ -260,7 +260,7 @@ class TestGeminiService:
     def test_normalize_model_alias_flash(self):
         """Testa normalização de alias 'flash'."""
         result = GeminiService.normalize_model("flash")
-        assert result == "gemini-3.6-flash"
+        assert result == "gemini-3.7-flash"
 
     def test_normalize_model_alias_pro(self):
         """Testa normalização de alias 'pro'."""
@@ -269,19 +269,21 @@ class TestGeminiService:
 
     def test_normalize_model_com_prefixo_google(self):
         """Testa remoção do prefixo 'google/'."""
-        result = GeminiService.normalize_model("google/gemini-3.6-flash")
-        assert result == "gemini-3.6-flash"
+        result = GeminiService.normalize_model("google/gemini-3.7-flash")
+        assert result == "gemini-3.7-flash"
 
     def test_normalize_model_nome_completo(self):
         """Testa que nomes completos não são alterados."""
-        result = GeminiService.normalize_model("gemini-3.6-flash")
-        assert result == "gemini-3.6-flash"
+        result = GeminiService.normalize_model("gemini-3.7-flash")
+        assert result == "gemini-3.7-flash"
 
     def test_normalize_model_descontinuado_redireciona(self):
         """Modelos descontinuados gravados no banco caem no substituto atual."""
-        assert GeminiService.normalize_model("gemini-3-pro-preview") == "gemini-3.6-flash"
-        assert GeminiService.normalize_model("gemini-3-flash-preview") == "gemini-3.6-flash"
-        assert GeminiService.normalize_model("google/gemini-3-pro-preview") == "gemini-3.6-flash"
+        assert GeminiService.normalize_model("gemini-3.6-flash") == "gemini-3.7-flash"
+        assert GeminiService.normalize_model("google/gemini-3.6-flash") == "gemini-3.7-flash"
+        assert GeminiService.normalize_model("gemini-3-pro-preview") == "gemini-3.7-flash"
+        assert GeminiService.normalize_model("gemini-3-flash-preview") == "gemini-3.7-flash"
+        assert GeminiService.normalize_model("google/gemini-3-pro-preview") == "gemini-3.7-flash"
         assert (
             GeminiService.normalize_model("gemini-3.1-flash-lite-preview")
             == "gemini-3.5-flash-lite"
@@ -297,7 +299,7 @@ class TestGeminiService:
         """Testa modelo recomendado para geração."""
         service = GeminiService(api_key="test")
         model = service.get_model_for_task("geracao")
-        assert model == "gemini-3.6-flash"
+        assert model == "gemini-3.7-flash"
 
     def test_get_model_for_task_desconhecida(self):
         """Testa fallback para tarefa desconhecida."""
@@ -340,7 +342,7 @@ class TestGeminiServiceGenerate:
         _response_cache.set(
             "Prompt de teste",
             "",
-            "gemini-3.6-flash",
+            "gemini-3.7-flash",
             0.3,
             cached_response
         )
@@ -455,7 +457,7 @@ class TestGeminiServiceBuildPayload:
         payload = service._build_payload(
             prompt="Teste",
             thinking_level="low",
-            model="gemini-3.6-flash",
+            model="gemini-3.7-flash",
             temperature=0.3
         )
 
@@ -659,7 +661,7 @@ class TestGeminiServiceIntegration:
                 response = await service.generate(
                     prompt="Escreva um parecer sobre responsabilidade civil",
                     system_prompt="Você é um procurador jurídico",
-                    model="gemini-3.6-flash",
+                    model="gemini-3.7-flash",
                     temperature=0.3,
                     use_cache=False
                 )
@@ -668,7 +670,7 @@ class TestGeminiServiceIntegration:
         assert response.content == "Resposta do teste de integração"
         assert response.tokens_used == 75
         assert response.metrics is not None
-        assert response.metrics.model == "gemini-3.6-flash"
+        assert response.metrics.model == "gemini-3.7-flash"
 
 
 # ============================================

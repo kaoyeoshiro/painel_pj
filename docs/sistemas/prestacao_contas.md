@@ -160,9 +160,9 @@ O sistema de Prestacao de Contas automatiza a analise de processos de prestacao 
 
 | Funcao | Modelo Default |
 |--------|----------------|
-| Analise de extratos | gemini-3.6-flash |
-| Identificacao de irregularidades | gemini-3.6-flash |
-| Geracao de parecer | gemini-3.6-flash |
+| Analise de extratos | gemini-3.7-flash |
+| Identificacao de irregularidades | gemini-3.7-flash |
+| Geracao de parecer | gemini-3.7-flash |
 
 ## G) Operacao e Validacao
 

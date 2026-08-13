@@ -7,7 +7,7 @@ Este módulo implementa:
 - Verificação de fonte de verdade antes da extração
 - Suporte a grupos com múltiplos tipos de peça
 
-Usa Gemini 3.6 Flash para classificação inteligente.
+Usa Gemini 3.7 Flash para classificação inteligente.
 """
 
 import logging
@@ -21,7 +21,7 @@ from .models_resumo_json import CategoriaResumoJSON
 logger = logging.getLogger(__name__)
 
 # Modelo padrão para classificação
-GEMINI_MODEL = "gemini-3.6-flash"
+GEMINI_MODEL = "gemini-3.7-flash"
 
 
 class DocumentClassificationService:
